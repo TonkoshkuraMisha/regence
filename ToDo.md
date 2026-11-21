@@ -2464,6 +2464,14 @@ SDK на странице (`services/sentry.ts`, `@sentry/react`), теги со
 страницы дошли. **Осталось:** DSN в `.env` сервера и build-аргумент `VITE_SENTRY_DSN` при выкладке; source maps для
 читаемых трасс страницы в продакшене; алерты и дашборд в Sentry; отдельный сбор журналов (Loki/ELK) — по решению владельца.
 
+**Сделано (21.11), домен и край:** домен `regence.club` (GoDaddy, DNS целиком в Cloudflare Free; владелец). В репозитории
+готово всё для схемы Cloudflare → nginx: сервер HTTPS на 443 с сертификатом origin (`frontend/nginx-tls.conf`,
+`docker-compose.tls.yml`), общие маршруты (`nginx_locations.inc`), HSTS только на HTTPS, настоящий IP клиента из
+`CF-Connecting-IP` только от адресов Cloudflare и закрытие 80/443 файрволом для остальных
+(`scripts/deploy/cloudflare_ips.sh`), `robots.txt`; пошаговая инструкция и предупреждение о SPF/DMARC — `DEPLOY.md`,
+разделы 4 и 8а. **Осталось у владельца:** сервер и его IP, A-запись `@`, сертификат origin, Cache Rule для `/api/*`,
+Rate Limiting на вход, DNSSEC, при подключении почты — обновить SPF/DKIM/DMARC.
+
 **Сделано (21.11), бэкапы:** `pg_backup.sh loop` сам проверяет восстановление раз в `BACKUP_VERIFY_EVERY_DAYS` суток
 (7) и оповещает о сбое снимка или проверки (`BACKUP_ALERT_WEBHOOK_URL`); сервис `backup-offsite` (rclone, профиль
 `offsite`) копирует дампы в объектное хранилище. Проверено вручную на dev-базе (снимок, проверка, сбой с недоступным

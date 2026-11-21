@@ -63,14 +63,38 @@
 
 ## 4. HTTPS
 
-nginx в образе `web` слушает только HTTP. TLS завершается снаружи — балансировщиком облака
-или отдельным прокси (Caddy, Traefik) перед портом `HTTP_PORT`. Прокси должен передавать
-`Upgrade`/`Connection` для WebSocket (`/api/v1/ws/`). Если TLS завершается прямо в nginx,
-добавьте `listen 443 ssl` в `frontend/nginx.conf` и включите `Strict-Transport-Security`
-в `frontend/security_headers.inc`.
+Домен — `regence.club`, DNS и прокси — Cloudflare (тариф Free, зона активна; записи меняются только там, не в GoDaddy).
+По умолчанию nginx в образе `web` слушает только HTTP (порт `HTTP_PORT`): так его можно поставить за любой
+балансировщик, а проверки здоровья и сборка в CI не требуют сертификатов. Любой внешний прокси должен передавать
+`Upgrade`/`Connection` для WebSocket (`/api/v1/ws/`) и подменять, а не дописывать `X-Forwarded-For`: лимиты попыток
+входа и запросов к движку считаются по IP клиента.
 
-Внешний прокси должен подменять, а не дописывать `X-Forwarded-For`: лимиты попыток входа
-и запросов к движку считаются по IP клиента.
+**Схема с Cloudflare (режим SSL/TLS — Full (strict); Flexible не включать):**
+
+1. **DNS.** В Cloudflare добавьте A-запись `@` → IP сервера (Proxied); `www` (CNAME на `regence.club`) уже есть.
+   WebSocket через прокси Cloudflare работают без отдельной настройки. SSL/TLS → Edge Certificates: включить
+   *Always Use HTTPS* и *Automatic HTTPS Rewrites*.
+2. **Сертификат origin.** SSL/TLS → Origin Server → Create Certificate (до 15 лет, `regence.club` и `*.regence.club`).
+   Сохраните на сервере `deploy/certs/origin.pem` и `deploy/certs/origin.key` (права 600; папка `deploy/` в git не
+   попадает, ключ не публиковать).
+3. **Адрес клиента.** `scripts/deploy/cloudflare_ips.sh nginx` пишет `deploy/cloudflare_real_ip.inc`: nginx берёт IP
+   клиента из `CF-Connecting-IP`, но только от адресов Cloudflare (с других `CF-Connecting-IP` игнорируется, подделать
+   его нельзя). Дальше он идёт в API как `X-Forwarded-For` — для лимитов, журналов и античита.
+4. **Запуск.** `docker compose -f docker-compose.prod.yml -f docker-compose.tls.yml up -d` — добавляет порт 443
+   (`HTTPS_PORT`) с `frontend/nginx-tls.conf`; HSTS отправляется только на HTTPS (30 суток; когда всё проверено —
+   поднять до года в `map $hsts_value`, `frontend/nginx.conf`).
+5. **Закрыть origin от обхода.** `sudo scripts/deploy/cloudflare_ips.sh ufw` разрешает 80/443 только диапазонам
+   Cloudflare (SSH разрешить отдельно: `ufw allow OpenSSH`, затем `ufw default deny incoming`). Диапазоны меняются
+   редко: повторять скрипты (`nginx`, `ufw`) раз в месяц, после `nginx` — `docker compose ... restart web`.
+6. **Кэш.** Rules → Cache Rules: правило «`/api/*` — Bypass cache» (и всё с авторизацией); кэшировать только
+   статику фронтенда (`/assets/*` уже отдаётся с `immutable`). Cloudflare сам дописывает свои строки в начало
+   `robots.txt` (AI-боты: поиск и агенты разрешены, обучение закрыто); свой `frontend/public/robots.txt` закрывает `/api/`.
+7. **Не включать** без согласования Bot Fight Mode (на Free ломает API-клиентов и вебхуки), Under Attack и Development
+   Mode. Для защиты входа и регистрации — Rate Limiting rules на `/api/v1/auth/*` вместо Bot Fight Mode; DNSSEC —
+   включить в Cloudflare и добавить DS-запись в GoDaddy (DNS → DNSSEC). Токены Cloudflare в репозиторий не кладём:
+   если нужен доступ к API, отдельный токен только Zone → DNS Edit для `regence.club`, в секретах сервера.
+
+В `.env` сервера: `PUBLIC_BASE_URL=https://regence.club`; `COOKIE_SECURE` при `ENVIRONMENT=production` включается сам.
 
 ## 5. Резервные копии
 
@@ -246,6 +270,12 @@ Access-токен живёт `ACCESS_TOKEN_EXPIRE_MINUTES` (15) и хранит�
 `credentials: 'include'`. Сброс Redis выкидывает всех из долгих сессий: войти заново.
 
 ## 8а. Почта: подтверждение e-mail и сброс пароля
+
+> **Сейчас DNS запрещает любую отправку от `regence.club`:** TXT `@` = `v=spf1 -all`, `_dmarc` = `v=DMARC1; p=reject;`.
+> Это защита от подделки, пока почты нет. Подключая провайдера (SES / Resend / Postmark), **сначала обновите записи в
+> Cloudflare**: SPF с `include:` провайдера, его DKIM (CNAME/TXT) и DMARC — вначале `p=none` или `p=quarantine` с
+> `rua=mailto:…` для отчётов, и только после проверки доставки обратно в `reject`. Иначе письма платформы отклонятся.
+> Приём (`support@regence.club` → Gmail) — Cloudflare Email Routing; он добавит свои MX и SPF сам.
 
 E-mail у игрока необязателен; привязывается по ссылке из письма и нужен, чтобы восстановить доступ, если пароль
 забыт. Письма уходят по обычному SMTP — подходит любой провайдер транзакционной почты или свой сервер.

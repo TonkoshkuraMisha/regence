@@ -18,5 +18,8 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 # .inc, а не .conf: штатный nginx.conf подключает только conf.d/*.conf, а этот файл
 # включается вручную внутри server и location.
 COPY security_headers.inc /etc/nginx/conf.d/security_headers.inc
+COPY nginx_locations.inc /etc/nginx/conf.d/nginx_locations.inc
+# Server на 443 лежит в образе под именем, которое nginx не загружает; включает его docker-compose.tls.yml (нужны сертификат и ключ).
+COPY nginx-tls.conf /etc/nginx/nginx-tls.conf.example
 COPY --from=build /app/dist /usr/share/nginx/html
 EXPOSE 80
