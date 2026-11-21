@@ -162,6 +162,11 @@ GlitchTip) и перезапустите `api` и `worker`. В Sentry уходя
 авторизации и IP не отправляются. `SENTRY_TRACES_SAMPLE_RATE` (например, `0.05`) включает
 выборочную трассировку производительности. Для страницы (проект `regence-web`) DSN задаётся при сборке образа:
 `VITE_SENTRY_DSN` в `.env` рядом с compose (передаётся build-аргументом сервиса `web`; в разработке — `frontend/.env`).
+**Source maps страницы** (читаемые трассы вместо `index-4f3a.js:1:20431`): при сборке образа `web` с токеном карты
+загружаются в Sentry (`@sentry/vite-plugin`, `frontend/vite.config.ts`) и удаляются из сборки — сайт их не отдаёт. Токен —
+Sentry → Settings → Auth Tokens (права `project:releases`, `org:read`); сохраните его в файл вне репозитория и
+укажите `SENTRY_AUTH_TOKEN_FILE=/путь/к/файлу` рядом с compose (передаётся секретом BuildKit, в слои образа не попадает).
+Без файла карты не создаются, сборка обычная. Сопоставление идёт по Debug ID внутри файлов — имя релиза не нужно.
 Запись экрана (Session Replay) и личные данные не включены; адрес отчётов Sentry разрешён в CSP
 (`frontend/security_headers.inc`). События несут теги `request_id`, `user_id`, `game_id` — по ним ищется строка журнала.
 
