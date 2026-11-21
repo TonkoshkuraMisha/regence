@@ -35,6 +35,7 @@ import {DefenseTrainer} from './DefenseTrainer';
 import {GeneratedDrills} from './GeneratedDrills';
 import {PuzzleBoard} from './PuzzleBoard';
 import {sanMoves, solutionSan, toMove} from './puzzleNotation';
+import {TimedLeaders} from './TimedLeaders';
 import {TrainingPanel} from './TrainingPanel';
 import {SolutionReplay} from './SolutionReplay';
 import type {ReplayView} from './SolutionReplay';
@@ -599,6 +600,7 @@ export default function PuzzlesPage() {
                             </div>
                         </div>
                     )}
+                    {mode === 'timed' && !run && <TimedLeaders refreshKey={timedResult}/>}
                     {run && (
                         <div className="flex items-center justify-between font-mono" data-testid="puzzle-run">
                             <span>{t('puzzles.timeLeft', {time: `${Math.floor(secondsLeft / 60)}:${String(secondsLeft % 60).padStart(2, '0')}`})}</span>

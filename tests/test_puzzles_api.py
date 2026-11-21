@@ -189,6 +189,38 @@ async def test_timed_run_counts_on_the_server_and_keeps_the_record(client, token
     me = client.get(f"{API}/me", headers=_auth(token_user_1)).json()
     assert me["best"] == {"3": 1, "5": 0} and me["games"] == 0
     assert client.post(f"{API}/timed/finish", headers=_auth(token_user_1)).status_code == 409
+    # Забег попал в таблицы лидеров: неделя и всё время; чужие длины и зачёты — отказ.
+    for scope in ("week", "all"):
+        board = client.get(f"{API}/timed/leaders?minutes=3&scope={scope}", headers=_auth(token_user_1)).json()
+        assert [(r["place"], r["score"], r["me"]) for r in board["rows"]] == [(1, 1, True)]
+        assert board["me"]["place"] == 1
+    empty = client.get(f"{API}/timed/leaders?minutes=5&scope=week", headers=_auth(token_user_1)).json()
+    assert empty == {"rows": [], "me": None}
+    assert client.get(f"{API}/timed/leaders?minutes=4", headers=_auth(token_user_1)).status_code == 400
+
+
+def test_leader_places_share_ties_and_week_starts_on_monday():
+    import datetime as dt
+
+    from src.services.puzzle_leaders import _ranked, week_start
+    assert [r["place"] for r in _ranked([(1, "a", 9), (2, "b", 7), (3, "c", 7), (4, "d", 5)])] == [1, 2, 2, 4]
+    assert week_start(dt.date(2026, 11, 22)) == dt.date(2026, 11, 16)   # воскресенье → понедельник той же недели
+    assert week_start(dt.date(2026, 11, 16)) == dt.date(2026, 11, 16)
+
+
+async def test_leaders_skip_cheaters_and_keep_the_best_week_score(db_session, test_user_1, test_user_2):
+    import datetime as dt
+
+    from src.services import puzzle_leaders as pl
+    today = dt.date(2026, 11, 18)
+    await pl.record_week(db_session, test_user_1.id, 3, 12, today)
+    await pl.record_week(db_session, test_user_1.id, 3, 8, today)      # хуже — не заменяет
+    await pl.record_week(db_session, test_user_2.id, 3, 30, today)
+    test_user_2.is_cheater = True
+    await db_session.commit()
+    board = await pl.leaders(db_session, 3, "week", test_user_1.id, today)
+    assert [(r["username"], r["score"]) for r in board["rows"]] == [(test_user_1.username, 12)]
+    assert (await pl.leaders(db_session, 3, "week", test_user_1.id, dt.date(2026, 11, 25)))["rows"] == []  # другая неделя
 
 
 async def test_timed_run_ends_after_time_or_three_mistakes(client, token_user_1, puzzles, monkeypatch):
