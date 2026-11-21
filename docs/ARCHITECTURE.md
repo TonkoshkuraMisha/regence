@@ -130,7 +130,8 @@
 ### 4.2. Партия между людьми
 
 - **Что.** Лобби с вызовами, автоподбор, приглашение по ссылке, рейтинговые и товарищеские партии, часы с добавкой,
-  предходы, ничья, сдача, реванш, зрители, чат, фора, шахматы Фишера.
+  предходы, ничья, сдача, реванш, зрители, чат, фора (материальная, по времени, «песочные часы» — время ходящего
+  уходит сопернику, флаг `games.hourglass`), шахматы Фишера.
 - **Файлы.** `src/api/websockets.py` (действия), `src/services/matchmaker.py` (лобби и старт партии),
   `game_state.py` (позиция, часы, завершение), `game_engine.py` (правила: легальность, итог, флаг), `rating.py`,
   `connection_manager.py`, `odds.py`, `chess960.py`; клиент — `components/Chessboard.tsx` и хуки в
@@ -346,6 +347,8 @@
 
 ### 4.15. Наблюдение за системой и бета
 
+- **Алерты** (`ops/prometheus/alerts.yml`): правила Prometheus по метрикам `observability.py` (в т. ч. длина очередей Celery
+  `regence_celery_queue_length`), подключаются при выкладке (`DEPLOY.md`, раздел 6).
 - **Журналы** (`src/core/logging_setup.py`, `src/api/client_errors.py`, `scripts/trace_logs.py`; клиент —
   `services/breadcrumbs.ts`, `services/clientErrors.ts`): json-строки с контекстом `request_id` / `user_id` / `game_id`,
   сквозной номер запроса клиент ↔ API ↔ воркер, отчёты страницы об ошибках и перезагрузках со следом событий.

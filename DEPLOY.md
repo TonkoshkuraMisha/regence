@@ -195,6 +195,7 @@ compose (или опубликуйте порт `api` только на внут
 | `regence_engine_seconds_total{kind}`       | время, пока движки Stockfish заняты: `bot_move`, `analysis`, `coach`, `simulation`, `puzzles`, `other` |
 | `regence_engine_acquire_wait_seconds{kind}`, `regence_engine_busy_total{kind}` | ожидание свободного движка и отказы «пул занят» |
 | `regence_active_players_today`             | вошедшие игроки за сутки UTC (HyperLogLog в Redis)          |
+| `regence_celery_queue_length{queue}`       | сообщений в очереди Celery (`analysis`, `simulation`), ещё не взятых воркером |
 
 Стоит настроить оповещения: p95 `regence_ws_action_seconds{action="make_move"}` выше 0,5 с,
 рост `regence_ws_actions_total{outcome="error"}` и `regence_timeout_check_failures_total`,
@@ -217,6 +218,14 @@ Celery-воркеры (фоновый анализ, симуляция турн�
 (`FREE_GAME_ANALYSES_PER_DAY`, по умолчанию 3) и на наставника — совет, подсказку, проверку хода
 (`FREE_COACH_REQUESTS_PER_DAY`, 300). Засчитывается выполненная работа; сверх квоты — 429 `daily_limit_reached`.
 По умолчанию выключено — включит тарифная модель (25.1). Ходы ботов, задачи и игра квот не имеют.
+
+**Алерты.** Готовые правила — `ops/prometheus/alerts.yml` (проверены `promtool`): цель не отвечает, доля 5xx > 2%,
+95-й перцентиль хода > 0,5 с, очередь `analysis` > 50 (10 мин) и `simulation` > 500 (30 мин), пул БД занят на 80%
+(60 соединений при `DB_POOL_SIZE` 10 + `DB_MAX_OVERFLOW` 20 и двух процессах), отказы пула движков, процессор хоста > 85%
+(нужен `node_exporter`, job `node`), сбои проверки флагов. Подключите файл в `prometheus.yml`:
+`rule_files: ["/etc/prometheus/alerts.yml"]` и добавьте Alertmanager с получателем (почта, Telegram и т. п.) — без него
+Prometheus только показывает сработавшие правила. Пороги — на один сервер; меняйте под нагрузку. Проверка:
+`docker run --rm --entrypoint promtool -v "$PWD/ops/prometheus:/r" prom/prometheus check rules /r/alerts.yml`.
 
 ## 7. Нагрузочный тест
 
