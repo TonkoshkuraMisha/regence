@@ -40,6 +40,7 @@ import type {BoardTheme} from '../config/boardAppearance';
 import {HISTORICAL_BOTS} from '../config/champions';
 import type {BotOpponentId, HistoricalBotId, HistoricalBotProfile} from '../config/champions';
 import {ALL_TIME_CONTROLS, DEFAULT_TIME_CONTROL, TIME_CONTROLS, timeControlCategory} from '../config/timeControls';
+import {clearBotGameSnapshot, loadBotGameSnapshot, saveBotGameSnapshot} from '../services/botGameSnapshot';
 import type {TournamentGameStart} from '../services/tournaments';
 import {ContinueTournaments, TournamentGameBar} from './tournaments/TournamentGameBar';
 import {pickFirstOpponent} from '../services/onboarding';
@@ -375,6 +376,7 @@ export default function Chessboard() {
         selectedBotId, setSelectedBotId, botComment, isBotThinking, savedBotGameId,
         startHistoricalBotGame, startCustomBotGame, botProfileFor, botNameParam, saveBotGameToDatabase, exitBotGame,
         isLadderGame, ladderOutcome, customArchetypeId, isTournamentGame, savedTournamentId, offerDrawToBot,
+        resumeBotGame, botGameInfo,
     } = useBotGame({
         game, myColor, gameOverResult, whiteTimeMs, blackTimeMs, isSearching, setIsSearching,
         activeBot, setActiveBot,
@@ -1288,6 +1290,63 @@ export default function Chessboard() {
     const [tournamentLinkId, setTournamentLinkId] = useState<number | null>(null);
     const [tournamentGameRefId, setTournamentGameRefId] = useState<number | null>(null);
     const inTournamentGame = Boolean(tournamentLinkId && (isTournamentGame || savedTournamentId));
+
+    // Партия с ботом переживает перезагрузку страницы и уход на другую страницу (services/botGameSnapshot.ts): снимок пишется
+    // после каждого хода, при закрытии страницы и при уходе с доски; при открытии доски он применяется, если игрок тот же,
+    // партия не окончена и доску не занимает другой запуск (партия турнира, гостевая партия, первая партия).
+    const writeBotSnapshot = () => {
+        if (!activeBot || gameId || gameOverResult || !currentUsername) return;
+        const info = botGameInfo();
+        saveBotGameSnapshot({
+            username: currentUsername, botId: activeBot, custom: info.custom, color: myColor, pgn: game.pgn(),
+            whiteTimeMs, blackTimeMs, baseMinutes: effectiveWhiteBaseMinutes, incrementSeconds: effectiveIncSeconds,
+            odds: activeOdds ? {kind: activeOdds.kind, giver: activeOdds.giver} : null,
+            ladder: info.ladder, tournamentGameId: info.tournamentGameId, tournamentId: tournamentLinkId,
+        });
+    };
+    // Свежая версия записи для обработчиков закрытия страницы (они живут дольше одного рендера).
+    const writeBotSnapshotRef = useRef(writeBotSnapshot);
+    writeBotSnapshotRef.current = writeBotSnapshot;
+    const botGameWasLiveRef = useRef(false);
+    useEffect(() => {
+        const live = Boolean(activeBot) && !gameId && !gameOverResult;
+        if (live) {
+            botGameWasLiveRef.current = true;
+            writeBotSnapshotRef.current();
+        } else if (botGameWasLiveRef.current) {
+            // Партия окончена или оставлена — продолжать нечего.
+            botGameWasLiveRef.current = false;
+            clearBotGameSnapshot();
+        }
+    }, [activeBot, gameId, gameOverResult, game]);
+    useEffect(() => {
+        const save = () => writeBotSnapshotRef.current();
+        window.addEventListener('pagehide', save);
+        window.addEventListener('beforeunload', save);
+        return () => {
+            window.removeEventListener('pagehide', save);
+            window.removeEventListener('beforeunload', save);
+            save(); // уход на другую страницу: часы и позиция на этот момент
+        };
+    }, []);
+    const resumedBotGameRef = useRef(false);
+    useEffect(() => {
+        if (resumedBotGameRef.current || !currentUsername || gameId || activeBot || spectatingGameId) return;
+        const routeState = routeLocation.state as Record<string, unknown> | null;
+        if (routeState && (routeState.tournamentGame || routeState.guestGame || routeState.firstGame)) return;
+        resumedBotGameRef.current = true;
+        const snapshot = loadBotGameSnapshot(currentUsername);
+        if (!snapshot) return;
+        const manual = ALL_TIME_CONTROLS.find((o) => o.isManual
+            && o.category === timeControlCategory(snapshot.baseMinutes * 60000, snapshot.incrementSeconds * 1000));
+        if (manual) setSelectedTimeControl(manual);
+        setManualBaseMinutes(snapshot.baseMinutes);
+        setManualIncSeconds(snapshot.incrementSeconds);
+        setActiveOdds(snapshot.odds as OddsChoice | null);
+        setTournamentLinkId(snapshot.tournamentId);
+        setTournamentGameRefId(snapshot.tournamentGameId);
+        resumeBotGame(snapshot);
+    }, [currentUsername, gameId, activeBot, spectatingGameId, routeLocation.state, resumeBotGame]);
     useEffect(() => {
         if (!tournamentStart || gameId || (activeBot && !gameOverResult)) return;
         const category = timeControlCategory(tournamentStart.baseTimeMs, tournamentStart.incrementMs);

@@ -13,6 +13,7 @@ import {DEFAULT_CONFIG} from '../../services/personalities';
 import {resetBotCatalogCache} from '../../services/botCatalog';
 import {setToken} from '../../services/authToken';
 import {openBots} from '../../test/newGame';
+import {saveBotGameSnapshot} from '../../services/botGameSnapshot';
 
 vi.mock('../../services/gameSocket', () => ({
     gameSocket: {
@@ -992,3 +993,25 @@ describe('доступность доски (таск 26.3)', () => {
     });
 });
 
+
+describe('продолжение партии с ботом после перезагрузки', () => {
+    it('снимок восстанавливает позицию партии, а не начальную расстановку', async () => {
+        vi.stubGlobal('fetch', mockFetchRouter({
+            '/profile/me': () => ({id: 1, username: 'TestPlayer', blitz_rating: 1500}),
+            '/profile/matchmaking/queue': () => [],
+            '/profile/games/live': () => [],
+            '/profile/games/my-active': () => ({active: false}),
+            '/bots/move': () => new Promise(() => {}),
+            '/bots/save-game': () => ({game_id: 1, status: 'finished', result: '1-0'}),
+        }));
+        saveBotGameSnapshot({
+            username: 'TestPlayer', botId: 'philidor', custom: null, color: 'white', pgn: '1. e4 e5 2. Nf3',
+            whiteTimeMs: 200000, blackTimeMs: 250000, baseMinutes: 5, incrementSeconds: 0, odds: null,
+            ladder: false, tournamentGameId: null, tournamentId: null,
+        });
+        renderChessboard();
+        // Конь на f3 и пешка на e5 — позиция из снимка, а не начальная расстановка.
+        await waitFor(() => expect(squareEl('f3').querySelector('img,svg,[data-piece]')).not.toBeNull());
+        expect(squareEl('e2').querySelector('img,svg,[data-piece]')).toBeNull();
+    });
+});
