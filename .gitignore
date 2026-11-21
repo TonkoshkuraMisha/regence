@@ -67,4 +67,4 @@ _project_snapshot/
 logs/
 
 # Сертификат origin и список IP Cloudflare для nginx — только на сервере (DEPLOY.md, раздел 4).
-deploy/
+/deploy/
