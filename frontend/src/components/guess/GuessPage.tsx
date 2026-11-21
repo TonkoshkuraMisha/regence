@@ -17,8 +17,9 @@ import {Crown, ArrowRight} from 'lucide-react';
 import {hasMessage, renderUiMessage, useI18n} from '../../i18n';
 import type {UiMessage} from '../../i18n';
 import {errorMessage} from '../../services/apiErrors';
-import {coachText} from '../../services/coach';
-import {guessApi, understanding} from '../../services/guess';
+import {coachArrows, coachText} from '../../services/coach';
+import type {CoachComment} from '../../services/coach';
+import {guessApi, isRetry, MAX_ATTEMPTS, understanding} from '../../services/guess';
 import type {GuessAnswer, GuessPosition} from '../../services/guess';
 import {PuzzleBoard} from '../puzzles/PuzzleBoard';
 import type {BoardArrow} from '../puzzles/PuzzleBoard';
@@ -59,6 +60,11 @@ export function GuessPage() {
     const [answer, setAnswer] = useState<GuessAnswer | null>(null);
     const [played, setPlayed] = useState<string | null>(null);
     const [scores, setScores] = useState<number[]>([]);
+    // Три попытки: номер текущей, сколько подсказок взято и последняя подсказка (штраф к баллам берёт сервер).
+    const [attempt, setAttempt] = useState(1);
+    const [hints, setHints] = useState(0);
+    const [hint, setHint] = useState<CoachComment | null>(null);
+    const [retryNote, setRetryNote] = useState(false);
     const [error, setError] = useState<UiMessage | null>(null);
     const explorer = usePositionExplorer();
     const stopExplorer = explorer.stop;
@@ -69,6 +75,10 @@ export function GuessPage() {
         setAnswer(null);
         setPlayed(null);
         setError(null);
+        setAttempt(1);
+        setHints(0);
+        setHint(null);
+        setRetryNote(false);
         stopExplorer();
     }, [stopExplorer]);
 
@@ -107,12 +117,29 @@ export function GuessPage() {
         }
         setPlayed(uci);
         try {
-            const result = await guessApi.answer(position.id, uci);
+            const result = await guessApi.answer(position.id, uci, attempt, hints);
+            if (isRetry(result)) {
+                setPlayed(null);
+                setAttempt((n) => n + 1);
+                setRetryNote(true);
+                return;
+            }
+            setRetryNote(false);
             setAnswer(result);
             setScores((list) => [...list, result.score]);
             if (whole) setGameScores((list) => [...list, result.score]);
         } catch (err) {
             setPlayed(null);
+            setError(errorMessage(err, 'common.networkError'));
+        }
+    };
+
+    const takeHint = async () => {
+        if (!position || answer || hints >= 3) return;
+        try {
+            setHint(await guessApi.hint(position.id, hints + 1));
+            setHints((n) => n + 1);
+        } catch (err) {
             setError(errorMessage(err, 'common.networkError'));
         }
     };
@@ -145,6 +172,7 @@ export function GuessPage() {
         arrows.push({from: answer.master_move.slice(0, 2), to: answer.master_move.slice(2, 4), color: 'green'});
         if (played && played !== answer.master_move) arrows.push({from: played.slice(0, 2), to: played.slice(2, 4), color: 'red'});
     }
+    if (!answer && hint) arrows.push(...coachArrows(hint).map((a) => ({from: a.from, to: a.to, color: 'green' as const})));
     const percent = understanding(scores);
     const verdict = answer && (answer.score === 100 ? 'guess.perfect' : answer.score >= 80 ? 'guess.near' : 'guess.miss');
 
@@ -200,6 +228,21 @@ export function GuessPage() {
                                 </div>
                             )}
                         </div>
+
+                        {!answer && (
+                            <div className="bg-black/30 rounded p-3 text-sm flex flex-col gap-2" data-testid="guess-attempts">
+                                <div className="flex flex-wrap items-center gap-3">
+                                    <span data-testid="guess-attempt">{t('guess.attempt', {n: attempt, max: MAX_ATTEMPTS})}</span>
+                                    <button type="button" onClick={() => void takeHint()} disabled={hints >= 3} data-testid="guess-hint"
+                                            className="px-2.5 py-1 rounded border border-amber-900/60 hover:border-amber-500 disabled:opacity-40">
+                                        {t('guess.hint', {n: Math.min(hints + 1, 3)})}
+                                    </button>
+                                </div>
+                                {retryNote && <p className="text-amber-200" role="status" data-testid="guess-retry">{t('guess.retry')}</p>}
+                                {hint && coachText(hint, t) && <p className="text-boxwood/90" data-testid="guess-hint-text">{coachText(hint, t)}</p>}
+                                <span className="text-xs text-boxwood/60">{t('guess.penaltyNote')}</span>
+                            </div>
+                        )}
 
                         {choices && !answer && position.candidates && position.candidates.length > 0 && (
                             <div className="flex flex-col gap-1.5" data-testid="guess-choices">

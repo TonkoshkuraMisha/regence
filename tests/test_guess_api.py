@@ -185,3 +185,28 @@ async def test_games_with_positions_for_the_champion_list(client, seeded):
 
 def test_empty_pool(client):
     assert client.get("/api/v1/guess/next").json() == {"position": None}
+
+
+async def test_three_attempts_with_hints(client, seeded):
+    """Режим «три попытки»: ошибка до последней попытки — «ещё раз» без итога; штрафы за подсказки и попытки."""
+    _game, first, _second = seeded
+    url = f"/api/v1/guess/position/{first.id}/answer"
+    retry = client.post(url, json={"move": "h2h3", "attempt": 1}).json()
+    assert retry == {"retry": True, "attempts_left": 2, "loss_cp": 200}
+    # Вторая попытка — ход мастера с одной подсказкой: 100 − 10 (подсказка) − 10 (попытка).
+    final = client.post(url, json={"move": "f3e5", "attempt": 2, "hints": 1}).json()
+    assert final["score"] == 80 and final["master_move"] == "f3e5"
+    # Последняя попытка с ошибкой уже итоговая (баллы за потерю минус штраф попытки).
+    last = client.post(url, json={"move": "h2h3", "attempt": 3}).json()
+    assert "retry" not in last and last["score"] == 46 - 20
+
+
+async def test_hint_steps_and_validation(client, seeded):
+    _game, first, _second = seeded
+    step1 = client.get(f"/api/v1/guess/position/{first.id}/hint?step=1").json()
+    assert step1["arrows"] == []
+    step3 = client.get(f"/api/v1/guess/position/{first.id}/hint?step=3").json()
+    assert step3["arrows"]
+    assert client.get(f"/api/v1/guess/position/{first.id}/hint?step=9").status_code == 422
+    url = f"/api/v1/guess/position/{first.id}/answer"
+    assert client.post(url, json={"move": "f3e5", "attempt": 4}).status_code == 422

@@ -30,7 +30,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.models.game import Game
 from src.models.guess import GuessPosition
 from src.models.user import User
-from src.services.coach import advice_for_position
+from src.services.coach import advice_for_position, hint_for_position
 from src.services.guess_selection import book_plies, in_opening, is_technical_endgame, position_themes
 
 # Баллы за ход мастера и за другой ход, который хуже лучшего не больше чем на NEAR_CP сантипешек.
@@ -39,6 +39,11 @@ NEAR_SCORE = 80
 NEAR_CP = 30
 # Запас к потере хода, которого нет в сохранённых строках движка: потеря = отрыв лучшего хода + этот запас.
 UNKNOWN_EXTRA_CP = 50
+# Попытки с подсказками: на позицию даётся MAX_ATTEMPTS попыток (ошибочный ход до последней — «попробуй ещё», без
+# итога); за каждую использованную подсказку и каждую попытку сверх первой из баллов вычитается свой штраф.
+MAX_ATTEMPTS = 3
+HINT_PENALTY = 10
+ATTEMPT_PENALTY = 10
 # Сколько последних полуходов партии показывается перед позицией.
 CONTEXT_MOVES = 8
 # Сколько вариантов показывает режим «выбор из кандидатов»: ход мастера и до двух ходов из строк движка.
@@ -65,6 +70,11 @@ def score_answer(position: GuessPosition, move_uci: str) -> tuple[int, int]:
     if loss <= NEAR_CP:
         return NEAR_SCORE, loss
     return max(0, NEAR_SCORE - (loss - NEAR_CP) // 5), loss
+
+
+def hint(position: GuessPosition, step: int) -> dict:
+    """Подсказка к позиции по ступеням наставника (намёк, фигура, полный совет со стрелкой хода мастера)."""
+    return hint_for_position(chess.Board(position.fen), position.move_uci, step)
 
 
 def _game_context(game: Game, ply: int) -> dict:
@@ -178,19 +188,30 @@ async def first_positions(db: AsyncSession, game_ids: list[int]) -> dict[int, in
     return result
 
 
-async def answer(db: AsyncSession, position: GuessPosition, move_uci: str, user: User | None = None) -> dict:
+async def answer(
+        db: AsyncSession, position: GuessPosition, move_uci: str, user: User | None = None,
+        attempt: int | None = None, hints: int = 0,
+) -> dict:
     """
     Баллы, ход мастера, строки движка, темы и объяснение наставника к ходу мастера. Заодно обновляет счётчики
     позиции (plays, solved) и, если отвечает вошедший игрок, её рейтинг — по его рейтингу задач (с commit). Ответ
     гостя рейтинг позиции не меняет.
+
+    attempt — номер попытки (1…MAX_ATTEMPTS) в режиме «три попытки»; без него ответ всегда итоговый. Ход хуже
+    «почти равноценного» до последней попытки не разбирается: ответ {retry, attempts_left, loss_cp}, счётчики не
+    меняются. Итоговые баллы уменьшаются на штрафы за подсказки (hints) и лишние попытки; позиция считается решённой
+    (для её рейтинга), только если ход мастера найден с первой попытки и без подсказок.
     """
     board = chess.Board(position.fen)
     score, loss = score_answer(position, move_uci)
+    if attempt is not None and score < NEAR_SCORE and attempt < MAX_ATTEMPTS:
+        return {"retry": True, "attempts_left": MAX_ATTEMPTS - attempt, "loss_cp": loss}
+    clean = score == MASTER_SCORE and (attempt or 1) == 1 and hints == 0
+    score = max(0, score - HINT_PENALTY * hints - ATTEMPT_PENALTY * ((attempt or 1) - 1))
     if user is not None:
-        position.difficulty = rating_after(position.difficulty, user.puzzle_rating, position.plays,
-                                           score == MASTER_SCORE)
+        position.difficulty = rating_after(position.difficulty, user.puzzle_rating, position.plays, clean)
     position.plays += 1
-    if score == MASTER_SCORE:
+    if clean:
         position.solved += 1
     await db.commit()
     master = chess.Move.from_uci(position.move_uci)
