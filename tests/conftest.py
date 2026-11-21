@@ -239,6 +239,9 @@ class MockAsyncRedis:
             lst.insert(0, v)
         return len(lst)
 
+    async def llen(self, name):
+        return len(self.lists.get(name, []))
+
     async def ltrim(self, name, start, end):
         lst = self.lists.get(name, [])
         self.lists[name] = lst[start:] if end == -1 else lst[start:end + 1]

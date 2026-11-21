@@ -65,6 +65,20 @@ async def test_active_players_are_counted_once_per_day(client, token_user_1, tok
     assert "regence_engine_seconds_total" in client.get("/metrics").text
 
 
+async def test_celery_queue_length_is_exported(client):
+    """Длина очереди Celery берётся из списка брокера в Redis при каждом запросе /metrics (алерты 23.2)."""
+    from src.db import redis as redis_module
+    from src.worker.celery_app import ANALYSIS_QUEUE
+
+    redis_module.redis_client.lists.pop(ANALYSIS_QUEUE, None)
+    await redis_module.redis_client.rpush(ANALYSIS_QUEUE, "a", "b", "c")
+    try:
+        assert client.get("/metrics").status_code == 200
+        assert REGISTRY.get_sample_value("regence_celery_queue_length", {"queue": ANALYSIS_QUEUE}) == 3
+    finally:
+        redis_module.redis_client.lists.pop(ANALYSIS_QUEUE, None)
+
+
 @pytest.fixture
 def stub_hint(monkeypatch):
     """Подсказка без движка; ступень 3 — ошибка входных данных (400)."""
