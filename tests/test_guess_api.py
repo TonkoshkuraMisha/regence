@@ -210,3 +210,29 @@ async def test_hint_steps_and_validation(client, seeded):
     assert client.get(f"/api/v1/guess/position/{first.id}/hint?step=9").status_code == 422
     url = f"/api/v1/guess/position/{first.id}/answer"
     assert client.post(url, json={"move": "f3e5", "attempt": 4}).status_code == 422
+
+
+def test_quiz_rules_are_pure_and_deterministic():
+    from src.services.guess_quiz import build_quiz, check_quiz, moment_code, plies_and_mate, winner_of
+    assert moment_code(8) == "5w" and moment_code(9) == "5b"
+    assert winner_of("1-0") == "white" and winner_of("0-1") == "black" and winner_of("1/2-1/2") == "draw"
+    assert plies_and_mate(PGN) == (13, True)
+    questions, answers = build_quiz(3, "1-0", True, [(8, 200), (10, 500)], 13)
+    assert [q["id"] for q in questions] == ["winner", "key_moment", "mate"]
+    assert answers == {"winner": "white", "key_moment": "6w", "mate": "yes"}   # ключевой — отрыв 500 на полуходе 10
+    assert answers["key_moment"] in questions[1]["options"] and len(questions[1]["options"]) == 3
+    assert build_quiz(3, "1-0", True, [(8, 200), (10, 500)], 13) == (questions, answers)
+    one, _ = build_quiz(3, "0-1", False, [(8, 200)], 13)
+    assert [q["id"] for q in one] == ["winner", "mate"]                          # с одним моментом вопроса про ключевой нет
+    checked = check_quiz({"winner": "white", "mate": "no"}, answers)
+    assert checked["score"] == 1 and checked["results"] == {"winner": True, "key_moment": False, "mate": False}
+
+
+async def test_game_quiz_endpoints(client, seeded):
+    game, _first, _second = seeded
+    quiz = client.get(f"/api/v1/guess/game/{game.id}/quiz").json()["questions"]
+    assert [q["id"] for q in quiz] == ["winner", "key_moment", "mate"]
+    res = client.post(f"/api/v1/guess/game/{game.id}/quiz",
+                      json={"answers": {"winner": "white", "key_moment": "6w", "mate": "yes"}}).json()
+    assert res["score"] == 3 and res["correct"]["winner"] == "white"
+    assert client.get("/api/v1/guess/game/99999/quiz").status_code == 404

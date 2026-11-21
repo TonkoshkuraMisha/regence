@@ -62,6 +62,7 @@ describe('Угадай ход мастера', () => {
             // Ответы — раньше позиций: заглушка берёт первый адрес, который входит в запрос.
             '/position/5/answer': () => ({...ANSWER, score: 80, next_id: null}),
             '/position/9/answer': () => ({...ANSWER, score: 100, next_id: null}),
+            '/guess/game/42/quiz': () => ({questions: [{id: 'winner', options: ['white', 'black', 'draw']}], score: 1, total: 1, results: {winner: true}, correct: {winner: 'white'}}),
             '/guess/game/42': () => ({positions: [{id: 5, ply: 8, series_id: 7}, {id: 9, ply: 20, series_id: null}]}),
             '/guess/position/9': () => ({...POSITION, id: 9, ply: 20, series_id: null}),
             '/guess/position/5': () => POSITION,
@@ -77,7 +78,11 @@ describe('Угадай ход мастера', () => {
         await play('f3', 'e5');
         await act(async () => fireEvent.click(await screen.findByTestId('guess-next')));
         expect(screen.getByTestId('guess-whole-done')).toHaveTextContent('Партия пройдена: 180 из 200 очков.');
-        expect(fetchMock.mock.calls.filter(([u]) => String(u).includes('/guess/game/42'))).toHaveLength(1);
+        expect(fetchMock.mock.calls.filter(([u]) => String(u).endsWith('/guess/game/42'))).toHaveLength(1);
+        // Вопросы после партии: показываются в итоге, ответы уходят на проверку.
+        fireEvent.click(await screen.findByTestId('quiz-winner-white'));
+        fireEvent.click(screen.getByTestId('guess-quiz-check'));
+        expect(await screen.findByTestId('guess-quiz-score')).toHaveTextContent('1 из 1');
     });
 
     it('выбор из вариантов: позиции запрашиваются с кандидатами, ответ — кнопкой', async () => {

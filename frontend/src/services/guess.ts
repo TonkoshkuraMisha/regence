@@ -56,6 +56,19 @@ export interface GuessAnswer extends CoachComment {
     next_id: number | null;
 }
 
+/** Вопрос после партии: код и коды вариантов (текст собирает клиент). */
+export interface QuizQuestion {
+    id: string;
+    options: string[];
+}
+
+export interface QuizResult {
+    score: number;
+    total: number;
+    results: Record<string, boolean>;
+    correct: Record<string, string>;
+}
+
 /** Ошибочный ход до последней попытки: итога нет, можно пробовать снова (режим «три попытки»). */
 export interface GuessRetry {
     retry: true;
@@ -84,6 +97,11 @@ export const guessApi = {
     }),
     /** Подсказка по ступеням: 1 — намёк, 2 — фигура, 3 — стрелка хода мастера. */
     hint: (id: number, step: number) => request<CoachComment>(`/position/${id}/hint?step=${step}`),
+    /** Вопросы после партии «целиком» (src/services/guess_quiz.py). */
+    quiz: (gameId: number) => request<{ questions: QuizQuestion[] }>(`/game/${gameId}/quiz`),
+    checkQuiz: (gameId: number, answers: Record<string, string>) => request<QuizResult>(`/game/${gameId}/quiz`, {
+        method: 'POST', body: JSON.stringify({answers}),
+    }),
     /** Партии с отобранными моментами: {id партии: id первой позиции}; сервер смотрит не больше 100 id за запрос. */
     ofGames: (gameIds: number[]) => request<{ games: Record<string, number> }>(`/games?ids=${gameIds.join(',')}`),
     /** Отобранные моменты одной партии — для кнопки «Угадай ход» в просмотре; пустой список — кнопки нет. */

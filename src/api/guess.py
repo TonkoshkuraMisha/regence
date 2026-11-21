@@ -13,6 +13,7 @@ from src.db.session import get_db
 from src.models.guess import GuessPosition
 from src.models.user import User
 from src.services import guess as guess_service
+from src.services.guess_quiz import check_quiz
 
 router = APIRouter(dependencies=[Depends(rate_limit("guess", "RATE_LIMIT_PUZZLES"))])
 
@@ -25,6 +26,10 @@ class AnswerRequest(BaseModel):
     attempt: int | None = Field(default=None, ge=1, le=guess_service.MAX_ATTEMPTS,
                                 description="Номер попытки в режиме «три попытки»; без него ответ итоговый")
     hints: int = Field(default=0, ge=0, le=3, description="Сколько подсказок взято до ответа (штраф к баллам)")
+
+
+class QuizRequest(BaseModel):
+    answers: dict[str, str] = Field(default_factory=dict, max_length=5, description="Вопрос -> код выбранного варианта")
 
 
 async def _position(db: AsyncSession, position_id: int) -> GuessPosition:
@@ -60,6 +65,24 @@ async def positions_of_game(game_id: int, db: AsyncSession = Depends(get_db)):
     """Отобранные моменты партии — для кнопки «Угадай ход» в просмотре партии; пустой список — кнопки нет."""
     positions = await guess_service.game_positions(db, game_id)
     return {"positions": [{"id": p.id, "ply": p.ply, "series_id": p.series_id} for p in positions]}
+
+
+@router.get("/game/{game_id}/quiz")
+async def game_quiz(game_id: int, db: AsyncSession = Depends(get_db)):
+    """Вопросы после партии «целиком» (кто выиграл, ключевой момент, мат): коды вариантов без ответов."""
+    quiz = await guess_service.game_quiz(db, game_id)
+    if quiz is None:
+        raise ApiError(404, "guess_position_not_found")
+    return {"questions": quiz[0]}
+
+
+@router.post("/game/{game_id}/quiz")
+async def check_game_quiz(game_id: int, payload: QuizRequest, db: AsyncSession = Depends(get_db)):
+    """Проверка ответов на вопросы после партии: счёт, что верно и верные ответы."""
+    quiz = await guess_service.game_quiz(db, game_id)
+    if quiz is None:
+        raise ApiError(404, "guess_position_not_found")
+    return check_quiz(payload.answers, quiz[1])
 
 
 @router.get("/games")
