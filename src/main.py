@@ -63,7 +63,13 @@ from src.api.websockets import router as ws_router
 from src.core.config import settings
 from src.core.errors import validation_error_items
 from src.core.logging_setup import REQUEST_ID_HEADER, request_log_middleware, setup_logging
-from src.core.observability import http_metrics_middleware, init_sentry, metrics_response, refresh_active_players
+from src.core.observability import (
+    http_metrics_middleware,
+    init_sentry,
+    metrics_response,
+    refresh_active_players,
+    refresh_queue_lengths,
+)
 from src.db import redis as redis_module
 from src.db.session import AsyncSessionLocal
 from src.services.connection_manager import manager
@@ -213,9 +219,10 @@ async def health_check():
 async def metrics():
     """
     Метрики Prometheus (src/core/observability.py). Наружу через nginx не публикуется — только внутри сети compose.
-    Перед отдачей обновляется число игроков за сегодня (счётчик в Redis).
+    Перед отдачей обновляются число игроков за сегодня (счётчик в Redis) и длины очередей Celery.
     """
     await refresh_active_players()
+    await refresh_queue_lengths()
     return metrics_response()
 
 

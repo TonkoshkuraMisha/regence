@@ -83,6 +83,12 @@ TIMEOUT_CHECK_FAILURES = Counter(
 ACTIVE_PLAYERS_TODAY = Gauge(
     "regence_active_players_today", "Distinct logged-in players seen today (UTC)", multiprocess_mode="mostrecent",
 )
+# Очереди Celery (таск 23.2, алерты): длина — LLEN списка очереди в брокере Redis; считается при каждом запросе /metrics.
+# Растущая очередь analysis значит, что воркер не успевает с разбором партий; simulation — с партиями ботов в турнирах.
+CELERY_QUEUE_LENGTH = Gauge(
+    "regence_celery_queue_length", "Messages waiting in a Celery queue (not yet taken by a worker)", ["queue"],
+    multiprocess_mode="mostrecent",
+)
 # Суточный счётчик игроков хранится в Redis трое суток — с запасом, чтобы вчерашнее значение ещё можно было прочесть.
 ACTIVE_PLAYERS_TTL_S = 3 * 86400
 
@@ -127,6 +133,20 @@ async def refresh_active_players() -> None:
         ACTIVE_PLAYERS_TODAY.set(await redis_module.redis_client.pfcount(_active_players_key()))
     except Exception as exc:
         logger.debug("Active players count failed: %s", exc)
+
+
+async def refresh_queue_lengths() -> None:
+    """Перед отдачей /metrics: сколько сообщений ждёт в каждой очереди Celery (брокер — тот же Redis, база 0)."""
+    from src.db import redis as redis_module
+
+    # Импорт здесь, а не вверху: celery_app сам импортирует этот модуль.
+    from src.worker.celery_app import ANALYSIS_QUEUE, SIMULATION_QUEUE
+
+    for queue in (ANALYSIS_QUEUE, SIMULATION_QUEUE):
+        try:
+            CELERY_QUEUE_LENGTH.labels(queue=queue).set(await redis_module.redis_client.llen(queue))
+        except Exception as exc:  # метрика не должна ронять /metrics
+            logger.debug("Queue length failed for %s: %s", queue, exc)
 
 
 def metrics_response() -> Response:

@@ -346,6 +346,8 @@
 
 ### 4.15. Наблюдение за системой и бета
 
+- **Алерты** (`ops/prometheus/alerts.yml`): правила Prometheus по метрикам `observability.py` (в т. ч. длина очередей Celery
+  `regence_celery_queue_length`), подключаются при выкладке (`DEPLOY.md`, раздел 6).
 - **Журналы** (`src/core/logging_setup.py`, `src/api/client_errors.py`, `scripts/trace_logs.py`; клиент —
   `services/breadcrumbs.ts`, `services/clientErrors.ts`): json-строки с контекстом `request_id` / `user_id` / `game_id`,
   сквозной номер запроса клиент ↔ API ↔ воркер, отчёты страницы об ошибках и перезагрузках со следом событий.
