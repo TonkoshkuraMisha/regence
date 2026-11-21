@@ -12,4 +12,5 @@ add_header X-Content-Type-Options "nosniff" always;
 add_header X-Frame-Options "DENY" always;
 add_header Referrer-Policy "no-referrer" always;
 add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
-# add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+# HSTS: значение задаёт map $hsts_value в nginx.conf — на HTTPS-запросе срок и includeSubDomains, на HTTP заголовка нет.
+add_header Strict-Transport-Security $hsts_value always;
