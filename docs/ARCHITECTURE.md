@@ -119,7 +119,7 @@
 - **Что.** Регистрация по имени и паролю, вход, долгая сессия, смена пароля, необязательный e-mail со сбросом
   пароля, выгрузка своих данных, удаление аккаунта (анонимизация: партии остаются у соперников без имени).
 - **Файлы.** `src/api/auth.py`, `src/api/account.py`, `src/core/security.py` (хэш пароля, JWT),
-  `src/services/auth_sessions.py`, `email_links.py`, `mailer.py`, `account.py`, `onboarding.py`; клиент —
+  `src/services/auth_sessions.py`, `email_links.py`, `mailer.py`, `account.py`, `onboarding.py`, `legal.py` (согласие с условиями при регистрации, `/privacy`); клиент —
   `services/authToken.ts`, `services/account.ts` (вход, регистрация, почта, пароль, выгрузка, удаление),
   `components/AuthModal.tsx`, `components/Settings.tsx`, `components/EmailLinkPages.tsx`.
 - **Как.** Короткий access-токен (15 минут) живёт только в памяти страницы; долгий вход держит refresh-токен в cookie
@@ -243,7 +243,8 @@
 - **Награды** (`arena_awards.py`, таблица `arena_awards`): когда итоги окончательные, тройка таблицы (сыгравшие хотя
   бы одну партию) получает места — уведомление, кубки в профиле, достижения «призёр арены» и «победитель арены».
   Раздаёт плановая задача `arena_awards` каждые 5 минут. Страница арены отдаёт призёру его место
-  (`me.podium_place`, `arena_awards.place_of`) — клиент один раз показывает праздник призёра (`TournamentCelebration`).
+  (`me.podium_place`, `arena_awards.place_of`), а любому игроку — `me.username`; клиент один раз показывает экран итогов
+  (`TournamentCelebration`: кубок призёру, значок места остальным, таблица участников со своей строкой, скачивание CSV).
 - **Лига месяца** (`arena_league.py`, `GET /arenas/league`, блок под списком на `/arenas`): сумма очков арен сезона
   (календарный месяц UTC) в категории контроля; швейцарки не входят, категории — те, где расписание ставит арены
   (пуля, блиц). Порядок: очки, лучшая арена, меньше арен. Считается при запросе, на рейтинг не влияет.
@@ -346,6 +347,9 @@
 
 ### 4.15. Наблюдение за системой и бета
 
+- **Журналы** (`src/core/logging_setup.py`, `src/api/client_errors.py`, `scripts/trace_logs.py`; клиент —
+  `services/breadcrumbs.ts`, `services/clientErrors.ts`): json-строки с контекстом `request_id` / `user_id` / `game_id`,
+  сквозной номер запроса клиент ↔ API ↔ воркер, отчёты страницы об ошибках и перезагрузках со следом событий.
 - **Ошибки и метрики** (`src/core/observability.py`): Sentry при заданном `SENTRY_DSN`, метрики Prometheus на
   `/metrics` (наружу не публикуются). **Продуктовые метрики** без сторонних трекеров (`product_metrics.py`, отчёт —
   `scripts/product_metrics.py`). **Прозрачность:** журналы калибровки ботов и открытый API (`src/api/public.py`).

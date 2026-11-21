@@ -1,8 +1,13 @@
 # --- FILE: tests/conftest.py ---
 
 import asyncio
+import os
 
-import pytest
+# Тесты не шлют события в настоящий Sentry, даже если в .env разработчика задан SENTRY_DSN: переменная окружения
+# сильнее .env и должна быть выставлена до импорта src.main (init_sentry вызывается при импорте).
+os.environ["SENTRY_DSN"] = ""
+
+import pytest  # noqa: E402
 from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
@@ -323,6 +328,14 @@ def no_strength_reference(monkeypatch):
     from src.services.bots import base as bots_base
 
     monkeypatch.setattr(bots_base, "strength_reference_move", lambda *args, **kwargs: None)
+
+
+@pytest.fixture(autouse=True)
+def terms_consent_not_required(monkeypatch):
+    """Регистрации в тестах не передают согласие с условиями (таск 23.1); его проверяют тесты test_legal_consent.py."""
+    from src.core.config import settings
+
+    monkeypatch.setattr(settings, "REQUIRE_TERMS_CONSENT", False)
 
 
 _PUBLISHED_SIMULATIONS: list[int] = []

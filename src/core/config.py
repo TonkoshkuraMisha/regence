@@ -117,6 +117,16 @@ class Settings(BaseSettings):
     # Доля запросов с трассировкой производительности: 0 — только ошибки.
     SENTRY_DSN: str = ""
     SENTRY_TRACES_SAMPLE_RATE: float = 0.0
+    # Журналы (src/core/logging_setup.py): формат json / text / auto (json в продакшене), уровень, необязательный файл
+    # с ротацией (пусто — только консоль), его размер в МБ и число копий.
+    LOG_FORMAT: str = "auto"
+    LOG_LEVEL: str = "INFO"
+    LOG_FILE: str = ""
+    LOG_FILE_MAX_MB: int = 20
+    LOG_FILE_BACKUPS: int = 10
+    # Отчёты клиента об ошибках (src/api/client_errors.py): сколько принимать с одного адреса за окно; сверх — отбрасывать.
+    RATE_LIMIT_CLIENT_ERRORS: int = 30
+    RATE_LIMIT_CLIENT_ERRORS_WINDOW_S: int = 300
     # Метрики воркера Celery (src/core/observability.start_worker_metrics_server): порт, на котором главный процесс
     # воркера отдаёт /metrics своих процессов (время движка в фоновом разборе и симуляциях); 0 — не отдавать.
     # В продакшене задаёт docker-compose.prod.yml (9101), в разработке выключено.
@@ -179,6 +189,9 @@ class Settings(BaseSettings):
     # Программа беты (таск 24.4). REGISTRATION_INVITE_ONLY — регистрация только по коду-приглашению (коды выдаёт
     # модератор); по умолчанию регистрация открыта. COMMUNITY_URL — ссылка на канал сообщества: пусто — не показывается.
     REGISTRATION_INVITE_ONLY: bool = False
+    # Согласие с «Правилами сообщества» и «Конфиденциальностью» при регистрации (таск 23.1, src/services/legal.py):
+    # без отметки регистрация отклоняется кодом terms_not_accepted.
+    REQUIRE_TERMS_CONSENT: bool = True
     COMMUNITY_URL: str = ""
     # «Сообщить о проблеме»: сообщений за окно с адреса (или на игрока); проверок кода-приглашения — с адреса.
     RATE_LIMIT_FEEDBACK: int = 5

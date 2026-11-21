@@ -63,14 +63,38 @@
 
 ## 4. HTTPS
 
-nginx в образе `web` слушает только HTTP. TLS завершается снаружи — балансировщиком облака
-или отдельным прокси (Caddy, Traefik) перед портом `HTTP_PORT`. Прокси должен передавать
-`Upgrade`/`Connection` для WebSocket (`/api/v1/ws/`). Если TLS завершается прямо в nginx,
-добавьте `listen 443 ssl` в `frontend/nginx.conf` и включите `Strict-Transport-Security`
-в `frontend/security_headers.inc`.
+Домен — `regence.club`, DNS и прокси — Cloudflare (тариф Free, зона активна; записи меняются только там, не в GoDaddy).
+По умолчанию nginx в образе `web` слушает только HTTP (порт `HTTP_PORT`): так его можно поставить за любой
+балансировщик, а проверки здоровья и сборка в CI не требуют сертификатов. Любой внешний прокси должен передавать
+`Upgrade`/`Connection` для WebSocket (`/api/v1/ws/`) и подменять, а не дописывать `X-Forwarded-For`: лимиты попыток
+входа и запросов к движку считаются по IP клиента.
 
-Внешний прокси должен подменять, а не дописывать `X-Forwarded-For`: лимиты попыток входа
-и запросов к движку считаются по IP клиента.
+**Схема с Cloudflare (режим SSL/TLS — Full (strict); Flexible не включать):**
+
+1. **DNS.** В Cloudflare добавьте A-запись `@` → IP сервера (Proxied); `www` (CNAME на `regence.club`) уже есть.
+   WebSocket через прокси Cloudflare работают без отдельной настройки. SSL/TLS → Edge Certificates: включить
+   *Always Use HTTPS* и *Automatic HTTPS Rewrites*.
+2. **Сертификат origin.** SSL/TLS → Origin Server → Create Certificate (до 15 лет, `regence.club` и `*.regence.club`).
+   Сохраните на сервере `deploy/certs/origin.pem` и `deploy/certs/origin.key` (права 600; папка `deploy/` в git не
+   попадает, ключ не публиковать).
+3. **Адрес клиента.** `scripts/deploy/cloudflare_ips.sh nginx` пишет `deploy/cloudflare_real_ip.inc`: nginx берёт IP
+   клиента из `CF-Connecting-IP`, но только от адресов Cloudflare (с других `CF-Connecting-IP` игнорируется, подделать
+   его нельзя). Дальше он идёт в API как `X-Forwarded-For` — для лимитов, журналов и античита.
+4. **Запуск.** `docker compose -f docker-compose.prod.yml -f docker-compose.tls.yml up -d` — добавляет порт 443
+   (`HTTPS_PORT`) с `frontend/nginx-tls.conf`; HSTS отправляется только на HTTPS (30 суток; когда всё проверено —
+   поднять до года в `map $hsts_value`, `frontend/nginx.conf`).
+5. **Закрыть origin от обхода.** `sudo scripts/deploy/cloudflare_ips.sh ufw` разрешает 80/443 только диапазонам
+   Cloudflare (SSH разрешить отдельно: `ufw allow OpenSSH`, затем `ufw default deny incoming`). Диапазоны меняются
+   редко: повторять скрипты (`nginx`, `ufw`) раз в месяц, после `nginx` — `docker compose ... restart web`.
+6. **Кэш.** Rules → Cache Rules: правило «`/api/*` — Bypass cache» (и всё с авторизацией); кэшировать только
+   статику фронтенда (`/assets/*` уже отдаётся с `immutable`). Cloudflare сам дописывает свои строки в начало
+   `robots.txt` (AI-боты: поиск и агенты разрешены, обучение закрыто); свой `frontend/public/robots.txt` закрывает `/api/`.
+7. **Не включать** без согласования Bot Fight Mode (на Free ломает API-клиентов и вебхуки), Under Attack и Development
+   Mode. Для защиты входа и регистрации — Rate Limiting rules на `/api/v1/auth/*` вместо Bot Fight Mode; DNSSEC —
+   включить в Cloudflare и добавить DS-запись в GoDaddy (DNS → DNSSEC). Токены Cloudflare в репозиторий не кладём:
+   если нужен доступ к API, отдельный токен только Zone → DNS Edit для `regence.club`, в секретах сервера.
+
+В `.env` сервера: `PUBLIC_BASE_URL=https://regence.club`; `COOKIE_SECURE` при `ENVIRONMENT=production` включается сам.
 
 ## 5. Резервные копии
 
@@ -80,6 +104,20 @@ nginx в образе `web` слушает только HTTP. TLS заверша
 
 **Копируйте `BACKUP_DIR` за пределы сервера** (rsync, `rclone` в объектное хранилище): копия
 на том же диске не переживёт потерю диска или сервера.
+
+**Проверка восстановления идёт сама:** после снимка сервис `backup` раз в `BACKUP_VERIFY_EVERY_DAYS` суток (7;
+0 — выключено) восстанавливает последний снимок во временную базу. Сбой снимка или проверки пишется в журнал строкой
+`ERROR` и уходит POST-запросом на `BACKUP_ALERT_WEBHOOK_URL`, если он задан (приёмник — любой: Slack, мост в Telegram,
+сервис мониторинга).
+
+**Копия вне сервера** — необязательный сервис `backup-offsite` (rclone), включается профилем:
+
+    docker compose -f docker-compose.prod.yml --profile offsite up -d
+
+Хранилище описывается в `.env`: `BACKUP_OFFSITE_PATH=offsite:<ведро>` и переменные `RCLONE_CONFIG_OFFSITE_*` (пример
+для S3-совместимого — в `.env.example`; список видов хранилищ — документация rclone). Раз в `BACKUP_OFFSITE_INTERVAL_HOURS`
+часов (24) копируются новые `regence_*.dump`; удаление старых снимков в хранилище настраивается политикой самого
+хранилища. Нужны учётная запись хранилища и ключи — это за владельцем.
 
     # снимок прямо сейчас (например, перед обновлением с миграциями)
     docker compose -f docker-compose.prod.yml run --rm --no-deps backup once
@@ -102,11 +140,30 @@ nginx в образе `web` слушает только HTTP. TLS заверша
 
 ## 6. Мониторинг
 
+**Журналы и разбор багов.** Каждая строка журнала — json (в продакшене; `LOG_FORMAT=auto`) с полями `ts`, `level`,
+`component` (api/worker), `msg` и контекстом: `request_id` (сквозной номер запроса, он же в заголовке ответа
+`X-Request-ID`), `user_id`, `game_id`, `ws_id`, `task`. Запросы пишутся строкой `http_request` (шаблон маршрута, статус,
+время), действия игрока по WebSocket — `ws_action`, подключение и закрытие — `ws_connected` / `ws_disconnected` (код
+закрытия отличает перезагрузку страницы от обрыва сети), задачи воркера — `task_started` / `task_finished` /
+`task_failed`. Страница шлёт отчёты об ошибках (`client_error`: ошибка отрисовки, необработанное исключение,
+перезагрузка страницы со следом событий до неё) — `src/api/client_errors.py`. Паролей, токенов и тел запросов в журнале нет.
+Консоль контейнеров ротируется драйвером Docker (5 файлов по 20 МБ). Разбор по признаку:
+
+    docker compose -f docker-compose.prod.yml logs --no-log-prefix api worker \
+      | python scripts/trace_logs.py game_id=20767          # или request_id=…, user_id=…, tournament_id=…
+    python scripts/trace_logs.py user_id=1 --level WARNING logs/api.jsonl logs/worker.jsonl   # разработка
+
+Цепочка по жалобе: найти `client_error`, взять `related_request_ids` и разобрать каждый номер тем же скриптом.
+`LOG_FILE` (необязательно) пишет json-файл с ротацией — в разработке его задаёт `start_dev.ps1` (`logs/`).
+
 **Ошибки — Sentry.** Задайте в `.env` `SENTRY_DSN` (проект Python в Sentry или совместимом
 GlitchTip) и перезапустите `api` и `worker`. В Sentry уходят необработанные исключения и всё, что
 логируется как ошибка: сбои WS-действий, цикла таймаутов, фонового анализа. Cookie, заголовки
 авторизации и IP не отправляются. `SENTRY_TRACES_SAMPLE_RATE` (например, `0.05`) включает
-выборочную трассировку производительности.
+выборочную трассировку производительности. Для страницы (проект `regence-web`) DSN задаётся при сборке образа:
+`VITE_SENTRY_DSN` в `.env` рядом с compose (передаётся build-аргументом сервиса `web`; в разработке — `frontend/.env`).
+Запись экрана (Session Replay) и личные данные не включены; адрес отчётов Sentry разрешён в CSP
+(`frontend/security_headers.inc`). События несут теги `request_id`, `user_id`, `game_id` — по ним ищется строка журнала.
 
 **Метрики — Prometheus.** API отдаёт `GET /metrics` (сумма по всем процессам uvicorn). Наружу
 путь не опубликован — nginx проксирует только `/api/` и `/health`; Prometheus должен быть в сети
@@ -214,6 +271,12 @@ Access-токен живёт `ACCESS_TOKEN_EXPIRE_MINUTES` (15) и хранит�
 
 ## 8а. Почта: подтверждение e-mail и сброс пароля
 
+> **Сейчас DNS запрещает любую отправку от `regence.club`:** TXT `@` = `v=spf1 -all`, `_dmarc` = `v=DMARC1; p=reject;`.
+> Это защита от подделки, пока почты нет. Подключая провайдера (SES / Resend / Postmark), **сначала обновите записи в
+> Cloudflare**: SPF с `include:` провайдера, его DKIM (CNAME/TXT) и DMARC — вначале `p=none` или `p=quarantine` с
+> `rua=mailto:…` для отчётов, и только после проверки доставки обратно в `reject`. Иначе письма платформы отклонятся.
+> Приём (`support@regence.club` → Gmail) — Cloudflare Email Routing; он добавит свои MX и SPF сам.
+
 E-mail у игрока необязателен; привязывается по ссылке из письма и нужен, чтобы восстановить доступ, если пароль
 забыт. Письма уходят по обычному SMTP — подходит любой провайдер транзакционной почты или свой сервер.
 
@@ -232,6 +295,7 @@ E-mail у игрока необязателен; привязывается по
 
 ## 8г. Программа беты: приглашения, сообщения о проблемах, канал сообщества
 
+- **Согласие при регистрации.** `REQUIRE_TERMS_CONSENT=true` (по умолчанию): без отметки «принимаю правила и конфиденциальность» `POST /auth/register` отвечает 400 `terms_not_accepted`; редакция и время согласия — `users.terms_version` / `terms_accepted_at` (`src/services/legal.py`, `TERMS_VERSION`). Менять `TERMS_VERSION` при каждой правке документов.
 - **Закрытая регистрация.** `REGISTRATION_INVITE_ONLY=true` в `.env` — аккаунт создаётся только по коду-приглашению;
   по умолчанию регистрация открыта (код тогда необязателен, но действующий засчитывается). Коды создаёт и отзывает
   модератор на странице `/moderation`: лимит использований и срок действия необязательны, у каждого кода видно,

@@ -6,10 +6,11 @@
 #   script-src 'self'         — только скрипты из сборки, без inline и eval;
 #   style-src 'unsafe-inline' — React и библиотеки выставляют стили атрибутом style;
 #   img-src                   — только свои картинки (аватары — собственный набор, таск 18.4), data:/blob: для иконок и превью;
-#   connect-src 'self'        — fetch и WebSocket только на свой домен (CSP3 включает ws/wss).
-add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'" always;
+#   connect-src 'self' + Sentry — fetch и WebSocket на свой домен (CSP3 включает ws/wss) и отчёты об ошибках в Sentry (ЕС и США).
+add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' data: blob:; connect-src 'self' https://*.ingest.de.sentry.io https://*.ingest.sentry.io; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'" always;
 add_header X-Content-Type-Options "nosniff" always;
 add_header X-Frame-Options "DENY" always;
 add_header Referrer-Policy "no-referrer" always;
 add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
-# add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+# HSTS: значение задаёт map $hsts_value в nginx.conf — на HTTPS-запросе срок и includeSubDomains, на HTTP заголовка нет.
+add_header Strict-Transport-Security $hsts_value always;
