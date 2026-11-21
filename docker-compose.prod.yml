@@ -205,7 +205,7 @@ services:
 # репозитория: SENTRY_AUTH_TOKEN_FILE=/путь/к/файлу. Не задан — пустой файл, карты не создаются.
 secrets:
   sentry_auth_token:
-    file: ${SENTRY_AUTH_TOKEN_FILE:-/dev/null}
+    file: ${SENTRY_AUTH_TOKEN_FILE:-./frontend/sentry_token.empty}
 
 volumes:
   postgres_data:
