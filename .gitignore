@@ -63,3 +63,8 @@ _project_snapshot/
 
 # Claude Code: личные настройки на этом хосте
 .claude/settings.local.json
+# Журналы разработки (start_dev.ps1 пишет сюда json-журналы api и worker)
+logs/
+
+# Сертификат origin и список IP Cloudflare для nginx — только на сервере (DEPLOY.md, раздел 4).
+/deploy/
