@@ -168,3 +168,72 @@ def test_database_headers_and_skips(tmp_path):
     assert (first.headers["Round"], first.headers["WhiteElo"], "BlackElo" in first.headers) == ("3", "2600", False)
     assert sans(list(first.mainline_moves())) == "1. e4 e5 2. Nf3"
     assert (db.stats.games, db.stats.not_initial, db.stats.deleted) == (2, 1, 1)
+
+
+# --- Дополнительное покрытие: ошибки разбора, версии файлов имён, пропуски записей ---
+
+
+def test_unknown_code_and_truncated_two_byte_move_raise():
+    with pytest.raises(cbh.DecodeError, match="unknown move code"):
+        cbh.decode_moves(bytes([3]))  # код, которого нет в таблице ходов
+    with pytest.raises(cbh.DecodeError, match="truncated"):
+        cbh.decode_moves(bytes([cbh.TWO_BYTE, 0]))
+
+
+def test_black_pawn_one_byte_move_is_mirrored():
+    # Чёрная пешка c5 — №2, ходит однобайтовым кодом: сдвиг зеркалится относительно белых.
+    moves = cbh.decode_moves(encode("e4 c5 d3 b6"))
+    assert sans(moves) == "1. e4 c5 2. d3 b6"
+
+
+def test_piece_order_errors_and_promotion_reuses_free_slot():
+    order = cbh.PieceOrder.initial()
+    with pytest.raises(cbh.DecodeError, match="no piece"):
+        order.square_of(chess.WHITE, chess.KNIGHT, 5)
+    with pytest.raises(cbh.DecodeError, match="no piece on"):
+        order.apply(chess.Board(), chess.Move(chess.E4, chess.E5))  # на e4 в учёте никого нет
+    order.slots[(chess.WHITE, chess.PAWN)][0] = chess.A7
+    order.slots[(chess.WHITE, chess.QUEEN)] = [None]  # ферзь взят: слот свободен
+    board = chess.Board("1k6/P7/8/8/8/8/8/K7 w - - 0 1")
+    order.apply(board, chess.Move(chess.A7, chess.A8, promotion=chess.QUEEN))
+    assert order.slots[(chess.WHITE, chess.QUEEN)] == [chess.A8]
+
+
+@pytest.mark.parametrize("version, base", [(4, 32), (0, 28)])
+def test_record_base_by_version(version, base):
+    data = bytearray(40)
+    data[0x18] = version
+    assert cbh._record_base(bytes(data)) == base
+
+
+def test_record_base_unknown_version_raises():
+    data = bytearray(40)
+    data[0x18] = 7
+    with pytest.raises(cbh.DecodeError, match="unknown index version"):
+        cbh._record_base(bytes(data))
+
+
+def _memory_database(records: list[bytes], games: bytes) -> cbh.Database:
+    index = bytes(cbh.RECORD) + b"".join(records)
+    names = bytes(28)  # файл версии 0 без записей: имена читаются из пустого места
+    return cbh.Database(base=None, index=index, games=games, players=names + bytes(cbh.PLAYER_RECORD * 2),  # type: ignore[arg-type]
+                        tournaments=names + bytes(cbh.TOURNAMENT_RECORD * 2))
+
+
+def test_database_counts_errors_unsupported_and_empty_games():
+    games = bytearray()
+    records = []
+    # 0: хорошая партия с рейтингом чёрных; 1: ход вне базы (ошибка); 2: неподдерживаемая кодировка; 3: пустая;
+    # 4: смещение за пределами файла партий.
+    for flags, body in ((0, encode("e4 e5")), (0, bytes([cbh.TWO_BYTE, 0])), (cbh.CHESS960, b"\x00"), (0, b"")):
+        offset = len(games)
+        games += struct.pack(">I", flags | (len(body) + 4)) + body
+        records.append(_record(offset, 0, 0, 0, 1990, 0))
+    records.append(_record(10_000, 0, 0, 0, 1990, 0))
+    index_records = [bytearray(r) for r in records]
+    index_records[0][31:35] = struct.pack(">HH", 2500, 2400)
+    db = _memory_database([bytes(r) for r in index_records], bytes(games))
+    found = list(db)
+    assert len(found) == 1 and found[0].headers["BlackElo"] == "2400" and found[0].headers["Result"] == "0-1"
+    assert (db.stats.games, db.stats.errors, db.stats.unsupported) == (1, 2, 1)
+    assert len(db.stats.reasons) == 1 and db.stats.reasons[0].startswith("record 2")
