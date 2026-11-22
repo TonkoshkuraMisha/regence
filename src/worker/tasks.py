@@ -7,8 +7,8 @@
   (src/services/position_index.py), а для партии с историческим ботом — где соперник ошибается
   (src/services/bots/memory.py, record_rival_errors). analyze_imported_game — разбор и задачи для партии с другого сайта.
 * simulate_tournament_game — партия ботов между собой в турнире; после неё в очередь ставятся следующие партии.
-* workout_reminders, arena_reminders, arena_awards, bot_selfplay, archive_move_telemetry — плановые (расписание —
-  src/worker/celery_app.py).
+* workout_reminders, arena_reminders, arena_awards, bot_selfplay, archive_move_telemetry, review_cheater_flags — плановые
+  (расписание — src/worker/celery_app.py).
 
 Каждая задача запускается в своём цикле событий и создаёт своё подключение к базе (соединения asyncpg привязаны
 к циклу, в котором созданы). Задачам с движком нужен свободный процесс Stockfish из пула: если пул занят,
@@ -250,6 +250,26 @@ def archive_move_telemetry() -> int:
     if archived:
         logger.info("Move telemetry archived for %s games", archived)
     return archived
+
+
+async def _review_flags_async() -> int:
+    engine = create_async_engine(_task_database_url(), poolclass=NullPool)
+    try:
+        async with async_sessionmaker(engine, expire_on_commit=False)() as db:
+            from src.services import moderation
+
+            return await moderation.periodic_flag_review(db)
+    finally:
+        await engine.dispose()
+
+
+@celery_app.task(name="review_cheater_flags", ignore_result=True)
+def review_cheater_flags() -> int:
+    """Пересмотр старых флагов нечестной игры (таск 26.4, moderation.periodic_flag_review) — раз в неделю."""
+    created = asyncio.run(_review_flags_async())
+    if created:
+        logger.info("Periodic cheat-flag reviews queued: %s", created)
+    return created
 
 
 async def _arena_awards_async() -> int:

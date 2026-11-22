@@ -163,3 +163,23 @@ def test_avatar_in_profile_and_leaderboard(client, token_user_1):
     assert next(row for row in board if row["username"] == "player1")["avatar"] == "bN-3"
     for bad in ("xN-3", "bZ-1", "bN-9", "https://evil"):
         assert client.patch("/api/v1/profile/me/settings", json={"avatar": bad}, headers=auth(token_user_1)).status_code == 422
+
+
+async def test_periodic_review_queues_old_flags_once(db_session, test_user_1, test_user_2):
+    """Таск 26.4: флаг без решения дольше FLAG_REVIEW_AFTER_DAYS снова в очереди; свежий и уже открытый — нет."""
+    now = datetime(2026, 11, 22, tzinfo=UTC)
+    old, fresh = test_user_1, test_user_2
+    clean = User(username="clean", hashed_password="x")
+    db_session.add(clean)
+    old.is_cheater = fresh.is_cheater = True
+    db_session.add(Report(kind="cheat_review", target_id=old.id, reason="auto", status="resolved", action="dismiss",
+                          resolved_at=now - timedelta(days=moderation.FLAG_REVIEW_AFTER_DAYS + 5)))
+    db_session.add(Report(kind="cheat_review", target_id=fresh.id, reason="auto", status="resolved", action="dismiss",
+                          resolved_at=now - timedelta(days=3)))
+    await db_session.commit()
+
+    assert await moderation.periodic_flag_review(db_session, now) == 1
+    queued = (await db_session.execute(select(Report).where(Report.status == "open"))).scalars().all()
+    assert [(r.target_id, r.kind, r.context) for r in queued] == [(old.id, "cheat_review", moderation.PERIODIC_CONTEXT)]
+    assert clean.is_cheater is False and old.is_cheater is True      # сам флаг не меняется — решает человек
+    assert await moderation.periodic_flag_review(db_session, now) == 0  # открытая проверка уже есть
