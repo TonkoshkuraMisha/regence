@@ -347,6 +347,8 @@
 
 ### 4.15. Наблюдение за системой и бета
 
+- **«Моя неделя»** (`src/services/weekly_summary.py`, `GET /workout/week`): итоги 7 суток по партиям, задачам и дням
+  активности и совет кодом; клиент — `components/WeekSummaryCard.tsx` под планом разминки.
 - **Алерты** (`ops/prometheus/alerts.yml`): правила Prometheus по метрикам `observability.py` (в т. ч. длина очередей Celery
   `regence_celery_queue_length`), подключаются при выкладке (`DEPLOY.md`, раздел 6).
 - **Журналы** (`src/core/logging_setup.py`, `src/api/client_errors.py`, `scripts/trace_logs.py`; клиент —
