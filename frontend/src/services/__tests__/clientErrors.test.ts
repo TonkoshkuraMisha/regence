@@ -84,3 +84,34 @@ describe('reportClientError', () => {
         await expect(reportClientError('render', 'x')).resolves.toBe(false);
     });
 });
+
+describe('installClientErrorReporting', () => {
+    it('пишет вход на страницу в крошки, а window error и unhandledrejection уходят отчётами', async () => {
+        const {installClientErrorReporting} = await import('../clientErrors');
+        const fetchMock = stubFetch(204);
+        installClientErrorReporting();
+        expect(getBreadcrumbs().some((c) => c.kind === 'route')).toBe(true);
+
+        window.dispatchEvent(new ErrorEvent('error', {message: 'oops', error: new Error('oops')}));
+        const rejection = new Event('unhandledrejection') as Event & {reason: unknown};
+        rejection.reason = new Error('rejected');
+        window.dispatchEvent(rejection);
+        const plain = new Event('unhandledrejection') as Event & {reason: unknown};
+        plain.reason = 'строка';
+        window.dispatchEvent(plain);
+        await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
+        const kinds = fetchMock.mock.calls.map((c) => JSON.parse(String((c as unknown as [string, RequestInit])[1].body)).kind);
+        expect(kinds).toEqual(['error', 'unhandledrejection', 'unhandledrejection']);
+    });
+
+    it('после обновления страницы с непустым следом уходит отчёт reload', async () => {
+        const {installClientErrorReporting} = await import('../clientErrors');
+        addBreadcrumb('route', '/before');
+        vi.spyOn(performance, 'getEntriesByType').mockReturnValue([{type: 'reload'}] as unknown as PerformanceEntryList);
+        const fetchMock = stubFetch(204);
+        installClientErrorReporting();
+        await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+        expect(JSON.parse(String((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body)).kind).toBe('reload');
+        vi.restoreAllMocks();
+    });
+});
