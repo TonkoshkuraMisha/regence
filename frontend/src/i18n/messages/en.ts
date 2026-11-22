@@ -4339,6 +4339,11 @@ export const en = {
             short: 'A rook pawn with a bishop that cannot cover the corner is a draw.',
             explain: 'With a rook pawn and a bishop that does not control the promotion square, the defending king simply sits in the corner and cannot be driven out. Even an extra piece is not enough. Remember this when trading down: check the colour of the corner.',
         },
+        opposite_bishops: {
+            name: 'Opposite-coloured bishops',
+            short: 'With bishops of opposite colours even an extra pawn often does not win.',
+            explain: 'The defending bishop controls the queening square or a square on the path of the pawn, and the attacking bishop cannot help the pawn there. Place the bishop on the right colour and the draw is close; the more pawns the attacker has, and the farther apart they are, the harder the defence.',
+        },
         basic_mates: {
             name: 'Basic mates',
             short: 'Mate with queen, rook, two bishops, bishop and knight.',

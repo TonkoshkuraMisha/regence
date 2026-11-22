@@ -111,6 +111,19 @@ def gen_wrong_bishop(rng: random.Random) -> chess.Board | None:
     return place({pawn: chess.Piece(P, W), wk: chess.Piece(K, W), bk: chess.Piece(K, BL), bishop: chess.Piece(B, W)}, BL)
 
 
+def gen_opposite_bishops(rng: random.Random) -> chess.Board | None:
+    """Защита: у белых слон и пешка, у чёрных слон другого цвета; ход чёрных."""
+    pawn = sq(rng.randint(0, 7), rng.randint(3, 5))
+    wk, bk, wb, bb = (sq(rng.randint(0, 7), rng.randint(0, 7)) for _ in range(4))
+    if None in (pawn, wk, bk, wb, bb) or len({pawn, wk, bk, wb, bb}) < 5:
+        return None
+    same_colour = (chess.square_file(wb) + chess.square_rank(wb)) % 2 == (chess.square_file(bb) + chess.square_rank(bb)) % 2
+    if chess.square_distance(wk, bk) < 2 or same_colour:  # слоны должны быть разных цветов
+        return None
+    return place({pawn: chess.Piece(P, W), wk: chess.Piece(K, W), bk: chess.Piece(K, BL), wb: chess.Piece(B, W),
+                  bb: chess.Piece(B, BL)}, BL)
+
+
 def key_squares(pawn: chess.Square) -> set[chess.Square]:
     """Ключевые поля пешки: на две горизонтали впереди (с пятой горизонтали — на одну и две), три вертикали."""
     f, r = chess.square_file(pawn), chess.square_rank(pawn)
@@ -142,6 +155,8 @@ def classify(board: chess.Board, move: chess.Move, kind: str) -> str | None:
         return "square_rule" if piece == P else None
     if kind == "wrong_bishop":
         return "wrong_bishop" if piece == K else None
+    if kind == "opposite_bishops":
+        return "opposite_bishops" if piece in (B, K) else None
     return None
 
 
@@ -201,10 +216,12 @@ def extend(board: chess.Board, move: chess.Move, reply: str, limit: int) -> tupl
     return line, probes
 
 
-GENERATORS = {"kpk": (gen_kpk, "win"), "square": (gen_square, "win"), "wrong_bishop": (gen_wrong_bishop, "draw")}
+GENERATORS = {"kpk": (gen_kpk, "win"), "square": (gen_square, "win"), "wrong_bishop": (gen_wrong_bishop, "draw"),
+              "opposite_bishops": (gen_opposite_bishops, "draw")}
 THEMES = {"opposition": "kpk", "key_squares": "kpk", "outflanking": "kpk", "square_rule": "square",
-          "wrong_bishop": "wrong_bishop"}
-TAGS = {"kpk": "endgame pawnEndgame", "square": "endgame pawnEndgame", "wrong_bishop": "endgame equality"}
+          "wrong_bishop": "wrong_bishop", "opposite_bishops": "opposite_bishops"}
+TAGS = {"kpk": "endgame pawnEndgame", "square": "endgame pawnEndgame", "wrong_bishop": "endgame equality",
+        "opposite_bishops": "endgame equality"}
 
 
 def save(path: pathlib.Path, found: dict[str, list[dict]]) -> int:

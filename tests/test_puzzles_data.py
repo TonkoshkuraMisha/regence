@@ -85,7 +85,7 @@ async def test_import_is_idempotent_and_attaches_themes(db_session):
 
 OWN_ROW = {"PuzzleId": "tb00034kp", "FEN": "4k3/8/6K1/8/4P3/8/8/8 b - - 0 1", "Moves": "e8f8 g6f6", "Rating": "870",
            "RatingDeviation": "80", "Popularity": "90", "NbPlays": "0", "Themes": "endgame pawnEndgame regence:opposition"}
-OWN_THEMES = {"opposition", "key_squares", "outflanking", "square_rule", "wrong_bishop"}
+OWN_THEMES = {"opposition", "key_squares", "outflanking", "square_rule", "wrong_bishop", "opposite_bishops"}
 
 
 def test_own_tag_gives_the_registry_theme_and_unknown_codes_are_ignored():
@@ -105,7 +105,8 @@ def test_generated_endgame_puzzles_are_legal_small_and_tagged():
         assert len(themes) == 1 and themes[0] in OWN_THEMES, row["PuzzleId"]
         counts[themes[0]] += 1
         board = chess.Board(row["FEN"])
-        assert len(board.piece_map()) <= 4, row["PuzzleId"]
+        # До четырёх фигур; у «разноцветных слонов» — пять (король, слон и пешка против короля и слона).
+        assert len(board.piece_map()) <= (5 if themes[0] == "opposite_bishops" else 4), row["PuzzleId"]
         assert 800 <= int(row["Rating"]) <= 2400
     assert set(counts) == OWN_THEMES and min(counts.values()) >= 20, counts
 
