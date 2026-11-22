@@ -38,13 +38,31 @@ foreach ($p in $stale)
     Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue
 }
 
+# Сервер этого проекта (uvicorn src.main:app, в т.ч. запущенный вручную) и его дочерние процессы: при --reload порт
+# держит не тот процесс, что виден в командной строке, поэтому убиваем и потомков, иначе порт 8000 остаётся занятым.
+$uv = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object {
+    $_.CommandLine -and $_.CommandLine -like "*uvicorn*src.main:app*"
+}
+$uvIds = @($uv | ForEach-Object { $_.ProcessId })
+$kids = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { $uvIds -contains $_.ParentProcessId }
+foreach ($p in @($uv) + @($kids))
+{
+    if ($p)
+    {
+        Write-Host "[*] Останавливаем старый сервер $( $p.Name ) (PID: $( $p.ProcessId ))..." -ForegroundColor DarkYellow
+        Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue
+    }
+}
+
+# Освобождаем порты и ЖДЁМ, пока они реально освободятся (до 10 с): иначе новый сервер падает с «порт занят»,
+# а скрипт видит только «порт 8000 не открылся» без причины.
 foreach ($port in @(8000, 3000))
 {
-    $conns = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue
-    if ($conns)
+    for ($try = 0; $try -lt 10; $try++)
     {
-        $pids = $conns | Select-Object -ExpandProperty OwningProcess -Unique
-        foreach ($procId in $pids)
+        $conns = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue
+        if (-not $conns) { break }
+        foreach ($procId in ($conns | Select-Object -ExpandProperty OwningProcess -Unique))
         {
             if ($procId -gt 0)
             {
@@ -52,6 +70,12 @@ foreach ($port in @(8000, 3000))
                 Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue
             }
         }
+        Start-Sleep -Seconds 1
+    }
+    if (Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue)
+    {
+        Write-Host "[!] Порт $port занят процессом, который не удалось остановить. Закройте его и повторите (netstat -ano | findstr :$port)." -ForegroundColor Red
+        exit 1
     }
 }
 
