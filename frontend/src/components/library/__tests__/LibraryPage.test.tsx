@@ -76,6 +76,14 @@ describe('библиотека партий', () => {
         expect(mock.mock.calls.some(([u]) => String(u).includes('miniature'))).toBe(false);
     });
 
+    it('метка «красивая» (27.5): флажок уходит в поиск', async () => {
+        const mock = stub();
+        await act(async () => render(<MemoryRouter><LibraryPage/></MemoryRouter>));
+        fireEvent.click(screen.getByTestId('library-beautiful'));
+        await act(async () => fireEvent.click(screen.getByTestId('library-search-submit')));
+        expect(mock.mock.calls.some(([u]) => String(u).includes('/games?beautiful=true'))).toBe(true);
+    });
+
     it('ошибка сети показывается', async () => {
         vi.stubGlobal('fetch', vi.fn(async () => {
             throw new Error('offline');

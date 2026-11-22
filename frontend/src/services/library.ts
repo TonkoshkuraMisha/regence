@@ -75,6 +75,8 @@ export interface LibrarySearch {
     structure?: string;
     /** Метка «миниатюра» (27.5): только решающие партии до 25 ходов. */
     miniature?: boolean;
+    /** Метка «красивая» (27.5): жертва материала и мат победителя. */
+    beautiful?: boolean;
     /** Начало партии в UCI через пробел (узел репертуара, 27.10). */
     moves?: string;
     offset?: number;

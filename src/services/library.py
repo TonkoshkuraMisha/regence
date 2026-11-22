@@ -25,6 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.models.library import LibraryCollection, LibraryGame, LibraryGameCollection
 from src.models.user import User
 from src.services import openings, pawn_structures, position_index
+from src.services.beauty import is_beautiful
 from src.services.game_engine import normalize_result
 
 STANDARD_FEN = chess.STARTING_FEN
@@ -244,7 +245,8 @@ async def import_games(db: AsyncSession, collection: LibraryCollection, games: I
                                   result=parsed.result, white_elo=parsed.white_elo, black_elo=parsed.black_elo,
                                   eco=parsed.eco, opening=parsed.opening, start_fen=parsed.start_fen,
                                   plies=len(parsed.moves), moves=" ".join(parsed.moves),
-                                  structure=structure_of(parsed), mate_finish=ends_in_mate(parsed.start_fen, parsed.moves))
+                                  structure=structure_of(parsed), mate_finish=ends_in_mate(parsed.start_fen, parsed.moves),
+                                  beautiful=is_beautiful(parsed.start_fen, parsed.moves))
                 db.add(row)
                 await db.flush()
                 # Позиции новой партии — в индекс библиотеки: примеры под позицией в справочнике дебютов (8б).
