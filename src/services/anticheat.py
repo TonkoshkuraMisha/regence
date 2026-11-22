@@ -102,10 +102,8 @@ def calculate_timing_cv(moves: list[Move]) -> tuple[float, float]:
     if len(normal_times) < 3:
         return 1.0, 0.0
 
+    # Времена отфильтрованы по > 0, поэтому среднее строго положительно и деление безопасно.
     mean_time = sum(normal_times) / len(normal_times)
-    if mean_time <= 0:
-        return 1.0, 0.0
-
     variance = sum((t - mean_time) ** 2 for t in normal_times) / len(normal_times)
     std_dev = math.sqrt(variance)
     return round(std_dev / mean_time, 4), round(mean_time, 1)
