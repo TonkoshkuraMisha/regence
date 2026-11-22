@@ -1,11 +1,10 @@
 <!doctype html>
 <!--
   Страница «Технические работы» (502 / 503 / 504). Самодостаточный файл: без скриптов и внешних ресурсов — картинка и
-  стили внутри, поэтому годится и для nginx (frontend/nginx_locations.inc: error_page на странице сайта), и для
-  «Пользовательской ошибки» Cloudflare (Custom Error Rules, платные тарифы: HTML-ответ вставляется как есть).
-  Скриптов нет намеренно: CSP сайта запрещает встроенные скрипты, а на странице Cloudflare чужой скрипт не нужен.
+  стили внутри, поэтому годится и для nginx, и для «Пользовательской ошибки» Cloudflare (Custom Error Rules, платные
+  тарифы: HTML-ответ вставляется как есть). Скриптов нет намеренно: CSP сайта запрещает встроенные скрипты.
   Тексты на трёх языках сразу (en / uk / ru): язык игрока здесь неизвестен, а выбирать его без скрипта нечем.
-  Картинка — собственный рисунок (пешка-ремонтник в каске с гаечным ключом), без сторонних ресурсов и лицензий.
+  Эмблема — собственный рисунок (силуэт пешки), без сторонних ресурсов и лицензий. Палитра — как у сайта.
 -->
 <html lang="en">
 <head>
@@ -16,106 +15,88 @@
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231A120B'/%3E%3Crect x='6' y='6' width='52' height='52' rx='10' fill='none' stroke='%23D0A972' stroke-width='3'/%3E%3Ctext x='32' y='44' font-family='Georgia,serif' font-size='36' fill='%23F5DEB3' text-anchor='middle'%3E%E2%99%9E%3C/text%3E%3C/svg%3E"/>
     <title>Regence — maintenance / Технічні роботи / Технические работы</title>
     <style>
-        :root { color-scheme: dark; }
+        :root { color-scheme: dark; --bg: #1A120B; --gold: #D0A972; --wheat: #F5DEB3; --muted: #A68F6C; }
         html, body { margin: 0; min-height: 100%; }
         body {
-            background: #1A120B; color: #F5DEB3; font-family: Georgia, 'Times New Roman', serif;
-            display: flex; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box; min-height: 100vh;
+            min-height: 100vh; box-sizing: border-box; padding: 32px 20px; display: flex; align-items: center; justify-content: center;
+            color: var(--wheat); font-family: Georgia, 'Times New Roman', serif;
+            /* Едва заметная шахматная сетка и мягкое свечение сверху */
+            background:
+                radial-gradient(ellipse 70% 45% at 50% 0%, rgba(208, 169, 114, .14), transparent 70%),
+                repeating-conic-gradient(rgba(245, 222, 179, .035) 0 25%, transparent 0 50%) 0 0 / 96px 96px,
+                var(--bg);
         }
-        main { max-width: 520px; width: 100%; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 10px; }
-        .brand { letter-spacing: .3em; text-transform: uppercase; font-size: .8rem; color: #D0A972; }
-        svg { width: min(340px, 86vw); height: auto; }
-        h1 { margin: 6px 0 0; font-size: 1.55rem; line-height: 1.25; color: #FCD34D; }
-        p { margin: 0; line-height: 1.5; color: #E7D3B0; }
-        .lang { padding: 12px 0; border-top: 1px solid #3a2a1a; width: 100%; }
-        .lang:first-of-type { border-top: 0; }
-        .lang h1 { font-size: 1.25rem; }
-        .joke { font-size: .9rem; color: #B89A6A; font-style: italic; }
+        main { width: 100%; max-width: 920px; text-align: center; }
+        .brand { margin: 0 0 28px; font-size: .78rem; letter-spacing: .42em; text-indent: .42em; text-transform: uppercase; color: var(--gold); }
+        .emblem { width: 76px; height: auto; display: block; margin: 0 auto 26px; }
+        .status {
+            margin: 0 0 14px; font: 600 .74rem/1 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; letter-spacing: .22em;
+            text-indent: .22em; text-transform: uppercase; color: var(--muted);
+        }
+        .rule { width: 56px; height: 1px; margin: 0 auto 30px; background: linear-gradient(90deg, transparent, var(--gold), transparent); }
+        .langs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; text-align: left; }
+        .lang { padding: 4px 28px; border-left: 1px solid rgba(208, 169, 114, .22); }
+        .lang:first-child { border-left: 0; }
+        .tag { margin: 0 0 12px; font: 600 .68rem/1 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; letter-spacing: .2em; color: var(--gold); }
+        h1 { margin: 0 0 10px; font-size: 1.3rem; line-height: 1.3; font-weight: 600; color: var(--wheat); }
+        p { margin: 0; font-size: .95rem; line-height: 1.6; color: #CDB894; }
         a.retry {
-            margin-top: 8px; padding: 10px 24px; border-radius: 8px; border: 1px solid #F59E0B; background: #92400E;
-            color: #fff; font-weight: bold; text-decoration: none;
+            display: inline-block; margin-top: 38px; padding: 12px 34px; border: 1px solid var(--gold); border-radius: 2px;
+            font: 600 .78rem/1 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; letter-spacing: .18em; text-transform: uppercase;
+            color: var(--wheat); text-decoration: none; transition: background .2s, color .2s;
         }
-        a.retry:hover { background: #B45309; }
-        /* Движение — только если игрок не просил его убрать. */
+        a.retry:hover, a.retry:focus-visible { background: var(--gold); color: var(--bg); outline: none; }
+        .retry-note { margin: 12px 0 0; font-size: .78rem; color: var(--muted); }
         @media (prefers-reduced-motion: no-preference) {
-            .wrench { transform-origin: 232px 130px; animation: swing 1.1s ease-in-out infinite alternate; }
-            .pawn { animation: bob 1.6s ease-in-out infinite; }
-            .spark { animation: twinkle 1.1s ease-in-out infinite alternate; }
-            .spark.b { animation-delay: .35s; }
-            .drop { animation: fall 1.8s ease-in infinite; }
+            .emblem { animation: glow 3.2s ease-in-out infinite; }
         }
-        @keyframes swing { from { transform: rotate(-22deg); } to { transform: rotate(14deg); } }
-        @keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
-        @keyframes twinkle { from { opacity: .15; } to { opacity: 1; } }
-        @keyframes fall { 0% { transform: translateY(0); opacity: 0; } 20% { opacity: 1; } 100% { transform: translateY(26px); opacity: 0; } }
+        @keyframes glow { 0%, 100% { filter: drop-shadow(0 0 0 rgba(245, 222, 179, 0)); } 50% { filter: drop-shadow(0 0 14px rgba(245, 222, 179, .28)); } }
+        @media (max-width: 720px) {
+            .langs { grid-template-columns: 1fr; text-align: center; }
+            .lang { padding: 22px 8px; border-left: 0; border-top: 1px solid rgba(208, 169, 114, .22); }
+            .lang:first-child { border-top: 0; padding-top: 4px; }
+        }
     </style>
 </head>
 <body>
 <main>
-    <div class="brand">Regence</div>
-    <svg viewBox="0 0 340 250" role="img" aria-label="A pawn in a hard hat fixes the board with a wrench">
-        <!-- Шахматный пол -->
-        <g>
-            <rect x="0" y="206" width="340" height="44" fill="#2a1d12"/>
-            <g fill="#D0A972">
-                <rect x="0" y="206" width="34" height="22"/><rect x="68" y="206" width="34" height="22"/>
-                <rect x="136" y="206" width="34" height="22"/><rect x="204" y="206" width="34" height="22"/>
-                <rect x="272" y="206" width="34" height="22"/>
-                <rect x="34" y="228" width="34" height="22"/><rect x="102" y="228" width="34" height="22"/>
-                <rect x="170" y="228" width="34" height="22"/><rect x="238" y="228" width="34" height="22"/>
-                <rect x="306" y="228" width="34" height="22"/>
-            </g>
-        </g>
-        <!-- Ящик с инструментами -->
-        <g>
-            <path d="M52 186 q0-8 8-8 h24 q8 0 8 8" fill="none" stroke="#9CA3AF" stroke-width="4"/>
-            <rect x="44" y="186" width="56" height="26" rx="4" fill="#B91C1C"/>
-            <rect x="44" y="196" width="56" height="4" fill="#7f1313"/>
-            <rect x="68" y="193" width="8" height="10" rx="2" fill="#FCD34D"/>
-        </g>
-        <!-- Пешка-ремонтник -->
-        <g class="pawn">
-            <ellipse cx="160" cy="206" rx="48" ry="9" fill="#D0A972"/>
-            <path d="M120 204 Q128 156 148 128 L172 128 Q192 156 200 204 Z" fill="#F5DEB3"/>
-            <path d="M138 150 Q160 160 182 150" fill="none" stroke="#D0A972" stroke-width="3"/>
-            <ellipse cx="160" cy="127" rx="26" ry="6" fill="#E8C98E"/>
-            <circle cx="160" cy="98" r="27" fill="#F5DEB3"/>
-            <!-- Каска -->
-            <path d="M131 94 A29 29 0 0 1 189 94 Z" fill="#FCD34D"/>
-            <rect x="124" y="92" width="72" height="8" rx="4" fill="#F59E0B"/>
-            <rect x="156" y="68" width="8" height="24" rx="3" fill="#F59E0B"/>
-            <!-- Лицо: глаза косят на ключ, рот сосредоточенный -->
-            <circle cx="149" cy="108" r="5.5" fill="#fff"/><circle cx="171" cy="108" r="5.5" fill="#fff"/>
-            <circle cx="151" cy="109" r="2.6" fill="#1A120B"/><circle cx="173" cy="109" r="2.6" fill="#1A120B"/>
-            <circle cx="141" cy="117" r="4" fill="#f4a3a3" opacity=".7"/><circle cx="179" cy="117" r="4" fill="#f4a3a3" opacity=".7"/>
-            <path d="M153 119 q7 5 14 0" fill="none" stroke="#7a4a1d" stroke-width="2.4" stroke-linecap="round"/>
-            <!-- Капля пота -->
-            <path class="drop" d="M198 84 q5 8 0 11 q-5-3 0-11 z" fill="#7dd3fc"/>
-            <!-- Рука с гаечным ключом -->
-            <path d="M190 156 Q212 156 228 136" fill="none" stroke="#F5DEB3" stroke-width="9" stroke-linecap="round"/>
-            <g class="wrench">
-                <rect x="228" y="92" width="8" height="42" rx="4" fill="#9CA3AF" transform="rotate(30 232 130)"/>
-                <path d="M244 76 a13 13 0 1 1 -6 22 l6 -9 l-8 -4 z" fill="#9CA3AF" transform="rotate(30 232 130) translate(-8 8)"/>
-            </g>
-            <g class="spark" fill="#FCD34D"><path d="M262 84 l3 8 8 3 -8 3 -3 8 -3 -8 -8 -3 8 -3 z"/></g>
-            <g class="spark b" fill="#FCD34D"><path d="M284 118 l2 5 5 2 -5 2 -2 5 -2 -5 -5 -2 5 -2 z"/></g>
+    <p class="brand">Regence</p>
+    <svg class="emblem" viewBox="0 0 100 130" role="img" aria-label="Pawn">
+        <defs>
+            <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#F5DEB3"/><stop offset="1" stop-color="#C9A265"/>
+            </linearGradient>
+        </defs>
+        <g fill="url(#g)">
+            <circle cx="50" cy="28" r="15"/>
+            <rect x="33" y="44" width="34" height="7" rx="3.5"/>
+            <path d="M41 51 Q39 78 29 100 L71 100 Q61 78 59 51 Z"/>
+            <rect x="23" y="100" width="54" height="9" rx="4.5"/>
+            <rect x="17" y="109" width="66" height="10" rx="5"/>
         </g>
     </svg>
+    <p class="status">Service temporarily unavailable</p>
+    <div class="rule"></div>
 
-    <section class="lang" lang="en">
-        <h1>Maintenance in progress — we'll be right back</h1>
-        <p>The pieces stepped off the board for a moment. Please try again in a few minutes.</p>
-    </section>
-    <section class="lang" lang="uk">
-        <h1>Технічні роботи — скоро повернемося</h1>
-        <p>Фігури ненадовго зійшли з дошки. Спробуйте оновити сторінку за кілька хвилин.</p>
-    </section>
-    <section class="lang" lang="ru">
-        <h1>Технические работы — скоро вернёмся</h1>
-        <p>Фигуры ненадолго сошли с доски. Попробуйте обновить страницу через несколько минут.</p>
-    </section>
-    <p class="joke">Our pawn is already on it (the one with the wrench) · Наш пішак уже працює · Наша пешка уже работает</p>
-    <a class="retry" href="/">⟳ Try again · Спробувати знову · Попробовать снова</a>
+    <div class="langs">
+        <section class="lang" lang="en">
+            <p class="tag">EN</p>
+            <h1>Technical maintenance</h1>
+            <p>We are improving the service and will be back shortly. Please try again in a few minutes.</p>
+        </section>
+        <section class="lang" lang="uk">
+            <p class="tag">УКР</p>
+            <h1>Технічні роботи</h1>
+            <p>Ми покращуємо сервіс і скоро повернемося. Спробуйте оновити сторінку за кілька хвилин.</p>
+        </section>
+        <section class="lang" lang="ru">
+            <p class="tag">РУС</p>
+            <h1>Технические работы</h1>
+            <p>Мы улучшаем сервис и скоро вернёмся. Попробуйте обновить страницу через несколько минут.</p>
+        </section>
+    </div>
+
+    <a class="retry" href="/">Retry · Повторити · Повторить</a>
 </main>
 </body>
 </html>
