@@ -8,6 +8,7 @@
 // с одного IP — для частых локальных прогонов перезапускайте Redis стека (лимиты хранятся там).
 
 import {defineConfig, devices} from '@playwright/test';
+import {languageState} from './e2e/languageState.ts';
 
 export default defineConfig({
     testDir: './e2e',
@@ -23,8 +24,10 @@ export default defineConfig({
         trace: 'retain-on-failure',
         screenshot: 'only-on-failure',
         viewport: {width: 1400, height: 900},
-        // Сценарии написаны против русского интерфейса; язык берётся из языка браузера.
+        // Сценарии написаны против русского интерфейса. Сайт по умолчанию английский и язык браузера не угадывает
+        // (решение владельца 22.11), поэтому русский выбран заранее — так же, как его выбирает игрок в шапке.
         locale: 'ru-RU',
+        storageState: languageState('ru'),
         permissions: ['clipboard-read', 'clipboard-write'],
     },
     projects: [{name: 'chromium', use: {...devices['Desktop Chrome'], viewport: {width: 1400, height: 900}}}],
