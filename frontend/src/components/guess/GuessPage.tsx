@@ -21,6 +21,7 @@ import {coachArrows, coachText} from '../../services/coach';
 import type {CoachComment} from '../../services/coach';
 import {guessApi, isRetry, MAX_ATTEMPTS, understanding} from '../../services/guess';
 import type {GuessAnswer, GuessPosition} from '../../services/guess';
+import {GameQuiz} from './GameQuiz';
 import {PuzzleBoard} from '../puzzles/PuzzleBoard';
 import type {BoardArrow} from '../puzzles/PuzzleBoard';
 import {ExplorerControls, usePositionExplorer} from '../puzzles/usePositionExplorer';
@@ -296,6 +297,7 @@ export function GuessPage() {
                                 <span className="font-bold text-amber-200">
                                     {t('guess.wholeDone', {points: gameScores.reduce((a, b) => a + b, 0), max: gameScores.length * 100})}
                                 </span>
+                                {position && <GameQuiz gameId={position.game_id}/>}
                                 <button type="button" onClick={() => navigate('/guess')} className="self-start text-amber-300 underline">
                                     {t('guess.next')}
                                 </button>

@@ -3322,6 +3322,13 @@ export const en = {
         hint: 'Hint {n}',
         retry: 'Not the best move. Try again.',
         penaltyNote: 'Each hint and each extra attempt costs 10 points.',
+        quiz: {
+            title: 'Questions about the game',
+            q: {winner: 'Who won the game?', key_moment: 'Which move was the key moment?', mate: 'Did the game end in checkmate?'},
+            option: {white: 'White', black: 'Black', draw: 'Draw', yes: 'Yes', no: 'No', move: 'Move {number}, {side}'},
+            check: 'Check answers',
+            score: 'Correct answers: {score} of {total}',
+        },
         empty: 'No positions are ready yet — check back later.',
         whiteToMove: 'White to move',
         blackToMove: 'Black to move',

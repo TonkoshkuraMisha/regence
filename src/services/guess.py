@@ -31,6 +31,7 @@ from src.models.game import Game
 from src.models.guess import GuessPosition
 from src.models.user import User
 from src.services.coach import advice_for_position, hint_for_position
+from src.services.guess_quiz import build_quiz, plies_and_mate
 from src.services.guess_selection import book_plies, in_opening, is_technical_endgame, position_themes
 
 # Баллы за ход мастера и за другой ход, который хуже лучшего не больше чем на NEAR_CP сантипешек.
@@ -161,6 +162,16 @@ async def game_positions(db: AsyncSession, game_id: int) -> list[GuessPosition]:
     return list((await db.execute(
         select(GuessPosition).where(GuessPosition.game_id == game_id).order_by(GuessPosition.ply)
     )).scalars())
+
+
+async def game_quiz(db: AsyncSession, game_id: int) -> tuple[list[dict], dict[str, str]] | None:
+    """Вопросы после партии и верные ответы (guess_quiz.build_quiz) или None, если у партии нет отобранных моментов."""
+    positions = await game_positions(db, game_id)
+    game = await db.get(Game, game_id)
+    if game is None or not positions:
+        return None
+    total_plies, mate = plies_and_mate(game.pgn)
+    return build_quiz(game_id, game.result, mate, [(p.ply, p.gap_cp) for p in positions], total_plies)
 
 
 def rating_after(position_rating: int, solver_rating: int, plays: int, solved: bool) -> int:
