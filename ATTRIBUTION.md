@@ -89,6 +89,11 @@ CC BY-NC-SA 4.0), а также набор без известного прои�
 | `Reti.jpg` | [RichardReti.jpg](https://commons.wikimedia.org/wiki/File:RichardReti.jpg) | Unknown author | Public domain |
 | `Tartakower.jpg` | [Ksawery Tartakower.jpg](https://commons.wikimedia.org/wiki/File:Ksawery_Tartakower.jpg) | Unknown author | Public domain |
 
+Те же портреты (только общественное достояние и CC0 из таблицы выше: Philidor, Staunton, Zukertort, Marshall, Keres,
+Rubinstein, Paulsen, Labourdonnais; Morphy, Capablanca, Alekhine, Steinitz, Tal, Tarrasch, Pillsbury, Anderssen) в виде
+маленьких сепия-снимков служат фоном страниц «Технические работы» (`frontend/public/maintenance.html`) и ожидания
+(`ops/landing`); сборка — `scripts/dev/build_error_pages.py`. Работы CC BY-SA и CC BY на этих страницах не используются.
+
 ## Звуки и текстуры
 
 | Что | Источник | Лицензия |
