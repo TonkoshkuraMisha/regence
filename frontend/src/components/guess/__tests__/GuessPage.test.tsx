@@ -78,6 +78,7 @@ describe('Угадай ход мастера', () => {
         await play('f3', 'e5');
         await act(async () => fireEvent.click(await screen.findByTestId('guess-next')));
         expect(screen.getByTestId('guess-whole-done')).toHaveTextContent('Партия пройдена: 180 из 200 очков.');
+        expect(screen.getByTestId('guess-whole-level')).toHaveTextContent('90% от результата мастеров: на уровне мастеров');
         expect(fetchMock.mock.calls.filter(([u]) => String(u).endsWith('/guess/game/42'))).toHaveLength(1);
         // Вопросы после партии: показываются в итоге, ответы уходят на проверку.
         fireEvent.click(await screen.findByTestId('quiz-winner-white'));

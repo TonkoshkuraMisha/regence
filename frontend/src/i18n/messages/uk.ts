@@ -3343,6 +3343,13 @@ export const uk: Messages = {
         nextMoment: 'Наступний момент партії',
         wholeProgress: 'Момент {index} з {total} у цій партії',
         wholeDone: 'Партію пройдено: {points} з {max} балів.',
+        wholeLevel: 'Ваш результат — {percent}% від результату майстрів: {level}',
+        level: {
+            master: 'на рівні майстрів',
+            near: 'близько до майстрів',
+            confident: 'упевнений гравець',
+            learning: 'ще вчитеся — продовжуйте',
+        },
         choicesMode: 'Вибір із варіантів (для початківців)',
         choicesHint: 'Один із цих ходів — хід майстра. Порахуйте, перш ніж обрати.',
         attempt: 'Спроба {n} з {max}',
