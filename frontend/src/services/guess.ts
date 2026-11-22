@@ -56,6 +56,20 @@ export interface GuessAnswer extends CoachComment {
     next_id: number | null;
 }
 
+/** Ошибочный ход до последней попытки: итога нет, можно пробовать снова (режим «три попытки»). */
+export interface GuessRetry {
+    retry: true;
+    attempts_left: number;
+    loss_cp: number;
+}
+
+export function isRetry(result: GuessAnswer | GuessRetry): result is GuessRetry {
+    return 'retry' in result && result.retry === true;
+}
+
+/** Попыток на позицию; столько же принимает сервер (src/services/guess.py, MAX_ATTEMPTS). */
+export const MAX_ATTEMPTS = 3;
+
 const request = <T>(path: string, init: RequestInit = {}) => apiRequest<T>(`/guess${path}`, init);
 
 export const guessApi = {
@@ -64,9 +78,12 @@ export const guessApi = {
         request<{ position: GuessPosition | null }>(`/next?${new URLSearchParams({series: String(series), candidates: String(candidates)})}`),
     /** Позиция по id; candidates — с вариантами на выбор. */
     position: (id: number, candidates = false) => request<GuessPosition>(`/position/${id}${candidates ? '?candidates=true' : ''}`),
-    answer: (id: number, move: string) => request<GuessAnswer>(`/position/${id}/answer`, {
-        method: 'POST', body: JSON.stringify({move}),
+    /** Ответ: с номером попытки сервер до последней попытки на ошибку отвечает «ещё раз»; hints — взятые подсказки (штраф). */
+    answer: (id: number, move: string, attempt?: number, hints = 0) => request<GuessAnswer | GuessRetry>(`/position/${id}/answer`, {
+        method: 'POST', body: JSON.stringify({move, attempt, hints}),
     }),
+    /** Подсказка по ступеням: 1 — намёк, 2 — фигура, 3 — стрелка хода мастера. */
+    hint: (id: number, step: number) => request<CoachComment>(`/position/${id}/hint?step=${step}`),
     /** Партии с отобранными моментами: {id партии: id первой позиции}; сервер смотрит не больше 100 id за запрос. */
     ofGames: (gameIds: number[]) => request<{ games: Record<string, number> }>(`/games?ids=${gameIds.join(',')}`),
     /** Отобранные моменты одной партии — для кнопки «Угадай ход» в просмотре; пустой список — кнопки нет. */

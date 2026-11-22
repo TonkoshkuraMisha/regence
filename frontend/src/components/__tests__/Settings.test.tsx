@@ -175,7 +175,7 @@ describe('Settings: смена пароля', () => {
         expect(getToken()).toBe('new-token');
         expect(screen.getByRole('status')).toHaveTextContent('Пароль изменён');
 
-        const [url, init] = (fetchMock.mock.calls as unknown as [string, RequestInit][]).filter(([url]) => !String(url).includes('/profile/me'))[0] as unknown as [string, RequestInit];
+        const [url, init] = (fetchMock.mock.calls as unknown as [string, RequestInit][]).filter(([url]) => !/\/profile\/me|\/beta\/my-invite/.test(String(url)))[0] as unknown as [string, RequestInit];
         expect(url).toContain('/api/v1/auth/change-password');
         expect((init.headers as Record<string, string>).Authorization).toBe('Bearer old-token');
         expect(JSON.parse(init.body as string)).toEqual({
@@ -208,7 +208,7 @@ describe('Settings: смена пароля', () => {
 
         expect(screen.getByRole('alert')).toHaveTextContent(message);
         // Запрошен только профиль (e-mail для раздела) — смена пароля на сервер не ушла.
-        expect((fetchMock.mock.calls as unknown as [string][]).filter(([url]) => !String(url).includes('/profile/me'))).toEqual([]);
+        expect((fetchMock.mock.calls as unknown as [string][]).filter(([url]) => !/\/profile\/me|\/beta\/my-invite/.test(String(url)))).toEqual([]);
     });
 
     it('кнопка «Выйти на всех устройствах» вызывает выход', () => {
@@ -236,7 +236,7 @@ describe('Settings: мои данные (таск 17.5)', () => {
         fireEvent.change(screen.getByTestId('settings-delete-password'), {target: {value: 'secret-pass'}});
         fireEvent.click(screen.getByTestId('settings-delete'));
         await waitFor(() => expect(onAccountDeleted).toHaveBeenCalled());
-        const [url, init] = (fetchMock.mock.calls as unknown as [string, RequestInit][]).filter(([url]) => !String(url).includes('/profile/me'))[0] as unknown as [string, RequestInit];
+        const [url, init] = (fetchMock.mock.calls as unknown as [string, RequestInit][]).filter(([url]) => !/\/profile\/me|\/beta\/my-invite/.test(String(url)))[0] as unknown as [string, RequestInit];
         expect(url).toContain('/api/v1/account/delete');
         expect(JSON.parse(String(init.body))).toEqual({password: 'secret-pass'});
         expect(getToken()).toBeNull();
@@ -263,7 +263,7 @@ describe('Settings: мои данные (таск 17.5)', () => {
         expect(screen.getByTestId('settings-delete')).toBeDisabled();
         fireEvent.click(screen.getByTestId('settings-export'));
         await waitFor(() => expect(URL.createObjectURL).toHaveBeenCalled());
-        expect(String(((fetchMock.mock.calls as unknown as [string, RequestInit][]).filter(([url]) => !String(url).includes('/profile/me'))[0] as unknown as [string])[0])).toContain('/api/v1/account/export');
+        expect(String(((fetchMock.mock.calls as unknown as [string, RequestInit][]).filter(([url]) => !/\/profile\/me|\/beta\/my-invite/.test(String(url)))[0] as unknown as [string])[0])).toContain('/api/v1/account/export');
     });
 });
 

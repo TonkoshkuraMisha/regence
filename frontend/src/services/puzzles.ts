@@ -199,6 +199,22 @@ export interface TimedResult {
     new_record: boolean;
 }
 
+/** Строка таблицы лидеров забегов на время; me — это строка самого игрока. */
+export interface LeaderRow {
+    place: number;
+    username: string;
+    score: number;
+    me: boolean;
+}
+
+export type LeaderScope = 'week' | 'all';
+
+/** Таблица лидеров: топ и своя строка (если игрок в зачёте, в том числе ниже топа). */
+export interface TimedLeaders {
+    rows: LeaderRow[];
+    me: LeaderRow | null;
+}
+
 /** Защитные упражнения (таск 13.6): «Что грозит соперник?» и «Не зевни». */
 export type DefenseKind = 'threat' | 'blunder';
 
@@ -349,6 +365,8 @@ export const puzzlesApi = {
     }),
     /** Следующая задача забега: сложнее с каждой решённой; рейтинг решателя задачи забега не меняют. */
     timedNext: () => request<PuzzleView & { run: TimedRun }>('/timed/next'),
+    /** Таблица лидеров забегов: неделя (понедельник UTC) или рекорды за всё время. */
+    timedLeaders: (minutes: 3 | 5, scope: LeaderScope) => request<TimedLeaders>(`/timed/leaders?minutes=${minutes}&scope=${scope}`),
     timedFinish: () => request<TimedResult>('/timed/finish', {method: 'POST'}),
     /** Задача тренировки по приёмам (GET /puzzles/train) — см. TrainingTarget. */
     train: (target: TrainingTarget) => {

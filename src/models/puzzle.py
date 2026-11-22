@@ -5,9 +5,9 @@
 Темы — коды реестра (src/services/themes.py) в отдельной таблице, чтобы выбирать задачи по теме индексом.
 """
 
-from datetime import datetime
+from datetime import date, datetime
 
-from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Index, Integer, String, UniqueConstraint, func
+from sqlalchemy import Boolean, CheckConstraint, Date, DateTime, ForeignKey, Index, Integer, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.models.base import Base, one_of
@@ -172,3 +172,19 @@ class PuzzleAttempt(Base):
     rating_before: Mapped[int] = mapped_column(Integer, nullable=False)
     rating_after: Mapped[int] = mapped_column(Integer, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+
+class PuzzleTimedScore(Base):
+    """
+    Лучший счёт игрока в забеге на время за неделю (таблица лидеров, таск 26.1): строка на игрока, длину забега
+    (3 или 5 минут) и неделю — понедельник UTC. Пишет puzzle_leaders.record_week при завершении забега, счёт только растёт.
+    """
+    __tablename__ = "puzzle_timed_scores"
+    __table_args__ = (UniqueConstraint("user_id", "minutes", "week", name="uq_puzzle_timed_scores_week"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    minutes: Mapped[int] = mapped_column(Integer, nullable=False)
+    week: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    score: Mapped[int] = mapped_column(Integer, nullable=False)
+

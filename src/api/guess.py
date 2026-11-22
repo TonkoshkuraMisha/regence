@@ -22,6 +22,9 @@ MAX_GAMES = 100
 
 class AnswerRequest(BaseModel):
     move: str = Field(..., min_length=4, max_length=5, description="Ход игрока в UCI")
+    attempt: int | None = Field(default=None, ge=1, le=guess_service.MAX_ATTEMPTS,
+                                description="Номер попытки в режиме «три попытки»; без него ответ итоговый")
+    hints: int = Field(default=0, ge=0, le=3, description="Сколько подсказок взято до ответа (штраф к баллам)")
 
 
 async def _position(db: AsyncSession, position_id: int) -> GuessPosition:
@@ -70,6 +73,12 @@ async def games_with_positions(
     return {"games": {str(game_id): position_id for game_id, position_id in found.items()}}
 
 
+@router.get("/position/{position_id}/hint")
+async def get_hint(position_id: int, step: int = Query(default=1, ge=1, le=3), db: AsyncSession = Depends(get_db)):
+    """Подсказка по ступеням (1 — намёк, 2 — фигура, 3 — стрелка хода мастера); за каждую при ответе — штраф."""
+    return guess_service.hint(await _position(db, position_id), step)
+
+
 @router.post("/position/{position_id}/answer")
 async def answer(position_id: int, payload: AnswerRequest, request: Request, db: AsyncSession = Depends(get_db)):
     """Ответ игрока; ответ вошедшего игрока меняет рейтинг позиции (src/services/guess.py)."""
@@ -83,4 +92,4 @@ async def answer(position_id: int, payload: AnswerRequest, request: Request, db:
         raise ApiError(400, "illegal_move", move=payload.move)
     user_id = await optional_user_id(request, db)
     user = await db.get(User, user_id) if user_id else None
-    return await guess_service.answer(db, position, payload.move, user)
+    return await guess_service.answer(db, position, payload.move, user, payload.attempt, payload.hints)

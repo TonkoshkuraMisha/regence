@@ -1,6 +1,6 @@
 // «Угадай ход мастера» (таск 14.3): позиция с контекстом партии, ход игрока, баллы и ход мастера, серия, итог сессии.
 
-import {act, fireEvent, render, screen} from '@testing-library/react';
+import {act, fireEvent, render, screen, waitFor} from '@testing-library/react';
 import {MemoryRouter, Route, Routes} from 'react-router-dom';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import {GuessPage} from '../GuessPage';
@@ -96,7 +96,7 @@ describe('Угадай ход мастера', () => {
         await act(async () => fireEvent.click(screen.getByTestId('guess-choice-f3e5')));
         expect(await screen.findByTestId('guess-score')).toHaveTextContent('100');
         const post = (fetchMock.mock.calls as unknown as [string, RequestInit][]).find(([, init]) => init?.method === 'POST')!;
-        expect(JSON.parse(String(post[1].body))).toEqual({move: 'f3e5'});
+        expect(JSON.parse(String(post[1].body))).toEqual({move: 'f3e5', attempt: 1, hints: 0});
         expect(screen.queryByTestId('guess-choices')).toBeNull();  // после ответа кнопок нет
     });
 
@@ -112,12 +112,34 @@ describe('Угадай ход мастера', () => {
         // Сначала дождаться ответа (запрос уходит асинхронно — под нагрузкой CI его ещё могло не быть), потом проверить тело.
         expect(await screen.findByTestId('guess-score')).toHaveTextContent('100');
         const post = (fetchMock.mock.calls as unknown as [string, RequestInit][]).find(([, init]) => init?.method === 'POST')!;
-        expect(JSON.parse(String(post[1].body))).toEqual({move: 'f3e5'});
+        expect(JSON.parse(String(post[1].body))).toEqual({move: 'f3e5', attempt: 1, hints: 0});
         expect(screen.getByText('Как мастер!')).toBeInTheDocument();
         expect(screen.getByText('Ход мастера: Nxe5')).toBeInTheDocument();
         expect(screen.getByTestId('guess-themes')).toHaveTextContent('Темы:Вилка');  // неизвестный код не показывается
         expect(screen.getByRole('button', {name: /Дальше в партии/})).toBeInTheDocument();
         expect(screen.getByTestId('guess-session')).toHaveTextContent('Баллы: 100 из 100 · точность понимания 100%');
+    });
+
+    it('три попытки: ошибка — «ещё раз» без итога, подсказка берётся, вторая попытка передаёт номер и подсказки', async () => {
+        let calls = 0;
+        const fetchMock = stub({
+            '/guess/next': () => ({position: POSITION}),
+            '/position/5/hint': () => ({comment: [], arrows: []}),
+            '/position/5/answer': () => (++calls === 1 ? {retry: true, attempts_left: 2, loss_cp: 200} : ANSWER),
+        });
+        renderPage();
+        await screen.findByTestId('guess-players');
+        expect(screen.getByTestId('guess-attempt')).toHaveTextContent('Попытка 1 из 3');
+        await play('h2', 'h3');
+        expect(await screen.findByTestId('guess-retry')).toBeInTheDocument();
+        expect(screen.getByTestId('guess-attempt')).toHaveTextContent('Попытка 2 из 3');
+        expect(screen.queryByTestId('guess-answer')).toBeNull();
+        fireEvent.click(screen.getByTestId('guess-hint'));
+        await waitFor(() => expect(fetchMock.mock.calls.some(([u]) => String(u).includes('/position/5/hint?step=1'))).toBe(true));
+        await play('f3', 'e5');
+        expect(await screen.findByTestId('guess-score')).toHaveTextContent('100');
+        const posts = (fetchMock.mock.calls as unknown as [string, RequestInit][]).filter(([, init]) => init?.method === 'POST');
+        expect(JSON.parse(String(posts[1][1].body))).toEqual({move: 'f3e5', attempt: 2, hints: 1});
     });
 
     it('после ответа доска свободна: ход мастера можно сыграть и продолжить, ответ уже засчитан', async () => {

@@ -237,6 +237,10 @@ describe('PuzzlesPage', () => {
     it('режим на время: таймер, счёт с сервера, рекорд', async () => {
         const run = {run_id: 'r1', minutes: 3, solved: 0, mistakes: 0, seconds_left: 180, over: false};
         const calls = stub((url) => {
+            if (url.includes('/timed/leaders')) {
+                const me = {place: 25, username: 'TestPlayer', score: 2, me: true};
+                return {rows: [{place: 1, username: 'Anna', score: 9, me: false}], me};
+            }
             if (url.includes('/timed/start')) return run;
             if (url.includes('/timed/next')) return {...PUZZLE, run};
             if (url.includes('/timed/finish')) return {score: 1, mistakes: 0, minutes: 3, best: 4, new_record: false};
@@ -248,6 +252,9 @@ describe('PuzzlesPage', () => {
             fireEvent.click(await screen.findByTestId('puzzle-mode-timed'));
         });
         expect(screen.getByTestId('puzzle-timed-setup').textContent).toContain('рекорд: 4');
+        // Таблица лидеров: топ и своя строка ниже топа.
+        expect(await screen.findByText('Anna')).toBeInTheDocument();
+        expect(screen.getAllByTestId('leader-row').map((row) => row.textContent)).toEqual(['1Anna9', '25TestPlayer2']);
         await act(async () => {
             fireEvent.click(screen.getByTestId('puzzle-timed-3'));
         });

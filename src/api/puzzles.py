@@ -15,7 +15,7 @@ from src.api.rate_limit import rate_limit
 from src.core.errors import DomainValueError
 from src.db.session import get_db
 from src.models.user import User
-from src.services import defense_drills, generated_drills, personal_puzzles
+from src.services import defense_drills, generated_drills, personal_puzzles, puzzle_leaders
 from src.services import mate_course as mate_course_service
 from src.services import puzzles as service
 
@@ -279,6 +279,17 @@ async def timed_finish(user: User = Depends(get_current_user), db: AsyncSession 
         return await service.finish_run(db, user)
     except service.PuzzleError as exc:
         raise _http(exc) from exc
+
+
+@router.get("/timed/leaders")
+async def timed_leaders(
+        minutes: int = Query(default=3), scope: str = Query(default="week"),
+        user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+):
+    """Таблица лидеров забегов на время: scope «week» — текущая неделя, «all» — рекорды; плюс своя строка."""
+    if minutes not in puzzle_leaders.MINUTES or scope not in puzzle_leaders.SCOPES:
+        raise DomainValueError("invalid_timed_leaders", minutes=minutes, scope=scope).to_http(400)
+    return await puzzle_leaders.leaders(db, minutes, scope, user.id)
 
 
 @router.post("/{puzzle_id}/move")

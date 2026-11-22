@@ -39,6 +39,7 @@ import {renderUiMessage} from '../i18n';
 import type {UiMessage} from '../i18n';
 import LanguageSwitcher from './LanguageSwitcher';
 import {InstallAppSection} from './settings/InstallAppSection';
+import {InviteFriend} from './InviteFriend';
 import {downloadMyGamesPgn} from '../services/transparency';
 import {saveProfileSettings, setTranslationHelper} from '../services/profileSettings';
 import {clearToken, setToken} from '../services/authToken';
@@ -478,6 +479,7 @@ export default function Settings({token, username, onTokenChange, onLogoutEveryw
             </section>
 
             <InstallAppSection sectionClass={sectionClass} headingClass={headingClass}/>
+            <InviteFriend/>
 
             <section className={sectionClass}>
                 <h2 className={headingClass}>

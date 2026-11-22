@@ -42,7 +42,7 @@ from src.core.errors import DomainError, DomainValueError
 from src.db import redis as redis_module
 from src.models.puzzle import Puzzle, PuzzleAttempt, PuzzleTheme, ThemeProgress
 from src.models.user import User
-from src.services import product_metrics
+from src.services import product_metrics, puzzle_leaders
 from src.services.themes import GOAL_THEMES, PUZZLE_GOALS, SECTIONS, THEMES, THEMES_BY_CODE, puzzle_goal
 
 SESSION_TTL_S = 2 * 60 * 60  # активная задача без ходов живёт 2 часа, затем считается брошенной (рейтинг не меняется)
@@ -453,7 +453,8 @@ async def finish_run(db: AsyncSession, user: User) -> dict:
     record = run["solved"] > best
     if record:
         setattr(user, field, run["solved"])
-        await db.commit()
+    await puzzle_leaders.record_week(db, user.id, run["minutes"], run["solved"])
+    await db.commit()
     return {"score": run["solved"], "mistakes": run["mistakes"], "minutes": run["minutes"],
             "best": max(best, run["solved"]), "new_record": record}
 

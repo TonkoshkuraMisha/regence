@@ -27,7 +27,16 @@ from src.models.move import Move
 from src.models.personality import BotPersonality
 from src.models.position import PositionGame, PositionLibraryGame, PositionStat
 from src.models.product_event import ProductEvent
-from src.models.puzzle import DefenseDrill, DrillRecord, PersonalPuzzle, Puzzle, PuzzleAttempt, PuzzleTheme, ThemeProgress
+from src.models.puzzle import (
+    DefenseDrill,
+    DrillRecord,
+    PersonalPuzzle,
+    Puzzle,
+    PuzzleAttempt,
+    PuzzleTheme,
+    PuzzleTimedScore,
+    ThemeProgress,
+)
 from src.models.repertoire import Repertoire, RepertoireCard, RepertoireMove
 from src.models.social import (
     Block,
@@ -46,6 +55,7 @@ from src.models.trainer import ExamResult, TrainerResult
 from src.models.user import User
 
 __all__ = [
+    "PuzzleTimedScore",
     "BotOpeningStat",
     "BotRating",
     "BotRival",
