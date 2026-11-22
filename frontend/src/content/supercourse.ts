@@ -120,7 +120,7 @@ export const COURSE: CourseModule[] = [
     mod('M3.3', 'M', [th('kingside_attack'), th('queenside_attack')]),
     mod('M3.4', 'M', [th('sacrifice')]),
     mod('E3.1', 'E', [l('endgame-bishop-vs-knight'), e('bishop_vs_knight')]),
-    mod('E3.2', 'E', [e('opposite_bishops_def')]),
+    mod('E3.2', 'E', [l('endgame-opposite-bishops'), e('opposite_bishops_def')]),
     mod('E3.3', 'E', [e('q_vs_knight'), e('q_vs_rook')]),
     mod('E3.4', 'E', [l('endgame-rook-vs-pawn'), e('rook_vs_pawn'), l('endgame-passed-pawn')]),
     mod('E3.5', 'E', MUST_KNOW[1].map(e)),
