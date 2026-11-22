@@ -15,10 +15,11 @@ from fastapi import WebSocketDisconnect
 from src.api import websockets as ws_module
 from src.api.websockets import matchmaking_endpoint
 from src.core.errors import DomainError
+from src.db.session import get_session_factory
+from src.main import app
 from src.models.user import User
 from src.services import arena as arena_service
 from src.services.game_state import state_manager
-from tests.conftest import TestSessionLocal
 
 _CLOSE = object()
 
@@ -61,7 +62,7 @@ async def _run(user: User, messages: list, *, close: bool = True) -> QueueSocket
         socket.incoming.put_nowait(message)
     if close:
         socket.incoming.put_nowait(_CLOSE)
-    await asyncio.wait_for(matchmaking_endpoint(socket, user, TestSessionLocal), timeout=10)
+    await asyncio.wait_for(matchmaking_endpoint(socket, user, app.dependency_overrides[get_session_factory]()), timeout=10)
     return socket
 
 
@@ -103,7 +104,7 @@ async def test_connection_survives_unexpected_error_in_receive(duo):
     white, _, _ = duo
     socket = QueueSocket()
     socket.incoming.put_nowait(RuntimeError("boom"))
-    await asyncio.wait_for(matchmaking_endpoint(socket, white, TestSessionLocal), timeout=5)
+    await asyncio.wait_for(matchmaking_endpoint(socket, white, app.dependency_overrides[get_session_factory]()), timeout=5)
     assert socket.events("connected")
 
 
