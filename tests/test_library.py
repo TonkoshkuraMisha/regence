@@ -111,3 +111,58 @@ async def test_collection_games_search_and_pgn(client, seeded, token_user_2):
     secret = client.get(f"{API}/games", params={"player": "secret"}, headers=auth(token_user_2)).json()["games"][0]["id"]
     missing = client.get(f"{API}/games/{secret}/pgn")
     assert missing.status_code == 404 and missing.json()["detail"]["code"] == "library_game_not_found"
+
+
+# --- Дополнительное покрытие: редкие ветки разбора, импорта и вывода PGN ---
+
+CUSTOM_FEN = "4k3/8/8/8/8/8/4P3/4K3 w - - 0 1"
+
+
+def test_to_cp1251_leaves_unconvertible_text():
+    assert library._to_cp1251("日本") == "日本"  # ни в cp1252, ни в latin-1 не кодируется
+
+
+def test_parse_game_rejects_other_variants_bad_fen_and_empty_games():
+    games = list(library.read_text(
+        '[Variant "Chess960"]\n\n1. e4 e5 *\n\n'
+        '[SetUp "1"]\n[FEN "garbage"]\n\n1. e4 *\n\n'
+        '[White "NoMoves"]\n\n*\n'))
+    assert [library.parse_game(g) for g in games] == [None, None, None]
+
+
+def test_open_pgn_keeps_utf8_when_multibyte_char_is_cut_by_head(tmp_path):
+    path = tmp_path / "long.pgn"
+    # «й» (два байта) режется границей первых 65536 байт: это не повод считать файл cp1251.
+    path.write_bytes(b"{" + b"a" * 65534 + "й}".encode() + b"\n[White \"X\"]\n\n1. e4 e5 *\n")
+    with library.open_pgn(str(path)) as handle:
+        assert handle.encoding.lower().replace("_", "-") == "utf-8-sig"
+
+
+def test_import_stats_add_up():
+    total = library.ImportStats(games=1, added=1)
+    total += library.ImportStats(games=2, duplicates=1, linked=3, skipped=1)
+    assert (total.games, total.added, total.duplicates, total.linked, total.skipped) == (3, 1, 1, 3, 1)
+
+
+async def test_empty_collection_path_and_small_batches(db_session):
+    with pytest.raises(ValueError):
+        await library.ensure_collection(db_session, " / ")
+    collection = await library.ensure_collection(db_session, "Пачки")
+    text = PGN + '\n[Variant "Chess960"]\n\n1. d4 d5 *\n'
+    stats = await library.import_games(db_session, collection, library.read_text(text), batch=1)
+    assert (stats.games, stats.added, stats.skipped) == (4, 3, 1)
+
+
+def test_structure_and_mate_helpers_for_custom_start_and_bad_moves():
+    parsed = library.parse_game(next(library.read_text(f'[SetUp "1"]\n[FEN "{CUSTOM_FEN}"]\n\n1. e4 *\n')))
+    assert parsed.start_fen == CUSTOM_FEN
+    assert library.structure_of(parsed) is None  # структура — только из начальной позиции
+    assert library.ends_in_mate(None, ["zzzz"]) is False  # непонятный ход не роняет метку
+    assert library.ends_in_mate(None, ["f2f3", "e7e5", "g2g4", "d8h4"]) is True
+
+
+def test_to_pgn_writes_custom_start_position():
+    game = library.LibraryGame(white="A", black="B", moves="e2e4", start_fen=CUSTOM_FEN, white_elo=None, black_elo=None,
+                               event="", site="", date="", round="", result="*", eco="", opening="")
+    text = library.to_pgn(game)
+    assert f'[FEN "{CUSTOM_FEN}"]' in text and "1. e4" in text

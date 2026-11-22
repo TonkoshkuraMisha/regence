@@ -5,13 +5,18 @@ import datetime as dt
 import json
 
 import chess
+import chess.engine
 import pytest
 from sqlalchemy import func, select
 
+from src.core.errors import DomainValueError
 from src.models.game import Game, GameStatus
+from src.models.imported_game import ImportedGame
 from src.models.puzzle import PersonalPuzzle
 from src.models.user import User
 from src.services import personal_puzzles as service
+from src.services.engine_pool import EngineUnavailableError
+from src.services.puzzles import PuzzleError
 
 API = "/api/v1/puzzles"
 # 1. e4 e5 2. Bc4 Nc6 3. Qh5 Nf6?? 4. Qxf7# — чёрные зевают мат на 6-м полуходе (лучше 3...g6).
@@ -138,3 +143,133 @@ def test_bot_game_is_analysed_in_the_background(client, token_user_1, no_celery_
             break
         time.sleep(0.02)
     assert saved.json()["game_id"] in no_celery_publish
+
+
+# --- Дополнительное покрытие: движок (подмена), отказы извлечения, источник задачи, ответы ---
+
+
+
+
+class _Pool:
+    """Пул движка-заглушка: analyse отдаёт заранее заданный ответ."""
+
+    def __init__(self, info):
+        self.info = info
+
+    def acquire(self):
+        info = self.info
+
+        class Engine:
+            def analyse(self, board, limit, multipv=None):
+                return info
+
+        class Ctx:
+            def __enter__(self):
+                return Engine()
+
+            def __exit__(self, *exc):
+                return False
+
+        return Ctx()
+
+
+def _info(move: str, cp: int) -> dict:
+    return {"pv": [chess.Move.from_uci(move)], "score": chess.engine.PovScore(chess.engine.Cp(cp), chess.WHITE)}
+
+
+def test_top_two_without_engine_and_with_single_line(monkeypatch):
+    monkeypatch.setattr(service, "resolve_stockfish_path", lambda *a, **k: None)
+    assert service.top_two(chess.Board()) is None
+    monkeypatch.setattr(service, "resolve_stockfish_path", lambda *a, **k: "sf")
+    monkeypatch.setattr(service, "get_engine_pool", lambda path: _Pool(_info("e2e4", 30)))  # не список
+    assert service.top_two(chess.Board()) == [("e2e4", 30)]
+    monkeypatch.setattr(service, "get_engine_pool", lambda path: _Pool([_info("e2e4", 30), {"score": None}]))
+    assert service.top_two(chess.Board()) == [("e2e4", 30)]  # линия без хода отбрасывается
+
+
+def test_is_solvable_edge_cases():
+    board = chess.Board()
+    best = chess.Move.from_uci("e2e4")
+    assert not service.is_solvable(board, best, [])  # движок ничего не отдал
+    assert not service.is_solvable(board, best, [("d2d4", 0), ("e2e4", -300)])  # лучший не первый
+    assert not service.is_solvable(board, best, [("e2e4", 0)])  # единственный ход — решать нечего
+    capture = chess.Board("4k3/8/8/3p4/4P3/8/8/4K3 w - - 0 1")
+    assert not service.is_solvable(capture, chess.Move.from_uci("e4d5"), [("e4d5", 0), ("e1e2", -400)])
+
+
+async def _imported(db_session, user, analysis: str | None, pgn: str = PGN, color: str = "black") -> ImportedGame:
+    record = ImportedGame(user_id=user.id, source="lichess", external_id=f"x{user.id}{len(pgn)}", color=color,
+                          white_name="Rival", black_name="Me", pgn=pgn, analysis_json=analysis,
+                          played_at=dt.datetime(2026, 1, 2, tzinfo=dt.UTC))
+    db_session.add(record)
+    await db_session.commit()
+    return record
+
+
+async def test_extract_for_imported_game(db_session, engine, test_user_1):
+    assert await service.extract_for_imported(db_session, 999999) == 0  # партии нет
+    bare = await _imported(db_session, test_user_1, None)
+    assert await service.extract_for_imported(db_session, bare.id) == 0  # разбора нет
+    record = await _imported(db_session, test_user_1, _analysis(), pgn=PGN + " ")
+    assert await service.extract_for_imported(db_session, record.id) == 1
+    puzzle = await db_session.scalar(select(PersonalPuzzle).where(PersonalPuzzle.imported_game_id == record.id))
+    assert puzzle.game_id is None and puzzle.ply == 6
+    context = await service.game_context(db_session, puzzle, test_user_1)
+    assert context["opponent"] == "Rival" and context["source"] == "lichess" and context["played_at"].startswith("2026-01-02")
+    assert await service.plies_for_imported(db_session, record.id, test_user_1) == [6]
+    # Импортная партия удалена — источник неизвестен, а не ошибка.
+    await db_session.delete(record)
+    await db_session.commit()
+    gone = await service.game_context(db_session, puzzle, test_user_1)
+    assert gone["opponent"] is None and gone["source"] is None
+
+
+async def test_extract_stops_on_bad_data_and_unavailable_engine(db_session, game, monkeypatch, test_user_1):
+    broken = await _imported(db_session, test_user_1, "{не json")
+    assert await service.extract_for_imported(db_session, broken.id) == 0
+    no_pgn = await _imported(db_session, test_user_1, _analysis(), pgn="")
+    assert await service.extract_for_imported(db_session, no_pgn.id) == 0
+
+    def busy(board):
+        raise EngineUnavailableError("пул занят")
+
+    monkeypatch.setattr(service, "top_two", busy)
+    assert await service.extract_for_game(db_session, game.id) == 0
+    monkeypatch.setattr(service, "top_two", lambda board: None)  # движка нет совсем
+    assert await service.extract_for_game(db_session, game.id) == 0
+
+
+async def test_game_context_for_human_bot_and_missing_game(db_session, game, engine, test_user_1, test_user_2):
+    await service.extract_for_game(db_session, game.id)
+    puzzle = await db_session.scalar(select(PersonalPuzzle))
+    human = await service.game_context(db_session, puzzle, test_user_1)
+    assert human["opponent"] == test_user_2.username and human["opponent_is_bot"] is False
+    # Соперник — бот со своей персоналией: показывается её имя, бот-флаг снимается.
+    opponent = await db_session.get(User, test_user_2.id)
+    opponent.is_bot = True
+    game.personality_name = "Persona"
+    await db_session.commit()
+    persona = await service.game_context(db_session, puzzle, test_user_1)
+    assert persona["opponent"] == "Persona" and persona["opponent_is_bot"] is False
+    game.personality_name = None
+    await db_session.commit()
+    assert (await service.game_context(db_session, puzzle, test_user_1))["opponent_is_bot"] is True
+    puzzle.game_id = None
+    assert (await service.game_context(db_session, puzzle, test_user_1))["opponent"] is None
+
+
+async def test_answer_rejects_unknown_puzzle_and_bad_moves(db_session, game, engine, test_user_1, test_user_2):
+    await service.extract_for_game(db_session, game.id)
+    puzzle = await db_session.scalar(select(PersonalPuzzle))
+    with pytest.raises(PuzzleError):
+        await service.answer(db_session, test_user_1, 999999, "g7g6")
+    with pytest.raises(PuzzleError):
+        await service.answer(db_session, test_user_2, puzzle.id, "g7g6")  # чужая задача
+    with pytest.raises(DomainValueError):
+        await service.answer(db_session, test_user_1, puzzle.id, "zzzz")
+    with pytest.raises(DomainValueError):
+        await service.answer(db_session, test_user_1, puzzle.id, "a1a8")
+
+
+async def test_plies_for_game_without_user(db_session):
+    assert await service.plies_for_game(db_session, 1, None) == []
