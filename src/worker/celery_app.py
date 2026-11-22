@@ -127,6 +127,8 @@ celery_app.conf.update(
         "archive-move-telemetry": {"task": "archive_move_telemetry", "schedule": crontab(hour=3, minute=41)},
         # Награды арен (таск 33.5): каждые 5 минут — призёры получают места вскоре после окончательных итогов.
         "arena-awards": {"task": "arena_awards", "schedule": crontab(minute="*/5")},
+        # Пересмотр старых флагов нечестной игры (таск 26.4): по понедельникам утром по UTC.
+        "review-cheater-flags": {"task": "review_cheater_flags", "schedule": crontab(day_of_week=1, hour=6, minute=7)},
     },
     # Не брать впрок длинные партии симуляции: иначе один воркер набирает очередь и держит её.
     worker_prefetch_multiplier=1,
