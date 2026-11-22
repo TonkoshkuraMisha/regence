@@ -10,7 +10,6 @@ import json
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from tests.conftest import TestSessionLocal
 from fastapi import WebSocketDisconnect
 
 from src.api import websockets as ws_module
@@ -19,6 +18,7 @@ from src.core.errors import DomainError
 from src.models.user import User
 from src.services import arena as arena_service
 from src.services.game_state import state_manager
+from tests.conftest import TestSessionLocal
 
 _CLOSE = object()
 
