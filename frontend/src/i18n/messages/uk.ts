@@ -1041,6 +1041,10 @@ export const uk: Messages = {
         rematchDeclined: 'Реванш відхилено',
         rematch: 'Реванш',
         toLobby: 'До лобі',
+        pause: 'Пауза',
+        resume: 'Продовжити',
+        pausedTitle: 'Партія на паузі',
+        pausedHint: 'Годинники зупинено, позицію приховано, доки ви не продовжите.',
         undoMove: 'Повернути хід',
         fenLabel: 'Позиція в записі FEN',
         fenPlaceholder: 'Позиція (FEN)',
@@ -1111,7 +1115,6 @@ export const uk: Messages = {
         challengePublishedCasual: 'Ви опублікували товариський виклик у лобі ({timeControl})…',
         botGameOver: 'Партію проти {bot} закінчено й збережено в архіві ({result}).',
         botFlagFell: 'Прапорець упав! Партію проти {bot} завершено за часом ({result}).',
-        botAborted: 'Партію скасовано без зміни рахунку.',
         resigned: 'Ви здалися. Перемога за {bot} ({result}).',
         fideResult: 'Підсумок за правилами FIDE: {result}',
         reasons: {

@@ -445,7 +445,7 @@ export function useBotGame({
         setSavedTournamentId(null);
         customOpponentRef.current = snapshot.botId === 'custom' ? snapshot.custom : null;
         setHourglass?.(snapshot.odds?.kind === 'hourglass');
-        const clocks = clocksAfterGap(snapshot, restored.turn() === 'w');
+        const clocks = clocksAfterGap(snapshot, restored.turn() === 'w');  // на паузе часы не убывают
         enterBotGame(snapshot.botId as BotOpponentId, snapshot.color, restored, clocks.white, clocks.black);
     }, [enterBotGame, setHourglass]);
 

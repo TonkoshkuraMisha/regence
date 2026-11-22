@@ -45,4 +45,10 @@ describe('снимок партии с ботом', () => {
         expect(clocksAfterGap(snap, false, 4000)).toEqual({white: 10000, black: 5000});
         expect(clocksAfterGap(snap, true, 99000).white).toBe(0);
     });
+
+    it('партия на паузе: часы при продолжении не уменьшаются', () => {
+        const snap = {whiteTimeMs: 10000, blackTimeMs: 8000, savedAt: 1000, paused: true};
+        expect(clocksAfterGap(snap, true, 99000)).toEqual({white: 10000, black: 8000});
+        expect(clocksAfterGap(snap, false, 99000)).toEqual({white: 10000, black: 8000});
+    });
 });

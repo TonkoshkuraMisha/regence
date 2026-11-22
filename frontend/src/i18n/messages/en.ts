@@ -1037,6 +1037,10 @@ export const en = {
         rematchDeclined: 'Rematch declined',
         rematch: 'Rematch',
         toLobby: 'To the lobby',
+        pause: 'Pause',
+        resume: 'Resume',
+        pausedTitle: 'Game paused',
+        pausedHint: 'The clocks are stopped and the position is hidden until you resume.',
         undoMove: 'Take back',
         fenLabel: 'Position in FEN',
         fenPlaceholder: 'Position (FEN)',
@@ -1107,7 +1111,6 @@ export const en = {
         challengePublishedCasual: 'You posted a casual challenge in the lobby ({timeControl})…',
         botGameOver: 'The game against {bot} is over and saved to the archive ({result}).',
         botFlagFell: 'Flag fell! The game against {bot} ended on time ({result}).',
-        botAborted: 'Game aborted without changing the score.',
         resigned: 'You resigned. {bot} wins ({result}).',
         fideResult: 'Result under FIDE rules: {result}',
         reasons: {

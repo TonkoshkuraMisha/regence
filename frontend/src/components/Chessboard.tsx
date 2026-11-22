@@ -190,6 +190,8 @@ export default function Chessboard() {
     // activeBot живёт здесь (не внутри useBotGame), потому что useClock использует его
     // для isTicking/isParticipant и должен вызываться раньше useBotGame.
     const [activeBot, setActiveBot] = useState<BotOpponentId | null>(null);
+    // Пауза партии с ботом (только товарищеской, без лестницы и турнира): часы стоят, бот не ходит, позиция скрыта.
+    const [botPaused, setBotPaused] = useState(false);
     // Вкладка ботов: исторические мастера, мастерская соперников или клубная лестница.
     const [botsView, setBotsView] = useState<'historical' | 'workshop' | 'ladder'>('historical');
     // Измеренная сила исторических ботов (калибровка матчами), если она есть.
@@ -319,7 +321,7 @@ export default function Chessboard() {
     const {
         whiteTimeMs, setWhiteTimeMs, blackTimeMs, setBlackTimeMs, resetLowTimeWarning, applyIncrement,
     } = useClock({
-        isTicking: Boolean(gameId || activeBot || spectatingGameId) && !gameOverResult,
+        isTicking: Boolean(gameId || activeBot || spectatingGameId) && !gameOverResult && !botPaused,
         isParticipant: Boolean(gameId || activeBot) && !gameOverResult,
         currentTurn: game.turn() === 'w' ? 'white' : 'black',
         myColor,
@@ -387,7 +389,7 @@ export default function Chessboard() {
         setWhiteTimeMs, setBlackTimeMs, resetLowTimeWarning, applyIncrement,
         moveStartTime, myColorRef, gameIdRef, setGameId, setWhitePlayer, setBlackPlayer,
         playAudio, playOutcomeSound, updateSessionStats,
-        isAssisted: isCoachAssisted, onNewGame: coach.reset,
+        isAssisted: isCoachAssisted, onNewGame: coach.reset, holdBot: botPaused,
     });
 
     const selectedBotProfile = HISTORICAL_BOTS[selectedBotId];
@@ -401,6 +403,11 @@ export default function Chessboard() {
     // Партия «на счёт» — лестница или турнир (таск A.2): без наставника, рентгена и возврата хода — сервер такую
     // помощь всё равно засчитал бы поражением или не засчитал бы партию.
     const isRatedBotGame = isLadderGame || isTournamentGame;
+    // Паузу даёт только товарищеская партия с ботом: в партии лестницы и турнира она позволила бы думать без часов.
+    const canPauseBot = Boolean(activeBot) && !gameId && !isRatedBotGame && !gameOverResult;
+    useEffect(() => {
+        if (botPaused && !canPauseBot) setBotPaused(false);
+    }, [botPaused, canPauseBot]);
     const activeBotProfile = activeBot ? botProfileFor(activeBot) : null;
 
     const {
@@ -633,7 +640,7 @@ export default function Chessboard() {
         explicitPromotion?: PromotionPiece,
         isPremoveMove: boolean = false
     ): boolean => {
-        if (gameOverResult || viewIndex !== -1 || spectatingGameId) return false;
+        if (gameOverResult || viewIndex !== -1 || spectatingGameId || botPaused) return false;
 
         const piece = game.get(from as any);
         const currentTurnColor = game.turn() === 'w' ? 'white' : 'black';
@@ -739,7 +746,7 @@ export default function Chessboard() {
         }
         setDragState(null);
         return false;
-    }, [game, gameId, activeBot, spectatingGameId, myColor, stateVersion, viewIndex, gameOverResult, playAudio, playOutcomeSound, updateSessionStats, saveBotGameToDatabase, applyIncrement, effectiveIncSeconds, isRatedBotGame, coach.onPlayerMove]);
+    }, [game, gameId, activeBot, spectatingGameId, myColor, stateVersion, viewIndex, gameOverResult, playAudio, playOutcomeSound, updateSessionStats, saveBotGameToDatabase, applyIncrement, effectiveIncSeconds, isRatedBotGame, botPaused, coach.onPlayerMove]);
 
     const {premove, premoves, premoveView, setPremove, scheduleOrPromotePremove} = usePremoves({
         game,
@@ -836,18 +843,13 @@ export default function Chessboard() {
         handleResetSandbox();
     };
 
-    // Отмена партии до второго полухода: в партии с человеком решает сервер (abort_game → game_over с итогом '*').
+    // Отмена партии до второго полухода — только в партии с человеком: решает сервер (abort_game → game_over с итогом '*').
+    // В партии с ботом отмены нет: ушёл — сдался или поставил паузу (решение владельца 22.11).
     const handleAbortGame = () => {
-        if ((!gameId && !activeBot) || gameOverResult || history.length >= 2) return;
+        if (!gameId || gameOverResult || history.length >= 2) return;
         setPendingPromotion(null);
         setPremove(null);
-        if (gameId) {
-            gameSocket.send('abort_game', {game_id: gameId});
-        } else if (activeBot) {
-            setGameOverResult('*');
-            setDrawOfferStatus(status('status.botAborted'));
-            playAudio('decline');
-        }
+        gameSocket.send('abort_game', {game_id: gameId});
     };
 
     // Реванш: человеку — предложение через сервер (offer_rematch), с ботом — сразу новая партия другим цветом.
@@ -1021,7 +1023,7 @@ export default function Chessboard() {
     // Щелчок по полю. На ходу соперника щелчки ставят предход (фигуры берутся из позиции «после предходов»), на
     // своём — выбирают фигуру и делают ход; щелчок по пустому полю при стоящих предходах снимает всю очередь.
     const handleSquareClick = (squareId: string) => {
-        if (viewIndex !== -1 || gameOverResult || spectatingGameId) return;
+        if (viewIndex !== -1 || gameOverResult || spectatingGameId || botPaused) return;
 
         if (pendingPromotion) {
             setPendingPromotion(null);
@@ -1302,6 +1304,7 @@ export default function Chessboard() {
             whiteTimeMs, blackTimeMs, baseMinutes: effectiveWhiteBaseMinutes, incrementSeconds: effectiveIncSeconds,
             odds: activeOdds ? {kind: activeOdds.kind, giver: activeOdds.giver} : null,
             ladder: info.ladder, tournamentGameId: info.tournamentGameId, tournamentId: tournamentLinkId,
+            paused: botPaused,
         });
     };
     // Свежая версия записи для обработчиков закрытия страницы (они живут дольше одного рендера).
@@ -1318,7 +1321,7 @@ export default function Chessboard() {
             botGameWasLiveRef.current = false;
             clearBotGameSnapshot();
         }
-    }, [activeBot, gameId, gameOverResult, game]);
+    }, [activeBot, gameId, gameOverResult, game, botPaused]);
     useEffect(() => {
         const save = () => writeBotSnapshotRef.current();
         window.addEventListener('pagehide', save);
@@ -1345,6 +1348,7 @@ export default function Chessboard() {
         setActiveOdds(snapshot.odds as OddsChoice | null);
         setTournamentLinkId(snapshot.tournamentId);
         setTournamentGameRefId(snapshot.tournamentGameId);
+        setBotPaused(snapshot.paused === true);
         resumeBotGame(snapshot);
     }, [currentUsername, gameId, activeBot, spectatingGameId, routeLocation.state, resumeBotGame]);
     useEffect(() => {
@@ -1569,6 +1573,8 @@ export default function Chessboard() {
             blackPlayer={shownBlackPlayer}
             navigate={navigate}
             onAbortGame={handleAbortGame}
+            onPauseToggle={canPauseBot ? () => setBotPaused((p) => !p) : undefined}
+            paused={botPaused}
             onBerserk={canBerserk ? handleBerserk : undefined}
             onResign={handleResign}
             onOfferDraw={activeBot ? () => void offerDrawToBot() : handleOfferDraw}
@@ -1813,6 +1819,18 @@ export default function Chessboard() {
                     className={`p-2.5 rounded-lg shadow-heavy border-2 border-amber-950/80 relative select-none touch-none group/board shrink-0 ${isResizing ? 'transition-none ring-2 ring-amber-500/60' : 'transition-colors'}`}
                 >
                     <BoardTextureLayer theme={activeTheme} where="frame"/>
+
+                    {botPaused && (
+                        <div className="absolute inset-0 z-40 rounded-lg bg-black/85 flex flex-col items-center justify-center gap-3 text-center p-4"
+                             data-testid="bot-paused-overlay">
+                            <span className="text-xl font-bold text-amber-200">{t('controls.pausedTitle')}</span>
+                            <span className="text-sm text-boxwood/80">{t('controls.pausedHint')}</span>
+                            <button type="button" onClick={() => setBotPaused(false)} data-testid="bot-resume"
+                                    className="px-4 py-2 rounded bg-emerald-700 hover:bg-emerald-600 text-white font-bold cursor-pointer">
+                                {t('controls.resume')}
+                            </button>
+                        </div>
+                    )}
 
                     {pendingPromotion && (
                         <PromotionDialog

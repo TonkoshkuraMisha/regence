@@ -1041,6 +1041,10 @@ export const ru: Messages = {
         rematchDeclined: 'Реванш отклонён',
         rematch: 'Реванш',
         toLobby: 'В лобби',
+        pause: 'Пауза',
+        resume: 'Продолжить',
+        pausedTitle: 'Партия на паузе',
+        pausedHint: 'Часы остановлены, позиция скрыта, пока вы не продолжите.',
         undoMove: 'Вернуть ход',
         fenLabel: 'Позиция в записи FEN',
         fenPlaceholder: 'Позиция (FEN)',
@@ -1111,7 +1115,6 @@ export const ru: Messages = {
         challengePublishedCasual: 'Вы опубликовали товарищеский вызов в лобби ({timeControl})…',
         botGameOver: 'Партия против {bot} окончена и сохранена в архив ({result}).',
         botFlagFell: 'Флажок упал! Партия против {bot} завершена по времени ({result}).',
-        botAborted: 'Партия отменена без изменения счёта.',
         resigned: 'Вы сдались. Победа за {bot} ({result}).',
         fideResult: 'Итог по правилам ФИДЕ: {result}',
         reasons: {
