@@ -52,6 +52,19 @@ export interface ModerationMe {
 /** Запрос к /api/v1/moderation через общую обёртку http.ts (токен, JSON, ошибки). */
 const call = <T>(path: string, init: RequestInit = {}) => apiRequest<T>(`/moderation${path}`, init);
 
+/** Сводка по нарушениям за 30 суток (GET /moderation/summary, src/services/moderation_report.py). */
+export interface ViolationsSummary {
+    days: number;
+    opened: number;
+    resolved: number;
+    open_now: number;
+    oldest_open_hours: number | null;
+    by_kind: Record<string, number>;
+    by_action: Record<string, number>;
+    cheaters: number;
+    top_targets: { username: string; reports: number }[];
+}
+
 export const moderationApi = {
     me: () => call<ModerationMe>('/me'),
     /** Жалоба на игрока или на сообщение в чате партии (message_text — копия сообщения). */
@@ -63,6 +76,7 @@ export const moderationApi = {
     /** Апелляция на флаг нечестной игры (одна открытая на игрока). */
     appeal: (comment: string) => call<{ id: number }>('/appeal', {method: 'POST', body: JSON.stringify({comment})}),
     queue: () => call<{ reports: QueueItem[] }>('/queue'),
+    summary: () => call<ViolationsSummary>('/summary'),
     /** Жалоба на сообщение, публикацию или комментарий (таск 30.3): subject — «dm:12», «post:5», «comment:7». */
     reportText: (subject: string, reason: ReportReason) =>
         call<{ id: number }>('/reports/text', {method: 'POST', body: JSON.stringify({subject, reason})}),

@@ -183,3 +183,28 @@ async def test_periodic_review_queues_old_flags_once(db_session, test_user_1, te
     assert [(r.target_id, r.kind, r.context) for r in queued] == [(old.id, "cheat_review", moderation.PERIODIC_CONTEXT)]
     assert clean.is_cheater is False and old.is_cheater is True      # сам флаг не меняется — решает человек
     assert await moderation.periodic_flag_review(db_session, now) == 0  # открытая проверка уже есть
+
+
+async def test_violations_summary_counts_and_is_moderator_only(
+        client, db_session, token_user_1, test_user_1, test_user_2, moderator):
+    _, mod_token = moderator
+    now = datetime.now(UTC)
+
+    def add(kind, target, status="open", action=None, days_ago=1):
+        db_session.add(Report(kind=kind, reporter_id=test_user_1.id, target_id=target.id, reason="abuse", status=status,
+                              action=action, created_at=now - timedelta(days=days_ago)))
+
+    add("player", test_user_2)
+    add("player", test_user_2, status="resolved", action="warn")
+    add("cheat_review", test_user_2, status="resolved", action="dismiss")   # автоматика — не жалоба людей
+    add("player", test_user_2, days_ago=40)                                 # вне окна 30 суток, но ещё открыта
+    test_user_2.is_cheater = True
+    await db_session.commit()
+
+    assert client.get(f"{API}/summary", headers=auth(token_user_1)).status_code == 403
+    body = client.get(f"{API}/summary", headers=auth(mod_token)).json()
+    assert (body["opened"], body["resolved"], body["open_now"]) == (3, 2, 2)
+    assert body["by_kind"] == {"player": 2, "cheat_review": 1}
+    assert body["by_action"] == {"warn": 1, "dismiss": 1}
+    assert body["cheaters"] == 1 and body["oldest_open_hours"] >= 39 * 24
+    assert body["top_targets"] == [{"username": test_user_2.username, "reports": 2}]

@@ -22,6 +22,11 @@ afterEach(() => {
     vi.unstubAllGlobals();
 });
 
+const SUMMARY = {
+    days: 30, opened: 7, resolved: 4, open_now: 3, oldest_open_hours: 52, cheaters: 2,
+    by_kind: {player: 5, cheat_review: 2}, by_action: {warn: 3, dismiss: 1}, top_targets: [{username: 'troll', reports: 4}],
+};
+
 describe('модерация', () => {
     it('жалоба на игрока из профиля', async () => {
         const fetchMock = stub(() => ({id: 1}));
@@ -50,13 +55,24 @@ describe('модерация', () => {
         const item = {id: 5, kind: 'message', reason: 'abuse', comment: null, message_text: 'ты слабак', game_id: 77, created_at: null,
             reporter: 'me', target: 'troll', target_is_cheater: false, target_trust: 100, reports_on_target: 3};
         const fetchMock = stub((url) => (url.endsWith('/me') ? {is_moderator: true, is_cheater: false, open_appeal: false, chat_banned_until: null}
-            : url.endsWith('/queue') ? {reports: [item]} : {id: 5, action: 'chat_ban'}));
+            : url.endsWith('/queue') ? {reports: [item]} : url.endsWith('/summary') ? SUMMARY : {id: 5, action: 'chat_ban'}));
         render(<MemoryRouter><ModerationPage/></MemoryRouter>);
         expect(await screen.findByTestId('mod-item-5')).toHaveTextContent('ты слабак');
         expect(screen.getByTestId('mod-item-5')).toHaveTextContent('жалоб на игрока: 3');
         expect(screen.queryByTestId('act-5-mark_cheater')).toBeNull();   // на сообщение — без флага нечестной игры
         await act(async () => fireEvent.click(screen.getByTestId('act-5-chat_ban')));
         expect(posts(fetchMock)[0][0]).toContain('/reports/5/resolve');
+    });
+
+    it('сводка по нарушениям: итоги, разбивка по видам и решениям, самые частые жалобы', async () => {
+        stub((url) => (url.endsWith('/me') ? {is_moderator: true, is_cheater: false, open_appeal: false, chat_banned_until: null}
+            : url.endsWith('/queue') ? {reports: []} : SUMMARY));
+        render(<MemoryRouter><ModerationPage/></MemoryRouter>);
+        expect(await screen.findByTestId('summary-totals')).toHaveTextContent('Поступило заявок: 7, закрыто: 4, открыто сейчас: 3');
+        expect(screen.getByTestId('violations-summary')).toHaveTextContent('Самая старая открытая заявка: 52 ч');
+        expect(screen.getByTestId('summary-kinds')).toHaveTextContent('Жалоба на игрока: 5');
+        expect(screen.getByTestId('summary-actions')).toHaveTextContent('Предупредить: 3');
+        expect(screen.getByTestId('summary-top')).toHaveTextContent('troll (4)');
     });
 
     it('апелляция для отмеченного игрока', async () => {
