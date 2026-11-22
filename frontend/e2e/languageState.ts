@@ -1,7 +1,7 @@
 // Выбранный язык интерфейса для E2E: сайт по умолчанию английский и язык браузера не угадывает (решение владельца
 // 22.11), поэтому сценарии заранее кладут в localStorage тот язык, на который они написаны, — как это делает игрок в шапке.
 
-import type {Language} from '../src/i18n/core';
+import type {Language} from '../src/i18n/core.ts';
 
 const BASE_URL = process.env.E2E_BASE_URL ?? 'http://localhost:8080';
 
