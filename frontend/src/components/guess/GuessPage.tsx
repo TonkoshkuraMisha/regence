@@ -21,6 +21,7 @@ import {coachArrows, coachText} from '../../services/coach';
 import type {CoachComment} from '../../services/coach';
 import {guessApi, isRetry, MAX_ATTEMPTS, understanding} from '../../services/guess';
 import type {GuessAnswer, GuessPosition} from '../../services/guess';
+import {guessLevel} from '../../services/guessLevel';
 import {GameQuiz} from './GameQuiz';
 import {PuzzleBoard} from '../puzzles/PuzzleBoard';
 import type {BoardArrow} from '../puzzles/PuzzleBoard';
@@ -52,6 +53,7 @@ export function GuessPage() {
     const whole = search.get('whole') === '1';
     const [plan, setPlan] = useState<{ gameId: number; ids: number[] } | null>(null);
     const [gameScores, setGameScores] = useState<number[]>([]);
+    const wholeLevel = guessLevel(gameScores.reduce((a, b) => a + b, 0), gameScores.length * 100);
     const [gameDone, setGameDone] = useState(false);
     const [mode, setMode] = useState<Mode>('single');
     // Выбор из вариантов (режим для начинающих): позиции запрашиваются с кандидатами.
@@ -296,6 +298,9 @@ export function GuessPage() {
                             <div className="bg-amber-900/40 border border-amber-600 rounded p-3 text-sm flex flex-col gap-2" data-testid="guess-whole-done">
                                 <span className="font-bold text-amber-200">
                                     {t('guess.wholeDone', {points: gameScores.reduce((a, b) => a + b, 0), max: gameScores.length * 100})}
+                                </span>
+                                <span className="text-amber-100" data-testid="guess-whole-level">
+                                    {t('guess.wholeLevel', {percent: wholeLevel.percent, level: t(`guess.level.${wholeLevel.id}`)})}
                                 </span>
                                 {position && <GameQuiz gameId={position.game_id}/>}
                                 <button type="button" onClick={() => navigate('/guess')} className="self-start text-amber-300 underline">

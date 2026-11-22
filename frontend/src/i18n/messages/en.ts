@@ -3339,6 +3339,13 @@ export const en = {
         nextMoment: 'Next moment of the game',
         wholeProgress: 'Moment {index} of {total} in this game',
         wholeDone: 'Game finished: {points} of {max} points.',
+        wholeLevel: 'Your result is {percent}% of the masters’ score — {level}',
+        level: {
+            master: 'at the masters’ level',
+            near: 'close to the masters',
+            confident: 'a confident player',
+            learning: 'still learning — keep going',
+        },
         choicesMode: 'Choose from options (for beginners)',
         choicesHint: 'One of these is the master’s move. Calculate before you choose.',
         attempt: 'Attempt {n} of {max}',

@@ -3343,6 +3343,13 @@ export const ru: Messages = {
         nextMoment: 'Следующий момент партии',
         wholeProgress: 'Момент {index} из {total} в этой партии',
         wholeDone: 'Партия пройдена: {points} из {max} очков.',
+        wholeLevel: 'Ваш результат — {percent}% от результата мастеров: {level}',
+        level: {
+            master: 'на уровне мастеров',
+            near: 'близко к мастерам',
+            confident: 'уверенный игрок',
+            learning: 'ещё учитесь — продолжайте',
+        },
         choicesMode: 'Выбор из вариантов (для начинающих)',
         choicesHint: 'Один из этих ходов — ход мастера. Посчитайте, прежде чем выбрать.',
         attempt: 'Попытка {n} из {max}',
