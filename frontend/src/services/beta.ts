@@ -83,6 +83,8 @@ export const betaApi = {
     /** page — только путь страницы: в параметрах адреса бывают одноразовые ссылки (сброс пароля, приглашение). */
     sendFeedback: (body: { message: string; page: string; language: string; screen: string }) =>
         call<{ id: number }>('/feedback', {method: 'POST', body: JSON.stringify(body)}),
+    /** Личный код для приглашения друзей и сколько человек по нему пришло (GET /beta/my-invite). */
+    myInvite: () => call<{ code: string; uses: number; max_uses: number | null; state: InviteState }>('/my-invite'),
     invites: () => call<{ invite_only?: boolean; invites?: Invite[] }>('/invites'),
     createInvite: (body: { note?: string; max_uses?: number; expires_in_days?: number }) =>
         call<Invite>('/invites', {method: 'POST', body: JSON.stringify(body)}),
