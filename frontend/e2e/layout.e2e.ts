@@ -7,6 +7,7 @@
 import {expect, test} from '@playwright/test';
 import type {Page, TestInfo} from '@playwright/test';
 import {API, loginNewPlayer} from './helpers.ts';
+import {languageState} from './languageState.ts';
 
 const LANGUAGES = ['ru', 'en', 'uk'] as const;
 // Телефоны — от самого узкого распространённого (360 px) до крупного (430 px, таск 24.2). Длиннее всего тексты на
@@ -119,7 +120,7 @@ for (const language of LANGUAGES) {
 test('вёрстка: шапка гостя на телефонах 360–480 px', async ({browser}, testInfo) => {
     const failures: string[] = [];
     for (const width of [360, 375, 380, 390, 400, 412, 420, 430, 440, 460, 480]) {
-        const context = await browser.newContext({viewport: {width, height: 800}, locale: 'ru-RU'});
+        const context = await browser.newContext({viewport: {width, height: 800}, locale: 'ru-RU', storageState: languageState('ru')});
         const page = await context.newPage();
         for (const route of ['/about', '/time-machine']) {
             failures.push(...await check(page, testInfo, `гость ${width}`, route));
@@ -141,9 +142,9 @@ const HEADER_WIDTHS = [640, 700, 720, 768, 820, 1024, 1180, 1280, 1340, 1360, 13
 test('вёрстка: шапка гостя на планшетах и ноутбуках 640–1440 px', async ({browser}, testInfo) => {
     test.setTimeout(240_000);
     const failures: string[] = [];
-    for (const locale of ['ru-RU', 'en-US', 'uk-UA']) {
+    for (const [locale, language] of [['ru-RU', 'ru'], ['en-US', 'en'], ['uk-UA', 'uk']] as const) {
         for (const width of HEADER_WIDTHS) {
-            const context = await browser.newContext({viewport: {width, height: 800}, locale});
+            const context = await browser.newContext({viewport: {width, height: 800}, locale, storageState: languageState(language)});
             const page = await context.newPage();
             failures.push(...await check(page, testInfo, `гость ${locale} ${width}`, '/about'));
             await context.close();
