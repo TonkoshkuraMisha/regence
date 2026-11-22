@@ -80,6 +80,12 @@ async def send_feedback(payload: FeedbackIn, request: Request, db: AsyncSession 
     return {"id": item.id}
 
 
+@router.get("/my-invite")
+async def my_invite(db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
+    """Личный код игрока для приглашения друзей: ссылка вида /?invite=КОД; в ответе — сколько человек уже пришло."""
+    return await beta.my_invite(db, user)
+
+
 @router.get("/invites")
 async def invites(db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
     """Модератору: все коды-приглашения (сколько человек пришло по каждому) и закрыта ли сейчас регистрация."""

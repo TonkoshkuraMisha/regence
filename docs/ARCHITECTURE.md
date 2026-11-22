@@ -347,6 +347,8 @@
 
 ### 4.15. Наблюдение за системой и бета
 
+- **Таблица лидеров забегов на время** (`src/services/puzzle_leaders.py`, таблица `puzzle_timed_scores`): недельный зачёт и
+  рекорды (`users.puzzle_best_3/5`), `GET /puzzles/timed/leaders`; пополняется в `puzzles.finish_run`.
 - **Алерты** (`ops/prometheus/alerts.yml`): правила Prometheus по метрикам `observability.py` (в т. ч. длина очередей Celery
   `regence_celery_queue_length`), подключаются при выкладке (`DEPLOY.md`, раздел 6).
 - **Журналы** (`src/core/logging_setup.py`, `src/api/client_errors.py`, `scripts/trace_logs.py`; клиент —
@@ -378,7 +380,9 @@
 
 - `frontend/src/App.tsx` — шапка, меню и все маршруты (их около 60).
 - `components/Chessboard.tsx` — главная доска: партия с человеком, с ботом и свободный анализ; логика вынесена в
-  хуки `components/chessboard/hooks/`. Слева — кнопка «Новая партия» (окно по шагам `chessboard/NewGameDialog.tsx`:
+  хуки `components/chessboard/hooks/`. Партия с ботом переживает перезагрузку: снимок в `localStorage`
+  (`services/botGameSnapshot.ts`, ключ `regence_bot_game`, срок сутки, только для того же игрока) пишется после каждого
+  хода и при закрытии страницы, а при открытии доски партия продолжается с часами за вычетом времени перезагрузки. Слева — кнопка «Новая партия» (окно по шагам `chessboard/NewGameDialog.tsx`:
   соперник, время, старт), идущая партия, соперник-бот, турниры и лобби; справа — вкладки «Ходы / Чат / Наставник /
   Рентген». Доступность (26.3): клетки — кнопки с подписью, ход с клавиатуры (Tab на доску, стрелки, Enter/пробел),
   ходы объявляются словами в живой области и есть «Позиция словами» (`chessboard/BoardSpeech.tsx`); слова —

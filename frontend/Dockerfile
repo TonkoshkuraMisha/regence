@@ -11,7 +11,10 @@ COPY . .
 ARG VITE_SENTRY_DSN=
 ENV VITE_SENTRY_DSN=$VITE_SENTRY_DSN
 # VITE_API_URL / VITE_WS_URL не задаём: в продакшен-сборке API берётся с того же домена.
-RUN npm run build
+# Токен Sentry для загрузки source maps — секрет сборки (BuildKit), а не ARG: так он не остаётся в истории слоёв образа.
+# Секрет не передан (CI, разработка) — файл пуст, карты не создаются и не загружаются (frontend/vite.config.ts).
+RUN --mount=type=secret,id=sentry_auth_token \
+    SENTRY_AUTH_TOKEN="$(cat /run/secrets/sentry_auth_token 2>/dev/null || true)" npm run build
 
 FROM nginx:1.27-alpine
 COPY nginx.conf /etc/nginx/conf.d/default.conf

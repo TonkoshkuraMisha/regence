@@ -42,6 +42,10 @@ TEXT_KINDS = ("content", "held")  # виды заявок на конкретн�
 SUBJECT_KINDS = ("dm", "post", "comment")  # что может стоять в subject до двоеточия: вид текста
 LANGUAGES = ("en", "uk", "ru")  # языки, для которых принимаются предложения по переводу
 CHAT_BAN_HOURS = 24  # на сколько часов решение chat_ban отключает общение
+# Периодический пересмотр флагов (таск 26.4): флаг без решения человека дольше стольких дней снова попадает в очередь
+# модератора — автоматика могла ошибиться, и «вечного» флага без пересмотра быть не должно.
+FLAG_REVIEW_AFTER_DAYS = 60
+PERIODIC_CONTEXT = "periodic"
 RESTORED_TRUST = 100  # доверие после снятия флага: не ниже стартового значения users.trust_factor
 
 
@@ -83,6 +87,34 @@ async def report(db: AsyncSession, reporter: User, target: User, kind: str, reas
     await db.commit()
     await db.refresh(item)
     return item
+
+
+async def periodic_flag_review(db: AsyncSession, now: datetime | None = None) -> int:
+    """
+    Раз в неделю (celery beat): для каждого игрока с флагом is_cheater, у которого нет открытой проверки и последнее
+    решение модератора по флагу (или последняя проверка) старше FLAG_REVIEW_AFTER_DAYS, создаёт заявку cheat_review
+    с пометкой periodic. Возвращает число созданных заявок. Сам флаг не меняется — решает человек.
+    """
+    now = now or _now()
+    border = now - timedelta(days=FLAG_REVIEW_AFTER_DAYS)
+    flagged = (await db.execute(select(User.id).where(User.is_cheater == True))).scalars().all()  # noqa: E712
+    created = 0
+    for user_id in flagged:
+        open_review = await db.scalar(select(Report.id).where(
+            Report.target_id == user_id, Report.kind.in_(("cheat_review", "appeal")), Report.status == "open"))
+        if open_review is not None:
+            continue
+        last = await db.scalar(select(func.max(func.coalesce(Report.resolved_at, Report.created_at))).where(
+            Report.target_id == user_id, Report.kind.in_(("cheat_review", "appeal"))))
+        if last is not None and last.tzinfo is None:
+            last = last.replace(tzinfo=UTC)
+        if last is not None and last > border:
+            continue
+        db.add(Report(kind="cheat_review", reporter_id=None, target_id=user_id, reason="auto", context=PERIODIC_CONTEXT))
+        created += 1
+    if created:
+        await db.commit()
+    return created
 
 
 async def flag_for_review(db: AsyncSession, user: User, game_id: int | None) -> None:

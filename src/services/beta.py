@@ -29,6 +29,10 @@ CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
 # Длина создаваемого кода и наибольшая длина кода, принимаемая на входе (лишнее отбрасывается в normalize_code).
 CODE_LENGTH = 10
 MAX_CODE_LENGTH = 32
+# Личное приглашение игрока («пригласить друга», таск 26.2): пометка кода и предел регистраций по нему — защита от
+# раздачи одного кода тысячам аккаунтов (больше — только код модератора).
+FRIEND_NOTE = "friend"
+FRIEND_MAX_USES = 50
 # Верхние границы лимита использований и срока действия кода; их проверяет схема запроса в src/api/beta.py.
 MAX_USES = 100_000
 MAX_EXPIRES_DAYS = 365
@@ -114,6 +118,23 @@ async def create_invite(db: AsyncSession, moderator: User, note: str | None, max
     await db.commit()
     await db.refresh(invite)
     return _invite_view(invite, now)
+
+
+async def my_invite(db: AsyncSession, user: User) -> dict:
+    """
+    Личный код игрока для приглашения друзей (создаётся при первом обращении, дальше тот же): код, сколько человек
+    зарегистрировалось по нему и состояние. Тот же Invite, что и у модератора — регистрация и счётчик общие.
+    """
+    invite = await db.scalar(select(Invite).where(Invite.created_by == user.id, Invite.note == FRIEND_NOTE))
+    if invite is None:
+        invite = Invite(
+            code="".join(secrets.choice(CODE_ALPHABET) for _ in range(CODE_LENGTH)),
+            note=FRIEND_NOTE, max_uses=FRIEND_MAX_USES, created_by=user.id,
+        )
+        db.add(invite)
+        await db.commit()
+        await db.refresh(invite)
+    return {"code": invite.code, "uses": invite.uses, "max_uses": invite.max_uses, "state": invite_state(invite)}
 
 
 async def list_invites(db: AsyncSession, moderator: User) -> list[dict]:

@@ -15,6 +15,7 @@ configure({asyncUtilTimeout: 5000});
 
 import {setLanguage} from '../i18n';
 import {clearToken} from '../services/authToken';
+import {clearBotGameSnapshot} from '../services/botGameSnapshot';
 
 // Тесты компонентов написаны против русского интерфейса: язык задаётся явно, а не берётся из jsdom
 // (там en-US). Отдельные тесты переключают язык сами — тогда проверяется и английский, и украинский.
@@ -24,6 +25,7 @@ beforeEach(() => {
 
 afterEach(() => {
     cleanup();
+    clearBotGameSnapshot();  // снимок партии с ботом (пишется и при размонтировании) не должен «продолжить» чужой тест
     clearToken();  // токен входа живёт в памяти модуля (таск 17.5) — между тестами не переносится
 });
 

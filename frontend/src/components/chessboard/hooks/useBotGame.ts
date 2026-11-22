@@ -22,6 +22,8 @@ import type {BotOpponentId, HistoricalBotId, HistoricalBotProfile} from '../../.
 import {archetypeKey, customBotProfile} from '../../../config/archetypes';
 import type {CustomOpponent} from '../../../config/archetypes';
 import {cloneChessInstance, customStartFen} from '../boardUtils';
+import {clocksAfterGap} from '../../../services/botGameSnapshot';
+import type {BotGameSnapshot} from '../../../services/botGameSnapshot';
 import type {PendingPromotion} from '../types';
 import {readApiError} from '../../../services/apiErrors';
 import {hasMessage, t, uiMessage} from '../../../i18n';
@@ -205,6 +207,10 @@ export interface UseBotGameResult {
     exitBotGame: () => void;
     /** Архетип текущего (или последнего) соперника из мастерской, если это архетип без изменений. */
     customArchetypeId: () => string | null;
+    /** Продолжает партию из снимка (после перезагрузки страницы): позиция, часы и признаки — как были. */
+    resumeBotGame: (snapshot: BotGameSnapshot) => void;
+    /** Признаки идущей партии для снимка: лестница, номер партии турнира, соперник из мастерской. */
+    botGameInfo: () => { ladder: boolean; tournamentGameId: number | null; custom: CustomOpponent | null };
 }
 
 /**
@@ -335,6 +341,54 @@ export function useBotGame({
         }
     }, [effectiveWhiteBaseMinutes, effectiveIncSeconds, setGameOverResult, setDrawOfferStatus, isAssisted]);
 
+    // Общее начало партии с ботом — новой или продолженной из снимка: сбрасывает состояние доски и ставит позицию, часы,
+    // цвет игрока и подписи сторон. Признаки лестницы, турнира и форы выставляет вызывающий.
+    const enterBotGame = useCallback((
+        botId: BotOpponentId, chosenColor: 'white' | 'black', freshGame: Chess, whiteStartMs: number, blackStartMs: number,
+    ) => {
+        const botInfo = botProfileFor(botId);
+
+        botGameSavedRef.current = false;
+        onNewGame?.();
+        resetLowTimeWarning();
+        setSavedBotGameId(null);
+        gameIdRef.current = null;
+        setGameId(null);
+        if (botId !== 'custom') setSelectedBotId(botId);
+        setActiveBot(botId);
+        myColorRef.current = chosenColor;
+        setMyColor(chosenColor);
+        setIsManualFlip(false);
+        setGame(freshGame);
+        setHistory(freshGame.history({verbose: true}));
+        setViewIndex(-1);
+        setSelectedSquare(null);
+        setPendingPromotion(null);
+        clearPremove();
+        setGameOverResult(null);
+        setRatingInfo(null);
+        setDrawOfferStatus(null);
+        setRematchStatus('none');
+        setWhiteTimeMs(whiteStartMs);
+        setBlackTimeMs(blackStartMs);
+        moveStartTime.current = Date.now();
+
+        if (chosenColor === 'white') {
+            setWhitePlayer({username: currentUsername, rating: String(currentUserRating)});
+            setBlackPlayer({username: botInfo.playerLabel, rating: String(botInfo.rating)});
+        } else {
+            setWhitePlayer({username: botInfo.playerLabel, rating: String(botInfo.rating)});
+            setBlackPlayer({username: currentUsername, rating: String(currentUserRating)});
+        }
+
+        setBotComment(null);
+    }, [
+        resetLowTimeWarning, gameIdRef, setGameId, setActiveBot, myColorRef, setMyColor, setIsManualFlip, setGame,
+        setHistory, setViewIndex, setSelectedSquare, setPendingPromotion, clearPremove, setGameOverResult,
+        setRatingInfo, setDrawOfferStatus, setRematchStatus, setWhiteTimeMs, setBlackTimeMs, moveStartTime,
+        currentUsername, currentUserRating, setWhitePlayer, setBlackPlayer, botProfileFor, onNewGame,
+    ]);
+
     const startHistoricalBotGame = useCallback((
         botId: BotOpponentId,
         colorPref: 'white' | 'black' | 'random' = 'random',
@@ -368,51 +422,32 @@ export function useBotGame({
         setHourglass?.(odds?.kind === 'hourglass');
         const firstFen = startFen ?? oddsStart;
         const freshGame = firstFen ? new Chess(firstFen) : new Chess();
-        const botInfo = botProfileFor(botId);
-
-        botGameSavedRef.current = false;
-        onNewGame?.();
-        resetLowTimeWarning();
-        setSavedBotGameId(null);
-        gameIdRef.current = null;
-        setGameId(null);
-        if (botId !== 'custom') setSelectedBotId(botId);
-        setActiveBot(botId);
-        myColorRef.current = chosenColor;
-        setMyColor(chosenColor);
-        setIsManualFlip(false);
-        setGame(freshGame);
-        setHistory([]);
-        setViewIndex(-1);
-        setSelectedSquare(null);
-        setPendingPromotion(null);
-        clearPremove();
-        setGameOverResult(null);
-        setRatingInfo(null);
-        setDrawOfferStatus(null);
-        setRematchStatus('none');
-        setWhiteTimeMs(whiteStartMs);
-        setBlackTimeMs(blackStartMs);
-        moveStartTime.current = Date.now();
-
-        if (chosenColor === 'white') {
-            setWhitePlayer({username: currentUsername, rating: String(currentUserRating)});
-            setBlackPlayer({username: botInfo.playerLabel, rating: String(botInfo.rating)});
-        } else {
-            setWhitePlayer({username: botInfo.playerLabel, rating: String(botInfo.rating)});
-            setBlackPlayer({username: currentUsername, rating: String(currentUserRating)});
-        }
-
-        setBotComment(null);
+        enterBotGame(botId, chosenColor, freshGame, whiteStartMs, blackStartMs);
         playAudio('start');
     }, [
-        isSearching, setIsSearching, effectiveWhiteBaseMinutes, effectiveBlackBaseMinutes, resetLowTimeWarning,
-        gameIdRef, setGameId, setActiveBot, myColorRef, setMyColor, setIsManualFlip, setGame,
-        setHistory, setViewIndex, setSelectedSquare, setPendingPromotion, clearPremove, setGameOverResult,
-        setRatingInfo, setDrawOfferStatus, setRematchStatus, setWhiteTimeMs, setBlackTimeMs, moveStartTime,
-        currentUsername, currentUserRating, setWhitePlayer, setBlackPlayer, playAudio, botProfileFor, onNewGame,
+        isSearching, setIsSearching, effectiveWhiteBaseMinutes, effectiveBlackBaseMinutes, enterBotGame, playAudio,
         setHourglass,
     ]);
+
+    // Продолжение партии из снимка (services/botGameSnapshot.ts): тот же вход в партию, но позиция, часы и признаки
+    // лестницы и турнира берутся из снимка; сервер о старте не уведомляется (партия для него уже идёт). Звука старта нет.
+    const resumeBotGame = useCallback((snapshot: BotGameSnapshot) => {
+        const restored = new Chess();
+        try {
+            restored.loadPgn(snapshot.pgn);
+        } catch {
+            return;
+        }
+        ladderRef.current = snapshot.ladder;
+        setIsLadderGame(snapshot.ladder);
+        tournamentGameRef.current = snapshot.tournamentGameId;
+        setIsTournamentGame(Boolean(snapshot.tournamentGameId));
+        setSavedTournamentId(null);
+        customOpponentRef.current = snapshot.botId === 'custom' ? snapshot.custom : null;
+        setHourglass?.(snapshot.odds?.kind === 'hourglass');
+        const clocks = clocksAfterGap(snapshot, restored.turn() === 'w');
+        enterBotGame(snapshot.botId as BotOpponentId, snapshot.color, restored, clocks.white, clocks.black);
+    }, [enterBotGame, setHourglass]);
 
     const startCustomBotGame = useCallback((
         opponent: CustomOpponent,
@@ -578,6 +613,9 @@ export function useBotGame({
     }, [setActiveBot]);
 
     const customArchetypeId = useCallback(() => customOpponentRef.current?.archetypeId ?? null, []);
+    const botGameInfo = useCallback(() => ({
+        ladder: ladderRef.current, tournamentGameId: tournamentGameRef.current, custom: customOpponentRef.current,
+    }), []);
 
     const offerDrawToBot = useCallback(async () => {
         if (!activeBot || gameOverResult) return;
@@ -626,5 +664,6 @@ export function useBotGame({
         selectedBotId, setSelectedBotId, botComment, isBotThinking, savedBotGameId,
         startHistoricalBotGame, startCustomBotGame, botProfileFor, botNameParam, saveBotGameToDatabase, exitBotGame,
         isLadderGame, ladderOutcome, customArchetypeId, isTournamentGame, savedTournamentId, offerDrawToBot,
+        resumeBotGame, botGameInfo,
     };
 }
