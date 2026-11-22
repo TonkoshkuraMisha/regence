@@ -43,11 +43,11 @@ export default defineConfig({
             exclude: ['src/**/__tests__/**', 'src/test/**', 'src/main.tsx', 'src/**/*.d.ts'],
             reporter: ['text-summary', 'text'],
             thresholds: {
-                // Таск 17.6 (15.11.2026): покрытие 94/85/84/94 — пороги с запасом в 2–3 пункта, чтобы не сползало.
-                statements: 92,
-                branches: 82,
-                functions: 80,
-                lines: 92,
+                // Замер 22.11.2026: строки и операторы ~98,8%, ветки ~90,6%, функции ~92,6% — пороги с запасом в 2–5 пунктов.
+                statements: 96,
+                branches: 87,
+                functions: 89,
+                lines: 96,
             },
         },
     },
