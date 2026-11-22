@@ -98,14 +98,14 @@ async def collection_games(collection_id: int = Path(..., ge=1), offset: int = Q
 async def search(player: str = Query("", max_length=60), eco: str = Query("", max_length=3),
                  year_from: int | None = Query(None, ge=1400, le=2200), year_to: int | None = Query(None, ge=1400, le=2200),
                  result: str = Query("", max_length=7), max_plies: int | None = Query(None, ge=1, le=1000),
-                 structure: str = Query("", max_length=20), miniature: bool = Query(False),
+                 structure: str = Query("", max_length=20), miniature: bool = Query(False), beautiful: bool = Query(False),
                  moves: str = Query("", max_length=400, pattern=r"^[a-h1-8qrbn ]*$"),
                  offset: int = Query(0, ge=0), limit: int = Query(PAGE, ge=1, le=200),
                  db: AsyncSession = Depends(get_db), user: User | None = Depends(optional_user)):
     """
     Поиск по видимым партиям: игрок (часть имени), код дебюта (начало), годы, результат, длина, структура; moves —
     начало партии в UCI через пробел (узел репертуара, 27.10; без перестановок); miniature — метка «миниатюра» (27.5):
-    решающая партия не длиннее miniatures.MAX_PLIES полуходов (25 ходов).
+    решающая партия не длиннее miniatures.MAX_PLIES полуходов (25 ходов); beautiful — метка «красивая» (beauty.py).
     """
     conditions = [_visible_game(user)]
     if player.strip():
@@ -126,6 +126,8 @@ async def search(player: str = Query("", max_length=60), eco: str = Query("", ma
     if miniature:
         conditions.append(LibraryGame.plies <= miniatures_service.MAX_PLIES)
         conditions.append(LibraryGame.result.in_(DECISIVE))
+    if beautiful:
+        conditions.append(LibraryGame.beautiful.is_(True))
     prefix = " ".join(moves.split())
     if prefix:
         conditions.append((LibraryGame.moves == prefix) | LibraryGame.moves.startswith(prefix + " ", autoescape=True))

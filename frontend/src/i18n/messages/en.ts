@@ -3150,6 +3150,7 @@ export const en = {
         },
         structure: 'Pawn structure',
         miniatures: 'Miniatures (decisive, up to 25 moves)',
+        beautiful: 'Beautiful (sacrifice, then mate)',
         title: 'Game library',
         intro: 'Collections of master games, model games for pawn structures and opening lines, and selected beautiful games.',
         collections: 'Collections',

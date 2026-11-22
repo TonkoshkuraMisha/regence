@@ -70,6 +70,8 @@ class LibraryGame(Base):
     structure: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
     # Партия закончилась матом на доске (миниатюры 27.9 выбираются по этой метке).
     mate_finish: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", index=True)
+    # Жертва материала и мат победителя (src/services/beauty.py, таск 27.5).
+    beautiful: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", index=True)
     moves: Mapped[str] = mapped_column(Text, default="", server_default="")  # UCI через пробел
     # Партия разложена в индекс позиций библиотеки (position_library_games, src/services/position_index.py).
     positions_indexed: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
