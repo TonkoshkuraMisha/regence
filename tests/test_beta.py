@@ -280,3 +280,14 @@ async def test_empty_digest(db_session):
     until = datetime(2026, 11, 16, tzinfo=UTC)
     text = render(await beta.build_digest(db_session, until - timedelta(days=7), until))
     assert "* Сообщений за неделю не было." in text
+
+
+def test_personal_friend_invite_is_stable_and_counts_registrations(client, token_user_1):
+    """«Пригласить друга» (26.2): личный код создаётся один раз, регистрация по нему увеличивает счётчик."""
+    assert client.get(f"{API}/my-invite").status_code == 401
+    first = client.get(f"{API}/my-invite", headers=auth(token_user_1)).json()
+    assert len(first["code"]) == beta.CODE_LENGTH and first["uses"] == 0
+    assert first["max_uses"] == beta.FRIEND_MAX_USES and first["state"] == "active"
+    assert client.get(f"{API}/my-invite", headers=auth(token_user_1)).json()["code"] == first["code"]
+    assert register(client, "Friend1", first["code"]).status_code == 201
+    assert client.get(f"{API}/my-invite", headers=auth(token_user_1)).json()["uses"] == 1

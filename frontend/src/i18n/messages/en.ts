@@ -1199,6 +1199,13 @@ export const en = {
         gamesPlayed: 'Games played',
         winRate: 'Win rate',
         winDrawLoss: 'WIN / DRAW / LOSS',
+        invite: {
+            title: 'Invite a friend',
+            hint: 'Send this link to a friend: the registration form opens with your invitation already filled in.',
+            copy: 'Copy',
+            copied: 'Copied',
+            uses: 'Friends who joined with your link: {count}',
+        },
         ratingTrend: 'Rating trend — {category}',
         notEnoughGames: 'Not enough rated games in this category for a chart',
         gameHistory: 'Game history',
