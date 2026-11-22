@@ -6,7 +6,7 @@
 // выполняет Chessboard (WebSocket для партии с человеком, хук useBotGame для бота).
 
 import {useState} from 'react';
-import {Flag, Handshake, X, RefreshCw, RotateCcw, Undo2, Eye, Download, Grid3x3, Zap} from 'lucide-react';
+import {Flag, Handshake, X, RefreshCw, RotateCcw, Undo2, Eye, Download, Grid3x3, Zap, Pause, Play} from 'lucide-react';
 import type {NavigateFunction} from 'react-router-dom';
 import {API_BASE_URL} from '../../config/api';
 import {useI18n} from '../../i18n';
@@ -28,6 +28,9 @@ export interface GameControlsPanelProps {
     blackPlayer: { username: string; rating: string };
     navigate: NavigateFunction;
     onAbortGame: () => void;
+    /** Пауза партии с ботом (только товарищеской): переключатель; undefined — паузы нет (лестница, турнир, партия окончена). */
+    onPauseToggle?: () => void;
+    paused?: boolean;
     /** Партия арены до своего первого хода (33.3): «берсерк» — половина времени без добавки ради лишнего очка. */
     onBerserk?: () => void;
     onResign: () => void;
@@ -57,7 +60,7 @@ export function GameControlsPanel({
     mode, gameId, savedBotGameId, historyLength, gameOverResult, rematchStatus, isBotThinking,
     whitePlayer, blackPlayer, navigate, onAbortGame, onResign, onOfferDraw, onAcceptRematch,
     onDeclineRematch, onOfferRematch, onResetSandbox, onUndoSandboxMove, undoLocked = false, hasCustomPosition = false, onLoadFen,
-    hideRematch = false, onBerserk,
+    hideRematch = false, onBerserk, onPauseToggle, paused = false,
 }: GameControlsPanelProps) {
     const {t} = useI18n();
     const [fenInput, setFenInput] = useState('');
@@ -221,6 +224,16 @@ export function GameControlsPanel({
                         >
                             <Undo2 size={15}/> {t('controls.undoMove')}
                         </button>
+                        {!gameOverResult && onPauseToggle && (
+                            <button
+                                type="button"
+                                onClick={onPauseToggle}
+                                data-testid="bot-pause"
+                                className="col-span-2 flex items-center justify-center gap-1.5 px-3 py-2 bg-acacia-dark text-boxwood-light text-xs sm:text-sm font-bold rounded-md hover:bg-black/50 transition shadow border border-amber-700/30 cursor-pointer"
+                            >
+                                {paused ? <Play size={15}/> : <Pause size={15}/>} {t(paused ? 'controls.resume' : 'controls.pause')}
+                            </button>
+                        )}
                         {!gameOverResult ? (
                             <button
                                 type="button"

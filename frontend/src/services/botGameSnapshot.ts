@@ -45,6 +45,8 @@ export interface BotGameSnapshot {
     /** Партия турнира: номер партии расписания и турнира — иначе null. */
     tournamentGameId: number | null;
     tournamentId: number | null;
+    /** Партия стояла на паузе: часы при продолжении не уменьшаются на время перезагрузки (снимки без поля — не на паузе). */
+    paused?: boolean;
 }
 
 /** Сохраняет снимок; хранилище недоступно — молча (продолжение партии — удобство, не гарантия). */
@@ -106,12 +108,12 @@ export function loadBotGameSnapshot(username: string, now: number = Date.now()):
 
 /**
  * Часы после продолжения: у стороны, чей ход, вычитается время, прошедшее с записи снимка (перезагрузка часы не
- * останавливает); не меньше нуля — упавший флаг обработает обычная проверка времени.
+ * останавливает, но партия на паузе их не уменьшает); не меньше нуля — упавший флаг обработает обычная проверка времени.
  */
 export function clocksAfterGap(
-    snapshot: Pick<BotGameSnapshot, 'whiteTimeMs' | 'blackTimeMs' | 'savedAt'>, whiteToMove: boolean, now: number = Date.now(),
+    snapshot: Pick<BotGameSnapshot, 'whiteTimeMs' | 'blackTimeMs' | 'savedAt'> & { paused?: boolean }, whiteToMove: boolean, now: number = Date.now(),
 ): { white: number; black: number } {
-    const gap = Math.max(0, now - snapshot.savedAt);
+    const gap = snapshot.paused ? 0 : Math.max(0, now - snapshot.savedAt);
     return {
         white: whiteToMove ? Math.max(0, snapshot.whiteTimeMs - gap) : snapshot.whiteTimeMs,
         black: whiteToMove ? snapshot.blackTimeMs : Math.max(0, snapshot.blackTimeMs - gap),
