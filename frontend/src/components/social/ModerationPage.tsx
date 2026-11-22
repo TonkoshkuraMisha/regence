@@ -13,6 +13,7 @@ import type {UiMessage} from '../../i18n';
 import {errorMessage} from '../../services/apiErrors';
 import {moderationApi} from '../../services/moderation';
 import {FeedbackPanel, InvitesPanel} from '../beta/BetaAdmin';
+import {ViolationsSummary} from './ViolationsSummary';
 import type {ModerationAction, ModerationMe, QueueItem, ReportReason} from '../../services/moderation';
 import {MODERATION_TEXT_MAX} from '../../config/textLimits';
 
@@ -140,6 +141,7 @@ export function ModerationPage() {
                     ))}
                 </section>
             )}
+            {me?.is_moderator && <ViolationsSummary/>}
             {me?.is_moderator && <FeedbackPanel/>}
             {me?.is_moderator && <InvitesPanel/>}
             {me && !me.is_moderator && !me.is_cheater &&<p className="text-sm text-boxwood/70">{t('moderation.nothing')}</p>}

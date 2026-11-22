@@ -349,6 +349,7 @@
 
 - **Таблица лидеров забегов на время** (`src/services/puzzle_leaders.py`, таблица `puzzle_timed_scores`): недельный зачёт и
   рекорды (`users.puzzle_best_3/5`), `GET /puzzles/timed/leaders`; пополняется в `puzzles.finish_run`.
+- **Сводка по нарушениям** (`src/services/moderation_report.py`, `GET /moderation/summary`, только модератор): заявки за 30 суток по видам и решениям, очередь, нарушители, частые жалобы; клиент — `components/social/ViolationsSummary.tsx`.
 - **Алерты** (`ops/prometheus/alerts.yml`): правила Prometheus по метрикам `observability.py` (в т. ч. длина очередей Celery
   `regence_celery_queue_length`), подключаются при выкладке (`DEPLOY.md`, раздел 6).
 - **Журналы** (`src/core/logging_setup.py`, `src/api/client_errors.py`, `scripts/trace_logs.py`; клиент —

@@ -12,7 +12,7 @@ from src.core.errors import ApiError, DomainError
 from src.db.session import get_db
 from src.models.moderation import Report
 from src.models.user import User
-from src.services import moderation
+from src.services import moderation, moderation_report
 
 router = APIRouter(dependencies=[Depends(rate_limit("moderation", "RATE_LIMIT_PUZZLES"))])
 
@@ -118,6 +118,13 @@ async def create_appeal(payload: AppealIn, db: AsyncSession = Depends(get_db), u
 async def review_queue(db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
     _moderator(user)
     return {"reports": await moderation.queue(db)}
+
+
+@router.get("/summary")
+async def violations_summary(db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
+    """Сводка по нарушениям за 30 суток (src/services/moderation_report.py) — только модератору."""
+    _moderator(user)
+    return await moderation_report.summary(db)
 
 
 @router.post("/reports/{report_id}/resolve")

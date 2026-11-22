@@ -3296,6 +3296,13 @@ export const en = {
         reasons: {cheating: 'Cheating', abuse: 'Abuse', spam: 'Spam', other: 'Other'},
         kinds: {player: 'Player report', message: 'Message report', cheat_review: 'Fair-play flag review', appeal: 'Appeal', translation: 'Text correction', content: 'Text report', held: 'Held by the filter'},
         actions: {dismiss: 'Dismiss', warn: 'Warn', chat_ban: 'Disable chat for a day', mark_cheater: 'Confirm cheating', clear_cheater: 'Clear the flag', accept: 'Accept', hide: 'Remove the text', release: 'Release'},
+        summary: {
+            title: 'Violations over the last {days} days',
+            totals: 'Reports received: {opened}, resolved: {resolved}, open now: {open}',
+            oldest: 'Oldest open report: {hours} h',
+            cheaters: 'Players flagged for cheating: {n}',
+            top: 'Most reported:',
+        },
         from: 'from {name}',
         targetStats: 'reports on the player: {n} · trust {trust}',
         openGame: 'Open the game',

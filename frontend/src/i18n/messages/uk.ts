@@ -3300,6 +3300,13 @@ export const uk: Messages = {
         reasons: {cheating: 'Нечесна гра', abuse: 'Образи', spam: 'Спам', other: 'Інше'},
         kinds: {player: 'Скарга на гравця', message: 'Скарга на повідомлення', cheat_review: 'Перевірка позначки нечесної гри', appeal: 'Апеляція', translation: 'Пропозиція виправити текст', content: 'Скарга на текст', held: 'Притримано фільтром'},
         actions: {dismiss: 'Відхилити', warn: 'Попередити', chat_ban: 'Вимкнути чат на добу', mark_cheater: 'Підтвердити нечесну гру', clear_cheater: 'Зняти позначку', accept: 'Прийняти', hide: 'Прибрати текст', release: 'Випустити'},
+        summary: {
+            title: 'Порушення за останні {days} діб',
+            totals: 'Надійшло заявок: {opened}, закрито: {resolved}, відкрито зараз: {open}',
+            oldest: 'Найстаріша відкрита заявка: {hours} год',
+            cheaters: 'Позначено порушниками: {n}',
+            top: 'Найчастіше скаржилися на:',
+        },
         from: 'від {name}',
         targetStats: 'скарг на гравця: {n} · довіра {trust}',
         openGame: 'Відкрити партію',

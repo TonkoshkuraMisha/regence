@@ -3300,6 +3300,13 @@ export const ru: Messages = {
         reasons: {cheating: 'Нечестная игра', abuse: 'Оскорбления', spam: 'Спам', other: 'Другое'},
         kinds: {player: 'Жалоба на игрока', message: 'Жалоба на сообщение', cheat_review: 'Проверка флага нечестной игры', appeal: 'Апелляция', translation: 'Предложение исправить текст', content: 'Жалоба на текст', held: 'Придержано фильтром'},
         actions: {dismiss: 'Отклонить', warn: 'Предупредить', chat_ban: 'Отключить чат на сутки', mark_cheater: 'Подтвердить нечестную игру', clear_cheater: 'Снять флаг', accept: 'Принять', hide: 'Убрать текст', release: 'Выпустить'},
+        summary: {
+            title: 'Нарушения за последние {days} суток',
+            totals: 'Поступило заявок: {opened}, закрыто: {resolved}, открыто сейчас: {open}',
+            oldest: 'Самая старая открытая заявка: {hours} ч',
+            cheaters: 'Помечено нарушителями: {n}',
+            top: 'Чаще всего жаловались на:',
+        },
         from: 'от {name}',
         targetStats: 'жалоб на игрока: {n} · доверие {trust}',
         openGame: 'Открыть партию',
