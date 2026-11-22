@@ -22,3 +22,15 @@ export interface WorkoutPlan {
 
 /** Загружает план на сегодня; отказ сервера — UiError с текстом по коду ошибки. */
 export const fetchWorkoutPlan = () => apiRequest<WorkoutPlan>('/workout');
+
+/** Итоги последних 7 суток (GET /workout/week, src/services/weekly_summary.py) и совет кодом (weekly.advice.<код>). */
+export interface WeekSummary {
+    since: string;
+    games: { total: number; wins: number; draws: number; losses: number; rating_delta: number };
+    puzzles: { attempts: number; solved: number };
+    days_active: number;
+    streak: number;
+    advice: 'comeback' | 'try_puzzles' | 'play_games' | 'review_losses' | 'keep_going';
+}
+
+export const fetchWeekSummary = () => apiRequest<WeekSummary>('/workout/week');

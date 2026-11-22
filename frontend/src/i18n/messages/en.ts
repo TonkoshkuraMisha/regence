@@ -2849,6 +2849,19 @@ export const en = {
         exam: 'Exam: {level}, tests {passed} of {of}',
         examNone: 'Take the diagnostic exam',
     },
+    weekly: {
+        title: 'My week',
+        games: 'Games over the last 7 days: {total} ({wins} won, {draws} drawn, {losses} lost)',
+        puzzles: 'Puzzles: {solved} solved of {attempts}',
+        days: 'Active days: {days} of 7 · warm-up streak: {streak}',
+        advice: {
+            comeback: 'A quiet week. Start small: today’s warm-up takes ten minutes.',
+            try_puzzles: 'You played but did not solve puzzles. Five puzzles a day sharpen the tactics behind your games.',
+            play_games: 'You trained but did not play. Try a game to use what you practised.',
+            review_losses: 'Many losses this week. Open the analysis of your last defeats: the same mistakes usually repeat.',
+            keep_going: 'A steady week. Keep this rhythm.',
+        },
+    },
     workout: {
         title: 'Daily workout',
         intro: '10–15 minutes a day: five puzzles on your weakest themes, a vision or calculation trainer, opening review and one of your own mistakes.',

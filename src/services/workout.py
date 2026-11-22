@@ -35,7 +35,7 @@ TRAINERS = ("coord_find", "coord_name", "blind_where", "calc_checks", "calc_exch
 STREAK_DAYS = 60
 
 
-def _day(moment: datetime) -> date:
+def day_of(moment: datetime) -> date:
     """Календарный день (UTC); момент без часового пояса считается UTC."""
     return (moment if moment.tzinfo else moment.replace(tzinfo=UTC)).astimezone(UTC).date()
 
@@ -43,12 +43,12 @@ def _day(moment: datetime) -> date:
 async def _days(db: AsyncSession, column, user_column, user_id: int, since: datetime) -> Counter[date]:
     """Сколько записей (попыток задач или тренажёров) у игрока в каждый день начиная с since."""
     rows = (await db.execute(select(column).where(user_column == user_id, column >= since))).scalars().all()
-    return Counter(_day(moment) for moment in rows if moment is not None)
+    return Counter(day_of(moment) for moment in rows if moment is not None)
 
 
 async def streak_status(db: AsyncSession, user_id: int, now: datetime) -> tuple[bool, int]:
     """Выполнена ли разминка сегодня и длина серии (дни подряд, включая сегодня, если выполнена)."""
-    today = _day(now)
+    today = day_of(now)
     start = datetime(today.year, today.month, today.day, tzinfo=UTC)
     since = start - timedelta(days=STREAK_DAYS)
     puzzle_days = await _days(db, PuzzleAttempt.created_at, PuzzleAttempt.user_id, user_id, since)
@@ -70,7 +70,7 @@ async def plan(db: AsyncSession, user: User, now: datetime) -> dict:
     План разминки на сегодня: шаги (задачи по слабым темам, тренажёр, повторение дебютов, своя ошибка), что уже
     выполнено и сколько дней подряд разминка сделана.
     """
-    today = _day(now)
+    today = day_of(now)
     start = datetime(today.year, today.month, today.day, tzinfo=UTC)
     since = start - timedelta(days=STREAK_DAYS)
     puzzle_days = await _days(db, PuzzleAttempt.created_at, PuzzleAttempt.user_id, user.id, since)
@@ -132,7 +132,7 @@ async def send_reminders(db: AsyncSession, now: datetime) -> int:
     from src.models.social import Notification
     from src.services import notifications
 
-    today = _day(now)
+    today = day_of(now)
     start = datetime(today.year, today.month, today.day, tzinfo=UTC)
     recent = start - timedelta(days=1)
     active = set((await db.execute(select(PuzzleAttempt.user_id).where(PuzzleAttempt.created_at >= recent))).scalars())

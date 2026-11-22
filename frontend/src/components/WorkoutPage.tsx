@@ -10,6 +10,7 @@ import type {UiMessage} from '../i18n';
 import {getToken} from '../services/authToken';
 import {errorMessage} from '../services/apiErrors';
 import {fetchWorkoutPlan} from '../services/workout';
+import {WeekSummaryCard} from './WeekSummaryCard';
 import type {WorkoutPlan, WorkoutStep} from '../services/workout';
 
 // Шаг выполнен: для задач — набрана цель, для остальных — флаг от сервера.
@@ -111,6 +112,7 @@ export function WorkoutPage() {
                     </ol>
                 </>
             )}
+            {logged && <WeekSummaryCard/>}
         </div>
     );
 }

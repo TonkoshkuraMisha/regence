@@ -347,6 +347,8 @@
 
 ### 4.15. Наблюдение за системой и бета
 
+- **«Моя неделя»** (`src/services/weekly_summary.py`, `GET /workout/week`): итоги 7 суток по партиям, задачам и дням
+  активности и совет кодом; клиент — `components/WeekSummaryCard.tsx` под планом разминки.
 - **Таблица лидеров забегов на время** (`src/services/puzzle_leaders.py`, таблица `puzzle_timed_scores`): недельный зачёт и
   рекорды (`users.puzzle_best_3/5`), `GET /puzzles/timed/leaders`; пополняется в `puzzles.finish_run`.
 - **Алерты** (`ops/prometheus/alerts.yml`): правила Prometheus по метрикам `observability.py` (в т. ч. длина очередей Celery
