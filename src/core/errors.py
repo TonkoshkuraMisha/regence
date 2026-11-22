@@ -148,6 +148,7 @@ ERROR_MESSAGES: dict[str, str] = {
     "puzzle_not_active": "This puzzle is no longer active: open the next one",
     "no_puzzles_available": "No suitable puzzles right now",
     "unknown_theme": "Unknown theme: {theme}",
+    "invalid_timed_leaders": "Unknown timed-run length or leaderboard scope",
     "invalid_timed_minutes": "A timed run lasts 3 or 5 minutes",
     "timed_run_not_active": "No timed run in progress: start a new one",
     "timed_run_over": "The timed run is over",
