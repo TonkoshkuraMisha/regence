@@ -10,7 +10,7 @@ import json
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from conftest import TestSessionLocal
+from tests.conftest import TestSessionLocal
 from fastapi import WebSocketDisconnect
 
 from src.api import websockets as ws_module
