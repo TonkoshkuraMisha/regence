@@ -6,7 +6,7 @@
 import {Fragment, useMemo, useSyncExternalStore, type ReactNode} from 'react';
 import {enUS, ru as ruDateLocale, uk as ukDateLocale, type Locale} from 'date-fns/locale';
 import {
-    detectLanguage,
+    DEFAULT_LANGUAGE,
     interpolate,
     interpolateParts,
     isLanguage,
@@ -44,12 +44,8 @@ function readStoredLanguage(): Language | null {
     }
 }
 
-function browserLanguages(): readonly string[] {
-    if (typeof navigator === 'undefined') return [];
-    return navigator.languages?.length ? navigator.languages : [navigator.language ?? ''];
-}
-
-let currentLanguage: Language = readStoredLanguage() ?? detectLanguage(browserLanguages());
+// Язык по умолчанию — английский (решение владельца 22.11): язык браузера не угадываем, игрок выбирает сам, выбор запоминается.
+let currentLanguage: Language = readStoredLanguage() ?? DEFAULT_LANGUAGE;
 const listeners = new Set<() => void>();
 
 function applyDocumentLanguage(language: Language) {

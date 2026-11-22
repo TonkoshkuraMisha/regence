@@ -99,6 +99,10 @@
    (и `cf.response.1xxx_code`/521–524 для упавшего сервера), ответ — HTML из этого файла, код ответа 503. Без Pro
    игрок при сбое видит стандартную страницу Cloudflare; Worker на весь трафик ради этого не ставим (лишний узел для
    WebSocket партий).
+9. **Страница ожидания до запуска.** Сейчас `regence.club` и `www` отдаёт Worker `regence-landing` (`ops/landing`, деплой —
+   `cf deploy` в этой папке; страница английская, `?lang=uk` и `?lang=ru` — другие языки). При выкладке сайта
+   Worker отвязать от доменов (Workers & Pages → regence-landing → Domains) и только потом добавлять A-запись `@`,
+   иначе он продолжит перехватывать трафик.
 
 В `.env` сервера: `PUBLIC_BASE_URL=https://regence.club`; `COOKIE_SECURE` при `ENVIRONMENT=production` включается сам.
 
