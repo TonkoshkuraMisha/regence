@@ -93,12 +93,16 @@
    Mode. Для защиты входа и регистрации — Rate Limiting rules на `/api/v1/auth/*` вместо Bot Fight Mode; DNSSEC —
    включить в Cloudflare и добавить DS-запись в GoDaddy (DNS → DNSSEC). Токены Cloudflare в репозиторий не кладём:
    если нужен доступ к API, отдельный токен только Zone → DNS Edit для `regence.club`, в секретах сервера.
-8. **Страница «Технические работы» (502/503/504).** Готовый файл — `frontend/public/maintenance.html` (самодостаточный, три
-   языка, свой рисунок). На тарифе Free Cloudflare не даёт подставлять свои страницы ошибок («Custom Errors» — с
+8. **Страница «Технические работы» (502/503/504).** Готовый файл — `frontend/public/maintenance.html` (самодостаточный, только
+   английский, свой рисунок). На тарифе Free Cloudflare не даёт подставлять свои страницы ошибок («Custom Errors» — с
    тарифа Pro). После перехода на Pro: Rules → Custom Error Rules → правило на `http.response.code in {502 503 504}`
    (и `cf.response.1xxx_code`/521–524 для упавшего сервера), ответ — HTML из этого файла, код ответа 503. Без Pro
    игрок при сбое видит стандартную страницу Cloudflare; Worker на весь трафик ради этого не ставим (лишний узел для
    WebSocket партий).
+9. **Страница ожидания до запуска.** Сейчас `regence.club` и `www` отдаёт Worker `regence-landing` (`ops/landing`, деплой —
+   `cf deploy` в этой папке; страница только на английском). При выкладке сайта
+   Worker отвязать от доменов (Workers & Pages → regence-landing → Domains) и только потом добавлять A-запись `@`,
+   иначе он продолжит перехватывать трафик.
 
 В `.env` сервера: `PUBLIC_BASE_URL=https://regence.club`; `COOKIE_SECURE` при `ENVIRONMENT=production` включается сам.
 

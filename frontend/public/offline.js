@@ -1,5 +1,5 @@
 // --- FILE: frontend/public/offline.js ---
-// Офлайн-страница (таск 24.2): язык — как выбран на сайте (regence_language), иначе по языку браузера. Каталоги
+// Офлайн-страница (таск 24.2): язык — как выбран на сайте (regence_language), иначе английский. Каталоги
 // приложения лежат в сборке и без сети недоступны, поэтому три коротких текста — здесь, на тех же трёх языках.
 // Отдельным файлом, а не в offline.html: CSP запрещает встроенные скрипты.
 
@@ -30,8 +30,7 @@
             saved = null;
         }
         if (saved && TEXTS[saved]) return saved;
-        var browser = (navigator.language || 'en').slice(0, 2).toLowerCase();
-        return TEXTS[browser] ? browser : 'en';
+        return 'en';  // по умолчанию английский (решение владельца 22.11); выбранный на сайте язык — выше
     }
 
     var lang = language();

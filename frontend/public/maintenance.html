@@ -3,7 +3,7 @@
   Страница «Технические работы» (502 / 503 / 504). Самодостаточный файл: без скриптов и внешних ресурсов — картинка и
   стили внутри, поэтому годится и для nginx, и для «Пользовательской ошибки» Cloudflare (Custom Error Rules, платные
   тарифы: HTML-ответ вставляется как есть). Скриптов нет намеренно: CSP сайта запрещает встроенные скрипты.
-  Тексты на трёх языках сразу (en / uk / ru): язык игрока здесь неизвестен, а выбирать его без скрипта нечем.
+  Текст только английский (решение владельца 22.11): язык по умолчанию на сайте — английский, выбора языка нет.
   Эмблема — собственный рисунок (силуэт пешки), без сторонних ресурсов и лицензий. Палитра — как у сайта.
 -->
 <html lang="en">
@@ -13,7 +13,7 @@
     <meta name="theme-color" content="#1A120B"/>
     <meta name="robots" content="noindex"/>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231A120B'/%3E%3Crect x='6' y='6' width='52' height='52' rx='10' fill='none' stroke='%23D0A972' stroke-width='3'/%3E%3Ctext x='32' y='44' font-family='Georgia,serif' font-size='36' fill='%23F5DEB3' text-anchor='middle'%3E%E2%99%9E%3C/text%3E%3C/svg%3E"/>
-    <title>Regence — maintenance / Технічні роботи / Технические работы</title>
+    <title>Regence — technical maintenance</title>
     <style>
         :root { color-scheme: dark; --bg: #1A120B; --gold: #D0A972; --wheat: #F5DEB3; --muted: #A68F6C; }
         html, body { margin: 0; min-height: 100%; }
@@ -23,10 +23,10 @@
             /* Едва заметная шахматная сетка и мягкое свечение сверху */
             background:
                 radial-gradient(ellipse 70% 45% at 50% 0%, rgba(208, 169, 114, .14), transparent 70%),
-                repeating-conic-gradient(rgba(245, 222, 179, .035) 0 25%, transparent 0 50%) 0 0 / 96px 96px,
+                repeating-conic-gradient(rgba(245, 222, 179, .035) 0 25%, transparent 0 50%) 0 0 / 144px 144px,
                 var(--bg);
         }
-        main { width: 100%; max-width: 920px; text-align: center; }
+        main { width: 100%; max-width: 560px; text-align: center; }
         .brand { margin: 0 0 28px; font-size: .78rem; letter-spacing: .42em; text-indent: .42em; text-transform: uppercase; color: var(--gold); }
         .emblem { width: 76px; height: auto; display: block; margin: 0 auto 26px; }
         .status {
@@ -34,28 +34,18 @@
             text-indent: .22em; text-transform: uppercase; color: var(--muted);
         }
         .rule { width: 56px; height: 1px; margin: 0 auto 30px; background: linear-gradient(90deg, transparent, var(--gold), transparent); }
-        .langs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; text-align: left; }
-        .lang { padding: 4px 28px; border-left: 1px solid rgba(208, 169, 114, .22); }
-        .lang:first-child { border-left: 0; }
-        .tag { margin: 0 0 12px; font: 600 .68rem/1 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; letter-spacing: .2em; color: var(--gold); }
-        h1 { margin: 0 0 10px; font-size: 1.3rem; line-height: 1.3; font-weight: 600; color: var(--wheat); }
-        p { margin: 0; font-size: .95rem; line-height: 1.6; color: #CDB894; }
+        h1 { margin: 0 0 12px; font-size: 1.7rem; line-height: 1.3; font-weight: 600; color: var(--wheat); }
+        .copy { margin: 0 auto; max-width: 460px; font-size: 1.02rem; line-height: 1.6; color: #CDB894; }
         a.retry {
             display: inline-block; margin-top: 38px; padding: 12px 34px; border: 1px solid var(--gold); border-radius: 2px;
             font: 600 .78rem/1 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; letter-spacing: .18em; text-transform: uppercase;
             color: var(--wheat); text-decoration: none; transition: background .2s, color .2s;
         }
         a.retry:hover, a.retry:focus-visible { background: var(--gold); color: var(--bg); outline: none; }
-        .retry-note { margin: 12px 0 0; font-size: .78rem; color: var(--muted); }
         @media (prefers-reduced-motion: no-preference) {
             .emblem { animation: glow 3.2s ease-in-out infinite; }
         }
         @keyframes glow { 0%, 100% { filter: drop-shadow(0 0 0 rgba(245, 222, 179, 0)); } 50% { filter: drop-shadow(0 0 14px rgba(245, 222, 179, .28)); } }
-        @media (max-width: 720px) {
-            .langs { grid-template-columns: 1fr; text-align: center; }
-            .lang { padding: 22px 8px; border-left: 0; border-top: 1px solid rgba(208, 169, 114, .22); }
-            .lang:first-child { border-top: 0; padding-top: 4px; }
-        }
     </style>
 </head>
 <body>
@@ -78,25 +68,10 @@
     <p class="status">Service temporarily unavailable</p>
     <div class="rule"></div>
 
-    <div class="langs">
-        <section class="lang" lang="en">
-            <p class="tag">EN</p>
-            <h1>Technical maintenance</h1>
-            <p>We are improving the service and will be back shortly. Please try again in a few minutes.</p>
-        </section>
-        <section class="lang" lang="uk">
-            <p class="tag">УКР</p>
-            <h1>Технічні роботи</h1>
-            <p>Ми покращуємо сервіс і скоро повернемося. Спробуйте оновити сторінку за кілька хвилин.</p>
-        </section>
-        <section class="lang" lang="ru">
-            <p class="tag">РУС</p>
-            <h1>Технические работы</h1>
-            <p>Мы улучшаем сервис и скоро вернёмся. Попробуйте обновить страницу через несколько минут.</p>
-        </section>
-    </div>
+    <h1>Technical maintenance</h1>
+    <p class="copy">We are improving the service and will be back shortly. Please try again in a few minutes.</p>
 
-    <a class="retry" href="/">Retry · Повторити · Повторить</a>
+    <a class="retry" href="/">Retry</a>
 </main>
 </body>
 </html>
