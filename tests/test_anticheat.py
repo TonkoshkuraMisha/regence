@@ -165,3 +165,113 @@ async def test_finish_game_triggers_telemetry_anticheat(db_session):
 
     assert cheater.trust_factor < 30
     assert cheater.is_cheater is True
+
+
+# --- Чистые правила и ветки отказов (добавлено для покрытия) ---
+
+def _move(num, ms, blurred=False, premove=False):
+    """Ход в памяти (без базы) для проверки чистых функций."""
+    return Move(
+        game_id=1, player_id=1, move_number=num, notation="e2e4", san="e4",
+        time_taken_ms=ms, window_blurred_before_move=blurred, is_premove=premove,
+    )
+
+
+def test_blur_ratio_empty_and_short_post_opening():
+    from src.services.anticheat import calculate_blur_ratio
+
+    assert calculate_blur_ratio([]) == 0.0
+    # после дебюта меньше трёх ходов — считаются все ходы игрока
+    moves = [_move(1, 1000, blurred=True), _move(2, 1000), _move(3, 1000), _move(4, 1000)]
+    assert calculate_blur_ratio(moves) == 0.25
+
+
+def test_timing_cv_needs_three_timed_non_premove_moves():
+    from src.services.anticheat import calculate_timing_cv
+
+    assert calculate_timing_cv([_move(1, 1000), _move(2, 0), _move(3, 1000, premove=True)]) == (1.0, 0.0)
+    cv, mean = calculate_timing_cv([_move(1, 1000), _move(2, 1000), _move(3, 1000)])
+    assert (cv, mean) == (0.0, 1000.0)
+
+
+def test_penalty_tiers_for_blur_and_rhythm():
+    from src.services.anticheat import MIN_MOVES_FOR_ANALYSIS, compute_telemetry_penalty
+
+    n = max(MIN_MOVES_FOR_ANALYSIS, 12)
+    # ровный ритм 4 с без потери фокуса: только штраф за ритм
+    flat = [_move(i + 10, 4000) for i in range(n)]
+    assert compute_telemetry_penalty(flat)["penalty"] == 40
+    # доля потери фокуса 0.4 усиливает штраф на 12
+    some_blur = [_move(i + 10, 4000, blurred=(i % 5 < 2)) for i in range(10)]  # 4 из 10
+    assert compute_telemetry_penalty(some_blur)["penalty"] == 40 + 12
+    # доля 0.5 -> +25
+    half = [_move(i + 10, 4000, blurred=(i % 2 == 0)) for i in range(n)]
+    assert compute_telemetry_penalty(half)["penalty"] == 40 + 25
+    # слишком мало ходов — штрафа нет
+    assert compute_telemetry_penalty(flat[:2])["penalty"] == 0
+
+
+@pytest.mark.asyncio
+async def test_claim_first_evaluation_without_redis_is_denied(monkeypatch):
+    """Redis недоступен: партия считается уже оценённой, штраф не начисляется."""
+    from src.db import redis as redis_module
+    from src.services.anticheat import _claim_first_evaluation
+
+    async def boom(*args, **kwargs):
+        raise RuntimeError("redis down")
+
+    monkeypatch.setattr(redis_module.redis_client, "set", boom)
+    assert await _claim_first_evaluation(1) is False
+
+
+@pytest.mark.asyncio
+async def test_evaluate_missing_game_and_missing_user(db_session):
+    # партии нет
+    assert await evaluate_game_telemetry(db_session, 424242) == {}
+
+    # игрок партии удалён: его пропускают, не падая
+    keeper = User(username="ac_keeper", hashed_password="pw")
+    db_session.add(keeper)
+    await db_session.commit()
+    game = Game(white_player_id=keeper.id, black_player_id=999_999, status=GameStatus.COMPLETED, result="1-0")
+    db_session.add(game)
+    await db_session.commit()
+    db_session.add_all([
+        Move(game_id=game.id, player_id=keeper.id, move_number=1, notation="e2e4", san="e4", time_taken_ms=900),
+        Move(game_id=game.id, player_id=999_999, move_number=2, notation="e7e5", san="e5", time_taken_ms=900),
+    ])
+    await db_session.commit()
+    report = await evaluate_game_telemetry(db_session, game.id, force=True)
+    assert set(report) == {keeper.id}
+
+
+def test_trusted_premove_requires_fast_server_side_move():
+    from src.core.config import settings
+    from src.services.anticheat import trusted_premove
+
+    assert trusted_premove(True, 0) is True
+    assert trusted_premove(True, settings.AC_PREMOVE_MAX_ELAPSED_MS + 1) is False
+    assert trusted_premove(False, 0) is False
+
+
+def test_penalty_for_moderately_regular_rhythm():
+    from src.services.anticheat import compute_telemetry_penalty
+
+    # CV между 0.12 и 0.22 при «движковом» среднем: штраф за ритм 22
+    times = [3000, 4000, 3500, 4500, 3200, 3800, 4200, 3600]
+    moves = [_move(i + 10, t) for i, t in enumerate(times)]
+    metrics = compute_telemetry_penalty(moves)
+    assert 0.12 < metrics["timing_cv"] <= 0.22
+    assert metrics["penalty"] == 22
+
+
+@pytest.mark.asyncio
+async def test_evaluate_game_without_moves_returns_empty(db_session):
+    a = User(username="ac_a", hashed_password="pw")
+    b = User(username="ac_b", hashed_password="pw")
+    db_session.add_all([a, b])
+    await db_session.commit()
+    game = Game(white_player_id=a.id, black_player_id=b.id, status=GameStatus.COMPLETED, result="1-0")
+    db_session.add(game)
+    await db_session.commit()
+    assert await evaluate_game_telemetry(db_session, game.id) == {}
