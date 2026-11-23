@@ -2,8 +2,8 @@
 
 """tournament_queue_and_withdraw
 
-Самопроверка 13.11 (таски A.1, A.3): время постановки партии ботов в очередь — чтобы опрос страницы турнира
-не публиковал её снова и снова; время, когда игрок сдал турнир — сданный турнир не мешает начать новый.
+Self-check 13.11 (tasks A.1, A.3): the time a bot game was queued - so that polling the tournament page
+does not publish it again and again; the time a player withdrew from the tournament - a withdrawn tournament does not block starting a new one.
 
 Revision ID: b9d993aad6d7
 Revises: d3287fae972e

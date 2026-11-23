@@ -1,6 +1,6 @@
-// Ежедневная разминка (таск 22.2): /workout — 5 задач по слабым темам, тренажёр, повторение дебютов и «ваша ошибка».
-// Шаги засчитывает сервер по самим тренировкам за сегодня (GET /api/v1/workout, src/api/workout.py); страница
-// показывает план, отметки и серию дней. Без входа — только приглашение войти. Маршрут — App.tsx.
+// Daily warm-up (task 22.2): /workout has 5 puzzles on weak themes, a trainer, an openings review and "your mistake".
+// The server counts the steps from the training itself for today (GET /api/v1/workout, src/api/workout.py); the page
+// shows the plan, marks and a day streak. Without sign-in only an invitation to sign in. Route is App.tsx.
 
 import {useEffect, useState} from 'react';
 import {Link, useNavigate} from 'react-router-dom';
@@ -13,10 +13,10 @@ import {fetchWorkoutPlan} from '../services/workout';
 import {WeekSummaryCard} from './WeekSummaryCard';
 import type {WorkoutPlan, WorkoutStep} from '../services/workout';
 
-// Шаг выполнен: для задач — набрана цель, для остальных — флаг от сервера.
+// Step done: for puzzles the goal is reached, for the others a flag from the server.
 const stepDone = (step: WorkoutStep) => (step.kind === 'puzzles' ? step.done >= step.target : step.done);
 
-/** Страница разминки: статус дня и список шагов со ссылками на разделы. */
+/** Warm-up page: the day status and a list of steps with links to sections. */
 export function WorkoutPage() {
     const {t} = useI18n();
     const navigate = useNavigate();

@@ -1,18 +1,18 @@
 """
-Сборка двух служебных страниц с ретро-коллажем: «Технические работы» и страница ожидания до запуска.
+Builds two service pages with a retro collage: "Technical maintenance" and the waiting page shown before launch.
 
-Что делает: берёт портреты мастеров из frontend/public/assets/champions (только общественное достояние и CC0 — их
-лицензии записаны в ATTRIBUTION.md), превращает в маленькие сепия-снимки, кладёт на фон «снимками на столе» вместе с
-силуэтами фигур и обрывками партитур, а текст оставляет поверх тёмной вуали, чтобы фон не мешал читать.
-Пишет два файла:
-  * frontend/public/maintenance.html — самодостаточная страница 502/503/504 (nginx и Cloudflare Custom Errors);
-  * ops/landing/src/page.js — HTML страницы ожидания для Worker regence-landing (экспорт PAGE).
-Страницы нарочно разные по раскладке: у «Технических работ» две ленты кадров сверху и снизу и бланк партии, у ожидания —
-снимки по бокам, как на стене клуба. Скриптов и внешних ресурсов в страницах нет: картинки — data-URI.
+What it does: takes portraits of masters from frontend/public/assets/champions (public domain and CC0 only - their
+licences are recorded in ATTRIBUTION.md), turns them into small sepia photos, lays them on the background as "photos on a table" together with
+piece silhouettes and scraps of score sheets, and leaves the text over a dark veil so the background does not hinder reading.
+It writes two files:
+  * frontend/public/maintenance.html - a self-contained 502/503/504 page (nginx and Cloudflare Custom Errors);
+  * ops/landing/src/page.js - the HTML of the waiting page for the regence-landing Worker (export PAGE).
+The pages deliberately differ in layout: "Technical maintenance" has two strips of frames at the top and bottom and a game form, the waiting page -
+photos along the sides, like on a club wall. The pages contain no scripts or external resources: images are data URIs.
 
     python -m scripts.dev.build_error_pages
 """
-# ruff: noqa: E501  — внутри CSS и data-URI, их строки не переносятся
+# ruff: noqa: E501  - inside CSS and data URIs, their lines are not wrapped
 
 import base64
 import io
@@ -25,16 +25,16 @@ PHOTOS = ROOT / "frontend" / "public" / "assets" / "champions"
 MAINTENANCE_OUT = ROOT / "frontend" / "public" / "maintenance.html"
 LANDING_OUT = ROOT / "ops" / "landing" / "src" / "page.js"
 
-# Только общественное достояние и CC0 (ATTRIBUTION.md, раздел портретов): атрибуция на странице не требуется.
+# Public domain and CC0 only (ATTRIBUTION.md, portraits section): no attribution is required on the page.
 LANDING_PHOTOS = ["morphy", "Capablanca", "Alekhine", "Steinitz", "Tal", "Tarrasch", "Pillsbury", "anderssen"]
 MAINTENANCE_PHOTOS = ["philidor", "staunton", "zukertort", "Marshall", "Keres", "Rubinstein", "paulsen", "labourdonnais"]
 
-PHOTO_SIZE = (150, 190)  # пикселей: снимок виден небольшим, запас на ретина-экраны не нужен — фон приглушён
+PHOTO_SIZE = (150, 190)  # pixels: the photo is seen small, no headroom for retina screens is needed - the background is muted
 SEPIA_DARK, SEPIA_LIGHT = (38, 24, 12), (236, 214, 170)
 
 
 def sepia_photo(name: str) -> str:
-    """Портрет мастера → маленький сепия-снимок как data-URI (JPEG)."""
+    """A master's portrait -> a small sepia photo as a data URI (JPEG)."""
     image = Image.open(PHOTOS / f"{name}.jpg").convert("L")
     image = ImageOps.fit(image, PHOTO_SIZE, method=Image.Resampling.LANCZOS, centering=(0.5, 0.25))
     image = ImageOps.autocontrast(image, cutoff=1)
@@ -45,7 +45,7 @@ def sepia_photo(name: str) -> str:
     return "data:image/jpeg;base64," + base64.b64encode(buffer.getvalue()).decode()
 
 
-# Силуэты фигур (viewBox 0 0 100 130), заливка задаётся классом.
+# Piece silhouettes (viewBox 0 0 100 130), the fill is set by a class.
 PIECES = {
     "pawn": '<circle cx="50" cy="28" r="15"/><rect x="33" y="44" width="34" height="7" rx="3.5"/>'
             '<path d="M41 51Q39 78 29 100L71 100Q61 78 59 51Z"/><rect x="23" y="100" width="54" height="9" rx="4.5"/>'
@@ -74,12 +74,12 @@ body {
         repeating-conic-gradient(rgba(245, 222, 179, .06) 0 25%, transparent 0 50%) 0 0 / 200px 200px,
         var(--bg);
 }
-/* Вуаль: затемняет коллаж под текстом, по краям отпускает — снимки видны, читать не мешают. */
+/* Veil: darkens the collage under the text, lets go at the edges so the photos are visible without hindering reading. */
 body::before {
     content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none;
     background: radial-gradient(ellipse 46% 52% at 50% 50%, rgba(26, 18, 11, .94) 0 55%, rgba(26, 18, 11, .55) 100%);
 }
-/* Плёночное зерно и виньетка — общий «документальный» вид. */
+/* Film grain and vignette: a shared "documentary" look. */
 body::after {
     content: ''; position: absolute; inset: 0; z-index: 3; pointer-events: none; opacity: .5; mix-blend-mode: overlay;
     background:
@@ -127,24 +127,24 @@ FAVICON = (
 
 
 def photo(src: str, style: str, narrow: bool = False) -> str:
-    """Снимок на столе: позиция и наклон — в style; narrow — оставить и на узком экране."""
+    """A photo on the table: position and tilt are in style; narrow - keep it on a narrow screen too."""
     cls = "photo narrow" if narrow else "photo"
     return f'<figure class="{cls}" style="margin:0;{style}"><img src="{src}" alt=""/></figure>'
 
 
 def piece(kind: str, style: str) -> str:
-    """Силуэт фигуры на фоне."""
+    """A piece silhouette on the background."""
     return f'<svg class="piece" viewBox="0 0 100 130" style="{style}" aria-hidden="true">{PIECES[kind]}</svg>'
 
 
 def note(text: str, style: str) -> str:
-    """Обрывок партитуры пишущей машинкой."""
+    """A scrap of a score sheet typed on a typewriter."""
     return f'<div class="note" style="{style}" aria-hidden="true">{text}</div>'
 
 
 def landing_collage(photos: list[str]) -> str:
-    """Ожидание: снимки по бокам, как на стене клуба; фигуры и ходы между ними."""
-    spots = [  # (left/right, top %, угол)
+    """Waiting page: photos along the sides, like on a club wall; pieces and moves between them."""
+    spots = [  # (left/right, top %, angle)
         ("left:3%", 8, -7), ("left:13%", 52, 5), ("left:2%", 70, -4), ("right:4%", 6, 6),
         ("right:14%", 48, -6), ("right:3%", 68, 4), ("left:24%", 4, 3), ("right:25%", 78, -5),
     ]
@@ -164,7 +164,7 @@ def landing_collage(photos: list[str]) -> str:
 
 
 def maintenance_collage(photos: list[str]) -> str:
-    """Технические работы: ленты кадров сверху и снизу и бланк партии — раскладка не такая, как у страницы ожидания."""
+    """Technical maintenance: strips of frames at the top and bottom and a game form - a different layout from the waiting page."""
     top = [photo(src, f"left:{5 + i * 24}%;top:-34px;transform:rotate({(-1) ** i * 3}deg)", narrow=i < 2)
            for i, src in enumerate(photos[:4])]
     bottom = [photo(src, f"left:{12 + i * 24}%;bottom:-34px;transform:rotate({(-1) ** i * -3}deg)", narrow=i < 2)
@@ -181,7 +181,7 @@ def maintenance_collage(photos: list[str]) -> str:
 
 
 def narrow_css() -> str:
-    """На узких экранах оставляем несколько снимков и приглушаем фон ещё сильнее."""
+    """On narrow screens we keep a few photos and mute the background even more."""
     return """
 @media (max-width: 900px) {
     .photo:not(.narrow), .note { display: none; }
@@ -193,7 +193,7 @@ def narrow_css() -> str:
 
 
 def page(title: str, status: str, heading: str, text: str, collage: str, retry: bool, extra_css: str = "") -> str:
-    """Полный HTML страницы."""
+    """The full HTML of the page."""
     button = '    <a class="retry" href="/">Retry</a>\n' if retry else ""
     return f"""<!doctype html>
 <html lang="en">
@@ -223,17 +223,17 @@ def page(title: str, status: str, heading: str, text: str, collage: str, retry: 
 
 MAINTENANCE_HEADER = """<!doctype html>
 <!--
-  Страница «Технические работы» (502 / 503 / 504). Самодостаточный файл: без скриптов и внешних ресурсов — картинки
-  (сепия-снимки мастеров из общественного достояния и CC0, ATTRIBUTION.md), силуэты и стили внутри, поэтому годится и для
-  nginx, и для «Пользовательской ошибки» Cloudflare (Custom Error Rules, платные тарифы: HTML вставляется как есть).
-  Скриптов нет намеренно: CSP сайта запрещает встроенные скрипты. Текст только английский (решение владельца 22.11).
-  ФАЙЛ СОБИРАЕТСЯ: python -m scripts.dev.build_error_pages — правьте шаблон там, а не этот файл.
+  "Maintenance" page (502 / 503 / 504). A self-contained file: no scripts or external resources; the images
+  (sepia photos of masters from the public domain and CC0, ATTRIBUTION.md), silhouettes and styles are inline, so it suits both
+  nginx and a Cloudflare "Custom Error" (Custom Error Rules, paid plans: the HTML is inserted as is).
+  There are no scripts on purpose: the site CSP forbids inline scripts. The text is English only (owner's decision 22.11).
+  THE FILE IS GENERATED: python -m scripts.dev.build_error_pages - edit the template there, not this file.
 -->
 """
 
 
 def main() -> None:
-    """Собирает обе страницы."""
+    """Builds both pages."""
     maintenance = page(
         "Regence — technical maintenance", "Service temporarily unavailable", "Technical maintenance",
         "We are improving the service and will be back shortly. Please try again in a few minutes.",
@@ -248,13 +248,13 @@ def main() -> None:
     )
     LANDING_OUT.parent.mkdir(parents=True, exist_ok=True)
     LANDING_OUT.write_text(
-        "// Страница ожидания regence.club — ГЕНЕРИРУЕТСЯ: python -m scripts.dev.build_error_pages (не править руками).\n"
+        "// Waiting page of regence.club - GENERATED: python -m scripts.dev.build_error_pages (do not edit by hand).\n"
         "export const PAGE = " + _js_string(landing) + ";\n", encoding="utf-8", newline="\n")
     print(f"maintenance {len(maintenance) // 1024} KB, landing {len(landing) // 1024} KB")
 
 
 def _js_string(text: str) -> str:
-    """Строка JS из HTML (через JSON: экранирует кавычки и переводы строк)."""
+    """A JS string from HTML (through JSON: escapes quotes and newlines)."""
     import json
 
     return json.dumps(text, ensure_ascii=False)

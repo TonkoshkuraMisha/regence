@@ -1,9 +1,9 @@
 // --- FILE: frontend/src/components/tools/ToolsPage.tsx ---
-// «Инструменты» (/tools, таски 16.2 и 16.4): доска с линией ходов и справочником дебютов, редактор позиции, импорт
-// FEN и PGN, экспорт линии в PGN, «Найти мат» (движок, правило честной игры) и переход в анализ / партию с ботом с
-// этой позиции на главной доске (таск 9.6: свободная доска принимает позицию через location.state.analyzeFen).
-// Данные: поиск мата — services/tools.ts (POST /analysis/find-mate), справочник — OpeningExplorer, «В репертуар» —
-// repertoire/AddToRepertoire.tsx; правила линии считает chess.js на клиенте. Маршрут — App.tsx.
+// "Tools" (/tools, tasks 16.2 and 16.4): a board with a move line and an openings reference, position editor, FEN and
+// PGN import, line export to PGN, "Find mate" (engine, fair-play rule) and a jump to analysis / a game with a bot from
+// this position on the main board (task 9.6: the free board accepts a position via location.state.analyzeFen).
+// Data: mate search - services/tools.ts (POST /analysis/find-mate), reference - OpeningExplorer, "To repertoire" -
+// repertoire/AddToRepertoire.tsx; line rules are computed by chess.js on the client. Route - App.tsx.
 
 import {useMemo, useState} from 'react';
 import {useNavigate} from 'react-router-dom';
@@ -22,10 +22,10 @@ import {OpeningExplorer} from '../OpeningExplorer';
 import {AddToRepertoire} from '../repertoire/AddToRepertoire';
 import {PositionEditor} from './PositionEditor';
 
-// Вкладки страницы: доска с линией, редактор позиции, импорт.
+// Page tabs: board with a line, position editor, import.
 type Tab = 'board' | 'editor' | 'import';
 
-/** Позиция и ходы из текста: сначала как FEN, затем как PGN (с заголовком FEN или из начальной позиции). */
+/** Position and moves from text: first as FEN, then as PGN (with a FEN header or from the start position). */
 export function parseImport(text: string): { fen: string; moves: string[] } | null {
     const source = text.trim();
     if (!source) return null;
@@ -42,8 +42,8 @@ export function parseImport(text: string): { fen: string; moves: string[] } | nu
 }
 
 /**
- * Страница инструментов. Линия — стартовый FEN (baseFen) плюс ходы UCI (moves); любая смена линии сбрасывает
- * найденный мат. Справочник дебютов доступен только из стандартной начальной позиции.
+ * Tools page. A line is a start FEN (baseFen) plus UCI moves (moves); any change of the line resets the
+ * found mate. The openings reference is available only from the standard start position.
  */
 export function ToolsPage() {
     const {t} = useI18n();

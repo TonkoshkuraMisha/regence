@@ -1,8 +1,8 @@
 # --- FILE: tests/test_course_progress.py ---
 """
-Автозачёт шагов курса (задача 6 плана 18.11, src/services/course_progress.py): GET /learn/course-progress через
-настоящие запросы — пройденные уроки, темы по нормативу ступени, тренажёры с попыткой, последние оценки экзаменов;
-чужие данные не попадают; без входа — 401. Плюс чистый норматив темы.
+Course step auto-credit (task 6 of the 18.11 plan, src/services/course_progress.py): GET /learn/course-progress through
+real requests - completed lessons, themes by the level norm, trainers with an attempt, latest exam scores;
+other users' data does not leak; without sign-in - 401. Plus the pure theme norm.
 """
 
 from src.models.puzzle import ThemeProgress
@@ -21,7 +21,7 @@ async def test_course_progress_collects_what_the_player_did(client, db_session, 
     headers = auth(token_user_1)
     client.put(f"{API}/progress/tactics-pin", headers=headers, json={"step": 4, "steps_total": 5, "completed": True})
     client.put(f"{API}/progress/endgame-kq-center", headers=headers, json={"step": 0, "steps_total": 1, "completed": True})
-    client.put(f"{API}/progress/basics-capture", headers=headers, json={"step": 1, "steps_total": 6})  # не до конца
+    client.put(f"{API}/progress/basics-capture", headers=headers, json={"step": 1, "steps_total": 6})  # not finished
     db_session.add_all([
         ThemeProgress(user_id=test_user_1.id, theme="fork", stage=THEME_PASS_STAGE, recent="", solved=8),
         ThemeProgress(user_id=test_user_1.id, theme="pin", stage=1, recent="11111111", solved=8),

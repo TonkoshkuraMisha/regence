@@ -1,17 +1,17 @@
 # --- FILE: src/api/rate_limit.py ---
 """
-Ограничение частоты запросов: эндпоинты, нагружающие Stockfish, вход и регистрация, письма, импорт партий,
-открытое API и разделы без движка (у каждого раздела свой счётчик), а также сообщения WebSocket
-(src/api/websockets.py зовёт try_consume).
+Request rate limiting: endpoints that load Stockfish, login and registration, e-mails, game import,
+the open API and engine-free sections (each section has its own counter), as well as WebSocket messages
+(src/api/websockets.py calls try_consume).
 
-Фиксированное окно в Redis (INCR + EXPIRE): ключ ratelimit:{область}:{кто}:{номер окна}, где «кто» — user:<id>,
-ip:<адрес>, account:<имя> или to:<e-mail>. Квота считается на пользователя, если запрос
-пришёл с валидным Bearer-токеном, иначе — на IP-адрес (гостевые партии с ботами и просмотр
-анализа доступны без входа). Токен только декодируется, без обращения к БД (отозванный, но ещё не истёкший токен
-по-прежнему считается на своего игрока — для счётчика этого достаточно). Сами лимиты — настройки RATE_LIMIT_*
-(src/core/config.py). При недоступном Redis запросы пропускаются: сбой учёта не должен останавливать сайт.
+A fixed window in Redis (INCR + EXPIRE): the key ratelimit:{scope}:{who}:{window number}, where "who" is user:<id>,
+ip:<address>, account:<name> or to:<e-mail>. The quota is counted per user if the request
+came with a valid Bearer token, otherwise per IP address (guest games with bots and viewing
+analysis are available without login). The token is only decoded, without touching the DB (a revoked but not yet expired token
+is still counted for its player - that is enough for the counter). The limits themselves are the RATE_LIMIT_* settings
+(src/core/config.py). When Redis is unavailable requests are let through: an accounting failure must not stop the site.
 
-DailyQuota — дневные квоты бесплатного тарифа; пока FREE_TIER_LIMITS выключен, они ничего не ограничивают.
+DailyQuota - daily quotas of the free tier; while FREE_TIER_LIMITS is off, they limit nothing.
 """
 
 import logging
@@ -28,7 +28,8 @@ logger = logging.getLogger(__name__)
 
 
 def _client_identity(request: Request) -> str:
-    """«user:<id>» по подписи и сроку токена (версия токенов не сверяется, база не читается), иначе «ip:<адрес>»."""
+    """"user:<id>" by the token signature and expiry (the token version is not checked, the DB is not read), otherwise
+    "ip:<address>"."""
     auth_header = request.headers.get("authorization", "")
     scheme, _, token = auth_header.partition(" ")
     if scheme.lower() == "bearer" and token:
@@ -43,26 +44,26 @@ def _client_identity(request: Request) -> str:
 
 
 def client_identity(request: Request) -> str:
-    """Игрок по токену, а без входа — адрес: общий ключ лимитов для эндпоинтов, открытых гостям."""
+    """The player by token, and without login - the address: a shared limit key for endpoints open to guests."""
     return _client_identity(request)
 
 
 def client_ip(request: Request) -> str:
     """
-    Адрес клиента. В продакшене uvicorn запущен с --proxy-headers (Dockerfile) и берёт его из X-Forwarded-For,
-    который ставит nginx; без прокси — адрес соединения. «unknown» — адрес определить не удалось.
+    The client address. In production uvicorn is started with --proxy-headers (Dockerfile) and takes it from X-Forwarded-For,
+    which nginx sets; without a proxy - the connection address. "unknown" - the address could not be determined.
     """
     return request.client.host if request.client else "unknown"
 
 
 def _window(window_s: int) -> tuple[int, int]:
-    """(номер текущего окна, секунд до его конца)."""
+    """(the number of the current window, seconds until its end)."""
     now = int(time.time())
     return now // window_s, max(1, window_s - now % window_s)
 
 
 def _too_many(code: str, retry_after: int) -> HTTPException:
-    """429 с кодом ошибки; через сколько секунд повторить — и в заголовке, и в параметрах для текста."""
+    """429 with an error code; how many seconds to retry - both in the header and in the parameters for the text."""
     return ApiError(
         status.HTTP_429_TOO_MANY_REQUESTS, code,
         headers={"Retry-After": str(retry_after)}, retry_after=retry_after,
@@ -71,8 +72,8 @@ def _too_many(code: str, retry_after: int) -> HTTPException:
 
 async def try_consume(scope: str, identity: str, limit: int, window_s: int) -> bool:
     """
-    Засчитывает попытку; False, если в текущем окне их уже больше limit.
-    limit <= 0 — без ограничения. При недоступном Redis пропускает (fail-open).
+    Counts an attempt; False if there are already more than limit of them in the current window.
+    limit <= 0 - no limit. When Redis is unavailable it lets through (fail-open).
     """
     if limit <= 0:
         return True
@@ -84,20 +85,20 @@ async def try_consume(scope: str, identity: str, limit: int, window_s: int) -> b
         if count == 1:
             await redis_client.expire(key, window_s + 1)
     except Exception as exc:
-        # Redis недоступен — не блокируем пользователей (fail-open), но фиксируем проблему.
+        # Redis is unavailable - we do not block users (fail-open), but we record the problem.
         logger.warning("Rate limiter unavailable for %s: %s", scope, exc)
         return True
     return count <= limit
 
 
 async def enforce_rate_limit(scope: str, identity: str, limit: int, window_s: int, code: str) -> None:
-    """Как try_consume, но для HTTP: бросает 429 с Retry-After."""
+    """Like try_consume, but for HTTP: raises 429 with Retry-After."""
     if not await try_consume(scope, identity, limit, window_s):
         raise _too_many(code, _window(window_s)[1])
 
 
 async def ensure_below_limit(scope: str, identity: str, limit: int, window_s: int, code: str) -> None:
-    """Проверяет счётчик, не увеличивая его (например, неудачных входов): 429, если лимит исчерпан."""
+    """Checks the counter without increasing it (for example of failed logins): 429 if the limit is exhausted."""
     if limit <= 0:
         return
     window_id, retry_after = _window(window_s)
@@ -111,7 +112,7 @@ async def ensure_below_limit(scope: str, identity: str, limit: int, window_s: in
 
 
 async def record_attempt(scope: str, identity: str, window_s: int) -> None:
-    """Увеличивает счётчик без проверки (парный к ensure_below_limit)."""
+    """Increases the counter without checking (paired with ensure_below_limit)."""
     window_id, _ = _window(window_s)
     key = f"ratelimit:{scope}:{identity}:{window_id}"
     try:
@@ -126,9 +127,9 @@ DAY_S = 86400
 
 class DailyQuota:
     """
-    Дневная квота бесплатного тарифа на дорогую работу движка (таск 23.3): полный анализ партии, наставник.
-    Действует, только когда включён FREE_TIER_LIMITS (тарифы — 25.1). Засчитывается выполненная работа, а не
-    попытка: check() — зависимость перед расчётом, record() — после успешного ответа. Окно — сутки UTC.
+    The daily quota of the free tier for costly engine work (task 23.3): full game analysis, the mentor.
+    Active only when FREE_TIER_LIMITS is on (tiers - 25.1). Completed work is counted, not the
+    attempt: check() is the dependency before the computation, record() - after a successful response. The window is a UTC day.
     """
 
     def __init__(self, scope: str, limit_setting: str):
@@ -136,13 +137,14 @@ class DailyQuota:
         self.limit_setting = limit_setting
 
     def limit(self) -> int:
-        """Действующий дневной предел; 0 — квота выключена (FREE_TIER_LIMITS не включён)."""
+        """The current daily limit; 0 - the quota is off (FREE_TIER_LIMITS is not enabled)."""
         return int(getattr(settings, self.limit_setting)) if settings.FREE_TIER_LIMITS else 0
 
     async def check(self, request: Request) -> None:
         """
-        Отказ 429 daily_limit_reached, если дневная квота уже исчерпана. При недоступном Redis запрос пропускается:
-        сбой учёта не должен останавливать сайт.
+        Refusal 429 daily_limit_reached if the daily quota is already exhausted. When Redis is unavailable the request is let
+        through:
+        an accounting failure must not stop the site.
         """
         limit = self.limit()
         if limit <= 0:
@@ -161,7 +163,7 @@ class DailyQuota:
             )
 
     async def record(self, request: Request) -> None:
-        """Засчитывает выполненную работу в дневную квоту (зовётся после успешного ответа)."""
+        """Counts completed work against the daily quota (called after a successful response)."""
         if self.limit() > 0:
             await record_attempt(self.scope, _client_identity(request), DAY_S)
 
@@ -169,10 +171,10 @@ class DailyQuota:
 def rate_limit(scope: str, limit_setting: str, guest_limit_setting: str | None = None,
                code: str = "engine_rate_limited"):
     """
-    Фабрика зависимости FastAPI для эндпоинтов движка. limit_setting — имя поля Settings
-    с лимитом на окно, читается при каждом запросе (удобно переопределять в тестах и через .env).
-    guest_limit_setting — отдельный (более жёсткий) лимит для запросов без токена. code — код ошибки 429 (по
-    умолчанию — про движок; у эндпоинтов без движка свой текст).
+    A FastAPI dependency factory for engine endpoints. limit_setting is the name of the Settings field
+    with the per-window limit, read on every request (convenient to override in tests and via .env).
+    guest_limit_setting is a separate (stricter) limit for requests without a token. code is the 429 error code (by
+    default - the engine one; endpoints without an engine have their own text).
     """
 
     async def _dependency(request: Request) -> None:

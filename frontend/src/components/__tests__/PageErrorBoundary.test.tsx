@@ -1,4 +1,4 @@
-// Предохранитель страниц: ошибка отрисовки показывает сообщение вместо страницы, переход на другой адрес — сбрасывает.
+// The page error boundary: a render error shows a message instead of the page, navigating to another address resets it.
 
 import {render, screen} from '@testing-library/react';
 import {MemoryRouter} from 'react-router-dom';
@@ -10,11 +10,11 @@ function Broken({fail}: { fail: boolean }) {
     return <p data-testid="page-ok">ok</p>;
 }
 
-describe('предохранитель страниц', () => {
-    it('сообщение вместо упавшей страницы и сброс на новом адресе', () => {
+describe('page error boundary', () => {
+    it('a message instead of the failed page and a reset on a new address', () => {
         const spy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
         const view = render(<MemoryRouter><PageErrorBoundary resetKey="/a"><Broken fail/></PageErrorBoundary></MemoryRouter>);
-        expect(screen.getByTestId('page-error')).toHaveTextContent('На этой странице произошла ошибка');
+        expect(screen.getByTestId('page-error')).toHaveTextContent('Something went wrong on this page');
         view.rerender(<MemoryRouter><PageErrorBoundary resetKey="/b"><Broken fail={false}/></PageErrorBoundary></MemoryRouter>);
         expect(screen.getByTestId('page-ok')).toBeInTheDocument();
         spy.mockRestore();

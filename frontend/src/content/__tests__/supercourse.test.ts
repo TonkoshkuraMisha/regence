@@ -1,5 +1,5 @@
-// Большой курс (таск 27.6): коды модулей уникальны и соответствуют уровню, ветви известны, каждый шаг ведёт в
-// существующий раздел; у каждого уровня есть наполненные модули и экзамен.
+// Big course (task 27.6): module codes are unique and match the level, branches are known, every step leads to an
+// existing section; every level has filled modules and an exam.
 
 import {describe, expect, it} from 'vitest';
 import {BRANCHES, COURSE, courseProgressId, coverage, LEVEL_COUNT, moduleStatus, moduleTitleKey} from '../supercourse';
@@ -14,7 +14,7 @@ import {STRUCTURES} from '../../services/library';
 import {hasMessage} from '../../i18n';
 
 const EXAM = ['F', 'A', 'B', 'C', 'D', 'E', 'G', 'H', 'I', 'J', 'endgame',
-    'level0', 'level1', 'level2', 'level3', 'level4', 'level5'];  // экзамены уровней — 27.12
+    'level0', 'level1', 'level2', 'level3', 'level4', 'level5'];  // level exams - 27.12
 
 function exists(activity: Activity): boolean {
     switch (activity.kind) {
@@ -31,8 +31,8 @@ function exists(activity: Activity): boolean {
     }
 }
 
-describe('Большой курс', () => {
-    it('коды, уровни и ветви', () => {
+describe('Big course', () => {
+    it('codes, levels and branches', () => {
         const codes = COURSE.map((m) => m.code);
         expect(new Set(codes).size).toBe(codes.length);
         for (const module of COURSE) {
@@ -44,7 +44,7 @@ describe('Большой курс', () => {
         }
     });
 
-    it('каждый шаг существует; на каждом уровне есть наполненные модули и экзамен', () => {
+    it('every step exists; every level has filled modules and an exam', () => {
         const missing = COURSE.flatMap((m) => m.steps.filter((s) => !exists(s)).map((s) => `${m.code}: ${JSON.stringify(s)}`));
         expect(missing).toEqual([]);
         for (let level = 0; level < LEVEL_COUNT; level++) {
@@ -55,8 +55,8 @@ describe('Большой курс', () => {
     });
 });
 
-describe('Обязательные позиции (27.9)', () => {
-    it('три ступени из существующих упражнений, без повторов', async () => {
+describe('Must-know positions (27.9)', () => {
+    it('three tiers from existing exercises, without repeats', async () => {
         const {MUST_KNOW} = await import('../mustKnow');
         const all = MUST_KNOW.flat();
         expect(MUST_KNOW).toHaveLength(3);
@@ -66,31 +66,31 @@ describe('Обязательные позиции (27.9)', () => {
     });
 });
 
-describe('экзамены уровней (27.12)', () => {
-    it('уровень пройден, когда оценка своего экзамена уровня не ниже порога', async () => {
+describe('level exams (27.12)', () => {
+    it('a level is passed when the estimate of its own exam is not below the threshold', async () => {
         const {examSections, levelExamPassed} = await import('../supercourse');
         expect(examSections(1)).toEqual(['level1']);
         expect(levelExamPassed(1, {level1: {estimate: 1000}})).toBe(true);
         expect(levelExamPassed(1, {level1: {estimate: 999}})).toBe(false);
-        expect(levelExamPassed(2, {A: {estimate: 2000}, B: {estimate: 2000}})).toBe(false);  // диагностика не в счёт
+        expect(levelExamPassed(2, {A: {estimate: 2000}, B: {estimate: 2000}})).toBe(false);  // the diagnostic does not count
         for (let level = 0; level < LEVEL_COUNT; level++) expect(examSections(level)).toEqual([`level${level}`]);
     });
 });
 
-describe('статусы ячеек и покрытие для автора', () => {
+describe('cell statuses and coverage for the author', () => {
     const at = (code: string, steps: number, draft = 0): CourseModule => ({
         code, level: Number(code.slice(1).split('.')[0]), branch: code[0] as CourseModule['branch'],
         steps: Array.from({length: steps}, () => ({kind: 'guess'}) as const),
         ...(draft ? {draft: Array.from({length: draft}, () => ({kind: 'guess'}) as const)} : {}),
     });
 
-    it('готовые шаги важнее черновиков; без тех и других — пусто', () => {
+    it('ready steps outweigh drafts; with neither - empty', () => {
         expect(moduleStatus(at('T1.1', 2, 1))).toBe('ready');
         expect(moduleStatus(at('T1.2', 0, 1))).toBe('draft');
         expect(moduleStatus(at('T1.3', 0))).toBe('empty');
     });
 
-    it('покрытие считает модули по уровню и ветви', () => {
+    it('coverage counts modules by level and branch', () => {
         const table = coverage([at('T1.1', 1), at('T1.2', 0, 2), at('E1.1', 0), at('M3.1', 3)]);
         expect(table).toHaveLength(LEVEL_COUNT);
         expect(table[1][BRANCHES.indexOf('T')]).toEqual({ready: 1, draft: 1, empty: 0});
@@ -99,7 +99,7 @@ describe('статусы ячеек и покрытие для автора', ()
         expect(table[0].every((cell) => cell.ready + cell.draft + cell.empty === 0)).toBe(true);
     });
 
-    it('в настоящем курсе все модули готовы, черновиков нет', () => {
+    it('in the real course all modules are ready, no drafts', () => {
         const total = coverage().flat().reduce((sum, cell) => sum + cell.ready, 0);
         expect(total).toBe(COURSE.length);
         expect(COURSE.every((m) => moduleStatus(m) === 'ready')).toBe(true);

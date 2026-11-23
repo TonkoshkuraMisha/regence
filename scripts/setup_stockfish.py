@@ -1,11 +1,11 @@
 # --- FILE: setup_stockfish.py ---
 """
-Установка движка Stockfish в папку bin/ проекта.
+Installation of the Stockfish engine into the project's bin/ folder.
 
-Скачивает последний официальный выпуск с GitHub (official-stockfish/Stockfish) и выбирает сборку под текущую
-систему и процессор (get_target_asset_url). Движок распространяется под GPL-3.0 (ATTRIBUTION.md); в репозиторий
-он не входит. Запуск: `python scripts/setup_stockfish.py`; его же вызывает start_dev.ps1, если движка ещё нет.
-Сервер находит движок сам: bin/, PATH, стандартные пути Linux (src/services/bots/base.resolve_stockfish_path).
+Downloads the latest official release from GitHub (official-stockfish/Stockfish) and picks the build for the current
+system and processor (get_target_asset_url). The engine is distributed under GPL-3.0 (ATTRIBUTION.md); it is not part of
+the repository. Run: `python scripts/setup_stockfish.py`; start_dev.ps1 also calls it if the engine is not there yet.
+The server finds the engine itself: bin/, PATH, standard Linux paths (src/services/bots/base.resolve_stockfish_path).
 """
 
 import io
@@ -25,7 +25,7 @@ BIN_DIR = os.path.join(PROJECT_ROOT, "bin")
 
 
 def get_target_asset_url(assets: list[dict]) -> tuple[str, str]:
-    """Подбирает оптимальный бинарник Stockfish под текущую ОС (включая universal-сборки SF 19+)."""
+    """Picks the optimal Stockfish binary for the current OS (including universal builds of SF 19+)."""
     sys_name = platform.system().lower()
 
     if sys_name == "windows":
@@ -56,7 +56,7 @@ def get_target_asset_url(assets: list[dict]) -> tuple[str, str]:
             if suffix in name:
                 return name, asset["browser_download_url"]
 
-    # Fallback: любой x86-64 архив под нужную ОС
+    # Fallback: any x86-64 archive for the required OS
     for asset in assets:
         name = asset.get("name", "").lower()
         if sys_name == "windows" and "windows" in name and "x86-64" in name and name.endswith(".zip"):
@@ -65,21 +65,21 @@ def get_target_asset_url(assets: list[dict]) -> tuple[str, str]:
             return asset["name"], asset["browser_download_url"]
 
     available = [a.get("name", "") for a in assets]
-    raise RuntimeError(f"Не найден подходящий архив Stockfish для ОС '{sys_name}'. Доступные: {available}")
+    raise RuntimeError(f"No suitable Stockfish archive found for OS '{sys_name}'. Available: {available}")
 
 
 def download_and_install_stockfish() -> str:
-    """Скачивает и устанавливает официальный бинарник Stockfish под текущую ОС."""
+    """Downloads and installs the official Stockfish binary for the current OS."""
     os.makedirs(BIN_DIR, exist_ok=True)
     is_windows = platform.system().lower() == "windows"
     target_filename = "stockfish.exe" if is_windows else "stockfish"
     target_path = os.path.join(BIN_DIR, target_filename)
 
     if os.path.exists(target_path) and os.path.getsize(target_path) > 1_000_000:
-        print(f"[~] Бинарник Stockfish уже установлен: {target_path}")
+        print(f"[~] Stockfish binary already installed: {target_path}")
         return target_path
 
-    print("[1/3] Запрашиваем последний релиз Stockfish с GitHub...")
+    print("[1/3] Requesting the latest Stockfish release from GitHub...")
     headers = {"User-Agent": "Regence-Setup/1.0"}
     resp = requests.get(GITHUB_RELEASE_API, headers=headers, timeout=20)
     resp.raise_for_status()
@@ -87,18 +87,18 @@ def download_and_install_stockfish() -> str:
     tag_name = release_data.get("tag_name", "latest")
 
     asset_name, download_url = get_target_asset_url(release_data.get("assets", []))
-    print(f"[2/3] Скачиваем {asset_name} (версия {tag_name})...")
+    print(f"[2/3] Downloading {asset_name} (version {tag_name})...")
 
     archive_resp = requests.get(download_url, headers=headers, stream=True, timeout=180)
     archive_resp.raise_for_status()
     archive_bytes = io.BytesIO(archive_resp.content)
 
-    print(f"[3/3] Распаковываем движок в {target_path}...")
+    print(f"[3/3] Extracting the engine to {target_path}...")
     extracted = False
 
     if asset_name.endswith(".zip"):
         with zipfile.ZipFile(archive_bytes) as zf:
-            # Берём самый крупный .exe файл со словом stockfish (илиavx2/universal), игнорируя мелкие обёртки
+            # Take the largest .exe file with the word stockfish (or avx2/universal), ignoring small wrappers
             exe_members = [
                 m for m in zf.infolist()
                 if not m.is_dir() and m.filename.lower().endswith(".exe") and "stockfish" in m.filename.lower()
@@ -127,11 +127,11 @@ def download_and_install_stockfish() -> str:
                     extracted = True
 
     if not extracted:
-        raise RuntimeError("Не удалось найти исполняемый файл Stockfish внутри архива.")
+        raise RuntimeError("Could not find the Stockfish executable inside the archive.")
 
     with chess.engine.SimpleEngine.popen_uci(target_path) as engine:
         engine_name = engine.id.get("name", "Stockfish")
-        print(f"[+] Успешно! Движок готов к работе: {engine_name} -> {target_path}")
+        print(f"[+] Success! The engine is ready: {engine_name} -> {target_path}")
 
     return target_path
 

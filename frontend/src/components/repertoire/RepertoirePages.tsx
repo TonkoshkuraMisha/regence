@@ -1,8 +1,8 @@
-// Дебютный репертуар (таск 20.1). /repertoire — свои репертуары, новый пустой за белых или за чёрных и шесть
-// стартовых наборов с вводными текстами. /repertoire/:id — дерево линий: доска стороной репертуара, ходы из текущей
-// позиции (свои — первыми), новые ходы на доске и из справочника дебютов добавляются кнопкой, импорт PGN,
-// комментарий к ходу и удаление хода вместе с ветками за ним. Данные — services/repertoire.ts
-// (/api/v1/repertoires, src/api/repertoire.py); маршруты и вход — App.tsx; список стартовых наборов виден без входа.
+// Opening repertoire (task 20.1). /repertoire has one's own repertoires, a new empty one for White or Black and six
+// starter sets with intro texts. /repertoire/:id is a line tree: a board from the repertoire's side, moves from the current
+// position (one's own first), new moves on the board and from the openings reference are added with a button, PGN import,
+// a move comment and deleting a move together with the branches after it. Data is services/repertoire.ts
+// (/api/v1/repertoires, src/api/repertoire.py); routes and sign-in are App.tsx; the starter set list is visible without sign-in.
 
 import {useEffect, useMemo, useState} from 'react';
 import {Link, useNavigate, useParams, useSearchParams} from 'react-router-dom';
@@ -18,14 +18,14 @@ import type {Repertoire, RepertoireColor, RepertoireSummary, Starter} from '../.
 import {PuzzleBoard} from '../puzzles/PuzzleBoard';
 import {OpeningExplorer} from '../OpeningExplorer';
 
-// Стиль второстепенной кнопки панели редактора (вынесен, чтобы не повторять длинную строку классов).
+// Style of the editor panel's secondary button (extracted so as not to repeat a long class string).
 const BUTTON = 'px-2 py-1 rounded bg-black/30 border border-amber-900/50 flex items-center gap-1 disabled:opacity-40';
 
 /**
- * Самое длинное легальное начало линии UCI из начальной позиции. Берёт не больше 40 полуходов — защита от
- * чрезмерно длинного параметра ?line= в адресе.
+ * The longest legal beginning of a UCI line from the starting position. Takes no more than 40 plies, a protection against
+ * an excessively long ?line= parameter in the address.
  */
-/** Самое длинное легальное начало линии UCI из начальной позиции. */
+/** The longest legal beginning of a UCI line from the starting position. */
 export function legalPrefix(line: string[]): string[] {
     const game = new Chess();
     const legal: string[] = [];
@@ -40,7 +40,7 @@ export function legalPrefix(line: string[]): string[] {
     return legal;
 }
 
-/** Страница /repertoire: свои репертуары (только со входом), создание пустого и стартовые наборы. */
+/** Page /repertoire: one's own repertoires (signed-in only), creating an empty one and starter sets. */
 export function RepertoireListPage() {
     const {t, tp} = useI18n();
     const navigate = useNavigate();
@@ -144,8 +144,8 @@ export function RepertoireListPage() {
 }
 
 /**
- * Страница /repertoire/:id: редактор дерева. Текущая линия (line) хранится в состоянии и может уйти за пределы
- * дерева — тогда хвост показывается как «новый» и добавляется кнопкой. Все изменения идут через run() (busy/ошибка).
+ * Page /repertoire/:id: the tree editor. The current line (line) is kept in state and may go beyond the
+ * tree, then the tail is shown as "new" and is added with a button. All changes go through run() (busy/error).
  */
 export function RepertoireEditorPage() {
     const {t, tp} = useI18n();
@@ -154,7 +154,7 @@ export function RepertoireEditorPage() {
     const id = Number(repertoireId);
     const [params] = useSearchParams();
     const [rep, setRep] = useState<Repertoire | null>(null);
-    // ?line=e2e4,e7e5 — открыть на линии (из отклонений в партии, таск 20.3); нелегальный хвост отбрасывается.
+    // ?line=e2e4,e7e5 opens on a line (from deviations in a game, task 20.3); an illegal tail is dropped.
     const [line, setLine] = useState<string[]>(() => legalPrefix((params.get('line') ?? '').split(',').filter(Boolean)));
     const [name, setName] = useState('');
     const [comment, setComment] = useState('');

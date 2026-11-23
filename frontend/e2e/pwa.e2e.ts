@@ -1,11 +1,11 @@
 /// <reference lib="dom" />
-// Приложение на телефоне (таск 24.2) на продакшен-стеке: манифест с иконками отдаётся nginx с нужным типом,
-// сервис-воркер регистрируется и берёт страницу под контроль, без сети вместо ошибки браузера — своя офлайн-страница
-// на языке игрока, а со связью — снова сайт.
+// The app on a phone (task 24.2) on the production stack: the manifest with icons is served by nginx with the right type,
+// the service worker registers and takes the page under control, without a network the player's own offline page replaces the browser error
+// in the player's language, and with a connection back — the site again.
 
 import {expect, test} from '@playwright/test';
 
-test('манифест и иконки', async ({request}) => {
+test('manifest and icons', async ({request}) => {
     const response = await request.get('/manifest.webmanifest');
     expect(response.ok()).toBe(true);
     expect(response.headers()['content-type']).toContain('application/manifest+json');
@@ -23,25 +23,25 @@ test('манифест и иконки', async ({request}) => {
     expect(worker.headers()['cache-control']).toContain('no-cache');
 });
 
-test('сервис-воркер и офлайн-страница', async ({page, context}) => {
+test('service worker and offline page', async ({page, context}) => {
     await page.goto('/');
     await expect(page.locator('link[rel="manifest"]')).toHaveAttribute('href', '/manifest.webmanifest');
     const scope = await page.evaluate(async () => (await navigator.serviceWorker.ready).scope);
     expect(new URL(scope).pathname).toBe('/');
-    // Под контроль воркер берёт страницу после clients.claim(); перезагрузка — наверняка.
+    // The worker takes the page under control after clients.claim(); a reload is the sure way.
     await page.reload();
     await expect.poll(() => page.evaluate(() => Boolean(navigator.serviceWorker.controller))).toBe(true);
 
     await context.setOffline(true);
     try {
         await page.goto('/puzzles');
-        await expect(page.locator('#offline-title')).toHaveText('Нет связи');
-        await expect(page.locator('#offline-retry')).toHaveText('Попробовать ещё раз');
+        await expect(page.locator('#offline-title')).toHaveText('No connection');
+        await expect(page.locator('#offline-retry')).toHaveText('Try again');
     } finally {
         await context.setOffline(false);
     }
-    // Связь вернулась: офлайн-страница перезагружается сама (событие online в offline.js). Свой переход может
-    // столкнуться с этой перезагрузкой («navigation interrupted»), поэтому повторяем, пока сайт не откроется.
+    // The connection is back: the offline page reloads itself (the online event in offline.js). Our own navigation may
+    // collide with that reload ("navigation interrupted"), so we retry until the site opens.
     await expect(async () => {
         await page.goto('/puzzles');
         await expect(page.locator('#offline-title')).toHaveCount(0, {timeout: 2000});

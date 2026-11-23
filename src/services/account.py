@@ -1,16 +1,17 @@
 # --- FILE: src/services/account.py ---
 """
-Учётная запись игрока (таски 17.5 и 23.1, GDPR): выгрузка своих данных и удаление аккаунта.
+Player account (tasks 17.5 and 23.1, GDPR): export of one's own data and account deletion.
 
-Выгрузка (export_data, games_pgn) читает таблицы games, bot_personalities, lesson_progress, theme_progress,
-puzzle_attempts, personal_puzzles, drill_records, tournaments и imported_games; маршруты — src/api/account.py.
+The export (export_data, games_pgn) reads the tables games, bot_personalities, lesson_progress, theme_progress,
+puzzle_attempts, personal_puzzles, drill_records, tournaments and imported_games; routes are in src/api/account.py.
 
-Удаление — анонимизация, а не стирание строки: партии общие с соперниками и остаются в их истории, но без имени
-игрока (deleted_<id>). Личное стирается: персоналии, прогресс уроков и задач, личные задачи, импортированные партии,
-рекорды, турниры с ботами, ссылки из писем (email_tokens), продуктовые события, напоминания об аренах, e-mail и
-страна в профиле, сессии лестницы и турнира в Redis. Пароль заменяется непригодным хешем, все токены отзываются
-(users.token_version + 1), открытые WebSocket закрываются. Точный список стираемых таблиц — кортеж в delete_account;
-таблицы, которых в нём нет, удаление не трогает.
+Deletion is anonymisation, not row removal: games are shared with opponents and stay in their history, but without the
+player's name (deleted_<id>). Personal data is erased: personas, lesson and puzzle progress, personal puzzles, imported games,
+records, tournaments with bots, email links (email_tokens), product events, arena reminders, e-mail and
+country in the profile, ladder and tournament sessions in Redis. The password is replaced with an unusable hash, all tokens are
+revoked
+(users.token_version + 1), open WebSockets are closed. The exact list of erased tables is the tuple in delete_account;
+tables not listed there are left untouched by deletion.
 """
 
 from __future__ import annotations
@@ -34,7 +35,7 @@ from src.models.puzzle import DrillRecord, PersonalPuzzle, PuzzleAttempt, ThemeP
 from src.models.tournament import Tournament
 from src.models.user import User
 
-# Версия структуры документа выгрузки (поле "format"): увеличивается, когда меняется набор или смысл полей.
+# Version of the export document structure ("format" field): bumped when the set or meaning of the fields changes.
 EXPORT_FORMAT = 1
 
 
@@ -44,9 +45,9 @@ def _iso(value: datetime | None) -> str | None:
 
 async def export_data(db: AsyncSession, user: User) -> dict:
     """
-    Данные игрока одним документом JSON: профиль с рейтингами, партии (с PGN и именем соперника), персоналии ботов,
-    прогресс уроков и тем, попытки задач, личные задачи, импортированные партии, рекорды упражнений и турниры с
-    ботами. В документ входят только перечисленные разделы; пароль и служебные поля профиля не выгружаются.
+    The player's data as one JSON document: profile with ratings, games (with PGN and opponent name), bot personas,
+    lesson and theme progress, puzzle attempts, personal puzzles, imported games, drill records and tournaments with
+    bots. Only the listed sections are included; the password and internal profile fields are not exported.
     """
     games = (await db.execute(
         select(Game).where(or_(Game.white_player_id == user.id, Game.black_player_id == user.id))
@@ -117,7 +118,7 @@ async def export_data(db: AsyncSession, user: User) -> dict:
              "played": pp.played, "solution": pp.solution, "done": pp.done}
             for pp in personal
         ],
-        # Партии с других сайтов (таск 24.1): принесены игроком — возвращаются ему же.
+        # Games from other sites (task 24.1): brought by the player, so they are returned to the same player.
         "imported_games": [
             {"id": g.id, "source": g.source, "external_id": g.external_id, "color": g.color, "white": g.white_name,
              "black": g.black_name, "result": g.result, "speed": g.speed, "played_at": _iso(g.played_at),
@@ -133,15 +134,16 @@ async def export_data(db: AsyncSession, user: User) -> dict:
     }
 
 
-# Сколько партий отдаёт один запрос выгрузки PGN; остальные клиент запрашивает со сдвигом offset.
+# How many games one PGN export request returns; the client requests the rest with an offset.
 GAMES_PGN_LIMIT = 5000
 
 
 async def games_pgn(db: AsyncSession, user: User, offset: int = 0) -> tuple[str, int]:
     """
-    Все завершённые партии игрока одним PGN-документом (таск 24.3), от старых к новым; не больше GAMES_PGN_LIMIT за
-    раз (дальше — offset). Берутся партии со статусом COMPLETED и непустым games.pgn (прерванные не входят).
-    Возвращает текст и общее число таких партий.
+    All completed games of the player as one PGN document (task 24.3), oldest to newest; at most GAMES_PGN_LIMIT per
+    request (further ones via offset). Games with status COMPLETED and a non-empty games.pgn are taken (aborted ones are
+    excluded).
+    Returns the text and the total number of such games.
     """
     conditions = (
         or_(Game.white_player_id == user.id, Game.black_player_id == user.id),
@@ -157,10 +159,10 @@ async def games_pgn(db: AsyncSession, user: User, offset: int = 0) -> tuple[str,
 
 async def delete_account(db: AsyncSession, user: User) -> None:
     """
-    Анонимизирует аккаунт и стирает личные данные; идущая или ожидающая начала партия — отказ 409 account_in_game
-    (сначала её нужно доиграть). Строка users остаётся: имя и username_key — deleted_<id>, отметка deleted_at, новый
-    случайный пароль; рост token_version отзывает все выданные токены. После записи в базу снимаются сессии
-    честной партии в Redis и закрываются открытые соединения игрока.
+    Anonymises the account and erases personal data; a game in progress or awaiting start is refused with 409 account_in_game
+    (it must be finished first). The users row stays: name and username_key become deleted_<id>, deleted_at is set, a new
+    random password is assigned; bumping token_version revokes all issued tokens. After the database write, the fair-play
+    sessions in Redis are dropped and the player's open connections are closed.
     """
     active = await db.scalar(select(Game.id).where(
         or_(Game.white_player_id == user.id, Game.black_player_id == user.id),
@@ -183,7 +185,7 @@ async def delete_account(db: AsyncSession, user: User) -> None:
     user.username = anonymous
     user.username_key = anonymous
     user.email = None
-    # Страна из профиля (таск 33.6) — личные данные; очки, уже набранные для конференции в аренах, остаются.
+    # Country from the profile (task 33.6) is personal data; points already earned for a conference in arenas stay.
     user.country = None
     user.country_season = None
     user.hashed_password = get_password_hash(secrets.token_urlsafe(32))
@@ -191,7 +193,7 @@ async def delete_account(db: AsyncSession, user: User) -> None:
     user.token_version = (user.token_version or 0) + 1
     await db.commit()
 
-    # Сессии честной партии (лестница, турнир) и открытые WebSocket.
+    # Fair-play sessions (ladder, tournament) and open WebSockets.
     from src.services import ladder
     from src.services.connection_manager import manager
 

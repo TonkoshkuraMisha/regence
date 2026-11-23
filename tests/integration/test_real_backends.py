@@ -1,16 +1,16 @@
 # --- FILE: tests/integration/test_real_backends.py ---
 """
-Гонки на настоящих PostgreSQL и Redis.
+Races on real PostgreSQL and Redis.
 
-Юнит-тесты идут на SQLite и in-memory моке Redis, где SELECT ... FOR UPDATE молча
-игнорируется, а WATCH/MULTI эмулируется. Здесь проверяется, что защита от двойного
-завершения партии и потерянных обновлений рейтинга работает на реальных бэкендах.
+Unit tests run on SQLite and an in-memory Redis mock, where SELECT ... FOR UPDATE is silently
+ignored and WATCH/MULTI is emulated. Here we check that protection against double
+game completion and lost rating updates works on real backends.
 
-Запуск (нужны пустая БД и Redis, данные в них будут удалены):
+Run (requires an empty DB and Redis; their data will be deleted):
     TEST_DATABASE_URL=postgresql+asyncpg://user:pass@localhost:5432/regence_test \
     TEST_REDIS_URL=redis://localhost:6379/15 \
     python -m pytest -m integration
-Без этих переменных тесты пропускаются. В CI они запускаются с сервисами postgres и redis.
+Without these variables the tests are skipped. In CI they run with the postgres and redis services.
 """
 
 import asyncio
@@ -43,7 +43,7 @@ async def real_redis(monkeypatch):
     await client.flushdb()
     monkeypatch.setattr(state_manager, "redis", client)
     monkeypatch.setattr("src.db.redis.redis_client", client)
-    # Публикацию фонового анализа в брокер Celery отключает общая фикстура no_celery_publish (conftest).
+    # Publishing background analysis to the Celery broker is disabled by the shared no_celery_publish fixture (conftest).
     yield client
     await client.flushdb()
     await client.aclose()
@@ -82,13 +82,13 @@ async def _finish(pg, game_id: int, result: str) -> dict:
 
 
 async def _rating(pg, user_id: int) -> int:
-    # Все партии в этом файле создаются с base_time_ms=180000/increment_ms=0 — это блиц.
+    # All games in this file are created with base_time_ms=180000/increment_ms=0 — that is blitz.
     async with pg() as db:
         return (await db.get(User, user_id)).blitz_rating
 
 
 async def test_concurrent_finish_applies_rating_once(pg, real_redis):
-    """Два обработчика одновременно завершают одну партию в разных сессиях (FOR UPDATE)."""
+    """Two handlers finish the same game at the same time in different sessions (FOR UPDATE)."""
     white, black = await _create_users(pg, 1500, 1500)
     game_id = await _create_game(pg, white, black)
 
@@ -101,7 +101,7 @@ async def test_concurrent_finish_applies_rating_once(pg, real_redis):
 
 
 async def test_two_games_of_one_player_do_not_lose_rating_update(pg, real_redis):
-    """Две партии игрока A заканчиваются одновременно: обе дельты должны попасть в рейтинг."""
+    """Two games of player A end simultaneously: both deltas must reach the rating."""
     a, b, c = await _create_users(pg, 1500, 1500, 1500)
     game_ab = await _create_game(pg, a, b)
     game_ac = await _create_game(pg, a, c)

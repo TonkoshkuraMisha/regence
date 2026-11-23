@@ -1,12 +1,12 @@
 // --- FILE: frontend/src/components/arena/ConferencesPage.tsx ---
-// Конференции (таск 33.6): /conferences — Кубок конференций текущего сезона (месяца) и выбор своей страны. Страна
-// определяет конференцию; очки игрока в любой арене идут в зачёт его конференции. Страну игрок указывает сам:
-// подсказка (страна от сервера или из языка браузера) только предлагается и без нажатия никуда не отправляется.
-// Под Кубком — матчи конференций сезона и ближайшие (ConferenceMatches.tsx).
-// Данные: services/conferences.ts — conferencesApi.page (GET /api/v1/conferences: Кубок, таблица стран, свой профиль,
-// матчи) и setCountry (PUT /api/v1/conferences/me); название страны даёт браузер (Intl.DisplayNames). Роут — App.tsx.
-// Конференцию определяет только страна; смена конференции доступна не чаще раза за сезон (правило и флаг can_change
-// считает сервер). В зачёт арены идёт сумма очков лучших top_players участников конференции.
+// Conferences (task 33.6): /conferences shows the Conference Cup of the current season (month) and the choice of one's country. The country
+// determines the conference; the player's points in any arena count for their conference. The player specifies the country themselves:
+// the hint (a country from the server or from the browser language) is only offered and is sent nowhere without a click.
+// Under the Cup are the season's conference matches and the nearest ones (ConferenceMatches.tsx).
+// Data: services/conferences.ts, conferencesApi.page (GET /api/v1/conferences: the Cup, the country table, one's own profile,
+// matches) and setCountry (PUT /api/v1/conferences/me); the country name comes from the browser (Intl.DisplayNames). Route is App.tsx.
+// The conference is determined only by the country; changing the conference is available no more than once per season (the rule and the can_change flag
+// are computed by the server). The sum of points of the conference's best top_players participants counts toward the arena standings.
 
 import {useCallback, useEffect, useMemo, useState} from 'react';
 import {Link} from 'react-router-dom';
@@ -19,7 +19,7 @@ import {conferencesApi, countryName, localeCountry} from '../../services/confere
 import type {ConferencesData} from '../../services/conferences';
 import {MatchList} from './ConferenceMatches';
 
-/** Страница конференций: Кубок сезона, матчи и форма выбора страны (для вошедшего игрока; гостю — приглашение войти). */
+/** Conferences page: the season Cup, matches and the country choice form (for a signed-in player; a guest gets an invitation to sign in). */
 export function ConferencesPage() {
     const {t, language} = useI18n();
     const [data, setData] = useState<ConferencesData | null>(null);
@@ -35,7 +35,7 @@ export function ConferencesPage() {
     }, []);
     useEffect(load, [load]);
 
-    // Страны по алфавиту языка интерфейса.
+    // Countries in the alphabet of the interface language.
     const countries = useMemo(() => Object.keys(data?.countries ?? {})
         .map((code) => ({code, name: countryName(code, language)}))
         .sort((a, b) => a.name.localeCompare(b.name, language)), [data, language]);
@@ -47,7 +47,7 @@ export function ConferencesPage() {
         setError(null);
         conferencesApi.setCountry(country).then(load).catch((err) => setError(errorMessage(err, 'common.networkError')));
     };
-    // Подсказка — только пока страна не указана и только из стран, которые можно выбрать.
+    // The hint only while no country is specified and only from countries that can be chosen.
     const hinted = data.suggested_country ?? localeCountry();
     const suggestion = me && !me.country && hinted && data.countries[hinted] ? hinted : null;
     const chosenConference = choice ? data.countries[choice] : null;

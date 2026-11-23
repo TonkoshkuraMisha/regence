@@ -1,4 +1,4 @@
-// Отдельная тема для разбора партий (таск 18.3): без записи — как в игре; запись не трогает тему игры.
+// A separate theme for game review (task 18.3): without a record — as in the game; a record does not touch the game theme.
 
 import {afterEach, describe, expect, it} from 'vitest';
 import {
@@ -8,8 +8,8 @@ import {
 
 afterEach(() => localStorage.clear());
 
-describe('тема разбора', () => {
-    it('по умолчанию совпадает с темой игры', () => {
+describe('review theme', () => {
+    it('by default it matches the game theme', () => {
         localStorage.setItem('regence_board_theme', 'oak');
         localStorage.setItem('regence_piece_set', 'cburnett');
         expect(hasAnalysisAppearance()).toBe(false);
@@ -17,7 +17,7 @@ describe('тема разбора', () => {
         expect(getAnalysisPieceSetKey()).toBe('cburnett');
     });
 
-    it('своя тема разбора не меняет тему игры; сброс возвращает «как в игре»', () => {
+    it('its own review theme does not change the game theme; reset returns "as in the game"', () => {
         localStorage.setItem('regence_board_theme', 'oak');
         setAnalysisAppearance('marble', 'celtic');
         expect(hasAnalysisAppearance()).toBe(true);
@@ -27,7 +27,7 @@ describe('тема разбора', () => {
         expect(getAnalysisBoardThemeKey()).toBe('oak');
     });
 
-    it('неизвестная доска в хранилище игнорируется', () => {
+    it('an unknown board in storage is ignored', () => {
         localStorage.setItem('regence_analysis_board_theme', 'gone');
         localStorage.setItem('regence_analysis_piece_set', 'celtic');
         expect(hasAnalysisAppearance()).toBe(false);

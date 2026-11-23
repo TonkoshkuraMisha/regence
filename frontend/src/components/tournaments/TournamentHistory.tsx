@@ -1,7 +1,7 @@
 // --- FILE: frontend/src/components/tournaments/TournamentHistory.tsx ---
-// История турниров в своём профиле (таск 15.3): список турниров игрока с занятым местом. Рисуется в Profile.tsx.
-// Данные: GET /api/v1/profile/me (чтобы убедиться, что открыт свой профиль) и services/tournaments.ts — listTournaments
-// (GET /api/v1/tournaments, только турниры вошедшего игрока).
+// Tournament history in one's own profile (task 15.3): a list of the player's tournaments with the place taken. Rendered in Profile.tsx.
+// Data: GET /api/v1/profile/me (to make sure it is one's own profile) and services/tournaments.ts - listTournaments
+// (GET /api/v1/tournaments, only the signed-in player's tournaments).
 
 import {useEffect, useState} from 'react';
 import {Link} from 'react-router-dom';
@@ -12,7 +12,7 @@ import type {TournamentSummary} from '../../services/tournaments';
 import {getToken} from '../../services/authToken';
 import {accountApi} from '../../services/account';
 
-/** Показывается только в профиле вошедшего игрока: турниры видит лишь их владелец. */
+/** Shown only in the signed-in player's profile: tournaments are visible only to their owner. */
 export function TournamentHistory({username}: { username: string }) {
     const {t} = useI18n();
     const [items, setItems] = useState<TournamentSummary[] | null>(null);

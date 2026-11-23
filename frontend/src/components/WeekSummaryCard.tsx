@@ -1,8 +1,8 @@
 // --- FILE: frontend/src/components/WeekSummaryCard.tsx ---
-// «Моя неделя»: итоги последних 7 суток игрока — партии (победы, ничьи, поражения, изменение рейтинга), задачи, дни
-// активности — и один совет. Данные и совет-код отдаёт сервер (GET /workout/week, src/services/weekly_summary.py);
-// текст совета собирается здесь по коду weekly.advice.<код>. Показывается под планом разминки на /workout; при ошибке
-// сети блока просто нет.
+// "My week": the player's results over the last 7 days: games (wins, draws, losses, rating change), puzzles, active
+// days, and one tip. The data and the tip code are provided by the server (GET /workout/week, src/services/weekly_summary.py);
+// the tip text is assembled here by the code weekly.advice.<code>. Shown under the warm-up plan on /workout; on a network
+// error the block is simply absent.
 
 import {useEffect, useState} from 'react';
 import {useI18n} from '../i18n';

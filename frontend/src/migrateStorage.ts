@@ -1,6 +1,6 @@
 // --- FILE: frontend/src/migrateStorage.ts ---
-// Импортируется первым в src/main.tsx: модули настроек (язык, доска, звук) читают хранилище уже при импорте, поэтому
-// перенос ключей michess_… → regence_… (services/storageMigration.ts) должен случиться раньше их загрузки.
+// Imported first in src/main.tsx: the settings modules (language, board, sound) read storage already at import time, so
+// the key migration michess_… → regence_… (services/storageMigration.ts) must happen before they load.
 
 import {migrateLegacyStorage} from './services/storageMigration';
 

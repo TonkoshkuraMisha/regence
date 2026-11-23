@@ -1,51 +1,51 @@
 // --- FILE: frontend/src/services/repertoire.ts ---
-// Дебютный репертуар (таск 20.1): /api/v1/repertoires — свои линии за белых или за чёрных, шесть стартовых наборов,
-// добавление линий (UCI из начальной позиции или текст PGN), комментарии и удаление хода с ветками за ним.
-// Сервер присылает рёбра графа позиций с SAN и ключом позиции после хода — клиент ходит по ним, не вычисляя ключи.
-// Маршруты — src/api/repertoire.py; граф — src/services/repertoire.py, повторение по расписанию SM-2 и игра
-// против репертуара — repertoire_drill.py, отклонения в сыгранной партии — repertoire_deviations.py. Всё, кроме
-// списка стартовых наборов, требует входа; ответ соперника (opponent) закрыт на время партии с человеком.
+// Opening repertoire (task 20.1): /api/v1/repertoires — own lines for White or Black, six starter sets,
+// adding lines (UCI from the initial position or PGN text), comments and deleting a move with the branches behind it.
+// The server sends position-graph edges with SAN and the position key after the move — the client walks them without computing keys.
+// Routes — src/api/repertoire.py; graph — src/services/repertoire.py, SM-2 scheduled review and play
+// against the repertoire — repertoire_drill.py, deviations in a played game — repertoire_deviations.py. Everything except
+// the starter set list requires sign-in; the opponent reply (opponent) is closed during a game with a human.
 
 import {apiRequest} from './http';
 
 export type RepertoireColor = 'white' | 'black';
-/** Коды стартовых наборов сервера (src/services/repertoire_starters.py); названия и вводные тексты — в каталоге. */
+/** Server starter set codes (src/services/repertoire_starters.py); names and intro texts are in the catalog. */
 export const STARTER_IDS = ['italian', 'london', 'open_games', 'queens_gambit', 'caro_kann', 'nimzo_indian'] as const;
 export type StarterId = typeof STARTER_IDS[number];
 
-/** Стартовый набор: готовые линии (каждая — ходы UCI из начальной позиции), сторона и уровень. */
+/** Starter set: ready-made lines (each is UCI moves from the initial position), side and level. */
 export interface Starter {
     id: StarterId;
     color: RepertoireColor;
     level: 'beginner' | 'intermediate' | 'advanced';
-    /** Стиль набора (27.10); у старого сервера может не быть. */
+    /** Set style (27.10); an old server may lack it. */
     style?: 'attacking' | 'positional';
     lines: string[][];
 }
 
-/** Репертуар в списке: moves — число ходов (рёбер) в нём. */
+/** Repertoire in the list: moves — the number of moves (edges) in it. */
 export interface RepertoireSummary {
     id: number;
     name: string;
     color: RepertoireColor;
-    /** Из какого стартового набора скопирован; null — собран с нуля. */
+    /** Which starter set it was copied from; null — built from scratch. */
     starter: StarterId | null;
     moves: number;
 }
 
-/** Ребро графа: ход uci из позиции position ведёт в позицию child. Ключи позиций вычисляет сервер (EPD). */
+/** Graph edge: move uci from position position leads to position child. Position keys are computed by the server (EPD). */
 export interface RepertoireEdge {
     position: string;
     uci: string;
     san: string;
     child: string;
-    /** Свой комментарий игрока к ходу; пустая строка — комментария нет. */
+    /** The player's own comment on the move; an empty string — no comment. */
     comment: string;
-    /** Ход стороны репертуара (а не ответ соперника). */
+    /** A move of the repertoire's side (not the opponent's reply). */
     mine: boolean;
 }
 
-/** Репертуар целиком: все рёбра графа и ключ начальной позиции (root), с которого начинается обход. */
+/** Whole repertoire: all graph edges and the key of the initial position (root) the traversal starts from. */
 export interface Repertoire {
     id: number;
     name: string;
@@ -55,74 +55,74 @@ export interface Repertoire {
     moves: RepertoireEdge[];
 }
 
-/** Запрос к /api/v1/repertoires через общую обёртку http.ts (токен, JSON, ошибки). */
+/** Request to /api/v1/repertoires through the shared http.ts wrapper (token, JSON, errors). */
 const call = <T>(path: string, init: RequestInit = {}) => apiRequest<T>(`/repertoires${path}`, init);
 
 const json = (method: string, body: object): RequestInit => ({method, body: JSON.stringify(body)});
 
-// --- Отклонения в партиях (таск 20.3) ---
+// --- Deviations in games (task 20.3) ---
 
-/** Первое место, где сыгранная партия ушла из одного из репертуаров игрока (по позициям, с учётом перестановок). */
+/** The first place where the played game left one of the player's repertoires (by positions, accounting for transpositions). */
 export interface Deviation {
     repertoire_id: number;
     name: string;
     starter: StarterId | null;
     /**
-     * you_left — игрок сыграл не свой ход; opponent_new — соперник сыграл ход, которого в репертуаре нет;
-     * end — партия дошла до конца подготовленной линии; followed — вся партия прошла по репертуару.
+     * you_left — the player played a move outside the repertoire; opponent_new — the opponent played a move not in the repertoire;
+     * end — the game reached the end of the prepared line; followed — the whole game followed the repertoire.
      */
     kind: 'you_left' | 'opponent_new' | 'end' | 'followed';
-    /** Полуход партии (с 1); для followed — длина партии. */
+    /** Ply of the game (from 1); for followed — the game length. */
     ply: number;
-    /** Ход, сыгранный в партии (SAN и UCI), и ходы, которые ждал репертуар (SAN). */
+    /** The move played in the game (SAN and UCI) and the moves the repertoire expected (SAN). */
     played: string | null;
     played_uci: string | null;
     expected: string[];
-    /** Ходы до позиции отклонения. */
+    /** Moves up to the deviation position. */
     line: string[];
     position: string;
 }
 
-/** «3.» для хода белых, «1…» для хода чёрных — номер хода по полуходу. */
+/** "3." for a White move, "1…" for a Black move — the move number from the ply. */
 export function moveLabel(ply: number): string {
     return `${Math.ceil(ply / 2)}${ply % 2 ? '.' : '…'}`;
 }
 
-// --- Повторение (таск 20.2) ---
+// --- Review (task 20.2) ---
 
-/** Состояние карточки повторения: ещё не показывалась, учится, выучена. */
+/** Review card state: not shown yet, learning, learned. */
 export type CardStatus = 'new' | 'learning' | 'learned';
 
-/** Счётчики карточек репертуара. Дневную норму новых карточек задаёт сервер (NEW_PER_DAY в repertoire_drill.py). */
+/** Repertoire card counters. The daily quota of new cards is set by the server (NEW_PER_DAY in repertoire_drill.py). */
 export interface DrillStats {
     total: number;
     new: number;
     learning: number;
     learned: number;
-    /** Просрочено к повторению сейчас. */
+    /** Overdue for review now. */
     due: number;
-    /** Сколько новых карточек ещё можно взять сегодня. */
+    /** How many new cards can still be taken today. */
     new_left: number;
 }
 
-/** Верный ответ карточки — один из своих ходов репертуара в этой позиции. */
+/** Correct card answer — one of the repertoire's own moves in this position. */
 export interface DrillAnswerOption {
     uci: string;
     san: string;
     comment: string;
 }
 
-/** Карточка «найди свой ход»: позиция репертуара, где ход за игроком; верны все его ходы из неё (answers). */
+/** "Find your move" card: a repertoire position where the player is to move; all of the player's moves from it are correct (answers). */
 export interface DrillCard {
     position: string;
-    /** Ходы из начальной позиции до карточки. */
+    /** Moves from the initial position to the card. */
     line: string[];
     fen: string;
     answers: DrillAnswerOption[];
     status: CardStatus;
 }
 
-/** Итог ответа на карточку: новое состояние и срок следующего повторения по расписанию SM-2 (считает сервер). */
+/** Card answer result: the new state and the next review date per the SM-2 schedule (computed by the server). */
 export interface DrillAnswer {
     correct: boolean;
     answers: DrillAnswerOption[];
@@ -134,44 +134,44 @@ export interface DrillAnswer {
 export const repertoireApi = {
     starters: () => call<{ starters: Starter[] }>('/starters'),
     list: () => call<{ repertoires: RepertoireSummary[] }>(''),
-    /** Новый репертуар: пустой (name, color) или копия стартового набора (starter — сторона берётся из него). */
+    /** New repertoire: empty (name, color) or a copy of a starter set (starter — the side is taken from it). */
     create: (body: { name?: string; color?: RepertoireColor; starter?: StarterId }) => call<Repertoire>('', json('POST', body)),
     get: (id: number) => call<Repertoire>(`/${id}`),
     rename: (id: number, name: string) => call<{ id: number; name: string }>(`/${id}`, json('PATCH', {name})),
     remove: (id: number) => call<{ deleted: boolean }>(`/${id}`, {method: 'DELETE'}),
-    /** Добавить линию (UCI из начальной позиции) или линии из PGN; added — сколько ходов оказалось новыми. */
+    /** Add a line (UCI from the initial position) or lines from PGN; added — how many moves turned out to be new. */
     addLine: (id: number, moves: string[]) => call<Repertoire & { added: number }>(`/${id}/lines`, json('POST', {moves})),
     importPgn: (id: number, pgn: string) => call<Repertoire & { added: number }>(`/${id}/pgn`, json('POST', {pgn})),
     comment: (id: number, position: string, uci: string, comment: string) =>
         call<{ comment: string }>(`/${id}/comment`, json('PUT', {position, uci, comment})),
-    /** Убрать ход и ветки за ним — кроме позиций, в которые можно прийти другим порядком ходов. */
+    /** Remove a move and the branches behind it — except positions reachable by another move order. */
     removeMove: (id: number, position: string, uci: string) =>
         call<Repertoire & { removed: number }>(`/${id}/remove`, json('POST', {position, uci})),
-    /** Карточки сессии: review — по расписанию и новые в пределах дневной нормы, learn — новые линии. */
+    /** Session cards: review — scheduled and new within the daily quota, learn — new lines. */
     drill: (id: number, mode: 'review' | 'learn') => call<{ stats: DrillStats; cards: DrillCard[] }>(`/${id}/drill?mode=${mode}`),
-    /** retry — повтор карточки после ошибки в той же сессии: расписание он не меняет. */
+    /** retry — repeating a card after a mistake in the same session: it does not change the schedule. */
     answer: (id: number, position: string, uci: string, retry: boolean) =>
         call<DrillAnswer>(`/${id}/drill/answer`, json('POST', {position, uci, retry})),
-    /** Поставить карточку позиции в сегодняшнее повторение (кнопка «Потренировать» после партии, таск 20.3). */
+    /** Put a position card into today's review (the "Practice" button after a game, task 20.3). */
     focus: (id: number, position: string) => call<{ ok: boolean }>(`/${id}/drill/focus`, json('POST', {position})),
-    /** Отклонения своей законченной партии от репертуаров её цвета. */
+    /** Deviations of the player's own finished game from the repertoires of its color. */
     deviations: (gameId: number | string) => call<{ color: RepertoireColor; results: Deviation[] }>(`/game/${gameId}/deviations`),
     /**
-     * «Игра против репертуара»: ответ соперника после линии игрока — из ответов репертуара, чаще популярный у
-     * людей (по индексу позиций). reply = null — ответов нет, линия пройдена.
+     * "Play against the repertoire": the opponent's reply after the player's line — from the repertoire's replies, preferring the one popular among
+     * people (by the position index). reply = null — no replies, the line is complete.
      */
     opponent: (id: number, moves: string[]) =>
         call<{ reply: string | null; san: string | null }>(`/${id}/opponent`, json('POST', {moves})),
 };
 
-/** Рёбра из позиции: свои ходы — первыми. */
+/** Edges from a position: own moves first. */
 export function edgesFrom(repertoire: Repertoire, position: string): RepertoireEdge[] {
     return repertoire.moves.filter((m) => m.position === position).sort((a, b) => Number(b.mine) - Number(a.mine));
 }
 
 /**
- * Где линия (UCI из начальной позиции) выходит из репертуара: ключ последней известной позиции и число ходов линии,
- * которые в репертуаре уже есть. Пока все ходы — по рёбрам, позиция известна без шахматной логики на клиенте.
+ * Where a line (UCI from the initial position) leaves the repertoire: the key of the last known position and the number of the line's moves
+ * already in the repertoire. As long as all moves follow edges, the position is known without chess logic on the client.
  */
 export function followLine(repertoire: Repertoire, line: string[]): { position: string; known: number } {
     let position = repertoire.root;

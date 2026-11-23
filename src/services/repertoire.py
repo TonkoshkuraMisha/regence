@@ -1,12 +1,12 @@
 """
-Дебютный репертуар (таск 20.1): линии из справочника, из PGN и из своих партий складываются в граф позиций
-(src/models/repertoire.py). Клиент получает рёбра с SAN и ключом позиции после хода и ходит по дереву, не вычисляя
-ключи сам; новые ходы присылает линией UCI из начальной позиции.
+Opening repertoire (task 20.1): lines from the explorer, from PGN and from one's own games are put together into a graph of
+positions (src/models/repertoire.py). The client receives edges with SAN and the position key after the move and walks the
+tree without computing keys itself; it sends new moves as a UCI line from the starting position.
 
-Данные: repertoires (название, цвет, владелец) и repertoire_moves — рёбра графа: позиция (EPD), ход из неё и
-комментарий. Одна позиция хранится один раз, как бы к ней ни пришли, поэтому перестановки ходов сливаются. Карточки
-повторения (repertoire_cards) ведёт src/services/repertoire_drill.py. Функции модуля commit не делают — его делает
-маршрут (src/api/repertoire.py).
+Data: repertoires (name, colour, owner) and repertoire_moves - the graph edges: a position (EPD), a move from it and a
+comment. A position is stored once, however it is reached, so transpositions merge. The repetition cards
+(repertoire_cards) are managed by src/services/repertoire_drill.py. The module's functions do not commit - the route
+(src/api/repertoire.py) does.
 """
 
 import io
@@ -22,25 +22,25 @@ from src.core.errors import DomainValueError
 from src.models.repertoire import Repertoire, RepertoireMove
 from src.services.repertoire_starters import Starter
 
-MAX_REPERTOIRES = 20  # репертуаров у одного игрока (проверяет маршрут создания)
-MAX_MOVES = 2000  # ходов (рёбер) в одном репертуаре
-MAX_LINE_PLIES = 40  # глубина линии в полуходах: более длинная линия молча обрезается
-MAX_PGN_CHARS = 100_000  # предел размера текста PGN при импорте
-MAX_PGN_GAMES = 50  # из текста PGN читается не больше стольких партий, остальные не рассматриваются
-MAX_COMMENT = 300  # длина комментария к ходу (проверяет схема запроса)
-ROOT = chess.Board().epd()  # ключ начальной позиции — корень дерева
+MAX_REPERTOIRES = 20  # repertoires per player (checked by the creation route)
+MAX_MOVES = 2000  # moves (edges) in one repertoire
+MAX_LINE_PLIES = 40  # line depth in plies: a longer line is silently truncated
+MAX_PGN_CHARS = 100_000  # limit on the PGN text size on import
+MAX_PGN_GAMES = 50  # no more than this many games are read from the PGN text, the rest are not considered
+MAX_COMMENT = 300  # length of a move comment (checked by the request schema)
+ROOT = chess.Board().epd()  # key of the starting position - the root of the tree
 
 
 def position_key(board: chess.Board) -> str:
-    """Ключ позиции в графе — EPD: расстановка, очередь хода, рокировки, взятие на проходе (без счётчиков ходов)."""
+    """Position key in the graph - EPD: placement, side to move, castling, en passant (without move counters)."""
     return board.epd()
 
 
 @dataclass(frozen=True)
 class Edge:
     """
-    Ребро дерева для клиента: позиция, ход из неё (UCI и SAN), позиция после хода, комментарий и чей это ход
-    (mine — ход стороны, за которую составлен репертуар).
+    A tree edge for the client: a position, a move from it (UCI and SAN), the position after the move, a comment and whose
+    move it is (mine - a move of the side the repertoire is built for).
     """
 
     position: str
@@ -53,8 +53,8 @@ class Edge:
 
 def parse_line(moves_uci: list[str]) -> list[tuple[str, str]]:
     """
-    Линия UCI из начальной позиции → пары (позиция, ход); нелегальный ход — ошибка с этим ходом. Учитываются
-    первые MAX_LINE_PLIES полуходов.
+    UCI line from the starting position -> (position, move) pairs; an illegal move is an error carrying that move. The first
+    MAX_LINE_PLIES plies are taken into account.
     """
     board = chess.Board()
     pairs = []
@@ -71,7 +71,7 @@ def parse_line(moves_uci: list[str]) -> list[tuple[str, str]]:
 
 
 def san_line_to_uci(line: str) -> list[str]:
-    """Линия в SAN через пробел (без номеров ходов) → ходы UCI. Для своих данных (готовые репертуары): без проверок."""
+    """A line in SAN separated by spaces (no move numbers) -> UCI moves. For our own data (ready sets): no checks."""
     board = chess.Board()
     moves = []
     for san in line.split():
@@ -82,15 +82,15 @@ def san_line_to_uci(line: str) -> list[str]:
 
 
 def starter_lines(starter: Starter) -> list[list[str]]:
-    """Линии готового репертуара (src/services/repertoire_starters.py) в UCI — для ``add_lines``."""
+    """Lines of a ready-made repertoire (src/services/repertoire_starters.py) in UCI - for ``add_lines``."""
     return [san_line_to_uci(line) for line in starter.lines]
 
 
 def pgn_lines(text: str) -> list[list[str]]:
     """
-    Все линии (главная и варианты) всех партий текста PGN; партии не из начальной позиции и партии с ошибками
-    разбора пропускаются. Читается не больше MAX_PGN_GAMES партий, каждая линия — до MAX_LINE_PLIES полуходов.
-    Слишком длинный текст или ни одной линии — отказ repertoire_bad_pgn. Комментарии PGN не переносятся.
+    All lines (main and variations) of all games of the PGN text; games not from the starting position and games with parse
+    errors are skipped. No more than MAX_PGN_GAMES games are read, each line up to MAX_LINE_PLIES plies.
+    Too long a text or no lines at all - refusal repertoire_bad_pgn. PGN comments are not carried over.
     """
     if len(text) > MAX_PGN_CHARS:
         raise DomainValueError("repertoire_bad_pgn")
@@ -118,9 +118,9 @@ def pgn_lines(text: str) -> list[list[str]]:
 
 def build_tree(color: str, rows: list[RepertoireMove]) -> list[Edge]:
     """
-    Рёбра, достижимые из начальной позиции, в порядке обхода в ширину (короткие линии — первыми). Ходы из одной
-    позиции идут в порядке добавления (по id). Позиция, к которой ведут разные порядки ходов, раскрывается один
-    раз. Строки, не достижимые из корня, и нелегальные ходы в результат не попадают.
+    Edges reachable from the starting position, in breadth-first order (short lines first). Moves from one
+    position go in the order of addition (by id). A position reached by different move orders is expanded
+    once. Rows unreachable from the root and illegal moves do not enter the result.
     """
     by_position: dict[str, list[RepertoireMove]] = {}
     for row in sorted(rows, key=lambda r: r.id):
@@ -160,7 +160,7 @@ async def count_moves(db: AsyncSession, repertoire_id: int) -> int:
 
 
 async def add_lines(db: AsyncSession, repertoire: Repertoire, lines: list[list[str]]) -> int:
-    """Добавляет ходы линий, которых ещё нет; сверх MAX_MOVES — ошибка, ничего не добавляется."""
+    """Adds the moves of lines that are not there yet; beyond MAX_MOVES - an error, nothing is added."""
     existing = {(row.position, row.move_uci) for row in await load_moves(db, repertoire.id)}
     new: dict[tuple[str, str], None] = {}
     for line in lines:
@@ -175,7 +175,7 @@ async def add_lines(db: AsyncSession, repertoire: Repertoire, lines: list[list[s
 
 
 async def remove_move(db: AsyncSession, repertoire: Repertoire, position: str, uci: str) -> int:
-    """Убирает ход и всё, что после него стало недостижимо из начальной позиции; возвращает число удалённых ходов."""
+    """Removes a move and all that became unreachable from the starting position after it; returns the number removed."""
     rows = await load_moves(db, repertoire.id)
     target = next((row for row in rows if row.position == position and row.move_uci == uci), None)
     if target is None:

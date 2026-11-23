@@ -1,6 +1,6 @@
-// Соединение WebSocket (gameSocket.ts), ветки сверх gameSocketTicket.test.ts: подписки и рассылка событий ('*'),
-// очередь сообщений до подключения, отправка в открытый сокет, повторное подключение после обрыва и после отказа
-// 429/500 на выдаче тикета, отсутствие переподключения при штатном закрытии (1000), сбой разбора JSON.
+// The WebSocket connection (gameSocket.ts), branches beyond gameSocketTicket.test.ts: subscriptions and event broadcast ('*'),
+// the message queue before connecting, sending to an open socket, reconnecting after a drop and after a 429/500
+// on ticket issue, no reconnect on a normal close (1000), a JSON parsing failure.
 
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {gameSocket} from '../gameSocket';
@@ -39,7 +39,7 @@ const flush = async () => {
     await vi.advanceTimersByTimeAsync(0);
 };
 
-describe('gameSocket: события, очередь и переподключение', () => {
+describe('gameSocket: events, the queue and reconnecting', () => {
     beforeEach(() => {
         vi.useFakeTimers();
         FakeWebSocket.instances = [];
@@ -56,7 +56,7 @@ describe('gameSocket: события, очередь и переподключе
         vi.unstubAllGlobals();
     });
 
-    it('сообщение уходит подписчикам по имени события и подписчику на "*"; после off — не приходит', async () => {
+    it('a message goes to subscribers by event name and to the "*" subscriber; after off — it does not arrive', async () => {
         vi.stubGlobal('fetch', vi.fn().mockResolvedValue(ticketOk()));
         const named = vi.fn();
         const all = vi.fn();
@@ -77,18 +77,18 @@ describe('gameSocket: события, очередь и переподключе
         expect(named).toHaveBeenCalledTimes(1);
     });
 
-    it('некорректный JSON не роняет приём и пишется в консоль', async () => {
+    it('invalid JSON does not break receiving and is written to the console', async () => {
         vi.stubGlobal('fetch', vi.fn().mockResolvedValue(ticketOk()));
         gameSocket.connect('jwt');
         await flush();
         const ws = FakeWebSocket.instances[0];
         ws.open();
-        ws.onmessage?.({data: '{не json'});
+        ws.onmessage?.({data: '{not json'});
         ws.onerror?.(new Event('error'));
         expect(console.error).toHaveBeenCalled();
     });
 
-    it('сообщения без связи ждут в очереди и уходят после открытия; в открытый сокет — сразу', async () => {
+    it('messages without a connection wait in the queue and go out after opening; into an open socket — at once', async () => {
         vi.stubGlobal('fetch', vi.fn().mockResolvedValue(ticketOk()));
         gameSocket.connect('jwt');
         gameSocket.send('join_queue', {base: 3});
@@ -101,24 +101,24 @@ describe('gameSocket: события, очередь и переподключе
         expect(ws.sent).toHaveLength(2);
     });
 
-    it('повторный connect при открытом или подключающемся сокете не открывает второй', async () => {
+    it('a repeated connect on an open or connecting socket does not open a second one', async () => {
         vi.stubGlobal('fetch', vi.fn().mockResolvedValue(ticketOk()));
         gameSocket.connect('jwt');
-        gameSocket.connect('jwt');  // идёт запрос тикета
+        gameSocket.connect('jwt');  // the ticket request is in progress
         await flush();
-        gameSocket.connect('jwt');  // сокет в состоянии CONNECTING
-        gameSocket.connect('');     // пустой токен игнорируется
+        gameSocket.connect('jwt');  // the socket is in the CONNECTING state
+        gameSocket.connect('');     // an empty token is ignored
         expect(FakeWebSocket.instances).toHaveLength(1);
     });
 
-    it('без входа send ничего не отправляет и пишет ошибку', () => {
+    it('without login send sends nothing and writes an error', () => {
         clearToken();
         gameSocket.send('ping');
         expect(console.error).toHaveBeenCalled();
         expect(FakeWebSocket.instances).toHaveLength(0);
     });
 
-    it('обрыв соединения: повторное подключение через 1,5 с; штатное закрытие 1000 — без него', async () => {
+    it('a connection drop: reconnecting after 1.5 s; a normal close 1000 — without it', async () => {
         vi.stubGlobal('fetch', vi.fn().mockResolvedValue(ticketOk()));
         gameSocket.connect('jwt');
         await flush();
@@ -130,7 +130,7 @@ describe('gameSocket: события, очередь и переподключе
         expect(FakeWebSocket.instances).toHaveLength(2);
     });
 
-    it('отказ 429 на выдаче тикета — повтор через 15 с, прочий сбой — через 1,5 с', async () => {
+    it('a 429 on ticket issue — a retry after 15 s, another failure — after 1.5 s', async () => {
         const fetchMock = vi.fn()
             .mockResolvedValueOnce({ok: false, status: 429})
             .mockResolvedValueOnce({ok: false, status: 500})
@@ -148,7 +148,7 @@ describe('gameSocket: события, очередь и переподключе
         expect(FakeWebSocket.instances).toHaveLength(1);
     });
 
-    it('новое connect отменяет запланированное переподключение', async () => {
+    it('a new connect cancels the scheduled reconnect', async () => {
         const fetchMock = vi.fn().mockResolvedValue(ticketOk());
         vi.stubGlobal('fetch', fetchMock);
         gameSocket.connect('jwt');

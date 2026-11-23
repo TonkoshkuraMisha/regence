@@ -1,9 +1,9 @@
 // --- FILE: frontend/src/components/chessboard/GameControlsPanel.tsx ---
-// Кнопки управления партией под списком ходов. Три режима с разным набором действий: партия с человеком (отмена до
-// первых ходов, сдача, ничья, берсерк в арене, реванш), партия с ботом (возврат хода, сдача, ничья, реванш) и
-// свободная доска (сброс, возврат хода, позиция из FEN). После партии с человеком или с ботом — «Разбор» (страница
-// /game/{id}) и скачивание PGN (GET /profile/games/{id}/pgn). Сам компонент ничего не отправляет: действия
-// выполняет Chessboard (WebSocket для партии с человеком, хук useBotGame для бота).
+// Game control buttons under the move list. Three modes with different sets of actions: a game against a human (cancel before the
+// first moves, resign, draw, berserk in an arena, rematch), a game against a bot (take back, resign, draw, rematch) and a
+// free board (reset, take back, position from FEN). After a game against a human or a bot: "Review" (the page
+// /game/{id}) and PGN download (GET /profile/games/{id}/pgn). The component itself sends nothing: the actions are
+// performed by Chessboard (WebSocket for a game against a human, the useBotGame hook for a bot).
 
 import {useState} from 'react';
 import {Flag, Handshake, X, RefreshCw, RotateCcw, Undo2, Eye, Download, Grid3x3, Zap, Pause, Play} from 'lucide-react';
@@ -11,14 +11,14 @@ import type {NavigateFunction} from 'react-router-dom';
 import {API_BASE_URL} from '../../config/api';
 import {useI18n} from '../../i18n';
 
-/** Состояние реванша после партии с человеком (события WebSocket rematch_offered и rematch_declined). */
+/** Rematch state after a game against a human (WebSocket events rematch_offered and rematch_declined). */
 export type RematchStatus = 'none' | 'offered_by_me' | 'offered_by_opponent' | 'declined';
 
 export interface GameControlsPanelProps {
-    /** Партия с человеком (идёт или только что окончена), партия с ботом (любым) или свободная доска. */
+    /** A game against a human (in progress or just finished), a game against a bot (any) or the free board. */
     mode: 'pvp' | 'bot' | 'sandbox';
     gameId: number | null;
-    /** id партии с ботом в архиве — появляется после сохранения (/bots/save-game); без него разбора и PGN нет. */
+    /** id of the bot game in the archive: appears after saving (/bots/save-game); without it there is no review or PGN. */
     savedBotGameId: number | null;
     historyLength: number;
     gameOverResult: string | null;
@@ -28,33 +28,33 @@ export interface GameControlsPanelProps {
     blackPlayer: { username: string; rating: string };
     navigate: NavigateFunction;
     onAbortGame: () => void;
-    /** Пауза партии с ботом (только товарищеской): переключатель; undefined — паузы нет (лестница, турнир, партия окончена). */
+    /** Pause of a bot game (friendly only): a toggle; undefined means no pause (ladder, tournament, game over). */
     onPauseToggle?: () => void;
     paused?: boolean;
-    /** Партия арены до своего первого хода (33.3): «берсерк» — половина времени без добавки ради лишнего очка. */
+    /** Arena game before its first move (33.3): "berserk" is half the time without increment for an extra point. */
     onBerserk?: () => void;
     onResign: () => void;
     onOfferDraw: () => void;
     onAcceptRematch: () => void;
     onDeclineRematch: () => void;
     onOfferRematch: () => void;
-    /** Сброс свободной доски; после партии с человеком тот же обработчик — кнопка «В лобби». */
+    /** Reset of the free board; after a game against a human the same handler is the "To lobby" button. */
     onResetSandbox: () => void;
-    /** Возврат хода: на свободной доске и в партии с ботом (там — вместе с ответом бота). */
+    /** Take back a move: on the free board and in a bot game (there together with the bot's reply). */
     onUndoSandboxMove: () => void;
-    /** Идёт партия клубной лестницы или турнира: возврат хода запрещён. */
+    /** A club ladder or tournament game is in progress: taking back is forbidden. */
     undoLocked?: boolean;
-    /** На свободной доске стоит позиция, загруженная из FEN (сброс доступен и без ходов). */
+    /** The free board holds a position loaded from FEN (reset is available even without moves). */
     hasCustomPosition?: boolean;
-    /** Ставит на свободную доску позицию из FEN; возвращает текст ошибки или null. */
+    /** Sets a position from FEN on the free board; returns an error text or null. */
     onLoadFen?: (fen: string) => string | null;
-    /** Партия турнира: реванша нет — после партии ведёт плашка турнира (следующая партия, таблица). */
+    /** Tournament game: no rematch; after the game the tournament banner leads on (next game, standings). */
     hideRematch?: boolean;
 }
 
 /**
- * Кнопки управления партией под журналом ходов — три независимых режима (PvP/бот/песочница),
- * т.к. набор доступных действий (сдача vs отмена, реванш vs возврат в лобби...) разный у каждого.
+ * Game control buttons under the move log: three independent modes (PvP/bot/sandbox),
+ * because the set of available actions (resign vs cancel, rematch vs return to lobby...) differs in each.
  */
 export function GameControlsPanel({
     mode, gameId, savedBotGameId, historyLength, gameOverResult, rematchStatus, isBotThinking,
@@ -74,9 +74,9 @@ export function GameControlsPanel({
         if (!error) setFenInput('');
     };
 
-    // Переход к разбору: имена, рейтинги и итог передаются в state маршрута — страница партии (GameViewer) берёт
-    // их в первую очередь, а заголовки PGN — когда state нет (прямой заход по адресу). Запасной рейтинг — для
-    // стороны без числа в карточке.
+    // Going to the review: names, ratings and result are passed in the route state: the game page (GameViewer) takes
+    // them first, and the PGN headers when there is no state (direct entry by address). The fallback rating is for a
+    // side with no number on the card.
     const navigateToReview = (reviewGameId: number, site?: string, blackRatingFallback = 1200) => navigate(`/game/${reviewGameId}`, {
         state: {
             game: {
@@ -92,8 +92,8 @@ export function GameControlsPanel({
         }
     });
 
-    // Партия с человеком: пока сделано меньше двух полуходов — «Отменить» (партия не засчитывается), дальше —
-    // «Сдаться»; ничью можно предложить с того же момента.
+    // Game against a human: while fewer than two plies have been made, "Cancel" (the game is not counted), after that
+    // "Resign"; a draw can be offered from the same moment.
     if (mode === 'pvp') {
         return (
             <div className="shrink-0 flex flex-col gap-1.5">
@@ -187,7 +187,7 @@ export function GameControlsPanel({
                             </div>
                         )}
 
-                        {/* У отменённой партии нет ни ходов, ни PGN — разбирать и скачивать нечего. */}
+                        {/* A cancelled game has no moves or PGN: nothing to review or download. */}
                         {gameOverResult !== '*' && <div className="grid grid-cols-2 gap-2">
                             <button
                                 type="button"
@@ -252,7 +252,7 @@ export function GameControlsPanel({
                             </button>
                         )}
                     </div>}
-                    {/* Ничья с ботом (таск 21.4): бот отвечает по оценке позиции и своему отношению к ничьей. */}
+                    {/* Draw with a bot (task 21.4): the bot answers based on the position evaluation and its attitude to draws. */}
                     {!gameOverResult && historyLength >= 2 && (
                         <button
                             type="button"

@@ -1,7 +1,7 @@
-// «Машина времени» и каталог мастеров прошлого в настоящем браузере против полного стека (таски 28.3 и 28.5).
-// Партия игрока с мастером прошлого сохраняется под его именем из PGN («Keres, Paul»): до 17.11 сервер такое имя
-// отклонял (400 username_invalid_chars), результат не записывался, и исторический турнир нельзя было доиграть.
-// Юнит-тесты ставили результаты сервисом напрямую и этого не видели — здесь весь путь проходит браузер.
+// The "Time machine" and the catalogue of past masters in a real browser against the full stack (tasks 28.3 and 28.5).
+// A player's game with a past master is saved under his name from the PGN ("Keres, Paul"): until 17.11 the server rejected such a name
+// (400 username_invalid_chars), the result was not recorded, and a historical tournament could not be finished.
+// Unit tests set results through the service directly and did not see this — here the browser goes the whole way.
 
 import {expect, test} from '@playwright/test';
 import type {APIRequestContext, Page} from '@playwright/test';
@@ -14,7 +14,7 @@ interface TournamentState {
     players: PlayerRow[]; games: GameRow[];
 }
 
-/** Игрок общий для прогона: сдать оставшиеся с прошлой попытки турниры, чтобы войти в новый. */
+/** The player is shared by the run: resign the tournaments left from the previous attempt to enter a new one. */
 async function withdrawActiveTournaments(request: APIRequestContext, token: string) {
     const headers = {Authorization: `Bearer ${token}`};
     const list = await (await request.get(`${API}/api/v1/tournaments`, {headers})).json() as { id: number; status: string }[];
@@ -25,10 +25,10 @@ async function withdrawActiveTournaments(request: APIRequestContext, token: stri
 
 async function resign(page: Page) {
     page.once('dialog', (dialog) => dialog.accept());
-    await page.getByRole('button', {name: /Сдаться/}).click();
+    await page.getByRole('button', {name: /Resign/}).click();
 }
 
-test('машина времени: партия с мастером прошлого записывается в исторический турнир', async ({page, request}) => {
+test('time machine: a game with a past master is recorded in the historical tournament', async ({page, request}) => {
     test.setTimeout(240_000);
     const token = await loginNewPlayer(page, request, 'tm');
     const headers = {Authorization: `Bearer ${token}`};
@@ -46,25 +46,25 @@ test('машина времени: партия с мастером прошло
     expect(before.event_key).toBe('avro_1938');
     const mine = before.games.find((g) => g.round === before.current_round && g.result === null
         && [g.white_seat, g.black_seat].includes(before.my_seat));
-    expect(mine, 'у игрока есть партия в первом туре').toBeTruthy();
+    expect(mine, 'the player has a game in the first round').toBeTruthy();
     const opponentSeat = mine!.white_seat === before.my_seat ? mine!.black_seat : mine!.white_seat;
     const opponent = before.players.find((p) => p.seat === opponentSeat)!;
-    // Первый соперник новичка — из верхней части посева: в АВРО это мастер прошлого, а не исторический бот.
+    // The newcomer's first opponent is from the upper part of the seeding: in the seeding that is a past master, not a historical bot.
     expect(opponent.kind).toBe('personality');
     expect(opponent.bot_key).toMatch(/^guest:/);
     expect(opponent.personality_name).toContain(', ');
 
-    await page.getByRole('button', {name: 'Играть мою партию'}).click();
+    await page.getByRole('button', {name: 'Play my game'}).click();
     await expect(page.getByTestId('tournament-bar')).toBeVisible();
-    // На доске — имя мастера на языке игрока, а не латинское имя из PGN.
-    await expect(page.getByText(/Керес|Файн|Решевский|Эйве|Флор/).first()).toBeVisible();
+    // On the board — the master's name in the player's language, not the Latin name from the PGN.
+    await expect(page.getByText(/Keres|Fine|Reshevsky|Euwe|Flohr/).first()).toBeVisible();
     await resign(page);
-    await expect(page.getByText(/Результат записан в турнир/)).toBeVisible();
-    // После партии: путь в турнир и карточка соперника — мастера прошлого.
+    await expect(page.getByText(/The result is recorded in the tournament/)).toBeVisible();
+    // After the game: the way back to the tournament and the card of the opponent — the past master.
     await expect(page.getByTestId('back-to-tournament')).toBeVisible();
     await expect(page.getByTestId('tournament-bar-opponent-card')).toHaveAttribute('href', /\/masters\?master=/);
 
-    // Сервер принял партию: у неё есть результат и запись в архиве.
+    // The server accepted the game: it has a result and an archive record.
     await expect.poll(async () => (await state()).games.find((g) => g.id === mine!.id)?.result ?? null, {timeout: 20_000})
         .not.toBeNull();
     const recorded = (await state()).games.find((g) => g.id === mine!.id)!;
@@ -76,7 +76,7 @@ test('машина времени: партия с мастером прошло
     await request.post(`${API}/api/v1/tournaments/${tournamentId}/withdraw`, {headers});
 });
 
-test('каталог мастеров: отдельная партия с мастером прошлого уходит в архив под его именем', async ({page, request}) => {
+test('master catalogue: a separate game with a past master goes to the archive under his name', async ({page, request}) => {
     test.setTimeout(180_000);
     const token = await loginNewPlayer(page, request, 'masters');
     const headers = {Authorization: `Bearer ${token}`};
@@ -88,19 +88,19 @@ test('каталог мастеров: отдельная партия с мас
     await expect(page.locator('li[data-testid^="master-"]')).toHaveCount(1);
     await page.getByTestId('play-kieseritzky-white').click();
 
-    // Доска: соперник — Кизерицкий, игрок белыми. Ход e2–e4, мастер отвечает (движок на сервере).
-    await expect(page.getByText(/Кизерицкий/).first()).toBeVisible();
+    // The board: the opponent is Kieseritzky, the player is White. The move e2–e4, the master replies (the engine on the server).
+    await expect(page.getByText(/Kieseritzky/).first()).toBeVisible();
     const square = (name: string) => page.locator(`[data-square="${name}"]`).first();
     await square('e2').click();
     await square('e4').click();
     await expect.poll(async () => page.locator('[data-square="e4"] img').count(), {timeout: 10_000}).toBe(1);
-    // Ответ чёрных: на седьмой горизонтали стало меньше восьми пешек или с восьмой ушла фигура.
+    // Black's reply: there are fewer than eight pawns on the seventh rank, or a piece has left the eighth.
     await expect.poll(async () => await page.evaluate(`Array.from(document.querySelectorAll('[data-square]'))
         .filter((cell) => /[78]$/.test(cell.getAttribute('data-square') ?? '') && cell.querySelector('img')).length`),
         {timeout: 30_000}).toBeLessThan(16);
     await resign(page);
 
-    // В архиве игрока последняя партия — с мастером, под именем из PGN.
+    // In the player's archive the last game is with the master — under the name from the PGN.
     await expect.poll(async () => {
         const games = await (await request.get(`${API}/api/v1/profile/${encodeURIComponent(me.username)}/games`, {headers})).json();
         const list = (Array.isArray(games) ? games : games.items ?? []) as { white_username: string; black_username: string }[];

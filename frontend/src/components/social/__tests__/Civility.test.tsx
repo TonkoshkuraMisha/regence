@@ -1,5 +1,5 @@
-// Уважительное общение (таск 30.3): предупреждение фильтра и «отправить на проверку», пометка «ждёт модератора»,
-// жалоба на текст в один шаг, скрытие переписки, правила общения.
+// Respectful communication (task 30.3): the filter warning and "send for review", the "awaiting a moderator" mark,
+// a one-step report on a text, hiding a conversation, the rules page.
 
 import {act, fireEvent, render, screen} from '@testing-library/react';
 import {MemoryRouter, Route, Routes} from 'react-router-dom';
@@ -34,8 +34,8 @@ afterEach(() => {
     vi.unstubAllGlobals();
 });
 
-describe('фильтр оскорблений', () => {
-    it('сообщение: предупреждение, «отправить на проверку» и пометка «ждёт модератора»', async () => {
+describe('insult filter', () => {
+    it('message: a warning, "send for review" and the "awaiting a moderator" mark', async () => {
         const fetchMock = stubFetch((url, init) => {
             if (url.endsWith('/settings')) return {dm_policy: 'all', blocked: []};
             if (url.includes('/with/magnus') && init?.method === 'POST') {
@@ -50,21 +50,21 @@ describe('фильтр оскорблений', () => {
             <Route path="/messages/:username" element={<MessagesPage/>}/>
         </Routes></MemoryRouter>);
         await screen.findByTestId('dm-composer');
-        fireEvent.change(screen.getByTestId('dm-input'), {target: {value: 'плохие слова'}});
+        fireEvent.change(screen.getByTestId('dm-input'), {target: {value: 'bad words'}});
         await act(async () => fireEvent.click(screen.getByTestId('dm-send')));
-        expect(await screen.findByTestId('flagged-notice')).toHaveTextContent('Похоже на оскорбление');
-        expect(screen.getByTestId('dm-input')).toHaveValue('плохие слова');      // текст не потерян — можно переписать
+        expect(await screen.findByTestId('flagged-notice')).toHaveTextContent('This looks offensive');
+        expect(screen.getByTestId('dm-input')).toHaveValue('bad words');      // the text is not lost - it can be rewritten
         await act(async () => fireEvent.click(screen.getByTestId('flagged-send-anyway')));
         expect(posted(fetchMock, '/with/magnus').map((b) => b.send_anyway)).toEqual([false, true]);
         expect(screen.queryByTestId('flagged-notice')).toBeNull();
-        expect(await screen.findByTestId('held-note')).toHaveTextContent('Ждёт модератора');
+        expect(await screen.findByTestId('held-note')).toHaveTextContent('Awaiting a moderator');
     });
 
-    it('публикация: «переформулировать» закрывает предупреждение без отправки', async () => {
+    it('post: "Rephrase" closes the warning without sending', async () => {
         const fetchMock = stubFetch((_url, init) => (init?.method === 'POST' ? new Error('text_flagged') : {posts: [], page: 20}));
         render(<MemoryRouter initialEntries={['/feed']}><Routes><Route path="/feed" element={<FeedPage/>}/></Routes></MemoryRouter>);
         await screen.findByTestId('feed-empty');
-        fireEvent.change(screen.getByTestId('feed-input'), {target: {value: 'плохие слова'}});
+        fireEvent.change(screen.getByTestId('feed-input'), {target: {value: 'bad words'}});
         await act(async () => fireEvent.click(screen.getByTestId('feed-publish')));
         await screen.findByTestId('flagged-notice');
         fireEvent.click(screen.getByTestId('flagged-rephrase'));
@@ -73,17 +73,17 @@ describe('фильтр оскорблений', () => {
     });
 });
 
-describe('жалоба и скрытие', () => {
-    it('жалоба на текст: причина одним нажатием', async () => {
+describe('report and hide', () => {
+    it('report on a text: the reason in one click', async () => {
         const fetchMock = stubFetch(() => ({id: 1}));
         render(<MemoryRouter><TextReportButton subject="post:7"/></MemoryRouter>);
         fireEvent.click(screen.getByTestId('text-report'));
         await act(async () => fireEvent.click(screen.getByTestId('text-report-spam')));
         expect(posted(fetchMock, '/reports/text')).toEqual([{subject: 'post:7', reason: 'spam'}]);
-        expect(screen.getByTestId('text-report-sent')).toHaveTextContent('Жалоба принята');
+        expect(screen.getByTestId('text-report-sent')).toHaveTextContent('Report received');
     });
 
-    it('скрыть переписку — запрос и возврат к списку', async () => {
+    it('hide a conversation: the request and the return to the list', async () => {
         const fetchMock = stubFetch((url) => {
             if (url.endsWith('/settings')) return {dm_policy: 'all', blocked: []};
             if (url.endsWith('/hide')) return {unread: 0};
@@ -97,17 +97,17 @@ describe('жалоба и скрытие', () => {
         await screen.findByTestId('dm-composer');
         await act(async () => fireEvent.click(screen.getByTestId('dm-hide')));
         expect(fetchMock.mock.calls.some(([u, i]) => String(u).endsWith('/with/magnus/hide') && i?.method === 'POST')).toBe(true);
-        expect(await screen.findByText('Выберите переписку слева.')).toBeInTheDocument();
+        expect(await screen.findByText('Choose a conversation on the left.')).toBeInTheDocument();
     });
 
-    it('правила общения на странице', () => {
+    it('the rules page', () => {
         render(<MemoryRouter><CommunityRulesPage/></MemoryRouter>);
         const page = screen.getByTestId('rules-page');
-        expect(page).toHaveTextContent('Правила общения');
-        // Либеральная редакция (решение владельца 17.11.2026): запреты защищают человека, а не тон.
-        expect(page).toHaveTextContent('Здесь говорят свободно.');
-        expect(page).toHaveTextContent('Мы не оцениваем вкус и тон.');
-        expect(page).toHaveTextContent('Нельзя травить человека');
+        expect(page).toHaveTextContent('Rules of conversation');
+        // The liberal wording (owner decision of 17.11.2026): the bans protect a person, not the tone.
+        expect(page).toHaveTextContent('People speak freely here.');
+        expect(page).toHaveTextContent('We do not police taste or tone.');
+        expect(page).toHaveTextContent('Do not go after a person');
         expect(screen.getAllByRole('listitem')).toHaveLength(8);
     });
 });

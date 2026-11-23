@@ -1,8 +1,8 @@
 # --- FILE: tests/test_conference_matches.py ---
 """
-Матчи конференций (таск 33.6, схема владельца 18.11): чистые правила (круг, общий вечер, составы, цвета, запись) и
-настоящий путь клиента — запись через POST /arenas/{id}/join, отказы, составы на старте, два тура настоящих партий и
-счёт матча на странице арены.
+Conference matches (task 33.6, owner scheme of 18.11): pure rules (round, shared evening, rosters, colours, sign-up) and
+the real client path - sign-up via POST /arenas/{id}/join, refusals, rosters at the start, two rounds of real games and
+the match score on the arena page.
 """
 
 from datetime import UTC, date, datetime, timedelta
@@ -25,13 +25,13 @@ def auth(token: str) -> dict:
     return {"Authorization": f"Bearer {token}"}
 
 
-# --- чистые правила ---------------------------------------------------------------------------------------------
+# --- pure rules -------------------------------------------------------------------------------------------------
 
 def test_round_robin_plays_every_pair_once_and_rounds_do_not_overlap():
     assert len(rules.PAIRS) == 10
     assert len({frozenset(pair) for pair in rules.PAIRS}) == 10
     assert {c for pair in rules.PAIRS for c in pair} == set(CONFERENCE_ZONES)
-    for first, second in zip(rules.PAIRS[::2], rules.PAIRS[1::2], strict=True):  # тур — две пары без общих конференций
+    for first, second in zip(rules.PAIRS[::2], rules.PAIRS[1::2], strict=True):  # a round: two pairs, no shared conferences
         assert not set(first) & set(second)
 
 
@@ -42,9 +42,9 @@ def test_hosts_alternate_between_cycles():
 
 
 def test_match_time_is_a_common_evening_or_the_host_evening():
-    # Киев и Берлин: 19:00 в Киеве — 18:00 в Берлине, вечер у обеих.
+    # Kyiv and Berlin: 19:00 in Kyiv is 18:00 in Berlin, evening for both.
     assert rules.match_start("central", "northern", SATURDAY) == datetime(2026, 11, 21, 17, 0, tzinfo=UTC)
-    # Киев и Нью-Йорк: общего вечера нет — 19:00 хозяина.
+    # Kyiv and New York: no shared evening - 19:00 of the host.
     assert rules.match_start("central", "western", SATURDAY) == datetime(2026, 11, 21, 17, 0, tzinfo=UTC)
     assert rules.match_start("western", "central", SATURDAY) == datetime(2026, 11, 22, 0, 0, tzinfo=UTC)
 
@@ -68,7 +68,7 @@ def test_lineup_by_rating_with_boards_of_the_smaller_side():
     members = [_M(1, 1500, "central"), _M(2, 1800, "central"), _M(3, 1500, "central"), _M(4, 1600, "western"),
                _M(5, 1900, "western"), _M(6, 2000, "northern")]
     boards = rules.lineup(members, "central", "western", [3, 1, 2, 4, 5, 6])
-    assert [(h.user_id, g.user_id) for h, g in boards] == [(2, 5), (3, 4)]   # равные 1500 — раньше записавшийся
+    assert [(h.user_id, g.user_id) for h, g in boards] == [(2, 5), (3, 4)]   # equal 1500 - the earlier sign-up first
 
 
 def test_colors_alternate_by_board_and_round():
@@ -82,7 +82,7 @@ def test_entry_closes_an_hour_before_the_start():
     assert not rules.entry_open(start, start - timedelta(minutes=30))
 
 
-# --- путь клиента -----------------------------------------------------------------------------------------------
+# --- client path ------------------------------------------------------------------------------------------------
 
 @pytest.fixture
 async def match(db_session, test_user_1, test_user_2):
@@ -124,7 +124,7 @@ async def test_conference_match_through_the_client(client, db_session, match, to
     assert [(b["home"]["username"], b["guest"]["username"]) for b in preview["boards"]] == [
         (test_user_1.username, test_user_2.username), ("central2", "western2")]
 
-    # Матч начался: составы записаны, первый тур — хозяин белыми на первой доске, чёрными на второй.
+    # The match has started: rosters recorded, first round - host plays white on board one, black on board two.
     item.starts_at = datetime.now(UTC) - timedelta(minutes=1)
     await db_session.commit()
     assert client.get(f"{API}/{item.id}").json()["current_round"] == 1
@@ -135,7 +135,7 @@ async def test_conference_match_through_the_client(client, db_session, match, to
                                            .order_by(ArenaGame.id))).scalars())
     assert {(g.white_id, g.black_id) for g in first} == {(test_user_1.id, test_user_2.id), (extra["w2"].id, extra["c2"].id)}
 
-    for game in first:  # первая доска — победа хозяина, вторая — ничья
+    for game in first:  # board one - host wins, board two - draw
         await state_manager.finish_game(db_session, game.game_id, "1-0" if game.white_id == test_user_1.id else "1/2-1/2",
                                         termination="resignation" if game.white_id == test_user_1.id else "agreement")
     await db_session.refresh(item)
@@ -143,7 +143,7 @@ async def test_conference_match_through_the_client(client, db_session, match, to
     second = list((await db_session.execute(select(ArenaGame).where(ArenaGame.arena_id == item.id, ArenaGame.round == 2)
                                             )).scalars())
     assert {(g.white_id, g.black_id) for g in second} == {(test_user_2.id, test_user_1.id), (extra["c2"].id, extra["w2"].id)}
-    for game in second:  # во втором туре обе партии выиграл гость
+    for game in second:  # in the second round the guest won both games
         await state_manager.finish_game(db_session, game.game_id, "1-0" if game.white_id == test_user_2.id else "0-1",
                                         termination="resignation")
     await db_session.refresh(item)
@@ -153,7 +153,7 @@ async def test_conference_match_through_the_client(client, db_session, match, to
     assert final["status"] == "finished"
     assert (final["match"]["home_score"], final["match"]["guest_score"]) == (1.5, 2.5)
     assert final["match"]["boards"][0]["home"]["score"] == 1.0
-    # Тот же счёт — в списке матчей страницы конференций.
+    # The same score is in the match list on the conferences page.
     listed = next(m for m in client.get("/api/v1/conferences").json()["matches"] if m["arena_id"] == item.id)
     assert (listed["home"], listed["guest"], listed["home_score"], listed["guest_score"], listed["players"]) == (
         "central", "western", 1.5, 2.5, 4)
@@ -169,7 +169,7 @@ async def test_entry_closes_before_the_start(client, db_session, match, token_us
 
 async def test_match_without_boards_ends_without_games(client, db_session, match, token_user_1):
     item, _ = match
-    assert client.post(f"{API}/{item.id}/join", headers=auth(token_user_1)).status_code == 200   # только хозяин
+    assert client.post(f"{API}/{item.id}/join", headers=auth(token_user_1)).status_code == 200   # host only
     item.starts_at = datetime.now(UTC) - timedelta(minutes=1)
     await db_session.commit()
     page = client.get(f"{API}/{item.id}").json()

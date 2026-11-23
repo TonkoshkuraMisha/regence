@@ -589,12 +589,10 @@
   }
  ],
  "intro": {
-  "ru": "Матч за звание чемпиона мира 1889 года. Уже на 3-м ходу Чигорин меняет слона на коня и портит белым пешечную структуру (4.gxf3).",
   "uk": "Матч за звання чемпіона світу 1889 року. Уже на 3-му ході Чигорін міняє слона на коня й псує білим пішакову структуру (4.gxf3).",
   "en": "The 1889 world championship match. As early as move 3 Chigorin trades bishop for knight and damages White's pawn structure (4.gxf3)."
  },
  "summary": {
-  "ru": "Всё решила пешка «h»: 33...h3, 34...h2, 36...h1=Q — белые тоже провели ферзя (37.b8=Q), но первым шах объявил чёрный (37...Qc1+). Урок: в гонке проходных важен каждый темп — ферзь, появившийся первым, забирает инициативу.",
   "uk": "Усе вирішив пішак «h»: 33...h3, 34...h2, 36...h1=Q — білі теж провели ферзя (37.b8=Q), але першим шах оголосив чорний (37...Qc1+). Урок: у перегонах прохідних важливий кожен темп — ферзь, що з'явився першим, забирає ініціативу.",
   "en": "The h-pawn decided everything: 33...h3, 34...h2, 36...h1=Q — White also queened (37.b8=Q), but Black gave the first check (37...Qc1+). Lesson: in a race of passed pawns every tempo counts — the queen that appears first takes the initiative."
  }

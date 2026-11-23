@@ -1,21 +1,22 @@
 # --- FILE: src/services/position_index.py ---
 """
-Индекс позиций (таск 16.1). Найти позицию перебором PGN в запросе невозможно — поэтому для каждой законченной
-партии первые MAX_PLIES полуходов раскладываются в таблицы: position_stats (позиция + ход → победы белых / ничьи /
-победы чёрных) и position_games (позиция → партии). Партия индексируется один раз (games.positions_indexed): архив —
-скриптом scripts/build_position_index.py, новые партии — задачей Celery при завершении (src/worker/tasks.py).
+Position index (task 16.1). Finding a position by scanning PGNs in a query is impossible - so for each finished
+game the first MAX_PLIES plies are laid out into tables: position_stats (position + move -> White wins / draws /
+Black wins) and position_games (position -> games). A game is indexed once (games.positions_indexed): the archive by
+the script scripts/build_position_index.py, new games by a Celery task on completion (src/worker/tasks.py).
 
-Не индексируются: незаконченные и без результата, симуляции турниров (боты между собой исказили бы статистику),
-партии из своей позиции (заголовок FEN).
+Not indexed: unfinished ones and ones without a result, tournament simulations (bots among themselves would skew the
+statistics), games from a custom position (FEN header).
 
-Позиция в таблицах — 64-битный хэш Zobrist (расстановка, очередь хода, рокировки, взятие на проходе), а не FEN:
-разные позиции изредка могут совпасть по хэшу, поэтому читатель индекса проверяет легальность хода
-(src/services/opening_explorer.py). Читают индекс справочник дебютов и репертуар.
+The position in the tables is a 64-bit Zobrist hash (placement, side to move, castling, en passant), not a FEN:
+different positions may occasionally collide by hash, so the index reader checks the legality of the move
+(src/services/opening_explorer.py). The index is read by the opening explorer and the repertoire.
 
-Партии библиотеки (8б) раскладываются отдельно — в position_library_games, только «партия ↔ позиция», без
-статистики: это примеры под позицией в справочнике, а многие из них есть и в архиве (повтор посчитался бы дважды).
-Новые партии библиотеки индексирует импорт (src/services/library.py), уже загруженные — scripts/build_position_index.py
---library. Партия из своей позиции (start_fen) не индексируется: её позиции не встречаются в дебюте.
+Library games (8b) are laid out separately - in position_library_games, only "game <-> position", without
+statistics: these are examples under a position in the explorer, and many of them are also in the archive (a duplicate
+would be counted twice). New library games are indexed by import (src/services/library.py), those already loaded by
+scripts/build_position_index.py --library. A game from a custom position (start_fen) is not indexed: its positions do not
+occur in the opening.
 """
 
 import io
@@ -33,24 +34,24 @@ from src.models.game import Game, GameStatus
 from src.models.library import LibraryGame
 from src.models.position import PositionGame, PositionLibraryGame, PositionStat
 
-MAX_PLIES = 30  # сколько первых полуходов партии попадает в индекс (15 ходов): глубже статистики нет
-# Результат партии → прибавка к счётчикам (победы белых, ничьи, победы чёрных). Другой результат («*») — не в индекс.
+MAX_PLIES = 30  # how many first plies of a game go into the index (15 moves): there are no statistics deeper
+# Game result -> increment to the counters (White wins, draws, Black wins). Another result ("*") is not indexed.
 RESULTS = {"1-0": (1, 0, 0), "1/2-1/2": (0, 1, 0), "0-1": (0, 0, 1)}
 
 
 def position_key(board: chess.Board) -> int:
-    """Хэш Zobrist позиции со знаком (BIGINT в Postgres — со знаком)."""
+    """Zobrist hash of the position with a sign (BIGINT in Postgres is signed)."""
     value = chess.polyglot.zobrist_hash(board)
     return value - (1 << 64) if value >= 1 << 63 else value
 
 
 def _insert(db: AsyncSession, model):
-    """INSERT с поддержкой ON CONFLICT для диалекта сессии: PostgreSQL в работе, SQLite в тестах."""
+    """INSERT with ON CONFLICT support for the session dialect: PostgreSQL in production, SQLite in tests."""
     return (postgresql.insert(model) if db.bind.dialect.name == "postgresql" else sqlite.insert(model))
 
 
 def plies_of(pgn: str) -> tuple[str, list[tuple[int, str, int]]] | None:
-    """(результат, [(хэш позиции до хода, ход, номер полухода)]) или None, если партию не индексируем."""
+    """(result, [(position hash before the move, move, ply number)]) or None if the game is not indexed."""
     game = chess.pgn.read_game(io.StringIO(pgn))
     if game is None or "FEN" in game.headers:
         return None
@@ -69,10 +70,10 @@ def plies_of(pgn: str) -> tuple[str, list[tuple[int, str, int]]] | None:
 
 async def index_game(db: AsyncSession, game: Game) -> bool:
     """
-    Добавляет партию в индекс (без commit). True — добавлена; повторный вызов ничего не меняет. Законченная партия,
-    которую индексировать нельзя (своя позиция, нет результата, нет ходов), всё равно помечается
-    games.positions_indexed, чтобы к ней не возвращаться. В position_games записывается первый полуход, на котором
-    позиция встретилась в партии.
+    Adds a game to the index (without commit). True - added; a repeated call changes nothing. A finished game
+    that cannot be indexed (custom position, no result, no moves) is still marked
+    games.positions_indexed so as not to return to it. In position_games the first ply at which the
+    position occurred in the game is recorded.
     """
     if game.positions_indexed or game.status != GameStatus.COMPLETED or game.is_simulation or not game.pgn:
         return False
@@ -82,7 +83,7 @@ async def index_game(db: AsyncSession, game: Game) -> bool:
         return False
     result, plies = parsed
     white, draw, black = RESULTS[result]
-    # Ход из позиции считается один раз на партию, даже если позиция повторилась.
+    # A move from a position is counted once per game, even if the position was repeated.
     moves = Counter((key, uci) for key, uci, _ in plies)
     stats = _insert(db, PositionStat).values([
         {"position_hash": key, "move_uci": uci, "white_wins": white, "draws": draw, "black_wins": black}
@@ -105,7 +106,7 @@ async def index_game(db: AsyncSession, game: Game) -> bool:
 
 @dataclass(frozen=True)
 class MoveStat:
-    """Статистика хода из позиции: победы белых, ничьи и победы чёрных; games — всего партий."""
+    """Move statistics from a position: White wins, draws and Black wins; games - total games."""
     move_uci: str
     white_wins: int
     draws: int
@@ -117,7 +118,7 @@ class MoveStat:
 
 
 async def moves_from(db: AsyncSession, board: chess.Board) -> list[MoveStat]:
-    """Ходы из позиции по индексу — от самого частого."""
+    """Moves from a position by the index - from the most frequent."""
     rows = (await db.execute(
         select(PositionStat).where(PositionStat.position_hash == position_key(board))
     )).scalars().all()
@@ -126,7 +127,7 @@ async def moves_from(db: AsyncSession, board: chess.Board) -> list[MoveStat]:
 
 
 async def games_through(db: AsyncSession, board: chess.Board, limit: int = 20) -> list[int]:
-    """id партий, проходивших через позицию (новые id — первыми)."""
+    """ids of games that passed through the position (new ids first)."""
     rows = await db.execute(
         select(PositionGame.game_id).where(PositionGame.position_hash == position_key(board))
         .order_by(PositionGame.game_id.desc()).limit(limit)
@@ -135,7 +136,7 @@ async def games_through(db: AsyncSession, board: chess.Board, limit: int = 20) -
 
 
 async def index_by_id(db: AsyncSession, game_id: int) -> bool:
-    """Индексирует партию по номеру и делает commit — для фоновой задачи после завершения партии."""
+    """Indexes a game by number and commits - for the background task after a game finishes."""
     game = await db.get(Game, game_id)
     if game is None:
         return False
@@ -146,8 +147,8 @@ async def index_by_id(db: AsyncSession, game_id: int) -> bool:
 
 def library_plies(moves: str) -> dict[int, int]:
     """
-    {хэш позиции: первый полуход} для первых MAX_PLIES полуходов партии библиотеки (ходы UCI через пробел, от
-    начальной позиции). Нелегальный ход обрывает разбор: позиции до него остаются.
+    {position hash: first ply} for the first MAX_PLIES plies of a library game (UCI moves separated by spaces, from
+    the initial position). An illegal move breaks the parse: positions before it remain.
     """
     board = chess.Board()
     first_ply: dict[int, int] = {}
@@ -165,8 +166,8 @@ def library_plies(moves: str) -> dict[int, int]:
 
 async def index_library_game(db: AsyncSession, game: LibraryGame) -> bool:
     """
-    Добавляет партию библиотеки в position_library_games (без commit). True — добавлена; повторный вызов ничего не
-    меняет. Партия из своей позиции или без ходов только помечается positions_indexed.
+    Adds a library game to position_library_games (without commit). True - added; a repeated call changes
+    nothing. A game from a custom position or without moves is only marked positions_indexed.
     """
     if game.positions_indexed:
         return False

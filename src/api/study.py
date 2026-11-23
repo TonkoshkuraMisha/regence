@@ -1,5 +1,5 @@
 # --- FILE: src/api/study.py ---
-"""Совместный разбор и занятие с тренером (таск 17.3): комната (src/services/study_room.py) и материалы клуба."""
+"""Joint review and a coaching session (task 17.3): the room (src/services/study_room.py) and the club materials."""
 
 import json
 
@@ -71,7 +71,7 @@ async def my_materials(db: AsyncSession = Depends(get_db), user: User = Depends(
 
 @router.post("/materials", status_code=status.HTTP_201_CREATED)
 async def save_material(payload: MaterialIn, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
-    """Занятие как урок в формате школы (таск 14.1) — материал клуба ведущего."""
+    """A session as a lesson in the school format (task 14.1) - the material of the host's club."""
     steps = payload.lesson.get("steps")
     if not isinstance(steps, list) or not steps or len(steps) > MAX_STEPS \
             or len(json.dumps(payload.lesson)) > MAX_LESSON_BYTES:
@@ -93,7 +93,7 @@ async def get_material(material_id: int, db: AsyncSession = Depends(get_db), use
 
 @router.get("/{code}")
 async def poll_room(code: str, response: Response, since: int = Query(0, ge=0), user: User = Depends(get_current_user)):
-    """Состояние комнаты; версия не изменилась — 204 без тела (участники опрашивают раз в секунду)."""
+    """The room state; version unchanged - 204 without a body (participants poll once a second)."""
     try:
         data = await room.poll(code, user.id, user.username, since)
     except DomainError as exc:

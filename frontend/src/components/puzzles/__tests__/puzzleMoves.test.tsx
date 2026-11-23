@@ -1,6 +1,6 @@
-// Ходы мышью на странице задач во всех режимах: задача дня целиком перетаскиванием, многоходовая задача с ответом
-// соперника, неверный ход, превращение, «Мои ошибки», защитные упражнения, а также попытки ходить, пока ходит
-// соперник или ещё не пришёл ответ сервера. Повод — доска, на которой фигура не перетаскивалась (задача дня).
+// Mouse moves on the puzzle page in all modes: the daily puzzle entirely by dragging, a multi-move puzzle with the opponent's
+// reply, a wrong move, promotion, "My mistakes", defence exercises, and also attempts to move while the opponent
+// is moving or the server reply has not yet arrived. The reason is the board where a piece was not dragged (the daily puzzle).
 
 import {act, fireEvent, render, screen} from '@testing-library/react';
 import {MemoryRouter} from 'react-router-dom';
@@ -9,12 +9,12 @@ import PuzzlesPage from '../PuzzlesPage';
 import {resetThemeRegistryCache} from '../../../services/themes';
 import {setToken} from '../../../services/authToken';
 
-// Чёрные уводят ладью: ...Le2, затем Лd8+ Le8 Лxe8#.
+// Black deflects the rook: ...Re2, then Rd8+ Re8 Rxe8#.
 const BACK_RANK = {
     id: 7, fen: '4r1k1/5ppp/8/8/8/8/3R1PPP/3R2K1 b - - 0 1', first_move: 'e8e2', rating: 1480,
     themes: ['back_rank_mate'], color: 'white', solution_length: 2,
 };
-// Король уходит в угол — превращение a8.
+// The king goes to the corner — promotion on a8.
 const PROMOTE = {
     id: 8, fen: '6k1/P4ppp/8/8/8/8/8/K7 b - - 0 1', first_move: 'g8h8', rating: 900,
     themes: ['promotion'], color: 'white', solution_length: 1,
@@ -86,8 +86,8 @@ afterEach(() => {
     localStorage.clear();
 });
 
-describe('задача дня перетаскиванием', () => {
-    it('ход соперника, два хода решающего, ответ соперника между ними, итог', async () => {
+describe('the daily puzzle by dragging', () => {
+    it('the opponent\'s move, two moves of the solver, the opponent\'s reply between them, the result', async () => {
         const calls = stub((url, body) => {
             if (url.includes('/daily')) return {...BACK_RANK, daily: true};
             return body?.move === 'd2d8'
@@ -96,31 +96,31 @@ describe('задача дня перетаскиванием', () => {
         });
         await openMode('daily');
         await wait(600);
-        expect(pieceAt('e2')).toBe('br');  // ход соперника сыгран
-        expect(screen.getByTestId('puzzle-status').textContent).toContain('Ваш ход');
+        expect(pieceAt('e2')).toBe('br');  // the opponent's move is played
+        expect(screen.getByTestId('puzzle-status').textContent).toContain('Your move');
 
         await drag('d2', 'd8');
-        expect(pieceAt('d8')).toBe('wr');  // ход сразу на доске
+        expect(pieceAt('d8')).toBe('wr');  // the move is at once on the board
         await wait(500);
-        expect(pieceAt('e8')).toBe('br');  // ответ соперника
+        expect(pieceAt('e8')).toBe('br');  // the opponent's reply
         await drag('d8', 'e8');
 
         expect(moves(calls)).toEqual(['d2d8', 'd8e8']);
-        expect(await screen.findByTestId('puzzle-outcome')).toHaveTextContent('Решено!');
-        expect(screen.getByTestId('puzzle-info').textContent).toContain('задача дня');
+        expect(await screen.findByTestId('puzzle-outcome')).toHaveTextContent('Solved!');
+        expect(screen.getByTestId('puzzle-info').textContent).toContain('puzzle of the day');
     });
 
-    it('пока соперник делает первый ход, фигуры не двигаются', async () => {
+    it('while the opponent makes the first move, the pieces do not move', async () => {
         const calls = stub((url) => (url.includes('/daily') ? {...BACK_RANK, daily: true} : null));
         await openMode('daily');
-        await drag('d2', 'd8');  // до хода соперника
+        await drag('d2', 'd8');  // before the opponent's move
         expect(moves(calls)).toEqual([]);
         expect(pieceAt('d2')).toBe('wr');
     });
 });
 
-describe('задача по рейтингу', () => {
-    it('неверный ход перетаскиванием: отметка, ход снимается, решение проигрывается', async () => {
+describe('the rated puzzle', () => {
+    it('a wrong move by dragging: a mark, the move is taken back, the solution is played out', async () => {
         stub((url) => (url.includes('/next') ? BACK_RANK : {
             correct: false, done: true, reply: null, solution: ['d2d8', 'e2e8', 'd8e8'], result: FAILED,
         }));
@@ -128,30 +128,30 @@ describe('задача по рейтингу', () => {
         await wait(600);
         await drag('d2', 'd5');
         expect(await screen.findByTestId('puzzle-mark-wrong')).toBeTruthy();
-        expect(screen.getByTestId('puzzle-outcome')).toHaveTextContent('В этот раз нет');
+        expect(screen.getByTestId('puzzle-outcome')).toHaveTextContent('Not this time');
         await wait(3000);
-        expect(pieceAt('e8')).toBe('wr');  // решение доиграно на доске
+        expect(pieceAt('e8')).toBe('wr');  // the solution is played out on the board
         expect(pieceAt('d5')).toBeNull();
     });
 
-    it('пока сервер не ответил, второй ход не уходит', async () => {
+    it('until the server replies, the second move does not go out', async () => {
         const calls = stub((url) => (url.includes('/next') ? BACK_RANK
             : {correct: true, done: false, reply: 'e2e8', solution: null, result: null}), {delayMoveMs: 300});
         await openMode('rated');
         await wait(600);
         await drag('d2', 'd8');
-        await drag('d1', 'd7');  // сервер ещё думает над первым ходом
+        await drag('d1', 'd7');  // the server is still thinking about the first move
         expect(moves(calls)).toEqual(['d2d8']);
         await wait(1000);
     });
 
-    it('превращение перетаскиванием: выбор фигуры, ход с фигурой уходит на сервер', async () => {
+    it('promotion by dragging: a piece choice, the move with a piece goes to the server', async () => {
         const calls = stub((url) => (url.includes('/next') ? PROMOTE
             : {correct: true, done: true, reply: null, solution: null, result: SOLVED}));
         await openMode('rated');
         await wait(600);
         await drag('a7', 'a8');
-        expect(moves(calls)).toEqual([]);  // сначала — выбор фигуры
+        expect(moves(calls)).toEqual([]);  // first — the piece choice
         await act(async () => {
             fireEvent.click(screen.getByTestId('puzzle-promote-r'));
         });
@@ -159,7 +159,7 @@ describe('задача по рейтингу', () => {
         expect(pieceAt('a8')).toBe('wr');
     });
 
-    it('после итога доска не принимает ходов', async () => {
+    it('after the result the board accepts no moves', async () => {
         const calls = stub((url) => (url.includes('/next') ? PROMOTE
             : {correct: true, done: true, reply: null, solution: null, result: SOLVED}));
         await openMode('rated');
@@ -174,8 +174,8 @@ describe('задача по рейтингу', () => {
     });
 });
 
-describe('«Мои ошибки» перетаскиванием', () => {
-    it('позиция из партии: ход уходит на сервер', async () => {
+describe('"My mistakes" by dragging', () => {
+    it('a position from the game: the move goes to the server', async () => {
         const calls = stub((url) => {
             if (url.endsWith('/personal')) return {due: 1, active: 1, mastered: 0, next_due_at: null};
             if (url.endsWith('/personal/next')) {
@@ -188,12 +188,12 @@ describe('«Мои ошибки» перетаскиванием', () => {
         await openMode('personal');
         await drag('g7', 'g6');
         expect(moves(calls, '/answer')).toEqual(['g7g6']);
-        expect(await screen.findByTestId('personal-result')).toHaveTextContent('Верно!');
+        expect(await screen.findByTestId('personal-result')).toHaveTextContent('Correct!');
     });
 });
 
-describe('защитные упражнения перетаскиванием', () => {
-    it('угроза щелчком, защита — перетаскиванием', async () => {
+describe('defence exercises by dragging', () => {
+    it('a threat by click, the defence — by dragging', async () => {
         const calls = stub((url) => {
             if (url.includes('/defense/next')) {
                 return {id: 4, kind: 'threat', theme: 'find_the_threat', color: 'white', rating: 1300, stage: 2, choices: [],
@@ -212,10 +212,10 @@ describe('защитные упражнения перетаскиванием',
         });
         await drag('f3', 'h4');
         expect(moves(calls, '/answer')).toEqual(['f3h4']);
-        expect(await screen.findByTestId('defense-outcome')).toHaveTextContent('Верно!');
+        expect(await screen.findByTestId('defense-outcome')).toHaveTextContent('Correct!');
     });
 
-    it('«Не зевни»: доска не ходит — только кнопки трёх ходов', async () => {
+    it('"Don\'t blunder": the board does not move — only the buttons of the three moves', async () => {
         const calls = stub((url) => (url.includes('/defense/next') ? {
             id: 5, kind: 'blunder', theme: 'blunder_check', color: 'white', rating: 900, stage: 1,
             fen: 'r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 0 1', choices: ['f1c4', 'f3e5', 'd2d4'],

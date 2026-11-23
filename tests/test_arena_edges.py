@@ -1,5 +1,5 @@
 # --- FILE: tests/test_arena_edges.py ---
-"""Арена: крайние случаи служебных функций — чужая или неизвестная партия, устаревшие записи ожидания пары."""
+"""Arena: edge cases of helper functions — a foreign or unknown game, stale pairing-wait records."""
 
 import time
 

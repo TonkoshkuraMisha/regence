@@ -1,4 +1,4 @@
-// «Узнай структуру» (таск 27.9): вопросы с сервера, ответ подсвечивается, ссылка на партию, итог после последнего.
+// "Recognise the structure" (task 27.9): questions from the server, the answer is highlighted, a link to the game, the result after the last one.
 
 import {act, fireEvent, render, screen} from '@testing-library/react';
 import {MemoryRouter} from 'react-router-dom';
@@ -14,15 +14,15 @@ const QUESTIONS = [
         options: ['french_chain', 'symmetry', 'spanish', 'wedge'], game_id: 42, ply: 20},
 ];
 
-describe('Узнай структуру', () => {
-    it('два вопроса: верный и неверный ответ, ссылка на партию, итог', async () => {
+describe('Name the structure', () => {
+    it('two questions: a right and a wrong answer, a link to the game, the result', async () => {
         const fetchMock = vi.fn(async () => ({ok: true, json: async () => ({questions: QUESTIONS})}) as Response);
         vi.stubGlobal('fetch', fetchMock);
         const onFinish = vi.fn();
         await act(async () => render(<MemoryRouter><StructureQuiz seed={3} onFinish={onFinish}/></MemoryRouter>));
         expect(String(fetchMock.mock.calls[0])).toContain('/library/structure-quiz?count=10&seed=3');
         fireEvent.click(screen.getByTestId('quiz-option-isolated_pawn'));
-        expect(screen.queryByTestId('structure-game-link')).toBeNull();  // скелет — без партии
+        expect(screen.queryByTestId('structure-game-link')).toBeNull();  // a skeleton — without a game
         fireEvent.click(screen.getByTestId('quiz-next'));
         fireEvent.click(screen.getByTestId('quiz-option-wedge'));
         expect(screen.getByTestId('quiz-option-french_chain').className).toContain('emerald');
@@ -32,14 +32,14 @@ describe('Узнай структуру', () => {
     });
 });
 
-describe('свободная доска после ответа (решение владельца 18.11)', () => {
-    it('до ответа фигуры не ходят; после — позицию можно разыграть и вернуть', async () => {
+describe('free board after the answer (owner decision 18.11)', () => {
+    it('before the answer the pieces do not move; after — the position can be played out and returned', async () => {
         vi.stubGlobal('fetch', vi.fn(async () => ({ok: true, json: async () => ({questions: QUESTIONS})}) as Response));
         await act(async () => render(<MemoryRouter><StructureQuiz seed={3} onFinish={vi.fn()}/></MemoryRouter>));
         const cell = (sq: string) => document.querySelector(`[data-square="${sq}"]`) as HTMLElement;
         fireEvent.click(cell('d4'));
         fireEvent.click(cell('d5'));
-        expect(cell('d5').querySelector('img')).toBeNull();  // до ответа — только показ
+        expect(cell('d5').querySelector('img')).toBeNull();  // before the answer — only a show
 
         fireEvent.click(screen.getByTestId('quiz-option-carlsbad'));
         await act(async () => {
@@ -51,19 +51,19 @@ describe('свободная доска после ответа (решение 
         expect(cell('d5').querySelector('img')?.getAttribute('alt')).toBe('wp');
         expect(screen.getByTestId('explorer-controls')).toBeTruthy();
 
-        fireEvent.click(screen.getByTestId('quiz-next'));  // следующий вопрос — снова позиция вопроса
+        fireEvent.click(screen.getByTestId('quiz-next'));  // the next question — a question position again
         expect(screen.queryByTestId('explorer-controls')).toBeNull();
     });
 });
 
-describe('Найди план (27.9)', () => {
-    it('варианты — планы структур, после ответа — название структуры', async () => {
+describe('Find the plan (27.9)', () => {
+    it('options are the structures\' plans, after the answer — the structure name', async () => {
         vi.stubGlobal('fetch', vi.fn(async () => ({ok: true, json: async () => ({questions: QUESTIONS})}) as Response));
         await act(async () => render(<MemoryRouter><StructureQuiz seed={3} onFinish={vi.fn()} variant="plan"/></MemoryRouter>));
-        expect(screen.getByText('Какой план подходит к этой позиции?')).toBeInTheDocument();
-        expect(screen.getByTestId('quiz-option-isolated_pawn')).toHaveTextContent('С изолятором');
-        expect(screen.getByTestId('quiz-option-isolated_pawn')).not.toHaveTextContent('Изолированная пешка');
+        expect(screen.getByText('Which plan fits this position?')).toBeInTheDocument();
+        expect(screen.getByTestId('quiz-option-isolated_pawn')).toHaveTextContent('With the isolani');
+        expect(screen.getByTestId('quiz-option-isolated_pawn')).not.toHaveTextContent('Isolated queen’s pawn');
         fireEvent.click(screen.getByTestId('quiz-option-carlsbad'));
-        expect(screen.getByTestId('plan-verdict')).toHaveTextContent('Структура: Изолированная пешка.');
+        expect(screen.getByTestId('plan-verdict')).toHaveTextContent('Structure: Isolated queen’s pawn.');
     });
 });

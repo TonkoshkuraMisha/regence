@@ -1,17 +1,17 @@
 # --- FILE: src/services/feed.py ---
 """
-Лента и публикации (таск 30.2): игрок делится партией, позицией (своим разбором — текстом к ней), задачей, уроком,
-турниром, партией библиотеки или достижением; лента подписок (свои публикации и тех, на кого подписан), лента
-игрока в профиле, комментарии и отметки «нравится».
+Feed and posts (task 30.2): a player shares a game, a position (their own analysis -- text attached), a puzzle, a lesson,
+a tournament, a library game or an achievement; the subscription feed (own posts and those of followed players), the
+player's feed in the profile, comments and "like" marks.
 
-Правила: запрет чата модератором закрывает и публикации с комментариями; комментировать нельзя у того, кто внёс
-тебя в чёрный список (отказ comment_closed без упоминания блокировки — как dm_closed у личных сообщений: блокировку
-не раскрываем); публикации тех, кого заблокировал я, в моей ленте не показываются; скрытая модератором и придержанная
-фильтром публикация видна только автору; публикации и комментарии удалённых аккаунтов не показываются. Новый
-комментарий к публикации — уведомление автору (кроме своих и придержанных комментариев).
+Rules: a chat ban by a moderator also closes posts and comments; one cannot comment on a player who put
+you on their block list (refusal comment_closed without mentioning the block -- like dm_closed for direct messages: the block
+is not revealed); posts of players I blocked are not shown in my feed; a post hidden by a moderator or held back by the
+filter is visible only to its author; posts and comments of deleted accounts are not shown. A new
+comment on a post is a notification to the author (except own and held-back comments).
 
-Таблицы: posts, post_comments, post_likes; подписки — follows, чёрный список — blocks. Карточки-вложения —
-src/services/attachments.py, фильтр и квоты — src/services/civility.py, запрет чата — src/services/moderation.py.
+Tables: posts, post_comments, post_likes; subscriptions -- follows, block list -- blocks. Attachment cards --
+src/services/attachments.py, filter and quotas -- src/services/civility.py, chat ban -- src/services/moderation.py.
 """
 
 from collections.abc import Sequence
@@ -25,10 +25,10 @@ from src.models.user import User
 from src.services import civility, moderation, notifications
 from src.services.attachments import POST_KINDS, build_attachment, clean_text
 
-# Наибольшая длина текста публикации и комментария в знаках (лишнее обрезается).
+# Maximum length of a post and comment text in characters (the excess is truncated).
 BODY_MAX = 2000
 COMMENT_MAX = 500
-# Сколько публикаций отдаёт одна страница ленты и сколько комментариев показывается у публикации.
+# How many posts one feed page returns and how many comments are shown on a post.
 PAGE = 20
 COMMENTS_PAGE = 100
 
@@ -39,8 +39,8 @@ def _iso(value) -> str | None:
 
 async def _views(db: AsyncSession, posts: Sequence[Post], viewer: User | None) -> list[dict]:
     """
-    Публикации для клиента: автор, текст, карточка, число отметок «нравится» и комментариев (без придержанных),
-    поставил ли отметку сам зритель, своя ли это публикация, скрыта ли она или придержана.
+    Posts for the client: author, text, card, the number of "likes" and comments (without held-back ones),
+    whether the viewer themselves liked it, whether it is their own post, whether it is hidden or held back.
     """
     if not posts:
         return []
@@ -68,7 +68,7 @@ async def _views(db: AsyncSession, posts: Sequence[Post], viewer: User | None) -
 
 
 def _visible(viewer: User | None):
-    """Скрытые модератором и придержанные фильтром — только автору."""
+    """Posts hidden by a moderator and held back by the filter -- only to the author."""
     public = and_(Post.hidden_at.is_(None), Post.held.is_(False))
     if viewer is None:
         return public
@@ -82,9 +82,9 @@ def _not_deleted_author():
 async def create(db: AsyncSession, author: User, body: str | None, attachment: tuple[str, str] | None,
                  send_anyway: bool = False) -> dict:
     """
-    Новая публикация: текст и/или карточка-вложение. Запрещена при отключённом чате; действуют квота и фильтр
-    оскорблений (сработал — без send_anyway отказ text_flagged, с ним публикация придерживается до решения
-    модератора). Отказы: posting_banned, post_empty, posting_limited.
+    A new post: text and/or a card attachment. Forbidden when chat is disabled; the quota and the abuse filter
+    apply (if triggered -- without send_anyway the refusal text_flagged, with it the post is held back until the
+    moderator decides). Refusals: posting_banned, post_empty, posting_limited.
     """
     if moderation.chat_banned(author):
         raise DomainError("posting_banned")
@@ -105,7 +105,7 @@ async def create(db: AsyncSession, author: User, body: str | None, attachment: t
 
 
 async def _page(db: AsyncSession, query, viewer: User | None, before_id: int | None) -> list[dict]:
-    """Страница ленты: PAGE видимых зрителю публикаций, новые первыми; before_id — публикации старше этой."""
+    """A feed page: PAGE posts visible to the viewer, newest first; before_id -- posts older than this."""
     if before_id:
         query = query.where(Post.id < before_id)
     rows = (await db.execute(query.where(_visible(viewer), Post.author_id.in_(_not_deleted_author()))
@@ -114,7 +114,7 @@ async def _page(db: AsyncSession, query, viewer: User | None, before_id: int | N
 
 
 async def following_feed(db: AsyncSession, viewer: User, before_id: int | None = None) -> list[dict]:
-    """Лента подписок: свои публикации и публикации тех, на кого подписан зритель, кроме заблокированных им."""
+    """The subscription feed: own posts and posts of those the viewer follows, except those blocked by them."""
     followed = select(Follow.followee_id).where(Follow.follower_id == viewer.id)
     blocked = select(Block.blocked_id).where(Block.blocker_id == viewer.id)
     query = select(Post).where(or_(Post.author_id == viewer.id, Post.author_id.in_(followed)),
@@ -123,12 +123,12 @@ async def following_feed(db: AsyncSession, viewer: User, before_id: int | None =
 
 
 async def user_feed(db: AsyncSession, author: User, viewer: User | None, before_id: int | None = None) -> list[dict]:
-    """Лента одного игрока — для его профиля; зритель может быть гостем (viewer=None)."""
+    """One player's feed -- for their profile; the viewer may be a guest (viewer=None)."""
     return await _page(db, select(Post).where(Post.author_id == author.id), viewer, before_id)
 
 
 async def _post(db: AsyncSession, post_id: int, viewer: User | None) -> Post:
-    """Публикация, если зритель вправе её видеть; иначе post_not_found — как если бы её не было."""
+    """The post if the viewer may see it; otherwise post_not_found -- as if it did not exist."""
     post = await db.scalar(select(Post).where(Post.id == post_id, _visible(viewer),
                                               Post.author_id.in_(_not_deleted_author())))
     if post is None:
@@ -141,7 +141,7 @@ async def get(db: AsyncSession, post_id: int, viewer: User | None) -> dict:
 
 
 async def remove(db: AsyncSession, post_id: int, viewer: User) -> None:
-    """Удаление публикации её автором или модератором; остальным — тот же отказ post_not_found."""
+    """Deleting a post by its author or a moderator; for everyone else -- the same refusal post_not_found."""
     post = await _post(db, post_id, viewer)
     if post.author_id != viewer.id and not viewer.is_moderator:
         raise DomainError("post_not_found")
@@ -150,7 +150,7 @@ async def remove(db: AsyncSession, post_id: int, viewer: User) -> None:
 
 
 async def set_like(db: AsyncSession, post_id: int, viewer: User, liked: bool) -> dict:
-    """Поставить или снять «нравится»; повтор ничего не меняет. Возвращает публикацию с новым счётчиком."""
+    """Set or remove a "like"; a repeat changes nothing. Returns the post with the new counter."""
     post = await _post(db, post_id, viewer)
     exists = await db.scalar(select(PostLike.id).where(PostLike.post_id == post.id, PostLike.user_id == viewer.id))
     if liked and exists is None:
@@ -171,8 +171,8 @@ def _comment_view(c: PostComment, author: User | None, viewer: User | None, post
 
 async def comments(db: AsyncSession, post_id: int, viewer: User | None) -> list[dict]:
     """
-    Комментарии публикации от старых к новым, не больше COMMENTS_PAGE. Придержанный фильтром комментарий виден только
-    его автору; комментарии удалённых аккаунтов не показываются.
+    Comments on a post from oldest to newest, no more than COMMENTS_PAGE. A comment held back by the filter is visible only to
+    its author; comments of deleted accounts are not shown.
     """
     post = await _post(db, post_id, viewer)
     rows = (await db.execute(select(PostComment, User).join(User, User.id == PostComment.author_id)
@@ -185,9 +185,10 @@ async def comments(db: AsyncSession, post_id: int, viewer: User | None) -> list[
 async def add_comment(db: AsyncSession, post_id: int, viewer: User, body: str | None,
                       send_anyway: bool = False) -> tuple[dict, tuple[int, dict] | None]:
     """
-    Комментарий и (если пишет не автор) (автор, записанное уведомление) — доставку делает API после коммита.
-    Придержанный фильтром комментарий уведомления не даёт. Отказы: posting_banned (запрет чата), comment_closed
-    (автор публикации заблокировал пишущего), comment_empty, posting_limited (квота), text_flagged (фильтр).
+    The comment and (if the writer is not the author) (the author, the recorded notification) -- delivery is done by the API
+    after the commit.
+    A comment held back by the filter gives no notification. Refusals: posting_banned (chat ban), comment_closed
+    (the post's author blocked the writer), comment_empty, posting_limited (quota), text_flagged (filter).
     """
     post = await _post(db, post_id, viewer)
     if moderation.chat_banned(viewer):
@@ -215,7 +216,7 @@ async def add_comment(db: AsyncSession, post_id: int, viewer: User, body: str | 
 
 
 async def remove_comment(db: AsyncSession, comment_id: int, viewer: User) -> None:
-    """Удаление комментария — его автором, автором публикации или модератором."""
+    """Deleting a comment -- by its author, the post's author or a moderator."""
     row = (await db.execute(select(PostComment, Post).join(Post, Post.id == PostComment.post_id)
                             .where(PostComment.id == comment_id))).first()
     if row is None:

@@ -1,7 +1,7 @@
 # --- FILE: tests/test_token_lifecycle.py ---
 """
-Жизненный цикл токенов: sub = id пользователя, отзыв всех токенов (смена пароля, «выйти на
-всех устройствах») и одноразовые тикеты для WebSocket вместо JWT в адресе.
+Token lifecycle: sub = user id, revoking all tokens (password change, "log out on
+all devices") and one-time tickets for WebSocket instead of a JWT in the URL.
 """
 
 import json
@@ -39,7 +39,7 @@ def _me(client, token: str):
 
 
 class _NoDbFactory:
-    """Фабрика сессий для get_current_user_ws: отдаёт заранее известного пользователя."""
+    """Session factory for get_current_user_ws: returns a known user."""
 
     def __init__(self, user: User | None):
         self.user = user
@@ -60,7 +60,7 @@ class _NoDbFactory:
         return self.user if self.user is not None and self.user.id == pk else None
 
 
-# --- Формат токена -------------------------------------------------------------------------
+# --- Token format -------------------------------------------------------------------------
 
 def test_token_subject_is_user_id_with_version(client):
     token = _register_and_login(client)
@@ -71,13 +71,13 @@ def test_token_subject_is_user_id_with_version(client):
 
 
 def test_old_format_token_is_rejected(client):
-    """Токены, выданные до перехода (sub = имя пользователя), больше не принимаются."""
+    """Tokens issued before the switch (sub = username) are no longer accepted."""
     _register_and_login(client, "legacy")
     legacy_token = create_access_token({"sub": "legacy"})
     assert _me(client, legacy_token).status_code == 401
 
 
-# --- Отзыв токенов -------------------------------------------------------------------------
+# --- Token revocation -------------------------------------------------------------------------
 
 def test_logout_everywhere_revokes_all_tokens(client):
     token = _register_and_login(client)
@@ -89,7 +89,7 @@ def test_logout_everywhere_revokes_all_tokens(client):
 
     assert _me(client, token).status_code == 401
     assert _me(client, other_token).status_code == 401
-    # Новый вход выдаёт рабочий токен.
+    # A new login issues a working token.
     fresh = client.post("/api/v1/auth/login", data={"username": "tokenuser", "password": PASSWORD})
     assert _me(client, fresh.json()["access_token"]).status_code == 200
 
@@ -100,7 +100,7 @@ def test_change_password_revokes_old_tokens_and_keeps_current_session(client):
     wrong = client.post("/api/v1/auth/change-password", headers=_auth(token),
                         json={"current_password": "not-it", "new_password": "brand-new-pass"})
     assert wrong.status_code == 400
-    assert _me(client, token).status_code == 200  # неудачная попытка ничего не отзывает
+    assert _me(client, token).status_code == 200  # a failed attempt revokes nothing
 
     res = client.post("/api/v1/auth/change-password", headers=_auth(token),
                       json={"current_password": PASSWORD, "new_password": "brand-new-pass"})
@@ -114,7 +114,7 @@ def test_change_password_revokes_old_tokens_and_keeps_current_session(client):
                        data={"username": "tokenuser", "password": "brand-new-pass"}).status_code == 200
 
 
-# --- Тикеты WebSocket ------------------------------------------------------------------------
+# --- WebSocket tickets ------------------------------------------------------------------------
 
 def test_ws_ticket_requires_authentication(client):
     assert client.post("/api/v1/auth/ws-ticket").status_code == 401
@@ -145,7 +145,7 @@ async def test_ws_ticket_is_void_after_tokens_are_revoked(client):
     me = _me(client, token).json()
     ticket = client.post("/api/v1/auth/ws-ticket", headers=_auth(token)).json()["ticket"]
 
-    # Между выдачей тикета и подключением пользователь вышел на всех устройствах.
+    # Between ticket issue and connection the user logged out on all devices.
     revoked_user = User(
         id=me["id"], username=me["username"], bullet_rating=1200,
         blitz_rating=1200, rapid_rating=1200, classical_rating=1200, token_version=1
@@ -167,7 +167,7 @@ def test_ws_ticket_issuance_is_rate_limited(client, monkeypatch, freeze_rate_lim
     assert codes == [200, 200, 429]
 
 
-# --- Закрытие открытых WebSocket при отзыве -------------------------------------------------
+# --- Closing open WebSockets on revocation -------------------------------------------------
 
 class _Socket:
     def __init__(self):
@@ -205,7 +205,7 @@ async def test_revocation_from_another_worker_closes_tabs_here():
     await cm.connect(tab, user_id=43)
 
     await cm._on_remote_message(43, json.dumps({"event": "chat_message", "text": SESSION_REVOKED_EVENT}))
-    assert tab.closed_with is None  # слово в тексте чата — не событие отзыва
+    assert tab.closed_with is None  # a word in the chat text is not a revocation event
 
     await cm._on_remote_message(43, json.dumps({"event": SESSION_REVOKED_EVENT}))
     assert tab.closed_with == WS_CLOSE_SESSION_REVOKED

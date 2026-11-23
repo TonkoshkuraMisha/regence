@@ -1,4 +1,4 @@
-// Личные сообщения (таск 30.1): распознавание вложений, переписка, отправка с карточкой, отказ, колокольчик.
+// Direct messages (task 30.1): attachment detection, a conversation, sending with a card, a refusal, the bell.
 
 import {act, fireEvent, render, screen, waitFor} from '@testing-library/react';
 import {MemoryRouter, Route, Routes} from 'react-router-dom';
@@ -45,22 +45,22 @@ afterEach(() => {
     vi.unstubAllGlobals();
 });
 
-describe('вложения', () => {
-    it('ссылки и FEN распознаются, прочее — нет', () => {
+describe('attachments', () => {
+    it('links and FEN are detected, anything else is not', () => {
         expect(detectAttachment('https://site.example/game/42')).toEqual({kind: 'game', ref: '42'});
         expect(detectAttachment('/tournaments/7?tab=table')).toEqual({kind: 'tournament', ref: '7'});
         expect(detectAttachment('https://site.example/learn/fork-basics')).toEqual({kind: 'lesson', ref: 'fork-basics'});
         expect(detectAttachment(`  ${START} `)).toEqual({kind: 'position', ref: START});
         expect(detectAttachment('8/8/8/8/8/8/8/8')).toEqual({kind: 'position', ref: '8/8/8/8/8/8/8/8'});
-        expect(detectAttachment('привет')).toBeNull();
+        expect(detectAttachment('hello')).toBeNull();
         expect(detectAttachment('/game/abc')).toBeNull();
         expect(attachmentLink({kind: 'game', ref: '42'})).toBe('/game/42');
         expect(attachmentLink({kind: 'position', ref: START})).toBeNull();
     });
 });
 
-describe('страница сообщений', () => {
-    it('список переписок и пустое состояние', async () => {
+describe('messages page', () => {
+    it('the conversation list and the empty state', async () => {
         stubFetch((url) => {
             if (url.endsWith('/settings')) return {dm_policy: 'all', blocked: []};
             return {
@@ -71,13 +71,13 @@ describe('страница сообщений', () => {
         page('/messages');
         const list = await screen.findByTestId('dm-conversations');
         expect(list).toHaveTextContent('magnus');
-        expect(list).toHaveTextContent('новых: 1');
-        expect(list).toHaveTextContent('Задача');
-        expect(screen.getByText('Выберите переписку слева.')).toBeInTheDocument();
+        expect(list).toHaveTextContent('1 new');
+        expect(list).toHaveTextContent('Puzzle');
+        expect(screen.getByText('Choose a conversation on the left.')).toBeInTheDocument();
         expect(await screen.findByTestId('dm-policy')).toHaveValue('all');
     });
 
-    it('переписка, отправка текста с карточкой партии', async () => {
+    it('a conversation, sending text with a game card', async () => {
         const fetchMock = stubFetch((url, init) => {
             if (url.endsWith('/settings')) return {dm_policy: 'all', blocked: []};
             if (url.includes('/with/magnus') && init?.method === 'POST') {
@@ -86,23 +86,23 @@ describe('страница сообщений', () => {
             }
             if (url.includes('/with/magnus')) {
                 return {username: 'magnus', avatar: null, can_write: true, reason: null, blocked: false,
-                    messages: [message(1, false, 'Привет!'), message(2, true, '', {kind: 'position', ref: START})]};
+                    messages: [message(1, false, 'Hello!'), message(2, true, '', {kind: 'position', ref: START})]};
             }
             return {unread: 0, conversations: []};
         });
         page('/messages/magnus');
-        expect(await screen.findByTestId('dm-theirs')).toHaveTextContent('Привет!');
+        expect(await screen.findByTestId('dm-theirs')).toHaveTextContent('Hello!');
         expect(screen.getByTestId('attachment-position')).toBeInTheDocument();
         expect(screen.getByTestId('mini-diagram')).toBeInTheDocument();
 
         fireEvent.click(screen.getByTestId('dm-attach-toggle'));
         fireEvent.change(screen.getByTestId('dm-attach-ref'), {target: {value: 'https://x.example/game/42'}});
         expect(screen.getByTestId('dm-attach-kind')).toHaveValue('game');
-        fireEvent.change(screen.getByTestId('dm-input'), {target: {value: 'Смотри партию'}});
+        fireEvent.change(screen.getByTestId('dm-input'), {target: {value: 'Look at this game'}});
         await act(async () => fireEvent.keyDown(screen.getByTestId('dm-input'), {key: 'Enter'}));
 
         const post = fetchMock.mock.calls.find(([u, i]) => String(u).includes('/with/magnus') && i?.method === 'POST');
-        expect(JSON.parse(String(post?.[1]?.body))).toEqual({body: 'Смотри партию', attachment: {kind: 'game', ref: '42'}, send_anyway: false});
+        expect(JSON.parse(String(post?.[1]?.body))).toEqual({body: 'Look at this game', attachment: {kind: 'game', ref: '42'}, send_anyway: false});
         const card = await screen.findByTestId('attachment-game');
         expect(card).toHaveTextContent('me — magnus · 1-0');
         expect(card.querySelector('a')).toHaveAttribute('href', '/game/42');
@@ -110,7 +110,7 @@ describe('страница сообщений', () => {
         expect(screen.queryByTestId('dm-attach')).toBeNull();
     });
 
-    it('закрытая переписка: причина вместо поля ввода', async () => {
+    it('a closed conversation: the reason instead of the input field', async () => {
         stubFetch((url) => {
             if (url.endsWith('/settings')) return {dm_policy: 'all', blocked: []};
             if (url.includes('/with/magnus')) {
@@ -119,11 +119,11 @@ describe('страница сообщений', () => {
             return {unread: 0, conversations: []};
         });
         page('/messages/magnus');
-        expect(await screen.findByTestId('dm-refusal')).toHaveTextContent('Этот игрок не принимает от вас сообщений');
+        expect(await screen.findByTestId('dm-refusal')).toHaveTextContent('This player does not accept messages from you');
         expect(screen.queryByTestId('dm-composer')).toBeNull();
     });
 
-    it('ошибка отправки показывается текстом из каталога', async () => {
+    it('a send error is shown as a catalog text', async () => {
         stubFetch((url, init) => {
             if (url.endsWith('/settings')) return {dm_policy: 'all', blocked: []};
             if (url.includes('/with/magnus') && init?.method === 'POST') return new Error('attachment_invalid');
@@ -135,18 +135,18 @@ describe('страница сообщений', () => {
         fireEvent.click(screen.getByTestId('dm-attach-toggle'));
         fireEvent.change(screen.getByTestId('dm-attach-ref'), {target: {value: '999'}});
         await act(async () => fireEvent.click(screen.getByTestId('dm-send')));
-        expect(await screen.findByRole('alert')).toHaveTextContent('Эту партию, позицию или материал нельзя вложить');
+        expect(await screen.findByRole('alert')).toHaveTextContent('This game, position or material cannot be attached');
     });
 
-    it('гость видит просьбу войти', () => {
+    it('a guest sees a request to log in', () => {
         setToken(null);
         page('/messages');
         expect(screen.getByTestId('dm-login')).toBeInTheDocument();
     });
 });
 
-describe('колокольчик', () => {
-    it('непрочитанные сообщения входят в счётчик, первая строка ведёт в «Сообщения»', async () => {
+describe('bell', () => {
+    it('unread messages count in the counter, the first row leads to "Messages"', async () => {
         stubFetch((url, init) => {
             if (url.endsWith('/messages/unread')) return {unread: 3};
             return init?.method === 'POST' ? {unread: 0, items: []} : {unread: 1, items: []};
@@ -156,8 +156,8 @@ describe('колокольчик', () => {
         await act(async () => fireEvent.click(screen.getByTestId('notification-bell')));
         const link = screen.getByTestId('notification-messages');
         expect(link).toHaveAttribute('href', '/messages');
-        expect(link).toHaveTextContent('новых: 3');
-        // Колокольчик отмечает прочитанными уведомления, но не сообщения: те — только в самой переписке.
+        expect(link).toHaveTextContent('3 new');
+        // The bell marks notifications as read, but not messages: those only in the conversation itself.
         expect(screen.getByTestId('notification-badge')).toHaveTextContent('3');
     });
 });

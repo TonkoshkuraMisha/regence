@@ -1,7 +1,7 @@
 // --- FILE: frontend/src/services/apiErrors.ts ---
-// Ошибки сервера → сообщения на языке игрока. Сервер отдаёт код, параметры и английский текст
-// (src/core/errors.py); текст для игрока берётся из каталога serverErrors по коду. Английский текст
-// сервера показывается, только если клиент такого кода ещё не знает (например, устаревшая вкладка).
+// Server errors → messages in the player's language. The server returns a code, parameters and an English text
+// (src/core/errors.py); the player-facing text is taken from the serverErrors catalog by code. The server's English text
+// is shown only if the client does not know the code yet (for example, a stale tab).
 
 import {hasMessage, uiMessage} from '../i18n';
 import type {MessageKey, MessageParam, UiMessage} from '../i18n';
@@ -19,17 +19,17 @@ function primitiveParams(raw: unknown): Params {
     return params;
 }
 
-/** Ошибка по коду сервера: из каталога, а если код неизвестен — английский текст сервера. */
+/** Error by server code: from the catalog, and if the code is unknown — the server's English text. */
 export function serverErrorMessage(code: unknown, params?: unknown, message?: unknown): UiMessage | null {
     const key = `serverErrors.${String(code)}`;
     if (typeof code === 'string' && hasMessage(key)) return uiMessage(key, primitiveParams(params));
     return typeof message === 'string' && message ? {text: message} : null;
 }
 
-/** Ошибка проверки поля (422): своя проверка сервера — по коду, стандартная — по типу из каталога validation. */
+/** Field validation error (422): the server's own check — by code, the standard one — by type from the validation catalog. */
 function validationItemMessage(item: unknown): UiMessage | null {
     if (!item || typeof item !== 'object') return null;
-    // Английский msg сервера не показываем: тип проверки и её параметры переводятся каталогом.
+    // The server's English msg is not shown: the check type and its parameters are translated by the catalog.
     const {type, loc, params} = item as { type?: unknown; loc?: unknown; params?: unknown };
     const fromCode = serverErrorMessage(type, params);
     let message: UiMessage | null = fromCode;
@@ -40,7 +40,7 @@ function validationItemMessage(item: unknown): UiMessage | null {
             : uiMessage('validation.invalid_value');
     }
     const field = Array.isArray(loc) ? loc.filter((part) => typeof part === 'string').at(-1) : undefined;
-    // Корень тела запроса («body») — не поле; проверка модели целиком подписи поля не получает.
+    // The request body root («body») is not a field; a whole-model check gets no field label.
     if (typeof field === 'string' && field !== 'body') {
         const fieldKey = `fields.${field}`;
         return uiMessage('validation.withField', {
@@ -51,18 +51,18 @@ function validationItemMessage(item: unknown): UiMessage | null {
     return message;
 }
 
-/** detail ответа API → сообщение; null — в ответе нет ничего пригодного для показа. */
+/** API response detail → message; null — the response has nothing suitable to show. */
 export function apiErrorMessage(detail: unknown): UiMessage | null {
     if (Array.isArray(detail)) return detail.length ? validationItemMessage(detail[0]) : null;
     if (detail && typeof detail === 'object') {
         const {code, params, message} = detail as { code?: unknown; params?: unknown; message?: unknown };
         return serverErrorMessage(code, params, message);
     }
-    // Ответы без кода: стандартные ошибки FastAPI и прокси («Not Found», «Method Not Allowed»).
+    // Responses without a code: standard FastAPI and proxy errors («Not Found», «Method Not Allowed»).
     return typeof detail === 'string' && detail ? {text: detail} : null;
 }
 
-/** Ошибка из ответа (тело читается один раз); null — тела нет или в нём нет ошибки. */
+/** Error from a response (the body is read once); null — there is no body or no error in it. */
 export async function readApiError(res: Response): Promise<UiMessage | null> {
     try {
         const data = await res.json();
@@ -72,12 +72,12 @@ export async function readApiError(res: Response): Promise<UiMessage | null> {
     }
 }
 
-/** Ошибка из ответа или запасное сообщение каталога. */
+/** Error from a response or the catalog's fallback message. */
 export async function readApiErrorOr(res: Response, fallback: MessageKey): Promise<UiMessage> {
     return (await readApiError(res)) ?? uiMessage(fallback);
 }
 
-/** Исключение с сообщением для показа: сервисы бросают его, компоненты показывают ui на языке игрока. */
+/** Exception with a message to show: services throw it, components show ui in the player's language. */
 export class UiError extends Error {
     readonly ui: UiMessage;
 
@@ -88,7 +88,7 @@ export class UiError extends Error {
     }
 }
 
-/** Сообщение из пойманного исключения: UiError — как есть, иначе (сеть, ошибка кода) — запасное. */
+/** Message from a caught exception: UiError — as is, otherwise (network, code error) — the fallback. */
 export function errorMessage(err: unknown, fallback: MessageKey): UiMessage {
     return err instanceof UiError ? err.ui : uiMessage(fallback);
 }

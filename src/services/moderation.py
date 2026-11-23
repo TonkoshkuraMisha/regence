@@ -1,28 +1,29 @@
 # --- FILE: src/services/moderation.py ---
 """
-Модерация (таск 17.4).
+Moderation (task 17.4).
 
-* Жалоба: на игрока (причина: нечестная игра, оскорбления, спам, другое) или на сообщение в чате (копия текста).
-  Одна открытая жалоба от игрока на игрока; на себя — нельзя.
-* Флаг нечестной игры по-прежнему ставит автоматика (src/services/anticheat.py), но теперь с заявкой в очередь на
-  проверку (cheat_review); помеченный игрок может подать апелляцию (одну открытую).
-* Решения модератора: dismiss — отклонить; warn — предупреждение; chat_ban — отключить чат на CHAT_BAN_HOURS;
-  mark_cheater — подтвердить флаг; clear_cheater — снять флаг (и вернуть доверие). Автор жалобы или апелляции получает
-  уведомление «ответ на жалобу» (центр уведомлений, 17.1).
-* Таск 30.3: жалоба на конкретный текст — личное сообщение, публикацию, комментарий (kind="content", subject
-  «dm:id» / «post:id» / «comment:id», копия текста) в один шаг; придержанное фильтром — заявка kind="held".
-  Решения по тексту: hide — убрать (публикацию скрыть, сообщение и комментарий удалить), release — выпустить
-  придержанное; warn и chat_ban по тексту тоже убирают его. Все открытые заявки на тот же текст закрываются вместе.
-* accept — принять предложение по тексту интерфейса (заявка kind="translation", таск 17.7): решение только
-  записывается в заявку, сам текст в каталоге правит человек.
+* Report: against a player (reason: unfair play, abuse, spam, other) or against a chat message (a copy of the text).
+  One open report from one player against another; against oneself - not allowed.
+* The unfair-play flag is still set by the automation (src/services/anticheat.py), but now with a request in the queue for
+  review (cheat_review); a flagged player can file an appeal (one open at a time).
+* Moderator decisions: dismiss - reject; warn - a warning; chat_ban - disable chat for CHAT_BAN_HOURS;
+  mark_cheater - confirm the flag; clear_cheater - remove the flag (and restore trust). The author of the report or appeal
+  receives a "report answer" notification (notification centre, 17.1).
+* Task 30.3: a report about a specific text - a direct message, a post, a comment (kind="content", subject
+  "dm:id" / "post:id" / "comment:id", a copy of the text) in one step;
+  something held back by the filter is a request kind="held".
+  Decisions on a text: hide - remove it (hide a post, delete a message and a comment), release - release
+  the held text; warn and chat_ban on a text also remove it. All open requests about the same text are closed together.
+* accept - accept a suggestion for an interface text (request kind="translation", task 17.7): the decision is only
+  recorded in the request, the text in the catalogue is edited by a human.
 
-Данные: все заявки — таблица reports (src/models/moderation.py), виды: player, message, cheat_review, appeal,
-translation, content, held. Решение пишется в саму заявку (status, action, moderator_id, resolved_at). Отдельной
-записи «предупреждение» нет: warn, chat_ban и hide в закрытой заявке за последние 30 дней делают игрока
-«нарушителем» с урезанными квотами общения (src/services/civility.py). Запрет чата — users.chat_banned_until, флаг
-нечестной игры — users.is_cheater, доверие — users.trust_factor. Какие решения предлагаются для какого вида заявки,
-определяет клиент (frontend/src/components/social/ModerationPage.tsx); сервер проверяет только, что решение есть в
-ACTIONS и что решает модератор (users.is_moderator). Маршруты — src/api/moderation.py.
+Data: all requests are the reports table (src/models/moderation.py), kinds: player, message, cheat_review, appeal,
+translation, content, held. The decision is written into the request itself (status, action, moderator_id, resolved_at).
+There is no separate "warning" record: warn, chat_ban and hide in a closed request within the last 30 days make a player
+a "violator" with reduced communication quotas (src/services/civility.py). The chat ban is users.chat_banned_until, the unfair
+play flag is users.is_cheater, trust is users.trust_factor. Which decisions are offered for which kind of request
+is determined by the client (frontend/src/components/social/ModerationPage.tsx); the server checks only that the decision is in
+ACTIONS and that a moderator decides (users.is_moderator). Routes - src/api/moderation.py.
 """
 
 from datetime import UTC, datetime, timedelta
@@ -36,17 +37,17 @@ from src.models.social import DirectMessage, Post, PostComment
 from src.models.user import User
 from src.services import notifications
 
-REASONS = ("cheating", "abuse", "spam", "other")  # причины жалобы, которые может выбрать игрок
+REASONS = ("cheating", "abuse", "spam", "other")  # reasons for a report that a player can choose
 ACTIONS = ("dismiss", "warn", "chat_ban", "mark_cheater", "clear_cheater", "accept", "hide", "release")
-TEXT_KINDS = ("content", "held")  # виды заявок на конкретный текст: жалоба игрока и придержанное фильтром
-SUBJECT_KINDS = ("dm", "post", "comment")  # что может стоять в subject до двоеточия: вид текста
-LANGUAGES = ("en", "uk", "ru")  # языки, для которых принимаются предложения по переводу
-CHAT_BAN_HOURS = 24  # на сколько часов решение chat_ban отключает общение
-# Периодический пересмотр флагов (таск 26.4): флаг без решения человека дольше стольких дней снова попадает в очередь
-# модератора — автоматика могла ошибиться, и «вечного» флага без пересмотра быть не должно.
+TEXT_KINDS = ("content", "held")  # kinds of requests about a specific text: a report or a held text
+SUBJECT_KINDS = ("dm", "post", "comment")  # what can stand in subject before the colon: the kind of text
+LANGUAGES = ("en", "uk")  # languages for which translation suggestions are accepted
+CHAT_BAN_HOURS = 24  # for how many hours a chat_ban decision disables communication
+# Periodic review of flags (task 26.4): a flag without a human decision for longer than this many days goes back into the
+# moderator's queue - the automation may have been wrong, and there must be no "eternal" flag without review.
 FLAG_REVIEW_AFTER_DAYS = 60
 PERIODIC_CONTEXT = "periodic"
-RESTORED_TRUST = 100  # доверие после снятия флага: не ниже стартового значения users.trust_factor
+RESTORED_TRUST = 100  # trust after the flag is removed: not lower than the starting value of users.trust_factor
 
 
 def _now() -> datetime:
@@ -55,8 +56,8 @@ def _now() -> datetime:
 
 def chat_banned(user: User, now: datetime | None = None) -> bool:
     """
-    Действует ли сейчас запрет общения (users.chat_banned_until; время без зоны считается UTC). Проверяют чат партии,
-    личные сообщения и лента.
+    Whether the communication ban is in effect now (users.chat_banned_until; a time without a zone is treated as UTC).
+    Checked by the game chat, direct messages and the feed.
     """
     until = user.chat_banned_until
     if until is None:
@@ -68,9 +69,9 @@ def chat_banned(user: User, now: datetime | None = None) -> bool:
 async def report(db: AsyncSession, reporter: User, target: User, kind: str, reason: str, comment: str | None,
                  message_text: str | None = None, game_id: int | None = None) -> Report:
     """
-    Жалоба на игрока или на сообщение чата. На себя жаловаться нельзя; от одного игрока на другого — одна открытая
-    жалоба (учитывается открытая заявка любого вида, включая жалобу на его текст). Комментарий и копия сообщения
-    обрезаются до 300 знаков.
+    A report against a player or a chat message. One cannot report oneself; from one player against another there is one open
+    report (an open request of any kind counts, including a report on their text). The comment and the copy of the message
+    are truncated to 300 characters.
     """
     if kind not in ("player", "message") or reason not in REASONS:
         raise DomainError("report_invalid")
@@ -91,9 +92,9 @@ async def report(db: AsyncSession, reporter: User, target: User, kind: str, reas
 
 async def periodic_flag_review(db: AsyncSession, now: datetime | None = None) -> int:
     """
-    Раз в неделю (celery beat): для каждого игрока с флагом is_cheater, у которого нет открытой проверки и последнее
-    решение модератора по флагу (или последняя проверка) старше FLAG_REVIEW_AFTER_DAYS, создаёт заявку cheat_review
-    с пометкой periodic. Возвращает число созданных заявок. Сам флаг не меняется — решает человек.
+    Once a week (celery beat): for every player with the is_cheater flag who has no open review and whose last
+    moderator decision on the flag (or last review) is older than FLAG_REVIEW_AFTER_DAYS, creates a cheat_review request
+    marked periodic. Returns the number of requests created. The flag itself is not changed - a human decides.
     """
     now = now or _now()
     border = now - timedelta(days=FLAG_REVIEW_AFTER_DAYS)
@@ -119,8 +120,8 @@ async def periodic_flag_review(db: AsyncSession, now: datetime | None = None) ->
 
 async def flag_for_review(db: AsyncSession, user: User, game_id: int | None) -> None:
     """
-    Автоматика (src/services/anticheat.py) пометила игрока — заявка на проверку без автора, с причиной auto (если
-    открытой ещё нет). Без commit: запись сохраняет вызывающий код вместе со штрафом доверия и флагом.
+    The automation (src/services/anticheat.py) flagged a player - a review request without an author, with reason auto (if
+    there is no open one yet). Without commit: the calling code saves the record together with the trust penalty and the flag.
     """
     exists = await db.scalar(select(Report.id).where(
         Report.target_id == user.id, Report.kind == "cheat_review", Report.status == "open"))
@@ -131,9 +132,10 @@ async def flag_for_review(db: AsyncSession, user: User, game_id: int | None) -> 
 async def suggest_translation(db: AsyncSession, user: User, language: str, key: str, current: str | None,
                              suggestion: str, context: str | None) -> Report:
     """
-    Предложение исправить текст интерфейса (таск 17.7): только в режиме «помощник перевода»
-    (users.translation_helper). Заявка kind="translation": subject — «язык:ключ каталога», message_text — текущий
-    текст, comment — предложение; автор и «цель» заявки — сам игрок. Одна открытая заявка от игрока на ключ.
+    A suggestion to fix an interface text (task 17.7): only in the "translation helper" mode
+    (users.translation_helper). Request kind="translation": subject is "language:catalogue key", message_text is the current
+    text, comment is the suggestion; the author and the "target" of the request are the player themselves. One open request
+    per player per key.
     """
     suggestion = " ".join(suggestion.split())[:300]
     if not user.translation_helper:
@@ -154,7 +156,7 @@ async def suggest_translation(db: AsyncSession, user: User, language: str, key: 
 
 
 async def appeal(db: AsyncSession, user: User, comment: str | None) -> Report:
-    """Апелляция игрока, помеченного флагом нечестной игры; одновременно может быть открыта одна."""
+    """Appeal of a player flagged for unfair play; one can be open at a time."""
     if not user.is_cheater:
         raise DomainError("appeal_not_flagged")
     exists = await db.scalar(select(Report.id).where(
@@ -171,9 +173,9 @@ async def appeal(db: AsyncSession, user: User, comment: str | None) -> Report:
 
 async def queue(db: AsyncSession) -> list[dict]:
     """
-    Открытые заявки, старые первыми; у каждой — имена и сколько всего жалоб на этого игрока: жалобы на игрока, на
-    сообщение и на текст за всё время, открытые и закрытые (заявки автоматики о нечестной игре, апелляции и
-    предложения перевода в это число не входят).
+    Open requests, oldest first; each with the names and the total number of reports against that player: reports against
+    the player, against a message and against a text over all time, open and closed (automation requests about unfair play,
+    appeals and translation suggestions are not counted).
     """
     open_reports = select(Report).where(Report.status == "open").order_by(Report.created_at, Report.id)
     rows = (await db.execute(open_reports)).scalars().all()
@@ -202,13 +204,13 @@ async def queue(db: AsyncSession) -> list[dict]:
 
 async def resolve(db: AsyncSession, moderator: User, report_id: int, action: str) -> Report:
     """
-    Решение модератора по заявке (значения — ACTIONS): отклонить, предупредить, отключить чат, подтвердить или снять
-    флаг нечестной игры, выпустить или скрыть придержанный текст. Автор заявки получает уведомление.
+    A moderator's decision on a request (values - ACTIONS): reject, warn, disable chat, confirm or remove the
+    unfair-play flag, release or hide a held text. The author of the request receives a notification.
 
-    Вместе с заявкой тем же решением закрываются: по тексту — все открытые заявки на тот же текст; при
-    mark_cheater и clear_cheater — открытые проверки и апелляции этого игрока. Уведомление report_answer получает
-    только автор той заявки, по которой принято решение (у заявок автоматики автора нет). Решение по тексту,
-    которого нет в ``_apply_to_text`` (например, dismiss), сам текст не меняет.
+    Along with the request, the same decision closes: for a text - all open requests about the same text; for
+    mark_cheater and clear_cheater - the open reviews and appeals of that player. The report_answer notification is received
+    only by the author of the request on which the decision was made (automation requests have no author). A decision on a text
+    that is not in ``_apply_to_text`` (for example, dismiss) does not change the text itself.
     """
     if not moderator.is_moderator:
         raise DomainError("moderator_only")
@@ -233,7 +235,7 @@ async def resolve(db: AsyncSession, moderator: User, report_id: int, action: str
                 Report.id != item.id))).scalars():
             other.status, other.action, other.moderator_id, other.resolved_at = "resolved", action, moderator.id, _now()
     item.status, item.action, item.moderator_id, item.resolved_at = "resolved", action, moderator.id, _now()
-    # Остальные открытые заявки по тому же флагу закрываются этим же решением.
+    # The other open requests on the same flag are closed by this same decision.
     if action in ("mark_cheater", "clear_cheater"):
         for other in (await db.execute(select(Report).where(
                 Report.target_id == item.target_id, Report.kind.in_(("cheat_review", "appeal")),
@@ -245,7 +247,7 @@ async def resolve(db: AsyncSession, moderator: User, report_id: int, action: str
     return item
 
 def _parse_subject(subject: str) -> tuple[str, int]:
-    """Ссылка на текст «вид:id» (вид — из SUBJECT_KINDS) → (вид, id); другой формат — отказ report_invalid."""
+    """Reference to a text "kind:id" (kind - from SUBJECT_KINDS) -> (kind, id); any other format - refusal report_invalid."""
     kind, _, raw = (subject or "").partition(":")
     if kind not in SUBJECT_KINDS or not raw.isdigit():
         raise DomainError("report_invalid")
@@ -254,7 +256,7 @@ def _parse_subject(subject: str) -> tuple[str, int]:
 
 async def load_text(db: AsyncSession, subject: str) -> DirectMessage | Post | PostComment:
     """
-    Текст, на который пожаловались: личное сообщение, публикация или комментарий — по ссылке subject вида «вид:id».
+    The text that was reported: a direct message, a post or a comment - by the subject reference of the form "kind:id".
     """
     kind, key = _parse_subject(subject)
     item: DirectMessage | Post | PostComment | None
@@ -275,8 +277,8 @@ def _author(item: DirectMessage | Post | PostComment) -> int:
 
 async def _can_see(db: AsyncSession, item: DirectMessage | Post | PostComment, user: User) -> bool:
     """
-    Видит ли игрок текст, на который жалуется: личное сообщение — только его получатель; публикация и комментарий —
-    если не скрыты и не придержаны (у комментария — и его публикация). Жаловаться можно только на то, что видишь.
+    Whether the player can see the text they report: a direct message - only its recipient; a post and a comment -
+    if not hidden and not held (for a comment - and its post too). One can report only what one sees.
     """
     if isinstance(item, DirectMessage):
         return item.recipient_id == user.id and not item.held
@@ -288,9 +290,9 @@ async def _can_see(db: AsyncSession, item: DirectMessage | Post | PostComment, u
 
 async def report_text(db: AsyncSession, reporter: User, subject: str, reason: str) -> Report:
     """
-    Жалоба на сообщение, публикацию или комментарий в один шаг: текст (первые 300 знаков) копируется в заявку —
-    она остаётся понятной, даже если автор текст удалит. На свой текст жаловаться нельзя; от игрока на один текст —
-    одна открытая жалоба.
+    A report on a message, a post or a comment in one step: the text (first 300 characters) is copied into the request -
+    it stays understandable even if the author deletes the text. One cannot report one's own text; from a player on one
+    text there is one open report.
     """
     if reason not in REASONS:
         raise DomainError("report_invalid")
@@ -316,13 +318,13 @@ async def report_text(db: AsyncSession, reporter: User, subject: str, reason: st
 
 async def _apply_to_text(db: AsyncSession, subject: str, action: str) -> None:
     """
-    Применяет решение к самому тексту: release снимает придержание; hide, warn и chat_ban убирают текст —
-    публикация скрывается (hidden_at), личное сообщение и комментарий удаляются. Остальные решения текст не трогают.
+    Applies the decision to the text itself: release lifts the hold; hide, warn and chat_ban remove the text -
+    a post is hidden (hidden_at), a direct message and a comment are deleted. Other decisions do not touch the text.
     """
     try:
         item = await load_text(db, subject)
     except DomainError:
-        return  # текст уже удалён автором — решение касается только игрока
+        return  # the text was already deleted by its author - the decision concerns only the player
     if action == "release":
         item.held = False
     elif action in ("hide", "warn", "chat_ban"):

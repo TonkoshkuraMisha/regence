@@ -14,7 +14,7 @@ from src.services.bots.staunton import (
 
 
 def test_staunton_opening_book_initial_move():
-    """Проверяем, что Стаунтон выбирает дебютный ход из своей книги."""
+    """Check that Staunton picks an opening move from his book."""
     bot = StauntonBot(stockfish_path=None)
     board = chess.Board()
     start_key = normalize_fen_key(board)
@@ -26,7 +26,7 @@ def test_staunton_opening_book_initial_move():
 
 
 def test_staunton_style_rewards_c4_and_castling():
-    """Проверяем, что позиционный фильтр Стаунтона поощряет английское начало (c2-c4) и рокировку."""
+    """Check that Staunton's positional filter rewards the English opening (c2-c4) and castling."""
     start_board = chess.Board()
     c4_bonus, _ = evaluate_staunton_style_bonus(start_board, chess.Move.from_uci("c2c4"))
     h3_bonus, _ = evaluate_staunton_style_bonus(start_board, chess.Move.from_uci("h2h3"))
@@ -38,7 +38,7 @@ def test_staunton_style_rewards_c4_and_castling():
 
 
 def test_staunton_middlegame_move_generation():
-    """Проверяем генерацию хода Стаунтона вне дебютной книги."""
+    """Check Staunton's move generation outside the opening book."""
     bot = StauntonBot(stockfish_path=None)
     board = chess.Board("r1bq1rk1/pp2ppbp/2np1np1/8/2PPP3/2N2N2/PP2BPPP/R1BQ1RK1 w - - 3 8")
 
@@ -49,7 +49,7 @@ def test_staunton_middlegame_move_generation():
 
 @pytest.mark.asyncio
 async def test_staunton_api_move_endpoint():
-    """Проверяем REST-эндпоинты /api/v1/bots/list и /api/v1/bots/move для игры со Стаунтоном."""
+    """Check the REST endpoints /api/v1/bots/list and /api/v1/bots/move for playing against Staunton."""
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         list_resp = await client.get("/api/v1/bots/list")

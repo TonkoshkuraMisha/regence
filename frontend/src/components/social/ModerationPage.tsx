@@ -1,9 +1,9 @@
 // --- FILE: frontend/src/components/social/ModerationPage.tsx ---
-// Модерация (таск 17.4): модератору — очередь (жалобы, проверка флага нечестной игры, апелляции) и решения; игроку с
-// флагом — апелляция; ReportButton — «Пожаловаться» на игрока (в профиле).
-// Данные: services/moderation.ts — moderationApi (/api/v1/moderation: статус me, очередь, решения resolve, апелляция,
-// жалобы); решает и видит очередь только модератор (проверка на сервере, src/api/moderation.py). Панели обратной связи и
-// приглашений беты — beta/BetaAdmin.tsx. Роут — App.tsx; ReportButton рисуют профиль и ProfileSocial.tsx.
+// Moderation (task 17.4): for a moderator - a queue (reports, fair-play flag review, appeals) and decisions; for a
+// flagged player - an appeal; ReportButton - "Report" a player (in the profile).
+// Data: services/moderation.ts - moderationApi (/api/v1/moderation: status me, queue, resolve decisions, appeal,
+// reports); only a moderator decides and sees the queue (checked on the server, src/api/moderation.py). Feedback and
+// beta-invite panels live in beta/BetaAdmin.tsx. Route - App.tsx; ReportButton is rendered by the profile and ProfileSocial.tsx.
 
 import {useCallback, useEffect, useState} from 'react';
 import {Link} from 'react-router-dom';
@@ -17,21 +17,21 @@ import {ViolationsSummary} from './ViolationsSummary';
 import type {ModerationAction, ModerationMe, QueueItem, ReportReason} from '../../services/moderation';
 import {MODERATION_TEXT_MAX} from '../../config/textLimits';
 
-// Причины жалобы на игрока.
+// Reasons for reporting a player.
 const REASONS: ReportReason[] = ['cheating', 'abuse', 'spam', 'other'];
-// Решения модератора по виду записи очереди; набор должен совпадать с обработчиками на сервере (src/services/moderation.py).
+// Moderator decisions per queue item kind; the set must match the server handlers (src/services/moderation.py).
 const ACTIONS: Record<QueueItem['kind'], ModerationAction[]> = {
     player: ['dismiss', 'warn', 'chat_ban', 'mark_cheater'],
     message: ['dismiss', 'warn', 'chat_ban'],
     cheat_review: ['mark_cheater', 'clear_cheater'],
     appeal: ['mark_cheater', 'clear_cheater'],
     translation: ['accept', 'dismiss'],
-    // Таск 30.3: жалоба на текст и придержанное фильтром; warn и chat_ban по тексту тоже убирают его.
+    // Task 30.3: a report about text held back by the filter; warn and chat_ban on text also remove it.
     content: ['dismiss', 'hide', 'warn', 'chat_ban'],
     held: ['release', 'hide', 'chat_ban'],
 };
 
-/** «Пожаловаться» на игрока; с messageText — на его сообщение (личное сообщение, таск 30.1). */
+/** "Report" a player; with messageText - report their message (direct message, task 30.1). */
 export function ReportButton({username, messageText}: { username: string; messageText?: string }) {
     const {t} = useI18n();
     const [open, setOpen] = useState(false);
@@ -66,7 +66,7 @@ export function ReportButton({username, messageText}: { username: string; messag
     );
 }
 
-/** Страница модерации: апелляция для помеченного игрока и очередь с решениями для модератора. */
+/** Moderation page: an appeal for a flagged player and a queue with decisions for a moderator. */
 export function ModerationPage() {
     const {t} = useI18n();
     const [me, setMe] = useState<ModerationMe | null>(null);

@@ -1,5 +1,6 @@
 # --- FILE: tests/test_conferences.py ---
-"""Конференции (таск 33.6): страны, выбор страны в профиле и смена раз в сезон, зачёт арены, Кубок конференций."""
+"""Conferences (task 33.6): countries, choosing a country in the profile, changing it once per season,
+arena standings, Conference Cup."""
 
 from datetime import UTC, datetime, timedelta
 
@@ -29,14 +30,14 @@ async def _players(db, count: int, country: str | None, prefix: str) -> list[Use
     return users
 
 
-# --- Таблица стран -------------------------------------------------------------------------------------------
+# --- Country table -------------------------------------------------------------------------------------------
 
 
 def test_every_country_is_in_exactly_one_conference():
     codes = [code for group in conferences.COUNTRIES.values() for code in group]
-    assert len(codes) == len(set(codes)) == 250                                 # 249 кодов ISO 3166-1 и XK (Косово)
+    assert len(codes) == len(set(codes)) == 250                                 # 249 ISO 3166-1 codes plus XK (Kosovo)
     assert all(len(code) == 2 and code.isupper() for code in codes)
-    assert set(conferences.COUNTRIES) == set(CONFERENCE_ZONES)                  # те же пять, что у расписания арен
+    assert set(conferences.COUNTRIES) == set(CONFERENCE_ZONES)                  # the same five as in the arena schedule
 
 
 @pytest.mark.parametrize(("country", "conference"), [
@@ -51,7 +52,7 @@ def test_conference_of_a_country(country, conference):
     assert conferences.conference_of(country) == conference
 
 
-# --- Страна в профиле ----------------------------------------------------------------------------------------
+# --- Country in the profile ----------------------------------------------------------------------------------
 
 
 async def test_country_through_the_real_client_path(client, db_session, test_user_1, token_user_1, monkeypatch):
@@ -60,33 +61,33 @@ async def test_country_through_the_real_client_path(client, db_session, test_use
     assert page["me"] == {"country": None, "conference": None, "can_change": True}
     assert page["countries"]["UA"] == "central" and len(page["countries"]) == 250
     assert [item["key"] for item in page["conferences"]] == list(CONFERENCE_ZONES)
-    assert page["suggested_country"] is None                                    # подсказка по адресу выключена
-    assert client.get(API).json()["me"] is None                                 # гость видит кубок без профиля
+    assert page["suggested_country"] is None                                    # the address-based suggestion is off
+    assert client.get(API).json()["me"] is None                                 # a guest sees the cup without a profile
 
-    # Первый выбор и смена страны внутри конференции — свободно.
+    # The first choice and a change of country within a conference are free.
     assert client.put(f"{API}/me", json={"country": "ua"}, headers=headers).json() == {
         "country": "UA", "conference": "central", "can_change": True}
     assert client.put(f"{API}/me", json={"country": "PL"}, headers=headers).json()["conference"] == "central"
     me = client.get("/api/v1/profile/me", headers=headers).json()
     assert (me["country"], me["conference"]) == ("PL", "central")
 
-    # Смена конференции — раз в сезон: вторая попытка в том же месяце получает отказ.
+    # Changing conference is allowed once per season: a second attempt in the same month is refused.
     moved = client.put(f"{API}/me", json={"country": "DE"}, headers=headers).json()
     assert moved == {"country": "DE", "conference": "northern", "can_change": False}
     again = client.put(f"{API}/me", json={"country": "IT"}, headers=headers)
     assert again.status_code == 409 and again.json()["detail"]["code"] == "country_change_too_soon"
-    assert client.put(f"{API}/me", json={"country": "GB"}, headers=headers).json()["country"] == "GB"   # та же конференция
+    assert client.put(f"{API}/me", json={"country": "GB"}, headers=headers).json()["country"] == "GB"   # the same conference
 
     assert client.put(f"{API}/me", json={"country": "ZZ"}, headers=headers).json()["detail"]["code"] == "country_unknown"
     assert client.put(f"{API}/me", json={"country": "Ukraine"}, headers=headers).status_code == 422
     assert client.put(f"{API}/me", json={"country": "UA"}).status_code == 401
 
-    # Убрать страну можно всегда; вернуться в конференцию в том же сезоне уже нельзя.
+    # A country can always be removed; returning to a conference within the same season is no longer possible.
     assert client.put(f"{API}/me", json={"country": None}, headers=headers).json() == {
         "country": None, "conference": None, "can_change": False}
     assert client.put(f"{API}/me", json={"country": "UA"}, headers=headers).status_code == 409
 
-    # Прокси назвал страну посетителя — она приходит только как подсказка.
+    # The proxy named the visitor's country - it arrives only as a suggestion.
     monkeypatch.setattr(settings, "COUNTRY_HEADER", "CF-IPCountry")
     assert client.get(API, headers={"CF-IPCountry": "ua"}).json()["suggested_country"] == "UA"
     assert client.get(API, headers={"CF-IPCountry": "T1"}).json()["suggested_country"] is None
@@ -100,23 +101,23 @@ async def test_conference_changes_once_a_season(db_session, test_user_1):
         await conferences.set_country(db_session, test_user_1, "RU", NOVEMBER)
     assert refused.value.code == "country_change_too_soon"
     assert test_user_1.country == "US"
-    # Следующий сезон — новый месяц: смена снова возможна.
+    # Next season is a new month: changing is possible again.
     assert conferences.membership(test_user_1, DECEMBER)["can_change"] is True
     moved = await conferences.set_country(db_session, test_user_1, "RU", DECEMBER)
     assert moved == {"country": "RU", "conference": "eastern", "can_change": False}
     assert test_user_1.country_season == "2026-12"
 
 
-# --- Зачёт арены и Кубок -------------------------------------------------------------------------------------
+# --- Arena standings and the Cup -----------------------------------------------------------------------------
 
 
 def test_team_score_is_the_sum_of_the_ten_best():
     rows = [("central", score) for score in range(1, 13)] + [("eastern", 30), ("eastern", 0), (None, 99), ("lunar", 50)]
     assert conferences.team_scores(rows) == [
-        {"conference": "central", "score": sum(range(3, 13)), "counted": 10, "players": 12},   # 1 и 2 очка — вне зачёта
+        {"conference": "central", "score": sum(range(3, 13)), "counted": 10, "players": 12},   # 1 and 2 points - not counted
         {"conference": "eastern", "score": 30, "counted": 2, "players": 2},
     ]
-    assert conferences.team_scores([("western", 4), ("central", 4)])[0]["conference"] == "central"   # равенство — по порядку
+    assert conferences.team_scores([("western", 4), ("central", 4)])[0]["conference"] == "central"   # a tie - by order
 
 
 async def test_arena_remembers_the_conference_at_entry(client, db_session, test_user_1, test_user_2, token_user_1):
@@ -127,9 +128,10 @@ async def test_arena_remembers_the_conference_at_entry(client, db_session, test_
     await db_session.commit()
     await conferences.set_country(db_session, test_user_1, "UA")
     assert client.post(f"/api/v1/arenas/{item.id}/join", headers=auth(token_user_1)).status_code == 200
-    await arena.join(db_session, item, test_user_2)                             # без страны — без конференции
+    await arena.join(db_session, item, test_user_2)                             # no country - no conference
 
-    # Игрок Центральной играет в арене Западной: очки идут его конференции. Смена страны после входа зачёт не меняет.
+    # A Central player plays in a Western arena: points go to their conference. Changing country later does not
+    # alter the standings.
     await conferences.set_country(db_session, test_user_1, "DE")
     rows = {p.user_id: p for p in (await db_session.execute(select(ArenaPlayer))).scalars()}
     assert (rows[test_user_1.id].conference, rows[test_user_2.id].conference) == ("central", None)
@@ -154,9 +156,9 @@ async def test_cup_sums_the_arenas_of_the_season(client, db_session):
         return ArenaPlayer(arena_id=item.id, user_id=user.id, rating=1500, score=score,
                            conference=conferences.conference_of(user.country))
 
-    db_session.add_all([entry(first, user, 2) for user in central]                # 12 игроков по 2 очка: в зачёт — 10
+    db_session.add_all([entry(first, user, 2) for user in central]                # 12 players with 2 points: 10 counted
                        + [entry(first, eastern[0], 7), entry(second, eastern[0], 5), entry(second, eastern[1], 0)]
-                       + [entry(october, central[0], 50)])                       # прошлый сезон — в свой кубок
+                       + [entry(october, central[0], 50)])                       # previous season - to its own cup
     await db_session.commit()
 
     cup = await conferences.cup(db_session, None, NOVEMBER)

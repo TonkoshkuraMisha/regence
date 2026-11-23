@@ -1,19 +1,19 @@
 # --- FILE: src/services/product_metrics.py ---
 """
-Продуктовые метрики без сторонних трекеров (таск 23.5).
+Product metrics without third-party trackers (task 23.5).
 
-События пишутся в свою таблицу product_events (вид, игрок, сутки UTC) — не чаще раза в сутки на вид и игрока.
-Отчёт для владельца (scripts/product_metrics.py) считает по ним:
-* регистрации по дням;
-* активацию — доля новых игроков, сыгравших первую партию за ACTIVATION_FAST_S после регистрации и в первые сутки;
-* удержание D1/D7/D30 — доля когорты регистрации, активная ровно через 1, 7 и 30 дней;
-* сколько игроков дошли до задач, уроков и турниров.
+Events are written to their own table product_events (kind, player, UTC day) - at most once a day per kind and player.
+The owner's report (scripts/product_metrics.py) computes from them:
+* registrations by day;
+* activation - the share of new players who played a first game within ACTIVATION_FAST_S of registration and on the first day;
+* retention D1/D7/D30 - the share of the registration cohort active exactly 1, 7 and 30 days later;
+* how many players reached puzzles, lessons and tournaments.
 
-Кто пишет события: регистрация (src/api/auth.py), конец партии с человеком (game_state.py) и с ботом (api/bots.py),
-попытка решения задачи (puzzles.py), пройденный урок (api/learn.py), создание турнира (tournaments.py); «был
-сегодня» — проверка токена запроса (src/api/deps.py). Redis: ``product:active:{дата}:{user_id}`` —
-отметка «сегодня уже записан», чтобы не обращаться к базе на каждый запрос. Содержимое действий (ходы, тексты,
-адреса) в события не попадает.
+Who writes events: registration (src/api/auth.py), the end of a game with a human (game_state.py) and with a bot (api/bots.py),
+a puzzle solution attempt (puzzles.py), a completed lesson (api/learn.py), tournament creation (tournaments.py); "was
+seen today" - the request token check (src/api/deps.py). Redis: ``product:active:{date}:{user_id}`` -
+a "already recorded today" mark so as not to hit the database on every request. The content of actions (moves, texts,
+addresses) does not go into events.
 """
 
 import logging
@@ -36,20 +36,21 @@ LESSON_COMPLETED = "lesson_completed"
 TOURNAMENT_CREATED = "tournament_created"
 EVENT_KINDS = (REGISTERED, ACTIVE, GAME_FINISHED, PUZZLE_ATTEMPT, LESSON_COMPLETED, TOURNAMENT_CREATED)
 
-ACTIVATION_FAST_S = 5 * 60  # «быстрая активация»: первая законченная партия — в первые 5 минут после регистрации
-RETENTION_DAYS = (1, 7, 30)  # дни удержания D1, D7, D30
+ACTIVATION_FAST_S = 5 * 60  # "fast activation": the first finished game within the first 5 minutes after registration
+RETENTION_DAYS = (1, 7, 30)  # retention days D1, D7, D30
 
 
 def utc_today() -> date:
-    """Текущие сутки по UTC — единица учёта событий (колонка product_events.day)."""
+    """Current day in UTC - the unit of event accounting (the product_events.day column)."""
     return datetime.now(UTC).date()
 
 
 async def record_event(db: AsyncSession, user_id: int | None, kind: str) -> None:
     """
-    Отмечает событие в транзакции вызывающего (savepoint: повтор за сутки откатывает только его). Не коммитит —
-    событие сохраняется вместе с действием, которое его вызвало. Сбой учёта не ломает действие. Гость (user_id
-    None) и вид не из EVENT_KINDS молча пропускаются. Повтор за сутки отсекает уникальный индекс таблицы.
+    Records an event in the caller's transaction (savepoint: a repeat within a day rolls back only it). Does not commit -
+    the event is saved together with the action that caused it. An accounting failure does not break the action. A guest
+    (user_id None) and a kind not in EVENT_KINDS are silently skipped. A repeat within a day is rejected by the table's
+    unique index.
     """
     if user_id is None or kind not in EVENT_KINDS:
         return
@@ -57,18 +58,18 @@ async def record_event(db: AsyncSession, user_id: int | None, kind: str) -> None
         async with db.begin_nested():
             db.add(ProductEvent(kind=kind, user_id=user_id, day=utc_today()))
     except IntegrityError:
-        pass  # уже отмечено сегодня
+        pass  # already recorded today
     except Exception as exc:
         logger.warning("Product event %s for user %s not recorded: %s", kind, user_id, exc)
 
 
-ACTIVE_MARK_TTL_S = 2 * 86400  # отметка в Redis живёт двое суток: с запасом на сутки, которые она представляет
+ACTIVE_MARK_TTL_S = 2 * 86400  # the Redis mark lives two days: with a margin for the day it represents
 
 
 async def mark_active(session_factory: async_sessionmaker[AsyncSession], user_id: int) -> None:
     """
-    «Игрок был сегодня» — для удержания. Redis пропускает только первую отметку за сутки (без лишних записей в БД);
-    запись — в своей короткой сессии: запрос, который ничего не коммитит (GET), её бы потерял.
+    "Player was seen today" - for retention. Redis lets only the first mark of a day through (no extra DB writes);
+    the write is in its own short session: a request that commits nothing (GET) would lose it.
     """
     from src.db import redis as redis_module
 
@@ -77,7 +78,7 @@ async def mark_active(session_factory: async_sessionmaker[AsyncSession], user_id
             f"product:active:{utc_today().isoformat()}:{user_id}", "1", nx=True, ex=ACTIVE_MARK_TTL_S,
         )
     except Exception:
-        first_today = True  # без Redis — пишем: уникальный индекс не даст дублей
+        first_today = True  # without Redis - we write: the unique index will prevent duplicates
     if not first_today:
         return
     try:
@@ -91,8 +92,9 @@ async def mark_active(session_factory: async_sessionmaker[AsyncSession], user_id
 @dataclass
 class Cohort:
     """
-    Когорта — игроки, зарегистрированные в сутки day: сколько их, сколько закончили первую партию за
-    ACTIVATION_FAST_S и за первые 24 часа, сколько были активны ровно через N дней (retained: N → число игроков).
+    A cohort is the players registered on day day: how many there are, how many finished their first game within
+    ACTIVATION_FAST_S and within the first 24 hours, how many were active exactly N days later (retained: N -> number of
+    players).
     """
 
     day: date
@@ -104,7 +106,7 @@ class Cohort:
 
 @dataclass
 class Report:
-    """Отчёт: когорты по дням, число игроков, дошедших до каждого раздела, и всего игроков с событием регистрации."""
+    """Report: cohorts by day, players who reached each section, and the total of players with a registration event."""
 
     cohorts: list[Cohort]
     reached: dict[str, int]
@@ -113,12 +115,12 @@ class Report:
 
 async def build_report(db: AsyncSession, since: date, until: date | None = None) -> Report:
     """
-    Когорты регистрации с since по until (включительно) и сколько игроков когда-либо дошли до разделов.
+    Registration cohorts from since to until (inclusive) and how many players ever reached the sections.
 
-    Читает всю таблицу product_events (отчёт запускает владелец скриптом, не запрос игрока). «Первая партия» —
-    самое раннее событие game_finished игрока; активным считается день с любым событием, кроме регистрации.
-    reached и total_users — за всё время, а не за выбранные дни. Игроки, зарегистрированные до появления учёта,
-    события регистрации не имеют и в когорты не входят.
+    Reads the whole product_events table (the report is run by the owner with a script, not by a player's request). "First
+    game" is the earliest game_finished event of the player; a day with any event other than registration counts as active.
+    reached and total_users - over all time, not over the selected days. Players registered before accounting appeared
+    have no registration event and do not enter the cohorts.
     """
     until = until or utc_today()
     rows = (await db.execute(
@@ -139,7 +141,7 @@ async def build_report(db: AsyncSession, since: date, until: date | None = None)
         if kind == GAME_FINISHED and (user_id not in first_game or created_at < first_game[user_id]):
             first_game[user_id] = created_at
         if kind != REGISTERED:
-            active_days.setdefault(user_id, set()).add(day)  # любое действие — активный день
+            active_days.setdefault(user_id, set()).add(day)  # any action - an active day
 
     cohorts: dict[date, Cohort] = {}
     day = since

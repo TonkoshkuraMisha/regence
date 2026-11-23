@@ -1,8 +1,8 @@
 # --- FILE: src/api/mini_game_rooms.py ---
 """
-Игры тренеров с человеком по сети (таск 19.8): комната на двоих по ссылке. Правила комнаты — src/services/
-mini_game_rooms.py, правила игр — src/services/mini_games.py. Создать, войти, ходить, сдаться и «ещё раз» — только
-вошедшим (лимит — как у задач); смотреть комнату (GET, его клиент повторяет раз в секунду) может любой — без лимита.
+Trainer games with a human over the network (task 19.8): a room for two by link. Room rules - src/services/
+mini_game_rooms.py, game rules - src/services/mini_games.py. Create, join, move, resign and "once more" - only for
+logged-in users (limit - as for puzzles); anyone can watch the room (GET, the client repeats it once a second) - with no limit.
 """
 
 from typing import Literal
@@ -21,7 +21,7 @@ from src.services import mini_game_rooms as service
 
 router = APIRouter()
 _LIMIT = Depends(rate_limit("mini_rooms", "RATE_LIMIT_PUZZLES"))
-# Статусы HTTP для кодов отказа; остальные — 409 (конфликт с состоянием комнаты).
+# HTTP statuses for refusal codes; the others are 409 (conflict with the room state).
 _CODES = {
     "mini_room_not_found": status.HTTP_404_NOT_FOUND, "mini_game_not_found": status.HTTP_404_NOT_FOUND,
     "mini_room_not_player": status.HTTP_403_FORBIDDEN, "mini_game_illegal_move": status.HTTP_400_BAD_REQUEST,
@@ -40,13 +40,13 @@ class CreateIn(BaseModel):
 
 class MoveIn(BaseModel):
     move: str = Field(..., min_length=4, max_length=5)
-    # Версия комнаты, на которой игрок увидел позицию: устаревший ход не применяется.
+    # The room version on which the player saw the position: a stale move is not applied.
     version: int = Field(..., ge=0)
 
 
 @router.post("", dependencies=[_LIMIT])
 async def create_room(payload: CreateIn, user: User = Depends(get_current_user)):
-    """Новая комната: создатель за выбранным цветом, ссылку на /train/games/room/{code} он отправляет сопернику."""
+    """A new room: the creator takes the chosen colour, and sends the link /train/games/room/{code} to the opponent."""
     try:
         return await service.create(user, payload.game_id, payload.color)
     except DomainError as exc:
@@ -55,7 +55,8 @@ async def create_room(payload: CreateIn, user: User = Depends(get_current_user))
 
 @router.get("/{code}")
 async def get_room(code: str, request: Request, db: AsyncSession = Depends(get_db)):
-    """Комната: позиция, ходы, игроки, итог и цвет запросившего. Открыта всем — по ней же следит за игрой страница."""
+    """The room: position, moves, players, result and the requester's colour. Open to everyone - the page follows the game
+    through it too."""
     try:
         return await service.get(code, await optional_user_id(request, db))
     except DomainError as exc:

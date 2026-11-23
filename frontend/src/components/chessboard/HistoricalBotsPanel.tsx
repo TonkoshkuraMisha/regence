@@ -1,9 +1,9 @@
 // --- FILE: frontend/src/components/chessboard/HistoricalBotsPanel.tsx ---
-// Выбор соперника-бота: исторические боты и мастера с портретом, годами жизни и силой (измеренной, если бот
-// калиброван, — GET /bots/catalog), выбор цвета, форы и старта со своей позиции. Список ботов, портреты и годы —
-// config/champions.ts; имена, титулы и девизы — каталог bots.profiles.*. С сервера приходят только числа: измеренная
-// сила и сила по партиям с людьми (GET /bots/catalog), память бота об игроке (GET /bots/rivalry) — их загружает
-// Chessboard. Внизу — реплика бота к последнему ходу (ключ каталога botComments.*, уже переведённый вызывающим).
+// Choice of a bot opponent: historical bots and masters with a portrait, years of life and strength (measured, if the bot
+// is calibrated: GET /bots/catalog), choice of colour, handicap and starting from one's own position. The bot list, portraits and years are in
+// config/champions.ts; names, titles and mottos are the bots.profiles.* catalog. Only numbers come from the server: measured
+// strength and strength from games against humans (GET /bots/catalog), the bot's memory of the player (GET /bots/rivalry); they are loaded by
+// Chessboard. At the bottom is the bot's remark on the last move (a botComments.* catalog key, already translated by the caller).
 
 import {hasGiver, ODDS} from './odds';
 import type {OddsChoice, OddsGiver, OddsKind} from './odds';
@@ -16,38 +16,38 @@ import {scorePoints} from '../../services/botCatalog';
 import type {BotRival} from '../../services/botCatalog';
 
 export interface HistoricalBotsPanelProps {
-    /** Бот, выбранный в списке (его карточка показана), — не обязательно тот, с кем идёт партия. */
+    /** Bot selected in the list (its card is shown), not necessarily the one the game is being played against. */
     selectedBotId: HistoricalBotId;
     onSelectBot: (id: HistoricalBotId) => void;
     selectedBotProfile: HistoricalBotProfile;
-    /** Соперник идущей (или только что сыгранной) партии с ботом; null — партии с ботом нет. */
+    /** Opponent of the current (or just played) bot game; null means no bot game. */
     activeBot: BotOpponentId | null;
     activeBotProfile: HistoricalBotProfile | null;
-    /** id партии с человеком: пока она идёт, начать партию с ботом нельзя. */
+    /** id of a human game: while it is in progress, a bot game cannot be started. */
     gameId: number | null;
     gameOverResult: string | null;
     isBotThinking: boolean;
-    /** Реплика бота на языке игрока; null — показывается общая фраза bots.defaultThought. */
+    /** Bot remark in the player's language; null means the generic phrase bots.defaultThought is shown. */
     botComment: string | null;
     onStartBotGame: (botId: HistoricalBotId, colorPref: 'white' | 'black' | 'random') => void;
-    /** На свободной доске стоит своя позиция — партию с ботом можно начать с неё. */
+    /** The free board holds a custom position: a bot game can be started from it. */
     canStartFromPosition: boolean;
     startFromPosition: boolean;
     onStartFromPositionChange: (value: boolean) => void;
-    /** Измеренная сила (GET /bots/catalog): id бота → рейтинг; без калибровки — заявленный. */
+    /** Measured strength (GET /bots/catalog): bot id -> rating; without calibration, the declared one. */
     measured?: Record<string, number>;
-    /** Сила по партиям с людьми (таск 32.1): id бота → рейтинг и число партий. */
+    /** Strength from games against humans (task 32.1): bot id -> rating and number of games. */
     live?: Record<string, { rating: number; games: number }>;
-    /** Память о сопернике (таск 32.2): id бота → партии с игроком и очки бота. */
+    /** Memory of the opponent (task 32.2): bot id -> games with the player and the bot's points. */
     rivals?: Record<string, BotRival>;
-    /** Фора (таск 21.1); без обработчика выбор не показывается. */
+    /** Handicap (task 21.1); without a handler the choice is not shown. */
     odds?: OddsChoice;
     onOddsChange?: (odds: OddsChoice) => void;
 }
 
 /**
- * Выбор исторического бота, карточка с его девизом/рейтингом и кнопками старта партии. Фора недоступна при
- * старте со своей позиции (материальная фора сама задаёт начальную позицию).
+ * Choice of a historical bot, a card with its motto/rating and game start buttons. The handicap is unavailable when
+ * starting from a custom position (a material handicap defines the starting position itself).
  */
 export function HistoricalBotsPanel({
     selectedBotId, onSelectBot, selectedBotProfile, activeBot, activeBotProfile, gameId,

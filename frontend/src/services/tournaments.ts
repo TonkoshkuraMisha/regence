@@ -1,9 +1,9 @@
 // --- FILE: frontend/src/services/tournaments.ts ---
-// Турниры с историческими мастерами (таски 15.1–15.3): API и подписи участников на языке игрока.
-// Все запросы — к /api/v1/tournaments и только с входом (маршруты src/api/tournaments.py). Расписание, места и
-// правила матчей — src/services/tournament_rules.py; партии ботов между собой играет сервер в фоне
-// (tournament_simulation.py). Результат партии игрока сюда не отправляется: его приносит сохранение сыгранной
-// партии (POST /api/v1/bots/save-game с полем tournament_game_id) — прислать итог самому нельзя.
+// Tournaments with historical masters (tasks 15.1-15.3): API and participant labels in the player's language.
+// All requests go to /api/v1/tournaments and require sign-in (routes in src/api/tournaments.py). Schedule, seats and
+// match rules live in src/services/tournament_rules.py; games between bots are played by the server in the background
+// (tournament_simulation.py). The player's game result is not sent here: it arrives with the saving of the played
+// game (POST /api/v1/bots/save-game with the tournament_game_id field) - the outcome cannot be submitted directly.
 
 import type {PersonalityConfig} from './personalities';
 import {ARCHETYPE_PREFIX, isArchetypeId} from '../config/archetypes';
@@ -14,52 +14,52 @@ import {apiRequest} from './http';
 import {GUEST_PREFIX, guestShortName} from './timeMachine';
 
 export type TournamentFormat = 'round_robin' | 'knockout' | 'swiss';
-/** Швейцарская система (таск 15.4): число туров по размеру — как на сервере (tournament_rules.SWISS_ROUNDS). */
+/** Swiss system (task 15.4): number of rounds by size - same as on the server (tournament_rules.SWISS_ROUNDS). */
 export const SWISS_ROUNDS: Record<number, number> = {6: 4, 8: 5};
-/** Соперник-бот: исторический бот, архетип мастерской или персоналия (своя либо мастер прошлого). */
+/** Bot opponent: historical bot, workshop archetype or persona (custom one or a master of the past). */
 export type ParticipantKind = 'bot' | 'archetype' | 'personality';
 
-/** Участник турнира. */
+/** Tournament participant. */
 export interface TournamentPlayer {
-    /** Номер участника — его посев: 1 — сильнейший по рейтингу на старте. */
+    /** Participant number - their seed: 1 is the strongest by rating at the start. */
     seat: number;
     kind: 'user' | ParticipantKind;
     user_id: number | null;
-    /** id исторического бота, «archetype:<id>» или «guest:<id>» мастера прошлого; у игрока — null. */
+    /** id of a historical bot, "archetype:<id>" or "guest:<id>" of a master of the past; null for the player. */
     bot_key: string | null;
     personality_name: string | null;
     rating: number;
-    /** Итоговое место; null — турнир ещё идёт. */
+    /** Final place; null - the tournament is still running. */
     place: number | null;
-    /** На выбывание: тур, в котором участник выбыл. */
+    /** Knockout: the round in which the participant was eliminated. */
     eliminated_round: number | null;
-    /** Характер соперника из мастерской — с ним доска начинает партию; у исторического бота и у игрока — null. */
+    /** Workshop opponent's character - the board starts the game with it; null for a historical bot and for the player. */
     config: PersonalityConfig | null;
 }
 
-/** Партия расписания турнира. */
+/** Tournament schedule game. */
 export interface TournamentGame {
     id: number;
     round: number;
     board: number;
     /**
-     * На выбывание: main — основная партия матча, rematch — переигровка после ничьей (цвета меняются, контроль
-     * вдвое короче), armageddon — решающая, где чёрным достаточно ничьей.
+     * Knockout: main - the main game of the match, rematch - replay after a draw (colors swap, time control
+     * half as long), armageddon - the decisive game where Black needs only a draw.
      */
     stage: 'main' | 'rematch' | 'armageddon';
     white_seat: number;
     black_seat: number;
     base_time_ms: number;
     increment_ms: number;
-    /** null — партия ещё не сыграна. */
+    /** null - the game has not been played yet. */
     result: '1-0' | '0-1' | '1/2-1/2' | null;
-    /** Сохранённая партия (таблица games) — для просмотра; null — её нет. */
+    /** Saved game (games table) - for viewing; null - there is none. */
     game_id: number | null;
 }
 
 /**
- * Строка таблицы. Места в круговом турнире: очки, затем личная встреча среди набравших поровну, затем коэффициент
- * Зоннеборна–Бергера, затем посев; buchholz приходит только в швейцарке.
+ * Table row. Places in a round-robin: points, then head-to-head among those tied, then the
+ * Sonneborn-Berger coefficient, then seed; buchholz comes only in the Swiss system.
  */
 export interface Standing {
     seat: number;
@@ -70,7 +70,7 @@ export interface Standing {
     place: number;
 }
 
-/** Турнир целиком (GET /tournaments/{id}): участники, расписание с результатами и таблица. */
+/** Whole tournament (GET /tournaments/{id}): participants, schedule with results and the table. */
 export interface Tournament {
     id: number;
     format: TournamentFormat;
@@ -81,18 +81,18 @@ export interface Tournament {
     current_round: number;
     created_at: string;
     finished_at: string | null;
-    /** Номер самого игрока среди участников. */
+    /** Number of the player themself among the participants. */
     my_seat: number | null;
-    /** Игрок сдал турнир: боты доигрывают, сам он больше не играет. */
+    /** The player resigned the tournament: bots finish their games, the player no longer plays. */
     withdrawn: boolean;
-    /** «Машина времени»: ключ знаменитого турнира; у обычного турнира его нет. */
+    /** "Time machine": key of a famous tournament; an ordinary tournament has none. */
     event_key?: string | null;
     players: TournamentPlayer[];
     games: TournamentGame[];
     standings: Standing[];
 }
 
-/** Турнир в списке игрока (GET /tournaments, новые первыми). */
+/** Tournament in the player's list (GET /tournaments, newest first). */
 export interface TournamentSummary {
     id: number;
     format: TournamentFormat;
@@ -100,62 +100,62 @@ export interface TournamentSummary {
     status: 'active' | 'finished';
     created_at: string;
     my_place: number | null;
-    /** Ключ этапа карьеры, если турнир начат из неё. */
+    /** Career stage key, if the tournament was started from it. */
     career_stage?: string | null;
     event_key?: string | null;
-    /** Текущий тур и готова ли в нём партия игрока («Продолжить турнир» на главной). */
+    /** Current round and whether the player's game in it is ready ("Continue tournament" on the home page). */
     current_round: number;
     my_game_ready: boolean;
 }
 
-/** Тело создания турнира (POST /tournaments). size — число участников вместе с игроком (от 4 до 8). */
+/** Tournament creation body (POST /tournaments). size - number of participants including the player (4 to 8). */
 export interface TournamentCreate {
     format: TournamentFormat;
     size: number;
     participants: { kind: ParticipantKind; id: string | number }[];
-    /** Случайные соперники из диапазона силы (таск 15.4) вместо выбранных. */
+    /** Random opponents from a strength range (task 15.4) instead of chosen ones. */
     random?: RandomOpponents;
     base_time_ms: number;
     increment_ms: number;
 }
 
-/** Партия турнира, которую игрок запускает на главной доске (передаётся через location.state). */
+/** Tournament game that the player launches on the main board (passed via location.state). */
 export interface TournamentGameStart {
     tournamentId: number;
     gameId: number;
     color: 'white' | 'black';
     baseTimeMs: number;
     incrementMs: number;
-    /** Исторический бот — по id; соперник из мастерской — именем и характером. */
+    /** Historical bot - by id; workshop opponent - by name and character. */
     botId: string | null;
     custom: CustomOpponent | null;
 }
 
 const BASE = '/tournaments';
 
-/** Запрос к API турниров (общий apiRequest); отказ без кода сервера — запасное сообщение fallback. */
+/** Request to the tournaments API (shared apiRequest); on a failure without a server code - the fallback message. */
 const call = <T>(path: string, init: RequestInit, fallback: MessageKey) => apiRequest<T>(path, init, fallback);
 
-/** Допустимые размеры турнира по форматам — GET /tournaments/formats (источник правды — сервер). */
+/** Allowed tournament sizes per format - GET /tournaments/formats (source of truth is the server). */
 export const getFormatSizes = () =>
     call<Record<TournamentFormat, number[]>>(`${BASE}/formats`, {method: 'GET'}, 'tournaments.loadFailed');
 
 export const listTournaments = () => call<TournamentSummary[]>(BASE, {method: 'GET'}, 'tournaments.loadFailed');
 export const getTournament = (id: number) => call<Tournament>(`${BASE}/${id}`, {method: 'GET'}, 'tournaments.loadFailed');
-/** Начать свою партию (таск A.2): повторный старт уже начатой партии — поражение, forfeited = true. */
+/** Start your game (task A.2): restarting an already started game is a loss, forfeited = true. */
 export const startMyGame = (tournamentId: number, gameId: number) =>
     call<{ forfeited: boolean; game: TournamentGame }>(
         `${BASE}/${tournamentId}/games/${gameId}/start`, {method: 'POST'}, 'tournaments.loadFailed',
     );
 
-/** Сдать турнир (таск A.3): оставшиеся партии игрока — поражения. */
+/** Resign the tournament (task A.3): the player's remaining games are losses. */
 export const withdrawTournament = (tournamentId: number) =>
     call<Tournament>(`${BASE}/${tournamentId}/withdraw`, {method: 'POST'}, 'tournaments.loadFailed');
 
-/** Случайные соперники: около силы игрока, сильнее или слабее — подбирает сервер. */
+/** Random opponents: around the player's strength, stronger or weaker - picked by the server. */
 export type RandomOpponents = 'my_level' | 'stronger' | 'weaker';
 
-/** Этап карьеры (таск 15.4); у скрытого приглашения подробностей нет. */
+/** Career stage (task 15.4); a hidden invitation has no details. */
 export interface CareerStage {
     key: string;
     number: number;
@@ -171,36 +171,36 @@ export interface CareerStage {
     opponents?: { kind: ParticipantKind; id: string | number }[];
 }
 
-/** Карьера: этапы лестницы готовых турниров (src/services/tournament_career.py). */
+/** Career: ladder stages of ready-made tournaments (src/services/tournament_career.py). */
 export const getCareer = () => call<{ stages: CareerStage[] }>(`${BASE}/career`, {method: 'GET'}, 'tournaments.loadFailed');
-/** Начать турнир этапа карьеры; закрытый этап сервер не начнёт (403). */
+/** Start a career-stage tournament; the server will not start a locked stage (403). */
 export const startCareerStage = (key: string) =>
     call<Tournament>(`${BASE}/career/${encodeURIComponent(key)}`, {method: 'POST'}, 'tournaments.createFailed');
 
-/** Создать свой турнир; партии ботов первого тура сервер сразу ставит в очередь симуляции. */
+/** Create your own tournament; the server immediately queues the first-round bot games for simulation. */
 export const createTournament = (body: TournamentCreate) =>
     call<Tournament>(BASE, {method: 'POST', body: JSON.stringify(body)}, 'tournaments.createFailed');
 
-/** id мастера прошлого («Машина времени»), если участник — он; в турнире такой участник — персоналия с ключом. */
+/** id of the master of the past ("Time machine") if the participant is one; in a tournament such a participant is a persona with a key. */
 export function guestIdOf(player: Pick<TournamentPlayer, 'kind' | 'bot_key'>): string | null {
     return player.kind === 'personality' && player.bot_key?.startsWith(GUEST_PREFIX)
         ? player.bot_key.slice(GUEST_PREFIX.length) : null;
 }
 
-/** Страница соперника: мастер прошлого — его карточка в каталоге; у остальных отдельной страницы нет. */
+/** Opponent page: for a master of the past - their catalog card; the others have no separate page. */
 export function opponentPage(player: Pick<TournamentPlayer, 'kind' | 'bot_key'>): string | null {
     const guest = guestIdOf(player);
     return guest ? `/masters?master=${encodeURIComponent(guest)}` : null;
 }
 
-/** Последняя сыгранная партия игрока в турнире. */
+/** The player's last played game in the tournament. */
 export function myLastGame(t: Tournament): TournamentGame | null {
     if (t.my_seat == null) return null;
     const mine = t.games.filter((g) => g.result && (g.white_seat === t.my_seat || g.black_seat === t.my_seat));
     return mine.sort((a, b) => b.round - a.round || b.id - a.id)[0] ?? null;
 }
 
-/** Имя участника на языке игрока: «Вы», бот, архетип, мастер прошлого или имя персоналии. */
+/** Participant name in the player's language: "You", a bot, an archetype, a master of the past or a persona name. */
 export function participantName(player: TournamentPlayer, t: I18n['t'], myName?: string): string {
     if (player.kind === 'user') return myName || t('tournaments.you');
     const guest = guestIdOf(player);
@@ -212,7 +212,7 @@ export function participantName(player: TournamentPlayer, t: I18n['t'], myName?:
     return player.personality_name ?? '?';
 }
 
-/** Партия игрока, которую можно играть сейчас: текущий круг, без результата. */
+/** The player's game that can be played now: current round, no result. */
 export function myPendingGame(t: Tournament): TournamentGame | null {
     if (t.status !== 'active' || t.my_seat == null || t.withdrawn) return null;
     const mine = t.games.filter((g) => g.result === null && g.round === t.current_round
@@ -220,13 +220,13 @@ export function myPendingGame(t: Tournament): TournamentGame | null {
     return mine[0] ?? null;
 }
 
-/** Что передать главной доске, чтобы начать партию турнира. */
+/** What to pass to the main board to start a tournament game. */
 export function gameStart(t: Tournament, game: TournamentGame, name: string): TournamentGameStart {
     const color = game.white_seat === t.my_seat ? 'white' : 'black';
     const opponent = t.players.find((p) => p.seat === (color === 'white' ? game.black_seat : game.white_seat))!;
     const archetypeId = opponent.kind === 'archetype' && opponent.bot_key
         ? opponent.bot_key.slice(ARCHETYPE_PREFIX.length) : null;
-    // Мастер прошлого: на доске — имя на языке игрока, сохраняется партия под именем из турнира.
+    // Master of the past: the board shows the name in the player's language, the game is saved under the name from the tournament.
     const guest = guestIdOf(opponent) !== null;
     const custom: CustomOpponent | null = opponent.kind === 'bot' || !opponent.config ? null : {
         name: guest ? name : opponent.personality_name ?? name,
@@ -241,19 +241,19 @@ export function gameStart(t: Tournament, game: TournamentGame, name: string): To
 }
 
 /**
- * Сколько всего туров: в швейцарке — по таблице SWISS_ROUNDS, в круговом — по расписанию, на выбывание — число
- * кругов сетки (log2 от размера, вверх). У больших исторических турниров размер и число кругов любые, поэтому
- * там, где можно, число берётся из самих партий расписания.
+ * How many rounds in total: Swiss - from the SWISS_ROUNDS table, round-robin - from the schedule, knockout - the number of
+ * bracket rounds (log2 of the size, rounded up). Big historical tournaments have any size and number of rounds, so
+ * where possible the number is taken from the schedule's games themselves.
  */
 export function totalRounds(t: Tournament): number {
     if (t.format === 'swiss') return SWISS_ROUNDS[t.size] ?? Math.max(1, ...t.games.map((g) => g.round));
-    // Один круг — на тур меньше числа участников (при нечётном числе — столько же); расписание в несколько кругов
-    // создаётся целиком, и последний тур виден по партиям.
+    // One round - one less than the number of participants (with an odd number - the same); a multi-round schedule
+    // is created in full, and the last round is visible from the games.
     if (t.format === 'round_robin') return Math.max(t.size % 2 === 0 ? t.size - 1 : t.size, ...t.games.map((g) => g.round));
     return Math.max(1, Math.ceil(Math.log2(t.size)));
 }
 
-/** Есть ли партии ботов, которые сейчас считает сервер (страница обновляет состояние, пока они идут). */
+/** Whether there are bot games the server is computing right now (the page refreshes the state while they run). */
 export function botGamesRunning(t: Tournament): boolean {
     if (t.status !== 'active') return false;
     return t.games.some((g) => g.result === null && g.round === t.current_round

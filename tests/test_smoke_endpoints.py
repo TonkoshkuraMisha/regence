@@ -1,7 +1,7 @@
-"""Дымовая проверка API: ни один эндпоинт не отвечает 500 на пустой базе, чужих id и неверных телах запросов."""
+"""API smoke check: no endpoint answers 500 on an empty database, foreign ids and invalid request bodies."""
 
-# Потоковые и служебные ответы, которые проверяются своими тестами.
-SKIP = {"/metrics", "/api/v1/events/stream", "/health"}  # /health — своя проверка БД вне цикла теста
+# Streaming and service responses that are checked by their own tests.
+SKIP = {"/metrics", "/api/v1/events/stream", "/health"}  # /health does its own DB check outside the test loop
 
 
 def _get_paths(client) -> list[str]:
@@ -22,7 +22,7 @@ def test_get_endpoints_do_not_crash(client, token_user_1):
 
 
 def test_get_endpoints_with_unknown_ids_answer_4xx(client, token_user_1):
-    """Несуществующий id, код или ключ в пути — ответ 4xx, а не падение."""
+    """A non-existent id, code or key in the path gives a 4xx response, not a crash."""
     import re
 
     schema = client.get("/api/v1/openapi.json").json()
@@ -40,7 +40,7 @@ def test_get_endpoints_with_unknown_ids_answer_4xx(client, token_user_1):
 
 
 def test_writes_with_bad_bodies_answer_4xx(client, token_user_1):
-    """Пустое тело, мусор вместо JSON и неверные типы полей — 4xx у всех изменяющих запросов."""
+    """An empty body, garbage instead of JSON and wrong field types give 4xx for all mutating requests."""
     import re
 
     schema = client.get("/api/v1/openapi.json").json()

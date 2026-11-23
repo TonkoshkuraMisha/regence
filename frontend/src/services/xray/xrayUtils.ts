@@ -1,27 +1,27 @@
 // --- FILE: frontend/src/services/xray/xrayUtils.ts ---
-// «Рентген» доски (таск 12.1): чистые расчёты по позиции, без движка — контроль полей (с батареями), фигуры под
-// ударом, перегруженные защитники, связки и сквозные удары, взятия (размен или выигрыш), защиты, шахи и маты,
-// изолированные и проходные пешки, безопасные и опасные поля для выбранной фигуры. Всё — для любой стороны:
-// «показать за соперника» — те же расчёты для другого цвета.
-// Всё считается в браузере по FEN: сервер и движок не участвуют, поэтому «рентген» не подпадает под правило
-// честной игры как подсказка движка. Легальные ходы даёт chess.js, остальное — геометрия доски в этом файле.
-// Показ на доске — components/xray/XrayOverlay.tsx.
+// Board "x-ray" (task 12.1): pure position calculations, no engine - square control (with batteries), pieces under
+// attack, overloaded defenders, pins and skewers, captures (exchange or win), defenses, checks and mates,
+// isolated and passed pawns, safe and dangerous squares for the selected piece. All for any side:
+// "show for the opponent" - the same calculations for the other color.
+// Everything is computed in the browser from FEN: the server and engine are not involved, so the "x-ray" does not fall under the
+// fair-play rule as an engine hint. Legal moves come from chess.js, the rest is board geometry in this file.
+// Display on the board - components/xray/XrayOverlay.tsx.
 
 import {Chess} from 'chess.js';
 import type {Move} from 'chess.js';
 
-/** Цвет и тип фигуры — в обозначениях chess.js. */
+/** Piece color and type - in chess.js notation. */
 export type Color = 'w' | 'b';
 export type PieceType = 'p' | 'n' | 'b' | 'r' | 'q' | 'k';
 
-/** Фигура на доске: тип, цвет и поле («e4»). */
+/** Piece on the board: type, color and square ("e4"). */
 export interface BoardPiece {
     type: PieceType;
     color: Color;
     square: string;
 }
 
-/** Ценность фигур в пешках для расчёта разменов; король — 100, чтобы он никогда не считался «дешёвой» фигурой. */
+/** Piece value in pawns for exchange calculation; the king is 100 so that it is never considered a "cheap" piece. */
 export const PIECE_VALUE: Record<PieceType, number> = {p: 1, n: 3, b: 3, r: 5, q: 9, k: 100};
 
 const FILES = 'abcdefgh';
@@ -30,7 +30,7 @@ const DIAGONAL: [number, number][] = [[1, 1], [1, -1], [-1, 1], [-1, -1]];
 const KNIGHT: [number, number][] = [[1, 2], [2, 1], [2, -1], [1, -2], [-1, -2], [-2, -1], [-2, 1], [-1, 2]];
 const KING: [number, number][] = [...ORTHOGONAL, ...DIAGONAL];
 
-/** Имя поля по номерам вертикали и горизонтали с нуля: (0, 0) — «a1». */
+/** Square name from zero-based file and rank numbers: (0, 0) is "a1". */
 export function squareName(file: number, rank: number): string {
     return `${FILES[file]}${rank + 1}`;
 }
@@ -43,12 +43,12 @@ function onBoard(file: number, rank: number): boolean {
     return file >= 0 && file < 8 && rank >= 0 && rank < 8;
 }
 
-/** Цвет соперника. */
+/** Opponent's color. */
 export function opposite(color: Color): Color {
     return color === 'w' ? 'b' : 'w';
 }
 
-/** Фигуры позиции по полям — из первой части FEN (расстановка), без chess.js. */
+/** Pieces of the position by square - from the first part of FEN (placement), without chess.js. */
 export function piecesOf(fen: string): Map<string, BoardPiece> {
     const pieces = new Map<string, BoardPiece>();
     const placement = fen.split(' ')[0];
@@ -70,24 +70,24 @@ export function piecesOf(fen: string): Map<string, BoardPiece> {
     return pieces;
 }
 
-/** Ходит ли дальнобойная фигура типа type вдоль направления: ферзь — по любому, слон — по диагонали, ладья — прямо. */
+/** Whether a sliding piece of type type moves along the direction: queen - any, bishop - diagonal, rook - straight. */
 function slides(type: PieceType, direction: [number, number]): boolean {
     const diagonal = direction[0] !== 0 && direction[1] !== 0;
     if (type === 'q') return true;
     return diagonal ? type === 'b' : type === 'r';
 }
 
-/** Удар по полю: кто бьёт и с какого поля. */
+/** Attack on a square: who attacks and from which square. */
 export interface Attack {
     from: string;
     piece: BoardPiece;
-    /** Удар через свою дальнобойную фигуру на той же линии (батарея). */
+    /** Attack through one's own sliding piece on the same line (battery). */
     xray: boolean;
 }
 
 /**
- * Все удары по полям: для каждого поля — кто его бьёт (с батареями). Считаются удары, а не ходы: пешка бьёт по
- * диагонали и на пустое поле, поле под своей фигурой тоже «бьётся» (это защита), связки здесь не учитываются.
+ * All attacks on squares: for each square - who attacks it (with batteries). Attacks are counted, not moves: a pawn attacks
+ * diagonally even an empty square, a square under one's own piece is also "attacked" (that is defense), pins are not considered here.
  */
 export function attackMap(pieces: Map<string, BoardPiece>): Map<string, Attack[]> {
     const map = new Map<string, Attack[]>();
@@ -118,7 +118,7 @@ export function attackMap(pieces: Map<string, BoardPiece>): Map<string, Attack[]
                     add(square, {from: piece.square, piece, xray});
                     const blocker = pieces.get(square);
                     if (blocker) {
-                        // Батарея: своя дальнобойная фигура той же линии «прозрачна» — удар идёт дальше.
+                        // Battery: one's own sliding piece on the same line is "transparent" - the attack goes further.
                         if (blocker.color === piece.color && blocker.type !== 'k' && slides(blocker.type, direction)) {
                             xray = true;
                         } else {
@@ -134,13 +134,13 @@ export function attackMap(pieces: Map<string, BoardPiece>): Map<string, Attack[]
     return map;
 }
 
-/** Сколько фигур белых и чёрных бьёт поле. */
+/** How many white and black pieces attack the square. */
 export interface SquareControl {
     white: number;
     black: number;
 }
 
-/** Контроль 64 полей: сколько фигур каждой стороны бьёт поле (с батареями). */
+/** Control of the 64 squares: how many pieces of each side attack the square (with batteries). */
 export function controlMap(pieces: Map<string, BoardPiece>, attacks = attackMap(pieces)): Map<string, SquareControl> {
     const control = new Map<string, SquareControl>();
     for (let file = 0; file < 8; file++) {
@@ -156,14 +156,14 @@ export function controlMap(pieces: Map<string, BoardPiece>, attacks = attackMap(
     return control;
 }
 
-/** Удары стороны color по полю square. */
+/** Attacks by side color on square square. */
 function attackersBy(attacks: Map<string, Attack[]>, square: string, color: Color): Attack[] {
     return (attacks.get(square) ?? []).filter((a) => a.piece.color === color);
 }
 
 /**
- * Абсолютные связки обеих сторон: связанная фигура → поля, на которые она ещё может бить (линия связки
- * между королём и связывающей фигурой, включая её саму).
+ * Absolute pins of both sides: pinned piece -> squares it can still attack (the pin line
+ * between the king and the pinning piece, including the latter itself).
  */
 export function absolutePins(pieces: Map<string, BoardPiece>): Map<string, Set<string>> {
     const pins = new Map<string, Set<string>>();
@@ -200,9 +200,9 @@ export function absolutePins(pieces: Map<string, BoardPiece>): Map<string, Set<s
 }
 
 /**
- * Удары, которые фигуры действительно могут нанести: связанная с королём фигура бьёт только вдоль линии связки.
- * Для «кто кого защищает» и «можно ли взять с выигрышем»; контроль полей (controlMap) остаётся полным — связанная
- * фигура по-прежнему не пускает короля соперника на свои поля.
+ * Attacks that the pieces can actually deliver: a piece pinned to the king attacks only along the pin line.
+ * For "who defends whom" and "can it be captured with a gain"; square control (controlMap) stays full - a pinned
+ * piece still does not let the opponent's king onto its squares.
  */
 export function effectiveAttacks(pieces: Map<string, BoardPiece>, attacks = attackMap(pieces)): Map<string, Attack[]> {
     const pins = absolutePins(pieces);
@@ -217,15 +217,15 @@ export function effectiveAttacks(pieces: Map<string, BoardPiece>, attacks = atta
     return result;
 }
 
-/** Порядок участия в размене: сначала прямые удары по возрастанию ценности, затем батареи (за своей фигурой). */
+/** Order of participation in an exchange: first direct attacks by ascending value, then batteries (behind one's own piece). */
 function exchangeOrder(list: Attack[]): number[] {
     return [...list].sort((a, b) => Number(a.xray) - Number(b.xray) || PIECE_VALUE[a.piece.type] - PIECE_VALUE[b.piece.type])
         .map((a) => PIECE_VALUE[a.piece.type]);
 }
 
 /**
- * Статическая оценка размена (SEE) на поле: сколько выигрывает сторона, берущая фигуру ценностью victim первой
- * фигурой ценностью first; дальше стороны бьют по очереди самыми дешёвыми и могут остановиться в любой момент.
+ * Static exchange evaluation (SEE) on a square: how much the side gains that takes a piece of value victim first with a
+ * piece of value first; then the sides capture in turn with the cheapest pieces and may stop at any moment.
  */
 export function exchangeGain(victim: number, first: number, takers: number[], defenders: number[]): number {
     const gains = [victim];
@@ -236,12 +236,12 @@ export function exchangeGain(victim: number, first: number, takers: number[], de
         onSquare = lists[side].shift() as number;
     }
     for (let i = gains.length - 1; i > 0; i--) gains[i - 1] = -Math.max(-gains[i - 1], gains[i]);
-    return gains[0] + 0; // без -0
+    return gains[0] + 0; // avoids -0
 }
 
 /**
- * Фигура под ударом: размен на её поле, начатый самой дешёвой нападающей, выигрывает материал (SEE) —
- * учитывает число нападающих и защитников и связки (attacks — из effectiveAttacks). Король не в счёт.
+ * Piece under attack: an exchange on its square, started by the cheapest attacker, wins material (SEE) -
+ * accounts for the number of attackers and defenders and for pins (attacks - from effectiveAttacks). The king does not count.
  */
 export function isEnPrise(piece: BoardPiece, attacks: Map<string, Attack[]>): boolean {
     if (piece.type === 'k') return false;
@@ -251,18 +251,18 @@ export function isEnPrise(piece: BoardPiece, attacks: Map<string, Attack[]>): bo
     return exchangeGain(PIECE_VALUE[piece.type], attackers[0], attackers.slice(1), defenders) > 0;
 }
 
-/** Фигуры стороны color, которые можно взять с выигрышем. */
+/** Pieces of side color that can be captured with a gain. */
 export function hangingPieces(pieces: Map<string, BoardPiece>, color: Color, attacks = effectiveAttacks(pieces)): string[] {
     return [...pieces.values()].filter((p) => p.color === color && isEnPrise(p, attacks)).map((p) => p.square);
 }
 
-/** Перегруженный защитник: его поле и поля фигур, которые защищает только он. */
+/** Overloaded defender: its square and the squares of the pieces that only it defends. */
 export interface Overload {
     defender: string;
     duties: string[];
 }
 
-/** Перегруженные защитники стороны color: единственная защита двух и более атакованных фигур. */
+/** Overloaded defenders of side color: the sole defense of two or more attacked pieces. */
 export function overloadedDefenders(
     pieces: Map<string, BoardPiece>, color: Color, attacks = effectiveAttacks(pieces),
 ): Overload[] {
@@ -279,26 +279,26 @@ export function overloadedDefenders(
     return [...duties.entries()].filter(([, list]) => list.length >= 2).map(([defender, list]) => ({defender, duties: list}));
 }
 
-/** Связка (pin) или сквозной удар (skewer): две фигуры соперника на одной линии с дальнобойной фигурой. */
+/** Pin or skewer: two opponent pieces on one line with a sliding piece. */
 export interface LineTactic {
     kind: 'pin' | 'skewer';
-    /** Нападающая дальнобойная фигура. */
+    /** Attacking sliding piece. */
     attacker: string;
-    /** Фигура на линии впереди. */
+    /** Piece in front on the line. */
     front: string;
-    /** Фигура за ней. */
+    /** Piece behind it. */
     behind: string;
     /**
-     * В деле король. У связки — король позади: передней фигурой ходить нельзя. У сквозного удара — король
-     * впереди: это шах, после которого теряется фигура за королём.
+     * The king is involved. For a pin - the king is behind: the front piece cannot move. For a skewer - the king
+     * is in front: that is a check after which the piece behind the king is lost.
      */
     absolute: boolean;
 }
 
 /**
- * Связки и сквозные удары фигур стороны color по фигурам соперника. Связка — задняя фигура ценнее передней;
- * сквозной удар — передняя ценнее задней и её либо выгодно взять (она дороже нападающей), либо она не защищена.
- * Пешка позади не считается: ради неё линию не вскрывают.
+ * Pins and skewers by pieces of side color against opponent pieces. Pin - the rear piece is more valuable than the front;
+ * skewer - the front is more valuable than the rear and it is either profitable to capture (it costs more than the attacker) or it is unprotected.
+ * A pawn behind does not count: nobody opens a line for its sake.
  */
 export function lineTactics(
     pieces: Map<string, BoardPiece>, color: Color, attacks = effectiveAttacks(pieces),
@@ -327,7 +327,7 @@ export function lineTactics(
                 result.push({kind: 'pin', attacker: piece.square, front: front.square, behind: behind.square,
                     absolute: behind.type === 'k'});
             } else if (frontValue > behindValue && behind.type !== 'p' && (frontValue > PIECE_VALUE[piece.type]
-                // Незащищённую переднюю фигуру можно взять и более ценной: ферзь бьёт сквозь ладью на слона.
+                // An unprotected front piece can be captured even by a more valuable one: the queen attacks through the rook onto the bishop.
                 || attackersBy(attacks, front.square, front.color).length === 0)) {
                 result.push({kind: 'skewer', attacker: piece.square, front: front.square, behind: behind.square,
                     absolute: front.type === 'k'});
@@ -338,8 +338,8 @@ export function lineTactics(
 }
 
 /**
- * Позиция, где ходит сторона color: «а что сделал бы соперник, если бы ходил он?». null — такая позиция невозможна.
- * Если очередь хода меняется, право взятия на проходе сбрасывается: оно относилось к другой стороне.
+ * Position where side color moves: "what would the opponent do if it were their move?". null - such a position is impossible.
+ * If the side to move changes, the en passant right is reset: it belonged to the other side.
  */
 export function gameFor(
     fen: string, color: Color, pieces = piecesOf(fen), attacks?: Map<string, Attack[]>,
@@ -348,7 +348,7 @@ export function gameFor(
     if (parts[1] === color) return new Chess(fen);
     parts[1] = color;
     parts[3] = '-';
-    // Если бы ходил color, а король соперника уже под шахом — такой позиции не бывает.
+    // If color moved and the opponent's king is already in check - such a position cannot exist.
     const enemyKing = [...pieces.values()].find((p) => p.type === 'k' && p.color === opposite(color));
     if (enemyKing && attackersBy(attacks ?? attackMap(pieces), enemyKing.square, color).length > 0) return null;
     try {
@@ -358,30 +358,30 @@ export function gameFor(
     }
 }
 
-/** Стрелка на доске: с поля на поле. */
+/** Arrow on the board: from square to square. */
 export interface MoveArrow {
     from: string;
     to: string;
 }
 
-/** Стрелка взятия. */
+/** Capture arrow. */
 export interface CaptureArrow extends MoveArrow {
-    /** winning — выигрыш материала (толстая стрелка), exchange — размен (тонкая). */
+    /** winning - wins material (thick arrow), exchange - an exchange (thin). */
     kind: 'winning' | 'exchange';
 }
 
-/** Все ходы стороны color (подробно); невозможная позиция — пусто. */
+/** All moves of side color (detailed); an impossible position - empty. */
 export function verboseMoves(fen: string, color: Color, pieces = piecesOf(fen), attacks?: Map<string, Attack[]>): Move[] {
     return gameFor(fen, color, pieces, attacks)?.moves({verbose: true}) ?? [];
 }
 
-/** Все легальные ходы стороны color стрелками, без повторов. */
+/** All legal moves of side color as arrows, without duplicates. */
 export function legalMoves(fen: string, color: Color, moves = verboseMoves(fen, color)): MoveArrow[] {
     const seen = new Set<string>();
     const arrows: MoveArrow[] = [];
     for (const move of moves) {
         const key = `${move.from}${move.to}`;
-        if (seen.has(key)) continue; // превращения в разные фигуры — одна стрелка
+        if (seen.has(key)) continue; // promotions to different pieces - one arrow
         seen.add(key);
         arrows.push({from: move.from, to: move.to});
     }
@@ -389,8 +389,8 @@ export function legalMoves(fen: string, color: Color, moves = verboseMoves(fen, 
 }
 
 /**
- * Взятия стороны color: выигрыш — размен на поле, начатый этим взятием, приносит материал (SEE, со связками),
- * иначе размен.
+ * Captures by side color: winning - an exchange on the square started by this capture brings material (SEE, with pins),
+ * otherwise an exchange.
  */
 export function captures(
     fen: string, color: Color, pieces = piecesOf(fen), attacks = effectiveAttacks(pieces),
@@ -402,7 +402,7 @@ export function captures(
         if (!move.captured || seen.has(`${move.from}${move.to}`)) continue;
         seen.add(`${move.from}${move.to}`);
         const target = pieces.get(move.to);
-        // Взятие на проходе: пешка соперника не на поле хода — размен на этом поле не считаем (стрелка «размен»).
+        // En passant: the opponent's pawn is not on the target square - the exchange on this square is not counted (an "exchange" arrow).
         const winning = target !== undefined && exchangeGain(
             PIECE_VALUE[target.type], PIECE_VALUE[move.piece as PieceType],
             exchangeOrder(attackersBy(attacks, move.to, color).filter((a) => a.from !== move.from)),
@@ -413,7 +413,7 @@ export function captures(
     return arrows;
 }
 
-/** Защиты стороны color: какая своя фигура прикрывает какую (короля не «защищают»; защита через батарею не в счёт). */
+/** Defenses by side color: which own piece covers which (the king is not "defended"; defense through a battery does not count). */
 export function defenses(pieces: Map<string, BoardPiece>, color: Color, attacks = effectiveAttacks(pieces)): MoveArrow[] {
     const arrows: MoveArrow[] = [];
     for (const piece of pieces.values()) {
@@ -425,12 +425,12 @@ export function defenses(pieces: Map<string, BoardPiece>, color: Color, attacks 
     return arrows;
 }
 
-/** Стрелка хода с шахом; mate — этот ход ставит мат. */
+/** Check-giving move arrow; mate - this move delivers mate. */
 export interface CheckArrow extends MoveArrow {
     mate: boolean;
 }
 
-/** Шахи и маты, которые может дать сторона color (по значкам «+» и «#» в записи хода chess.js). */
+/** Checks and mates that side color can give (by the "+" and "#" marks in the chess.js move notation). */
 export function checks(fen: string, color: Color, moves = verboseMoves(fen, color)): CheckArrow[] {
     const byKey = new Map<string, CheckArrow>();
     for (const move of moves) {
@@ -444,15 +444,15 @@ export function checks(fen: string, color: Color, moves = verboseMoves(fen, colo
     return [...byKey.values()];
 }
 
-/** Поля изолированных и проходных пешек одной стороны. */
+/** Squares of isolated and passed pawns of one side. */
 export interface PawnFlags {
     isolated: string[];
     passed: string[];
 }
 
 /**
- * Изолированные и проходные пешки стороны color. Изолированная — на соседних вертикалях нет своих пешек;
- * проходная — впереди на своей и соседних вертикалях нет пешек соперника.
+ * Isolated and passed pawns of side color. Isolated - no own pawns on adjacent files;
+ * passed - no opponent pawns ahead on its own and adjacent files.
  */
 export function pawnFlags(pieces: Map<string, BoardPiece>, color: Color): PawnFlags {
     const own = [...pieces.values()].filter((p) => p.type === 'p' && p.color === color);
@@ -472,15 +472,15 @@ export function pawnFlags(pieces: Map<string, BoardPiece>, color: Color): PawnFl
     return {isolated, passed};
 }
 
-/** Поле, куда может пойти выбранная фигура, и безопасно ли ей там. */
+/** Square where the selected piece can go, and whether it is safe there. */
 export interface SquareSafety {
     square: string;
     safe: boolean;
 }
 
 /**
- * Куда может пойти фигура с поля from и где она там окажется под ударом. Каждый ход делается на копии позиции,
- * и уже в новой позиции проверяется, можно ли взять фигуру с выигрышем (isEnPrise); пешка превращается в ферзя.
+ * Where the piece from square from can go and where it will be under attack. Each move is made on a copy of the position,
+ * and in the new position it is checked whether the piece can be captured with a gain (isEnPrise); a pawn promotes to a queen.
  */
 export function destinationSafety(fen: string, from: string): SquareSafety[] {
     const pieces = piecesOf(fen);
@@ -502,7 +502,7 @@ export function destinationSafety(fen: string, from: string): SquareSafety[] {
     return result;
 }
 
-/** Результат xrayFor: по полю на каждый режим показа «рентгена» (переключатели — components/xray/XrayPanel.tsx). */
+/** Result of xrayFor: one square set per x-ray display mode (toggles - components/xray/XrayPanel.tsx). */
 export interface XrayReport {
     control: Map<string, SquareControl>;
     hanging: string[];
@@ -516,14 +516,14 @@ export interface XrayReport {
 }
 
 /**
- * Полный «рентген» для стороны color: что она может (взятия, шахи, ходы, связки), что защищает, какие её фигуры
- * под ударом и перегружены, её пешечные слабости и сильные стороны. Контроль полей — для обеих сторон.
+ * Full "x-ray" for side color: what it can do (captures, checks, moves, pins), what it defends, which of its pieces
+ * are under attack and overloaded, its pawn weaknesses and strengths. Square control - for both sides.
  */
 export function xrayFor(fen: string, color: Color): XrayReport {
-    // Позиция разбирается один раз: фигуры, карта ударов и ходы chess.js — общие для всех режимов.
+    // The position is parsed once: pieces, attack map and chess.js moves are shared by all modes.
     const pieces = piecesOf(fen);
     const attacks = attackMap(pieces);
-    // Защиты и размены — без ударов связанных фигур; контроль полей — полный.
+    // Defenses and exchanges - without attacks by pinned pieces; square control - full.
     const effective = effectiveAttacks(pieces, attacks);
     const moves = verboseMoves(fen, color, pieces, attacks);
     return {

@@ -1,19 +1,19 @@
 # --- FILE: scripts/download_champions.py ---
 """
-Портреты шахматистов из Викисклада — только со свободной лицензией и с записью об авторе.
+Chess player portraits from Wikimedia Commons - only with a free licence and with an author record.
 
-Для каждого игрока берётся заглавное изображение его статьи в русской Википедии, но лишь если
-файл лежит на Викискладе под лицензией, разрешающей использование в любом проекте (общественное
-достояние, CC0, CC BY, CC BY-SA). Файлы, загруженные в Википедию локально («добросовестное
-использование»), и лицензии с условиями NC/ND пропускаются: у такого игрока портрета нет, а
-интерфейс показывает инициалы.
+For each player the lead image of his article in the English Wikipedia is taken, but only if
+the file sits on Wikimedia Commons under a licence that allows use in any project (public
+domain, CC0, CC BY, CC BY-SA). Files uploaded to Wikipedia locally ("fair
+use") and licences with NC/ND conditions are skipped: such a player has no portrait and the
+interface shows initials.
 
-Рядом с портретами пишется манифест frontend/src/config/portraitCredits.json: файл, автор,
-лицензия, ссылка на источник. Из него строятся страница «О проекте» и раздел ATTRIBUTION.md;
-tests/test_assets_licensing.py проверяет, что у каждого портрета в репозитории есть запись.
+Next to the portraits a manifest frontend/src/config/portraitCredits.json is written: file, author,
+licence, source link. The "About" page and the ATTRIBUTION.md section are built from it;
+tests/test_assets_licensing.py checks that every portrait in the repository has an entry.
 
-Запуск:  python scripts/download_champions.py            # докачать недостающее
-         python scripts/download_champions.py --force    # перекачать всё заново
+Run:  python scripts/download_champions.py            # download what is missing
+         python scripts/download_champions.py --force    # re-download everything
 """
 
 import io
@@ -31,55 +31,55 @@ PUBLIC_CHAMPIONS_DIR = PROJECT_ROOT / "frontend" / "public" / "assets" / "champi
 SRC_CHAMPIONS_DIR = PROJECT_ROOT / "frontend" / "src" / "assets" / "champions"
 CREDITS_PATH = PROJECT_ROOT / "frontend" / "src" / "config" / "portraitCredits.json"
 
-WIKIPEDIA_API = "https://ru.wikipedia.org/w/api.php"
+WIKIPEDIA_API = "https://en.wikipedia.org/w/api.php"
 COMMONS_API = "https://commons.wikimedia.org/w/api.php"
 THUMB_WIDTH = 500
 
-# id файла портрета -> название статьи в русской Википедии
+# portrait file id -> article title in the English Wikipedia
 PLAYERS: dict[str, str] = {
-    "philidor": "Филидор, Франсуа-Андре Даникан",
-    "labourdonnais": "Лабурдонне, Луи Шарль де",
-    "staunton": "Стаунтон, Говард",
-    "anderssen": "Андерсен, Адольф",
-    "morphy": "Морфи, Пол",
-    "paulsen": "Паульсен, Луи",
-    "zukertort": "Цукерторт, Иоганн",
-    "Steinitz": "Стейниц, Вильгельм",
-    "Lasker": "Ласкер, Эмануил",
-    "Rubinstein": "Рубинштейн, Акиба Кивелевич",
-    "Capablanca": "Капабланка, Хосе Рауль",
-    "Alekhine": "Алехин, Александр Александрович",
-    "Euwe": "Эйве, Макс",
-    "Keres": "Керес, Пауль Петрович",
-    "Botvinnik": "Ботвинник, Михаил Моисеевич",
-    "Geller": "Геллер, Ефим Петрович",
-    "Korchnoi": "Корчной, Виктор Львович",
-    "Smyslov": "Смыслов, Василий Васильевич",
-    "Tal": "Таль, Михаил Нехемьевич",
-    "Petrosian": "Петросян, Тигран Вартанович",
-    "Spassky": "Спасский, Борис Васильевич",
-    "Fischer": "Фишер, Роберт Джеймс",
-    "Karpov": "Анатолий Карпов",
-    "Kasparov": "Каспаров, Гарри Кимович",
-    "Kramnik": "Крамник, Владимир Борисович",
-    "Anand": "Ананд, Вишванатан",
-    "Carlsen": "Карлсен, Магнус",
-    "Ding": "Дин Лижэнь",
-    # Мастера второй волны (таск 21.5)
-    "Chigorin": "Чигорин, Михаил Иванович",
-    "Tarrasch": "Тарраш, Зигберт",
-    "Pillsbury": "Пильсбери, Гарри Нельсон",
-    "Marshall": "Маршалл, Фрэнк Джеймс",
-    "Nimzowitsch": "Нимцович, Арон Исаевич",
-    "Reti": "Рети, Рихард",
-    "Tartakower": "Тартаковер, Савелий Григорьевич",
+    "philidor": "François-André Danican Philidor",
+    "labourdonnais": "Louis-Charles Mahé de La Bourdonnais",
+    "staunton": "Howard Staunton",
+    "anderssen": "Adolf Anderssen",
+    "morphy": "Paul Morphy",
+    "paulsen": "Louis Paulsen",
+    "zukertort": "Johannes Zukertort",
+    "Steinitz": "Wilhelm Steinitz",
+    "Lasker": "Emanuel Lasker",
+    "Rubinstein": "Akiba Rubinstein",
+    "Capablanca": "José Raúl Capablanca",
+    "Alekhine": "Alexander Alekhine",
+    "Euwe": "Max Euwe",
+    "Keres": "Paul Keres",
+    "Botvinnik": "Mikhail Botvinnik",
+    "Geller": "Efim Geller",
+    "Korchnoi": "Viktor Korchnoi",
+    "Smyslov": "Vasily Smyslov",
+    "Tal": "Mikhail Tal",
+    "Petrosian": "Tigran Petrosian",
+    "Spassky": "Boris Spassky",
+    "Fischer": "Bobby Fischer",
+    "Karpov": "Anatoly Karpov",
+    "Kasparov": "Garry Kasparov",
+    "Kramnik": "Vladimir Kramnik",
+    "Anand": "Viswanathan Anand",
+    "Carlsen": "Magnus Carlsen",
+    "Ding": "Ding Liren",
+    # Second-wave masters (task 21.5)
+    "Chigorin": "Mikhail Chigorin",
+    "Tarrasch": "Siegbert Tarrasch",
+    "Pillsbury": "Harry Nelson Pillsbury",
+    "Marshall": "Frank Marshall (chess player)",
+    "Nimzowitsch": "Aron Nimzowitsch",
+    "Reti": "Richard Réti",
+    "Tartakower": "Savielly Tartakower",
 }
 
 _TAG_RE = re.compile(r"<[^>]+>")
 
 
 def is_free_license(short_name: str) -> bool:
-    """Лицензия разрешает использование в любом проекте, включая коммерческий, и изменение."""
+    """The licence allows use in any project, including commercial, and modification."""
     name = short_name.strip().lower()
     tokens = set(re.split(r"[\s-]+", name))
     if not name or tokens & {"nc", "nd"}:
@@ -92,13 +92,13 @@ JPEG_MAGIC = bytes.fromhex("ffd8")
 
 def as_jpeg(content: bytes) -> bytes:
     """
-    Портреты хранятся как .jpg, а Викисклад отдаёт уменьшенную копию в формате оригинала
-    (у PNG — PNG). Файл с расширением .jpg и содержимым PNG браузеры показывают, но это ломает
-    всё, что доверяет расширению. Перекодируем; прозрачный фон заменяется белым.
+    Portraits are stored as .jpg, while Wikimedia Commons serves a downscaled copy in the original's format
+    (PNG for a PNG). A file with the .jpg extension and PNG content is shown by browsers, but this breaks
+    everything that trusts the extension. We re-encode; a transparent background is replaced with white.
     """
     if content.startswith(JPEG_MAGIC):
         return content
-    from PIL import Image  # нужен только для не-JPEG оригиналов: uv sync
+    from PIL import Image  # needed only for non-JPEG originals: uv sync
 
     image = Image.open(io.BytesIO(content)).convert("RGBA")
     background = Image.new("RGB", image.size, (255, 255, 255))
@@ -109,27 +109,27 @@ def as_jpeg(content: bytes) -> bytes:
 
 
 def _clean(html_text: str) -> str:
-    """Очищает метаданные Викисклада от HTML-тегов и дублирующихся строк."""
+    """Cleans Wikimedia Commons metadata of HTML tags and duplicated lines."""
     text = _TAG_RE.sub("", html_text or "").replace("&amp;", "&").replace("\n", " ").strip()
-    # Викисклад дублирует «Unknown author» в видимой и скрытой разметке.
+    # Wikimedia Commons duplicates "Unknown author" in the visible and hidden markup.
     text = text.replace("Unknown authorUnknown author", "Unknown author").replace("AnonymousUnknown author", "Unknown author")
     return re.sub(r"\s+", " ", text).rstrip("] ").strip() or "Unknown author"
 
 
 def _get_json(session: requests.Session, url: str, params: dict) -> dict:
-    """Выполняет GET-запрос к API Викисклада/Википедии с повторами при 429."""
+    """Makes a GET request to the Wikimedia Commons/Wikipedia API with retries on 429."""
     last_status = 0
     for _attempt in range(5):
         response = session.get(url, params=params, timeout=30)
         last_status = response.status_code
         if response.status_code == 200:
             return response.json()
-        time.sleep(10)  # 429 — подождать и повторить
+        time.sleep(10)  # 429 - wait and retry
     raise RuntimeError(f"{url}: HTTP {last_status}")
 
 
 def find_lead_images(session: requests.Session) -> dict[str, dict]:
-    """id игрока -> {file, thumb} заглавного изображения статьи (один запрос на всех)."""
+    """Player id -> {file, thumb} of the article's lead image (one request for all)."""
     data = _get_json(session, WIKIPEDIA_API, {
         "action": "query", "titles": "|".join(PLAYERS.values()), "prop": "pageimages",
         "piprop": "name|thumbnail", "pithumbsize": str(THUMB_WIDTH), "pilimit": "50",
@@ -150,7 +150,7 @@ def find_lead_images(session: requests.Session) -> dict[str, dict]:
 
 
 def fetch_commons_metadata(session: requests.Session, file_names: list[str]) -> dict[str, dict]:
-    """Имя файла -> {license, license_url, author, source_url}. Файлов не с Викисклада в ответе нет."""
+    """File name -> {license, license_url, author, source_url}. Files not from Commons are absent from the response."""
     data = _get_json(session, COMMONS_API, {
         "action": "query", "titles": "|".join(f"File:{name}" for name in file_names), "prop": "imageinfo",
         "iiprop": "extmetadata|url", "format": "json", "formatversion": "2",
@@ -174,7 +174,7 @@ def fetch_commons_metadata(session: requests.Session, file_names: list[str]) -> 
 
 
 def main(force: bool = False) -> int:
-    """Скачивает свободные портреты шахматистов и обновляет манифест лицензий."""
+    """Downloads free portraits of chess players and updates the licence manifest."""
     PUBLIC_CHAMPIONS_DIR.mkdir(parents=True, exist_ok=True)
     SRC_CHAMPIONS_DIR.mkdir(parents=True, exist_ok=True)
     credits: dict[str, dict] = {}
@@ -191,14 +191,14 @@ def main(force: bool = False) -> int:
     for player_id in PLAYERS:
         target = PUBLIC_CHAMPIONS_DIR / f"{player_id}.jpg"
         if player_id in credits and target.exists() and not force:
-            print(f"[~] {player_id}: уже есть")
+            print(f"[~] {player_id}: already present")
             continue
 
         image = images.get(player_id)
         meta = metadata.get(image["file"]) if image else None
         if not image or not meta or not is_free_license(meta["license"]):
-            reason = "нет изображения" if not image else "не на Викискладе" if not meta else meta["license"]
-            print(f"[-] {player_id}: пропущен ({reason}) — в интерфейсе будут инициалы")
+            reason = "no image" if not image else "not on Commons" if not meta else meta["license"]
+            print(f"[-] {player_id}: skipped ({reason}) - the interface will show initials")
             target.unlink(missing_ok=True)
             credits.pop(player_id, None)
             continue
@@ -206,7 +206,7 @@ def main(force: bool = False) -> int:
         time.sleep(1.5)
         response = session.get(image["thumb"], timeout=30)
         if response.status_code != 200 or not response.content:
-            print(f"[!] {player_id}: не скачался (HTTP {response.status_code})")
+            print(f"[!] {player_id}: download failed (HTTP {response.status_code})")
             continue
         target.write_bytes(as_jpeg(response.content))
         credits[player_id] = {"file": image["file"], **meta}
@@ -214,10 +214,10 @@ def main(force: bool = False) -> int:
 
     for extra in PUBLIC_CHAMPIONS_DIR.glob("*.jpg"):
         if extra.stem not in credits:
-            print(f"[!] {extra.name}: нет записи об источнике — удалён")
+            print(f"[!] {extra.name}: no source record - removed")
             extra.unlink()
 
-    # Портреты ботов импортируются сборщиком из src/assets, остальные раздаются из public.
+    # Bot portraits are imported by the builder from src/assets, the rest are served from public.
     shutil.rmtree(SRC_CHAMPIONS_DIR)
     SRC_CHAMPIONS_DIR.mkdir(parents=True)
     for portrait in PUBLIC_CHAMPIONS_DIR.glob("*.jpg"):
@@ -225,7 +225,7 @@ def main(force: bool = False) -> int:
 
     ordered = {player_id: credits[player_id] for player_id in PLAYERS if player_id in credits}
     CREDITS_PATH.write_text(json.dumps(ordered, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    print(f"\nГотово: {len(ordered)} из {len(PLAYERS)} портретов, манифест — {CREDITS_PATH.relative_to(PROJECT_ROOT)}")
+    print(f"\nDone: {len(ordered)} of {len(PLAYERS)} portraits, manifest - {CREDITS_PATH.relative_to(PROJECT_ROOT)}")
     return 0
 
 

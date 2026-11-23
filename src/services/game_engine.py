@@ -1,22 +1,25 @@
 # --- FILE: src/services/game_engine.py ---
 """
-Правила шахмат для партий: проверка хода, итог партии, начальные позиции, запись PGN. Всё — на python-chess,
-без движка.
+Chess rules for games: move validation, the game result, starting positions, PGN writing. All on python-chess,
+without an engine.
 
-* process_move — легален ли ход в позиции; новая позиция, запись хода и, если партия закончилась, её итог.
-* terminal_outcome — мат, пат, недостаточный материал, троекратное повторение позиции и правило 50 ходов; ничьи
-  по повторению и по 50 ходам засчитываются сами, без заявления, но только когда позиция уже сложилась на доске.
-  Повторение нельзя проверить по одной позиции, поэтому restore_board переигрывает партию из PGN.
-* flag_outcome — кончилось время: поражение, кроме случая, когда сопернику нечем поставить мат никакой
-  последовательностью ходов, — тогда ничья (правило ФИДЕ 6.9).
-* Начальная позиция партии с форой или из своей позиции проверяется на возможность по правилам
-  (board_from_start_fen); шахматы Фишера хранятся в Shredder-FEN — по записи видно вариант (is_chess960_fen).
-* normalize_pgn_text — партия в каноническом виде, чтобы лишние пустые строки не обрывали чтение.
-* normalize_result — итог из чужого PGN приводится к одному из GAME_RESULTS.
+* process_move -- whether a move is legal in the position; the new position, the move record and, if the game ended, its
+  result.
+* terminal_outcome -- mate, stalemate, insufficient material, threefold repetition and the 50-move rule; draws
+  by repetition and by 50 moves are awarded automatically, without a claim, but only when the position has already arisen on
+  the board.
+  Repetition cannot be checked from a single position, so restore_board replays the game from the PGN.
+* flag_outcome -- time ran out: a loss, except when the opponent cannot deliver mate by any
+  sequence of moves -- then a draw (FIDE rule 6.9).
+* A starting position of a game with odds or from a custom position is checked for validity by the rules
+  (board_from_start_fen); Fischer chess is stored in Shredder-FEN -- the record shows the variant (is_chess960_fen).
+* normalize_pgn_text -- a game in canonical form so that extra blank lines do not break reading.
+* normalize_result -- a result from a foreign PGN is mapped to one of GAME_RESULTS.
 
-Данных из БД, Redis и настроек модуль не берёт: всё — из аргументов. Вызывают src/api/bots.py, websockets.py и
-analysis.py; сервисы game_state, matchmaker, analysis_service, library, game_import, mate_finder, move_check, odds,
-personal_puzzles; модели game и imported_game (набор итогов GAME_RESULTS) и src/db/seed.py.
+The module takes no data from the DB, Redis or settings: everything comes from arguments. Called by src/api/bots.py,
+websockets.py and
+analysis.py; the services game_state, matchmaker, analysis_service, library, game_import, mate_finder, move_check, odds,
+personal_puzzles; the game and imported_game models (the GAME_RESULTS set of results) and src/db/seed.py.
 """
 
 import io
@@ -30,21 +33,21 @@ from src.core.errors import DomainValueError
 
 logger = logging.getLogger(__name__)
 
-# Обычная начальная расстановка; её же возвращают пустое значение и совпадающий с ней start_fen.
+# The ordinary initial setup; the empty value and a start_fen equal to it also return it.
 STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
 
 class InvalidStartPositionError(DomainValueError):
-    """Начальная позиция не разбирается или невозможна по правилам."""
+    """The starting position cannot be parsed or is impossible by the rules."""
 
 
 def board_from_start_fen(start_fen: str | None) -> chess.Board:
     """
-    Доска для партии или анализа с заданной начальной позиции (None — обычная расстановка).
+    A board for a game or analysis from a given starting position (None -- the ordinary setup).
 
-    Проверяется не только синтаксис FEN, но и сама позиция: chess.Board принимает и невозможные
-    (без короля, короли рядом, под шахом сторона, которая только что ходила) — движок на таких
-    может упасть, а «партия» из них не имеет смысла.
+    Not only the FEN syntax is checked but the position itself: chess.Board also accepts impossible ones
+    (no king, kings adjacent, the side that has just moved is in check) -- the engine may
+    crash on such, and a "game" from them makes no sense.
     """
     if start_fen is None or not start_fen.strip() or start_fen.strip() == STARTING_FEN:
         return chess.Board()
@@ -57,63 +60,64 @@ def board_from_start_fen(start_fen: str | None) -> chess.Board:
     return board
 
 
-# Буквы вертикалей в поле рокировки FEN — признак Shredder-FEN, то есть партии Фишера.
+# File letters in the castling field of the FEN -- a sign of Shredder-FEN, that is, a Fischer game.
 _CHESS960_CASTLING = set("ABCDEFGHabcdefgh")
-# Заголовок PGN, которым помечается партия Фишера.
+# The PGN header that marks a Fischer game.
 CHESS960_HEADER = '[Variant "Chess960"]'
 
 
 def is_chess960_fen(fen: str | None) -> bool:
     """
-    Позиция партии Фишера (21.3): права на рокировку записаны буквами вертикалей (Shredder-FEN, «HAha»). Партии 960
-    хранят позиции только так — в обычных шахматах такой записи не бывает, поэтому по FEN видно, по каким правилам
-    идёт партия.
+    A Fischer game position (21.3): castling rights are written with file letters (Shredder-FEN, "HAha"). Chess960 games
+    store positions only this way -- ordinary chess never has such a record, so the FEN shows which rules
+    the game follows.
     """
     parts = (fen or "").split()
     return len(parts) > 2 and any(c in _CHESS960_CASTLING for c in parts[2])
 
 
 def game_variant(fen: str | None, pgn: str | None = "") -> str:
-    """Вариант идущей партии для клиента: «chess960» (по заголовку PGN или Shredder-FEN) или «standard»."""
+    """The variant of a running game for the client: "chess960" (by the PGN header or Shredder-FEN) or "standard"."""
     return "chess960" if CHESS960_HEADER in (pgn or "") or is_chess960_fen(fen) else "standard"
 
 
 def board_from_fen(fen: str, chess960: bool = False) -> chess.Board:
-    """Доска по FEN партии: в режиме 960, если так сказано или если FEN записан по-960-ному."""
+    """A board from a game FEN: in 960 mode if so stated or if the FEN is written in the 960 way."""
     return chess.Board(fen, chess960=chess960 or is_chess960_fen(fen))
 
 
 def fen_of(board: chess.Board) -> str:
-    """FEN для хранения: у партии 960 — Shredder-FEN (см. is_chess960_fen)."""
+    """The FEN for storage: for a 960 game -- Shredder-FEN (see is_chess960_fen)."""
     return board.fen(shredder=True) if board.chess960 else board.fen()
 
 
 def validate_start_fen(start_fen: str | None) -> str:
     """
-    Каноническая запись начальной позиции: STARTING_FEN для пустого значения, иначе FEN после
-    проверки. InvalidStartPositionError (это ValueError) — для неразборчивой или невозможной позиции.
+    Canonical record of a starting position: STARTING_FEN for the empty value, otherwise the FEN after
+    validation. InvalidStartPositionError (a ValueError) -- for an unparsable or impossible position.
     """
     return board_from_start_fen(start_fen).fen()
 
 
 def is_standard_start(board: chess.Board) -> bool:
-    """Партия начата с обычной расстановки (у доски нет ходов и позиция стартовая)."""
+    """A game started from the ordinary setup (the board has no moves and the position is the starting one)."""
     return board.root().fen() == STARTING_FEN
 
 
-# Итоги партии, которые хранит база (CHECK у games, imported_games, library_games, arena_games): победа белых,
-# победа чёрных, ничья, «не закончена / неизвестно».
+# Game results stored by the database (the CHECK on games, imported_games, library_games, arena_games): White wins,
+# Black wins, a draw, "unfinished / unknown".
 GAME_RESULTS = ("1-0", "0-1", "1/2-1/2", "*")
-# Как ещё записывают итог в чужих PGN — приводится к стандартному.
+# Other ways a result is written in foreign PGNs -- mapped to the standard.
 _RESULT_ALIASES = {"½-½": "1/2-1/2", "1/2": "1/2-1/2", "0.5-0.5": "1/2-1/2", "=": "1/2-1/2", "1:0": "1-0", "0:1": "0-1",
                    "1–0": "1-0", "0–1": "0-1"}
 
 
 def normalize_result(tag: str | None) -> str:
     """
-    Итог из заголовка Result чужого PGN — одним из GAME_RESULTS: известные варианты записи (½-½, 1:0, тире вместо
-    дефиса) приводятся к стандарту, всё остальное (пусто, «?», мусор) — «*». Пользуются импорт в библиотеку
-    (library.py), импорт с сайтов (game_import.py) и загрузчик архива (src/db/seed.py).
+    A result from the Result header of a foreign PGN -- as one of GAME_RESULTS: known spellings (1/2-1/2, 1:0, a dash instead
+    of
+    a hyphen) are mapped to the standard, everything else (empty, "?", junk) -- "*". Used by the library import
+    (library.py), the import from sites (game_import.py) and the archive loader (src/db/seed.py).
     """
     value = (tag or "").strip()
     if value in GAME_RESULTS:
@@ -121,18 +125,18 @@ def normalize_result(tag: str | None) -> str:
     return _RESULT_ALIASES.get(value, "*")
 
 
-# Любой перевод строки, включая задвоенный «\\r\\r\\n» от текстового режима Windows.
+# Any line break, including the doubled "\\r\\r\\n" from Windows text mode.
 _LINE_BREAK_RE = re.compile(r"\r+\n|\r")
 
 
 def normalize_pgn_text(pgn_text: str) -> str:
     """
-    Одна партия в каноническом виде: заголовки подряд, одна пустая строка, ходы без пустых строк.
+    One game in canonical form: headers in a row, one blank line, moves without blank lines.
 
-    По стандарту PGN пустая строка завершает партию. Файлы, сохранённые на Windows в текстовом режиме
-    поверх уже виндовых переводов строк, получают «\\r\\r\\n» — после разбора это пустая строка после
-    каждой строки, и python-chess видит партию из одного заголовка без ходов (анализ «на 100 %» пустой
-    партии). Фронтенд (chess.js) к таким строкам терпим, поэтому партия при этом выглядела нормальной.
+    By the PGN standard a blank line ends a game. Files saved on Windows in text mode
+    on top of already Windows line breaks get "\\r\\r\\n" -- after parsing that is a blank line after
+    each line, and python-chess sees a game of one header with no moves (analysis "at 100 %" of an empty
+    game). The frontend (chess.js) tolerates such lines, so the game looked normal at that.
     """
     lines = [line.strip() for line in _LINE_BREAK_RE.sub("\n", pgn_text.lstrip("﻿")).split("\n")]
     headers: list[str] = []
@@ -148,18 +152,21 @@ def normalize_pgn_text(pgn_text: str) -> str:
 
 
 def read_pgn_game(pgn_text: str) -> chess.pgn.Game | None:
-    """chess.pgn.read_game для одной сохранённой партии, устойчивый к лишним пустым строкам."""
+    """chess.pgn.read_game for one saved game, resistant to extra blank lines."""
     return chess.pgn.read_game(io.StringIO(normalize_pgn_text(pgn_text)))
 
 
 def start_fen_of(pgn_text: str | None) -> str | None:
-    """Начальная позиция партии из заголовка FEN её PGN (партия с позиции: фора, Фишер); без заголовка — None."""
+    """
+    The starting position of a game from the FEN header of its PGN (a game from a position: odds, Fischer); without the
+    header -- None.
+    """
     game = read_pgn_game(pgn_text or "")
     return game.headers.get("FEN") if game is not None else None
 
 
 def _replay_pgn_document(pgn_text: str) -> chess.Board | None:
-    """Доска в конце PGN-документа с заголовками (в том числе SetUp/FEN) — с историей ходов."""
+    """The board at the end of a PGN document with headers (including SetUp/FEN) -- with the move history."""
     game = read_pgn_game(pgn_text)
     if game is None or game.errors:
         return None
@@ -168,13 +175,13 @@ def _replay_pgn_document(pgn_text: str) -> chess.Board | None:
 
 def restore_board(fen: str, pgn_movetext: str = "", start_fen: str | None = None) -> chess.Board:
     """
-    Восстанавливает доску вместе с историей ходов.
+    Restores the board together with the move history.
 
-    История нужна для правил повторения позиции (троекратное / пятикратное), которые
-    невозможно проверить по одному FEN. Ходы переигрываются из PGN-строки партии
-    («1. e4 e5 2. Nf3 ...») от начальной позиции: обычной расстановки или start_fen. Полный
-    PGN-документ с заголовком FEN разбирается целиком — начальная позиция берётся из него.
-    Если PGN пуст, повреждён или не приводит к переданному FEN, используется доска из FEN без истории.
+    The history is needed for the position repetition rules (threefold / fivefold), which
+    cannot be checked from a single FEN. Moves are replayed from the PGN string of the game
+    ("1. e4 e5 2. Nf3 ...") from the starting position: the ordinary setup or start_fen. A full
+    PGN document with a FEN header is parsed whole -- the starting position is taken from it.
+    If the PGN is empty, damaged or does not lead to the given FEN, the board from the FEN without history is used.
     """
     safe_fen = fen.strip() if fen and fen.strip() else STARTING_FEN
     movetext = (pgn_movetext or "").strip()
@@ -189,7 +196,7 @@ def restore_board(fen: str, pgn_movetext: str = "", start_fen: str | None = None
         try:
             board = board_from_start_fen(start_fen)
             for token in movetext.split():
-                # Номера ходов («12.», «12...») и результат («1-0») начинаются с цифры, SAN — никогда.
+                # Move numbers ("12.", "12...") and the result ("1-0") start with a digit, SAN never does.
                 if token[0].isdigit() or token == "*":
                     continue
                 board.push_san(token)
@@ -205,11 +212,11 @@ def restore_board(fen: str, pgn_movetext: str = "", start_fen: str | None = None
 
 def terminal_outcome(board: chess.Board) -> tuple[str, str] | None:
     """
-    Итог партии по позиции на доске (с историей ходов) или None, если партия продолжается.
+    The game result by the position on the board (with move history) or None if the game continues.
 
-    Ничьи по повторению и правилу 50 ходов фиксируются автоматически, но только по фактически
-    сложившейся позиции. board.is_game_over(claim_draw=True) здесь не подходит: он засчитывает
-    ничью и тогда, когда повторение лишь достижимо следующим ходом.
+    Draws by repetition and the 50-move rule are recorded automatically, but only by the position
+    that has actually arisen. board.is_game_over(claim_draw=True) is unsuitable here: it awards
+    a draw even when the repetition is merely reachable with the next move.
     """
     if not (board.is_game_over() or board.is_repetition(3) or board.is_fifty_moves()):
         return None
@@ -228,8 +235,8 @@ def terminal_outcome(board: chess.Board) -> tuple[str, str] | None:
 
 def side_has_mating_material(board_fen: str | None, color: str) -> bool:
     """
-    Может ли color ("white" / "black") в принципе поставить мат какой-либо последовательностью легальных ходов
-    (по материалу, с учётом цвета полей слонов). Если FEN не разбирается — считаем, что может.
+    Whether color ("white" / "black") can in principle deliver mate by any sequence of legal moves
+    (by material, taking bishop square colours into account). If the FEN cannot be parsed -- we assume it can.
     """
     try:
         board = chess.Board(board_fen or STARTING_FEN)
@@ -238,19 +245,19 @@ def side_has_mating_material(board_fen: str | None, color: str) -> bool:
     return not board.has_insufficient_material(chess.WHITE if color == "white" else chess.BLACK)
 
 
-# Причина окончания (termination) при ничьей по флагу: у соперника нечем ставить мат.
+# Termination reason for a draw on flag: the opponent has no mating material.
 FLAG_DRAW_TERMINATION = "timeout_vs_insufficient_material"
 
 
 def flag_outcome(board_fen: str | None, flagged_color: str) -> tuple[str, str]:
     """
-    Итог партии, когда у flagged_color кончилось время (правило ФИДЕ 6.9).
+    The game result when flagged_color has run out of time (FIDE rule 6.9).
 
-    Поражение, если только у соперника нет материала, которым мат невозможен никакой
-    последовательностью легальных ходов, — тогда ничья. has_insufficient_material учитывает
-    только материал (и цвета полей слонов) и гарантированно не объявит ничью там, где мат
-    возможен: например, конь против ладьи — победа (кооперативный мат существует).
-    Возвращает (result, termination).
+    A loss, unless the opponent has material with which mate is impossible by any
+    sequence of legal moves -- then a draw. has_insufficient_material considers
+    only material (and bishop square colours) and is guaranteed not to declare a draw where mate
+    is possible: for example, knight against rook is a win (a cooperative mate exists).
+    Returns (result, termination).
     """
     winner = "black" if flagged_color == "white" else "white"
     if not side_has_mating_material(board_fen, winner):
@@ -260,22 +267,23 @@ def flag_outcome(board_fen: str | None, flagged_color: str) -> tuple[str, str]:
 
 class GameEngine:
     """
-    Проверка и применение хода (process_move) — единственная точка, через которую ход партии с человеком попадает в
-    позицию. Состояния не хранит: готовый экземпляр — `engine` в конце модуля.
+    Validation and application of a move (process_move) is the only point through which a move of a game with a human gets
+    into the
+    position. It stores no state: the ready instance is `engine` at the end of the module.
     """
     @staticmethod
     def process_move(fen: str, move_str: str, current_pgn: str = "") -> tuple[bool, dict | None]:
         """
-        Проверяет ход, применяет его к текущей позиции (FEN) и возвращает новые данные.
+        Validates the move, applies it to the current position (FEN) and returns the new data.
 
-        Возвращает: (is_valid, move_data)
-        Где move_data содержит:
-        - new_fen: str (Новое состояние доски)
-        - new_pgn: str (Обновленная строка ходов PGN)
-        - san: str (Красивая нотация, например "Nf3")
-        - uci: str (Универсальная нотация, например "g1f3")
-        - fullmove_number: int (Номер хода)
-        - is_obvious: bool (Флаг единственного легального хода для античита)
+        Returns: (is_valid, move_data)
+        Where move_data contains:
+        - new_fen: str (the new board state)
+        - new_pgn: str (the updated PGN move string)
+        - san: str (pretty notation, for example "Nf3")
+        - uci: str (universal notation, for example "g1f3")
+        - fullmove_number: int (the move number)
+        - is_obvious: bool (flag of the only legal move, for the anti-cheat)
         - is_game_over: bool
         - result: str | None ("1-0", "0-1", "1/2-1/2")
         - termination: str | None ("checkmate", "stalemate", "repetition", etc.)
@@ -285,7 +293,7 @@ class GameEngine:
         except ValueError:
             return False, None
 
-        # 1. Пытаемся распарсить ход (UCI или SAN)
+        # 1. Try to parse the move (UCI or SAN)
         move = None
         try:
             candidate = chess.Move.from_uci(move_str)
@@ -305,7 +313,7 @@ class GameEngine:
         if move is None or move not in board.legal_moves:
             return False, None
 
-        # 2. Собираем метаданные ДО выполнения хода
+        # 2. Collect metadata BEFORE making the move
         legal_moves_count = board.legal_moves.count()
         is_obvious = legal_moves_count == 1
         is_white_turn = board.turn == chess.WHITE
@@ -314,21 +322,21 @@ class GameEngine:
         san = board.san(move)
         uci = move.uci()
 
-        # Формируем PGN-строку за O(1) без перестроения всего дерева
+        # Build the PGN string in O(1) without rebuilding the whole tree
         pgn_base = (current_pgn or "").strip()
         if is_white_turn:
             move_token = f"{fullmove_number}. {san}"
         else:
             move_token = san if pgn_base else f"{fullmove_number}... {san}"
-        # После заголовков партии с позиции (SetUp/FEN) ходы — с новой строки, как в PGN-документе.
+        # After the headers of a game from a position (SetUp/FEN) the moves start on a new line, as in a PGN document.
         separator = "\n\n" if pgn_base.endswith("]") else " "
         new_pgn = f"{pgn_base}{separator}{move_token}".strip()
 
-        # 3. Применяем ход на доске
+        # 3. Apply the move on the board
         board.push(move)
         new_fen = fen_of(board)
 
-        # 4. Проверяем условия завершения партии
+        # 4. Check the game-end conditions
         outcome = terminal_outcome(board)
         is_game_over = outcome is not None
         result, termination = outcome if outcome else (None, None)

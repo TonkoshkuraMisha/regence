@@ -2,9 +2,9 @@
 
 """add_username_key_to_users
 
-Нормализованное имя (casefold) для аккаунтов с паролем: уникальность без учёта регистра и
-вход в любом регистре. У архивных игроков из PGN и ботов остаётся NULL — их имена из
-заголовков партий могут законно различаться только регистром.
+A normalised name (casefold) for accounts with a password: case-insensitive uniqueness and
+login in any case. It stays NULL for archived players from PGN and for bots - their names from
+game headers can legitimately differ only by case.
 
 Revision ID: e5b7c9d1a2f3
 Revises: d9f4a1b2c3e4
@@ -24,7 +24,7 @@ depends_on: str | Sequence[str] | None = None
 
 logger = logging.getLogger("alembic.runtime.migration")
 
-# Маркеры вместо хэша пароля у аккаунтов, под которыми войти нельзя.
+# Markers instead of a password hash for accounts that cannot be logged into.
 NO_LOGIN_MARKERS = ("!historical_archive_no_login!", "!historical_bot_no_login!")
 
 
@@ -36,9 +36,9 @@ def upgrade() -> None:
         sa.text("SELECT id, username, hashed_password FROM users ORDER BY id")
     ).fetchall()
 
-    # Ключ вычисляется в Python (casefold), а не lower() в SQL: lower() в PostgreSQL с локалью C
-    # и в SQLite не приводит кириллицу. При совпадении ключей ключ получает самый старый
-    # аккаунт; остальные остаются без ключа и по-прежнему входят под точным именем.
+    # The key is computed in Python (casefold), not with lower() in SQL: lower() in PostgreSQL with the C locale
+    # and in SQLite does not lowercase Cyrillic. When keys collide the key goes to the oldest
+    # account; the rest stay without a key and still log in under the exact name.
     taken: dict[str, int] = {}
     for user_id, username, hashed_password in rows:
         if hashed_password in NO_LOGIN_MARKERS or not username:

@@ -1,6 +1,6 @@
 """
-REST API профиля: поиск игрока по имени, таблица лидеров, история партий с пагинацией и
-сортировкой, PGN, активная и live-партии, HTTP-дубли действий лобби.
+Profile REST API: player search by name, leaderboard, game history with pagination and
+sorting, PGN, active and live games, HTTP duplicates of lobby actions.
 """
 
 from datetime import UTC, datetime
@@ -48,7 +48,7 @@ def _auth(token: str) -> dict:
     return {"Authorization": f"Bearer {token}"}
 
 
-# --- Поиск игрока по имени ----------------------------------------------------------------------
+# --- Player search by name ----------------------------------------------------------------------
 
 async def test_profile_by_exact_name_returns_all_category_ratings(client, db_session):
     await _add(db_session, _user("Alice"))
@@ -68,20 +68,20 @@ async def test_profile_lookup_ignores_case(client, db_session):
     await _add(db_session, _user("Alice"), _user("Steinitz, William", key=False, is_bot=True))
 
     assert client.get(f"{API}/alice").json()["username"] == "Alice"
-    # Архивный игрок без username_key находится по имени без учёта регистра.
+    # An archive player without username_key is found by name, case-insensitively.
     assert client.get(f"{API}/steinitz, william").json()["username"] == "Steinitz, William"
 
 
 @pytest.mark.parametrize("query", ["Ali", "lic", "%", "_____", "A%"])
 async def test_partial_or_wildcard_name_is_not_found(client, db_session, query):
-    """Раньше поиск по подстроке открывал профиль постороннего игрока по части имени."""
+    """Substring search used to open a stranger's profile by part of the name."""
     await _add(db_session, _user("Alice"))
 
     assert client.get(f"{API}/{query}").status_code == 404
     assert client.get(f"{API}/{query}/games").status_code == 404
 
 
-# --- Таблица лидеров ----------------------------------------------------------------------------
+# --- Leaderboard --------------------------------------------------------------------------------
 
 async def test_leaderboard_ranks_by_category_and_hides_bots_and_cheaters(client, db_session):
     await _add(
@@ -93,7 +93,7 @@ async def test_leaderboard_ranks_by_category_and_hides_bots_and_cheaters(client,
     )
 
     bullet = client.get(f"{API}/leaderboard", params={"category": "bullet"}).json()
-    blitz = client.get(f"{API}/leaderboard").json()  # по умолчанию — блиц
+    blitz = client.get(f"{API}/leaderboard").json()  # blitz by default
 
     assert [(p["rank"], p["username"], p["rating"]) for p in bullet] == [(1, "fast", 2100), (2, "solid", 1300)]
     assert [p["username"] for p in blitz] == ["solid", "fast"]
@@ -108,7 +108,7 @@ async def test_leaderboard_respects_limit_and_validates_params(client, db_sessio
     assert client.get(f"{API}/leaderboard", params={"category": "hyperbullet"}).status_code == 422
 
 
-# --- История партий ----------------------------------------------------------------------------
+# --- Game history ------------------------------------------------------------------------------
 
 async def test_user_games_lists_only_completed_games_with_pgn(client, db_session):
     alice, bob = await _add(db_session, _user("alice"), _user("bob"))
@@ -131,7 +131,7 @@ async def test_user_games_lists_only_completed_games_with_pgn(client, db_session
 
 async def test_user_games_rating_is_taken_from_the_game_category(client, db_session):
     alice, bob = await _add(db_session, _user("alice", bullet=1111, blitz=2222), _user("bob"))
-    await _add(db_session, _game(alice, bob, base_time_ms=60000, pgn_date="2026.10.01"))  # пуля 1+0
+    await _add(db_session, _game(alice, bob, base_time_ms=60000, pgn_date="2026.10.01"))  # bullet 1+0
 
     item = client.get(f"{API}/alice/games").json()["items"][0]
 
@@ -148,7 +148,7 @@ async def test_user_games_pagination_and_sorting(client, db_session):
     asc = client.get(f"{API}/alice/games", params={"sort": "asc"}).json()
 
     assert desc["total"] == rest["total"] == 4
-    # Партии с неизвестной датой — всегда в конце, в обоих направлениях.
+    # Games with an unknown date are always last, in both directions.
     assert [i["pgn_date"] for i in desc["items"] + rest["items"]] == [
         "2026.03.01", "2026.02.10", "2026.01.05", "????.??.??",
     ]
@@ -185,7 +185,7 @@ async def test_download_pgn(client, db_session):
     assert client.get(f"{API}/games/999999/pgn").status_code == 404
 
 
-# --- Активная и live-партии ---------------------------------------------------------------------
+# --- Active and live games ----------------------------------------------------------------------
 
 async def test_my_profile_requires_auth_and_hides_trust_factor(client, test_user_1, token_user_1):
     assert client.get(f"{API}/me").status_code == 401
@@ -236,12 +236,12 @@ async def test_live_games_list(client, db_session):
     live = client.get(f"{API}/games/live").json()
 
     assert [g["game_id"] for g in live] == [601]
-    assert (live[0]["white_username"], live[0]["white_rating"]) == ("alice", 1900)  # пуля 1+0
+    assert (live[0]["white_username"], live[0]["white_rating"]) == ("alice", 1900)  # bullet 1+0
     assert (live[0]["black_username"], live[0]["black_rating"]) == ("bob", 1800)
     assert live[0]["spectators_count"] == 0
 
 
-# --- HTTP-дубли действий лобби ------------------------------------------------------------------
+# --- HTTP duplicates of lobby actions -----------------------------------------------------------
 
 async def test_http_queue_join_list_and_leave(client, test_user_1, token_user_1):
     joined = client.post(
@@ -264,11 +264,11 @@ async def test_http_accept_own_or_missing_challenge(client, test_user_1, token_u
     assert missing.status_code in (404, 409)
 
 
-# --- Итоги и история рейтинга -------------------------------------------------------------
+# --- Totals and rating history ------------------------------------------------------------
 
 
 def _rated(white: User, black: User, result: str, day: int, deltas: tuple[int, int], **fields) -> Game:
-    """Рейтинговая блиц-партия с сохранёнными рейтингами до партии и изменениями."""
+    """A rated blitz game with stored pre-game ratings and changes."""
     values = {
         "result": result, "is_rated": True, "finished_at": datetime(2026, 11, day, tzinfo=UTC),
         "white_initial_rating": 1500, "black_initial_rating": 1500,
@@ -282,12 +282,12 @@ async def test_stats_count_all_games_from_the_owner_side(client, db_session):
     alice, bob = await _add(db_session, _user("Alice"), _user("Bob"))
     await _add(
         db_session,
-        _game(alice, bob, result="1-0"),          # победа белыми
-        _game(bob, alice, result="0-1"),          # победа чёрными
-        _game(bob, alice, result="1-0"),          # поражение
-        _game(alice, bob, result="1/2-1/2"),      # ничья
-        _game(alice, bob, result="1-0", status=GameStatus.ABORTED),   # не в истории
-        _game(alice, bob, result="1-0", pgn=None),                     # без записи ходов
+        _game(alice, bob, result="1-0"),          # win as White
+        _game(bob, alice, result="0-1"),          # win as Black
+        _game(bob, alice, result="1-0"),          # loss
+        _game(alice, bob, result="1/2-1/2"),      # draw
+        _game(alice, bob, result="1-0", status=GameStatus.ABORTED),   # not in the history
+        _game(alice, bob, result="1-0", pgn=None),                     # no move record
     )
 
     body = client.get(f"{API}/Alice/stats").json()
@@ -327,11 +327,11 @@ async def test_rating_history_is_split_by_category_and_skips_unrated(client, db_
     alice, bob = await _add(db_session, _user("Alice"), _user("Bob"))
     await _add(
         db_session,
-        _rated(alice, bob, "1-0", day=1, deltas=(9, -9)),                                       # блиц 3+0
-        _rated(alice, bob, "1-0", day=2, deltas=(7, -7), base_time_ms=60000),                    # пуля 1+0
-        _rated(alice, bob, "1-0", day=3, deltas=(5, -5), base_time_ms=120000, increment_ms=2000),  # 2+2 = блиц
-        _rated(alice, bob, "1-0", day=4, deltas=(0, 0), is_rated=False),                          # товарищеская
-        _rated(alice, bob, "1-0", day=5, deltas=(4, -4), base_time_ms=600000),                   # рапид 10+0
+        _rated(alice, bob, "1-0", day=1, deltas=(9, -9)),                                       # blitz 3+0
+        _rated(alice, bob, "1-0", day=2, deltas=(7, -7), base_time_ms=60000),                    # bullet 1+0
+        _rated(alice, bob, "1-0", day=3, deltas=(5, -5), base_time_ms=120000, increment_ms=2000),  # 2+2 = blitz
+        _rated(alice, bob, "1-0", day=4, deltas=(0, 0), is_rated=False),                          # casual
+        _rated(alice, bob, "1-0", day=5, deltas=(4, -4), base_time_ms=600000),                   # rapid 10+0
     )
 
     def deltas(category: str) -> list[int]:
@@ -359,7 +359,7 @@ async def test_rating_history_limit_keeps_the_latest_games(client, db_session):
     (1499000, 0), (1500000, 0), (900000, 15000),
 ])
 def test_sql_category_bounds_match_classification(base_ms, inc_ms):
-    """Границы для SQL-отбора и classify_time_control — одно правило, а не два похожих."""
+    """Boundaries for the SQL selection and classify_time_control: one rule, not two similar ones."""
     from src.services.rating import ESTIMATED_MOVES, category_duration_bounds_ms, classify_time_control
 
     estimated = base_ms + ESTIMATED_MOVES * inc_ms

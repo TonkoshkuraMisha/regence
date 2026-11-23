@@ -1,22 +1,22 @@
 // --- FILE: frontend/src/components/chessboard/boardUtils.ts ---
-// Константы и чистые функции доски (вынесено из Chessboard.tsx): размер доски по окну, перевес в материале,
-// копия партии chess.js, начальная позиция партии, проверка FEN, раскладка ходов по парам. Сервер не нужен:
-// правила шахмат — библиотека chess.js, тексты — каталог сообщений (ключи board.*).
+// Constants and pure functions of the board (extracted from Chessboard.tsx): board size by window, material
+// advantage, a copy of the chess.js game, a game's starting position, FEN validation, laying moves out in pairs. No server needed:
+// the chess rules are the chess.js library, the texts are the message catalog (board.* keys).
 
 import {Chess} from 'chess.js';
 import {t} from '../../i18n';
 
-/** Вертикали слева направо и горизонтали сверху вниз — как их видят белые. */
+/** Files left to right and ranks top to bottom, as White sees them. */
 export const FILES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
 export const RANKS = ['8', '7', '6', '5', '4', '3', '2', '1'];
 
-/** Пределы стороны доски в пикселях (ползунок размера и уголок растягивания). */
+/** Board side limits in pixels (the size slider and the resize corner). */
 export const MIN_BOARD_SIZE = 280;
 export const MAX_BOARD_SIZE = 860;
 
 export type PromotionPiece = 'q' | 'n' | 'r' | 'b';
 
-// Название фигуры читается из каталога в момент показа (геттер): смена языка меняет подпись без перезагрузки.
+// The piece name is read from the catalog at display time (a getter): a language change updates the label without a reload.
 function promotionOption(type: PromotionPiece): { type: PromotionPiece; readonly label: string } {
     return {
         type,
@@ -26,7 +26,7 @@ function promotionOption(type: PromotionPiece): { type: PromotionPiece; readonly
     };
 }
 
-/** Фигуры для выбора при превращении пешки, в порядке показа (PromotionDialog). */
+/** Pieces to choose on pawn promotion, in display order (PromotionDialog). */
 export const PROMOTION_OPTIONS: Array<{ type: PromotionPiece; readonly label: string }> = [
     promotionOption('q'),
     promotionOption('n'),
@@ -35,9 +35,9 @@ export const PROMOTION_OPTIONS: Array<{ type: PromotionPiece; readonly label: st
 ];
 
 /**
- * Наибольшая сторона доски, которая помещается в окно: по высоте — окно минус 220 px под остальную разметку,
- * по ширине — минус 850 px под боковые колонки на экране от 1280 px, иначе вся ширина минус 24 px. Не меньше
- * MIN_BOARD_SIZE и не больше MAX_BOARD_SIZE.
+ * The largest board side that fits the window: by height, the window minus 220 px for the rest of the markup,
+ * by width, minus 850 px for the side columns on a screen from 1280 px, otherwise the full width minus 24 px. Not less than
+ * MIN_BOARD_SIZE and not more than MAX_BOARD_SIZE.
  */
 export function getMaxViewportBoardSize(): number {
     if (typeof window === 'undefined') return 560;
@@ -50,16 +50,16 @@ export function getMaxViewportBoardSize(): number {
 }
 
 /**
- * Сторона доски для текущего окна: сохранённая игроком (строка из localStorage regence_board_size), но не больше, чем
- * помещается; без сохранённой — наибольшая, что помещается. Вызывается при открытии и при каждом изменении окна,
- * поэтому доска и сжимается, и снова растёт, когда окно разворачивают (раньше она только сжималась).
+ * Board side for the current window: the one saved by the player (a string from localStorage regence_board_size), but no larger than
+ * fits; without a saved one, the largest that fits. Called on opening and on every window change,
+ * so the board both shrinks and grows again when the window is enlarged (before, it only shrank).
  */
 export function fittedBoardSize(saved: string | null, maxFit: number = getMaxViewportBoardSize()): number {
     const parsed = saved === null ? NaN : Number(saved);
     return !Number.isNaN(parsed) && parsed >= MIN_BOARD_SIZE ? Math.min(parsed, maxFit) : maxFit;
 }
 
-/** Размер доски по умолчанию — наибольший, что помещается в окно (двойной щелчок по уголку растягивания). */
+/** Default board size: the largest that fits the window (double-click on the resize corner). */
 export function getDefaultBoardSize(): number {
     if (typeof window !== 'undefined') {
         return getMaxViewportBoardSize();
@@ -67,14 +67,14 @@ export function getDefaultBoardSize(): number {
     return 540;
 }
 
-/** Условная ценность фигур в пешках — только для строки перевеса у имени игрока, на игру не влияет. */
+/** Nominal piece values in pawns: only for the advantage line by the player's name, it does not affect the game. */
 export const PIECE_VALUES: Record<string, number> = {p: 1, n: 3, b: 3, r: 5, q: 9, k: 0};
 
 /**
- * Перевес в материале и «взятые» фигуры по позиции на доске (boardState — результат board() из chess.js).
- * Взятые считаются как разница с полным начальным комплектом, а не по истории взятий: превращённая пешка
- * выглядит взятой, а в партии с нестандартной позиции список не имеет смысла (Chessboard его тогда не показывает).
- * whiteCapturedSymbols — чёрные фигуры, взятые белыми, и наоборот.
+ * Material advantage and "captured" pieces by the board position (boardState is the board() result from chess.js).
+ * Captured pieces are computed as the difference from the full starting set, not from the capture history: a promoted pawn
+ * looks captured, and in a game from a non-standard position the list is meaningless (Chessboard then does not show it).
+ * whiteCapturedSymbols are the black pieces captured by White, and vice versa.
  */
 export function calculateMaterialBalance(boardState: any[][]) {
     const startCounts: Record<string, number> = {p: 8, n: 2, b: 2, r: 2, q: 1};
@@ -120,8 +120,8 @@ export function calculateMaterialBalance(boardState: any[][]) {
 }
 
 /**
- * Независимая копия партии. Копируется через PGN, чтобы сохранить историю ходов (и заголовок FEN у партии с
- * произвольной позиции); у позиции без ходов и заголовков PGN пуст — тогда копируется только FEN.
+ * Independent copy of the game. Copied via PGN to keep the move history (and the FEN header of a game with
+ * a custom position); for a position without moves and headers the PGN is empty, then only the FEN is copied.
  */
 export function cloneChessInstance(source: Chess): Chess {
     const copy = new Chess();
@@ -136,15 +136,15 @@ export function cloneChessInstance(source: Chess): Chess {
 
 export const STANDARD_START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
-/** Начальная позиция партии, если она не обычная расстановка (из заголовка FEN в PGN), иначе null. */
+/** Starting position of the game if it is not the ordinary setup (from the FEN header in the PGN), otherwise null. */
 export function customStartFen(source: Chess): string | null {
     const fen = source.header().FEN;
     return fen && fen !== STANDARD_START_FEN ? fen : null;
 }
 
 /**
- * Проверяет FEN теми же правилами, что и доска (chess.js); возвращает текст ошибки на языке игрока или null.
- * Позиция, в которой партия уже окончена (мат, пат, ничья), тоже отклоняется: играть с неё нечего.
+ * Validates a FEN by the same rules as the board (chess.js); returns an error text in the player's language or null.
+ * A position in which the game is already over (mate, stalemate, draw) is also rejected: there is nothing to play from it.
  */
 export function validateFen(fen: string): string | null {
     try {
@@ -156,10 +156,10 @@ export function validateFen(fen: string): string | null {
     }
 }
 
-/** Строка списка ходов: номер хода, ход белых и ход чёрных с их индексами в истории полуходов. */
+/** Move list row: move number, White's move and Black's move with their indices in the ply history. */
 export interface HalfMovePair {
     moveNumber: number;
-    /** undefined и whiteIdx === -1 — партия начата с хода чёрных, у первой пары нет хода белых. */
+    /** undefined and whiteIdx === -1 mean the game started with Black's move, the first pair has no White move. */
     whiteSan?: string;
     whiteIdx: number;
     blackSan?: string;
@@ -167,8 +167,8 @@ export interface HalfMovePair {
 }
 
 /**
- * Раскладывает полуходы по парам «белые / чёрные». Партия с произвольной позиции может
- * начинаться с хода чёрных и не с первого хода — номер и сторона берутся из её FEN.
+ * Lays plies out in "white / black" pairs. A game from a custom position may
+ * start with Black's move and not at move one: the number and side are taken from its FEN.
  */
 export function pairHalfMoves(history: Array<{ san: string }>, startFen?: string | null): HalfMovePair[] {
     const fenParts = (startFen ?? '').trim().split(/\s+/);
@@ -191,7 +191,7 @@ export function pairHalfMoves(history: Array<{ san: string }>, startFen?: string
     return pairs;
 }
 
-/** Индекс полухода, который сейчас на доске: у живой позиции (viewIndex === -1) это последний ход истории. */
+/** Index of the ply currently on the board: for the live position (viewIndex === -1) it is the last move of the history. */
 export function prevIndexHelper(viewIndex: number, historyLength: number): number {
     return viewIndex === -1 ? historyLength - 1 : viewIndex;
 }

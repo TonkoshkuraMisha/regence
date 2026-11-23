@@ -1,15 +1,15 @@
 """
-Повторение репертуара (таск 20.2). Карточка — позиция репертуара, где ход за игроком: «найди свой ход» (верны все
-свои ходы из позиции). Расписание — SM-2: верный ответ растит интервал (1 день, 6 дней, дальше × лёгкость), ошибка
-сбрасывает его на завтра и снижает лёгкость; в той же сессии клиент показывает карточку ещё раз (повтор не меняет
-расписание). Новые карточки — не больше дневной нормы, от коротких линий к длинным.
+Repertoire repetition (task 20.2). A card is a repertoire position where the player is to move: "find your move" (all of
+the player's moves from the position are correct). The schedule is SM-2: a correct answer grows the interval (1 day, 6
+days, then x ease), a mistake resets it to tomorrow and lowers the ease; in the same session the client shows the card once
+more (a retry does not change the schedule). New cards - no more than the daily norm, from short lines to long ones.
 
-«Игра против репертуара»: соперник отвечает ходами из своих ответов репертуара, чаще — популярными у людей (по
-индексу позиций 16.1); нет ответов — линия пройдена.
+"Game against the repertoire": the opponent replies with moves from its repertoire replies, more often popular ones (by
+the position index 16.1); no replies - the line is finished.
 
-Данные: карточки — таблица repertoire_cards (позиция, лёгкость ease, интервал в днях, число повторений и ошибок,
-срок due_at); дерево репертуара — repertoire_moves через src/services/repertoire.py; популярность ходов —
-position_stats (src/services/position_index.py). Функции модуля commit не делают — его делает маршрут
+Data: cards are the repertoire_cards table (position, ease, interval in days, number of repetitions and mistakes,
+due_at); the repertoire tree is repertoire_moves via src/services/repertoire.py; move popularity is
+position_stats (src/services/position_index.py). The module's functions do not commit - the route does
 (src/api/repertoire.py).
 """
 
@@ -26,15 +26,15 @@ from src.models.repertoire import Repertoire, RepertoireCard
 from src.services import position_index
 from src.services import repertoire as service
 
-NEW_PER_DAY = 10  # дневная норма новых карточек в режиме review (сутки — по UTC)
-SESSION = 20  # карточек в одной сессии review; в режиме learn — половина
-LEARNED_DAYS = 6  # интервал после второго верного ответа подряд; с него карточка считается выученной
-MIN_EASE = 1.3  # нижняя граница лёгкости (как в SM-2); новая карточка начинает с 2.5
+NEW_PER_DAY = 10  # daily norm of new cards in review mode (day - by UTC)
+SESSION = 20  # cards in one review session; in learn mode - half
+LEARNED_DAYS = 6  # interval after the second correct answer in a row; from it a card counts as learned
+MIN_EASE = 1.3  # lower bound of ease (as in SM-2); a new card starts at 2.5
 
 
 @dataclass
 class Spot:
-    """Позиция с ходом игрока: как до неё дойти и какие ходы верны."""
+    """A position with the player's move: how to get to it and which moves are correct."""
 
     position: str
     line: list[str]
@@ -42,7 +42,7 @@ class Spot:
 
 
 def spots(repertoire: Repertoire, edges: list[service.Edge]) -> dict[str, Spot]:
-    """Позиции-карточки: кратчайшая линия к позиции (по обходу в ширину) и свои ходы из неё."""
+    """Card positions: the shortest line to the position (by breadth-first traversal) and the player's moves from it."""
     line_to: dict[str, list[str]] = {service.ROOT: []}
     found: dict[str, Spot] = {}
     for edge in edges:
@@ -57,7 +57,7 @@ def spots(repertoire: Repertoire, edges: list[service.Edge]) -> dict[str, Spot]:
 
 
 def status(card: RepertoireCard) -> str:
-    """Состояние карточки: new — ещё не отвечали, learned — интервал не меньше LEARNED_DAYS, иначе learning."""
+    """Card state: new - not answered yet, learned - interval not less than LEARNED_DAYS, otherwise learning."""
     if card.first_reviewed_at is None:
         return "new"
     return "learned" if card.interval_days >= LEARNED_DAYS else "learning"
@@ -65,9 +65,9 @@ def status(card: RepertoireCard) -> str:
 
 def schedule(card: RepertoireCard, correct: bool, now: datetime) -> None:
     """
-    SM-2 с оценкой 4 за верный ответ и 1 за ошибку. При таких оценках верный ответ лёгкость не меняет, ошибка
-    снижает её на 0,54 (не ниже MIN_EASE). Интервалы верных ответов подряд: 1 день, LEARNED_DAYS, далее прежний
-    интервал × лёгкость; ошибка обнуляет счётчик повторений и возвращает карточку на завтра.
+    SM-2 with a grade of 4 for a correct answer and 1 for a mistake. With these grades a correct answer does not change
+    ease, a mistake lowers it by 0.54 (not below MIN_EASE). Intervals of consecutive correct answers: 1 day, LEARNED_DAYS,
+    then the previous interval x ease; a mistake zeroes the repetition counter and returns the card to tomorrow.
     """
     quality = 4 if correct else 1
     card.ease = max(MIN_EASE, card.ease + 0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02))
@@ -85,7 +85,7 @@ def schedule(card: RepertoireCard, correct: bool, now: datetime) -> None:
 
 
 def _aware(moment: datetime | None) -> datetime | None:
-    """SQLite в тестах возвращает время без пояса — считаем его UTC."""
+    """SQLite in tests returns a time without a zone - we treat it as UTC."""
     if moment is not None and moment.tzinfo is None:
         return moment.replace(tzinfo=UTC)
     return moment
@@ -93,8 +93,8 @@ def _aware(moment: datetime | None) -> datetime | None:
 
 async def sync_cards(db: AsyncSession, repertoire: Repertoire) -> tuple[dict[str, Spot], dict[str, RepertoireCard]]:
     """
-    Карточки = позиции с ходом игрока: новые позиции получают карточку, исчезнувшие — теряют (вместе с историей
-    повторений). Вызывается перед каждой сессией и ответом, поэтому карточки всегда соответствуют дереву.
+    Cards = positions with the player's move: new positions get a card, disappeared ones lose it (together with the history
+    of repetitions). Called before every session and answer, so the cards always match the tree.
     """
     found = spots(repertoire, service.build_tree(repertoire.color, await service.load_moves(db, repertoire.id)))
     cards = {c.position: c for c in (await db.execute(
@@ -115,8 +115,8 @@ async def sync_cards(db: AsyncSession, repertoire: Repertoire) -> tuple[dict[str
 
 def stats(cards: dict[str, RepertoireCard], now: datetime) -> dict:
     """
-    Сводка карточек репертуара: всего, новых, в работе, выученных, к повторению сейчас и сколько новых ещё можно взять
-    сегодня (NEW_PER_DAY).
+    Summary of the repertoire's cards: total, new, in progress, learned, due now and how many new ones can still be taken
+    today (NEW_PER_DAY).
     """
     counts = {"new": 0, "learning": 0, "learned": 0}
     due = new_today = 0
@@ -131,7 +131,7 @@ def stats(cards: dict[str, RepertoireCard], now: datetime) -> dict:
 
 
 def _fen(line: list[str]) -> str:
-    """FEN позиции карточки: начальная позиция плюс ходы линии."""
+    """FEN of the card position: the starting position plus the line's moves."""
     board = chess.Board()
     for uci in line:
         board.push_uci(uci)
@@ -140,13 +140,13 @@ def _fen(line: list[str]) -> str:
 
 async def session(db: AsyncSession, repertoire: Repertoire, mode: str, now: datetime) -> dict:
     """
-    review — сначала просроченные (самые давние первыми, до SESSION), затем новые в пределах дневной нормы и
-    оставшегося места; learn — только новые, без нормы, до SESSION // 2. Новые идут от коротких линий к длинным.
-    Верные ходы карточки уходят клиенту вместе с ней: ответ проверяется и на сервере (``answer``).
+    review - overdue first (oldest first, up to SESSION), then new ones within the daily norm and
+    the remaining room; learn - only new ones, without the norm, up to SESSION // 2. New ones go from short lines to long ones.
+    The card's correct moves go to the client with it: the answer is also checked on the server (``answer``).
     """
     found, cards = await sync_cards(db, repertoire)
     summary = stats(cards, now)
-    # Срок есть у отвеченных карточек и у поставленных «потренировать» после партии (20.3), даже ещё новых.
+    # A due date exists for answered cards and for those put "to practise" after a game (20.3), even if still new.
     overdue = sorted((key for key, card in cards.items() if (due := _aware(card.due_at)) is not None and due <= now),
                      key=lambda key: _aware(cards[key].due_at) or now)
     fresh = sorted((key for key, card in cards.items() if status(card) == "new" and key not in overdue),
@@ -166,8 +166,8 @@ async def session(db: AsyncSession, repertoire: Repertoire, mode: str, now: date
 async def answer(db: AsyncSession, repertoire: Repertoire, position: str, uci: str, retry: bool,
                  now: datetime) -> dict:
     """
-    Ответ на карточку: верен любой свой ход из этой позиции. Расписание повторений меняет только первый ответ; повтор
-    в той же сессии (retry) его не трогает.
+    Answer to a card: any own move from this position is correct. The repetition schedule is changed only by the first
+    answer; a retry in the same session (retry) does not touch it.
     """
     found, cards = await sync_cards(db, repertoire)
     if position not in found:
@@ -185,9 +185,9 @@ async def answer(db: AsyncSession, repertoire: Repertoire, position: str, uci: s
 async def opponent_reply(db: AsyncSession, repertoire: Repertoire, moves: list[str],
                          rng: random.Random | None = None) -> dict:
     """
-    Ответ соперника из репертуара; чаще — тот, что популярнее у людей. Нет ответов — линия пройдена. Вес ответа —
-    число партий с этим ходом в индексе позиций плюс 1 (ход без статистики тоже может выпасть). Запрос при ходе
-    самого игрока — отказ illegal_move.
+    A repertoire reply of the opponent; more often the one more popular with humans. No replies - the line is finished. The
+    reply's weight is the number of games with this move in the position index plus 1 (a move without statistics may also
+    come up). A request when it is the player's own move - refusal illegal_move.
     """
     pairs = service.parse_line(moves)
     board = chess.Board()
@@ -212,7 +212,7 @@ def utcnow() -> datetime:
 
 
 async def focus(db: AsyncSession, repertoire: Repertoire, position: str, now: datetime) -> None:
-    """Поставить карточку позиции в сегодняшнее повторение (после ошибки в партии, таск 20.3)."""
+    """Put a position's card into today's repetition (after a mistake in a game, task 20.3)."""
     _, cards = await sync_cards(db, repertoire)
     card = cards.get(position)
     if card is None:

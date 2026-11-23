@@ -1,15 +1,15 @@
 // --- FILE: frontend/src/services/tablebase.ts ---
-// Эндшпильные таблицы (таск 14.4): POST /analysis/tablebase — результат позиции для стороны, которая ходит, и её
-// лучший ход (им отвечает идеальный защитник). Под правилом честной игры.
-// Маршрут — src/api/analysis.py, расчёт — src/services/tablebase.py: сервер спрашивает сервис эндшпильных таблиц
-// по адресу TABLEBASE_URL (уходит только позиция), ответ кэшируется в Redis. Позицию, где фигур больше, чем знают
-// таблицы, сервер отклоняет кодом tablebase_too_many_pieces. Недоступный сервис таблиц сервер заменяет оценкой
-// Stockfish (source: 'engine', dtm и dtz — null, категории maybe-* — спорная оценка); нет и движка —
-// tablebase_unavailable. Вердикт тренажёра по ответу — trainerVerdict.
+// Endgame tablebases (task 14.4): POST /analysis/tablebase — the position result for the side to move and its
+// best move (the perfect defender answers it). Subject to the fair-play rule.
+// Route — src/api/analysis.py, calculation — src/services/tablebase.py: the server queries a tablebase service
+// at TABLEBASE_URL (only the position leaves), and the answer is cached in Redis. A position with more pieces than the
+// tablebases cover is rejected by the server with code tablebase_too_many_pieces. An unavailable tablebase service is replaced by a Stockfish
+// evaluation (source: 'engine', dtm and dtz — null, maybe-* categories — a disputed evaluation); with no engine either —
+// tablebase_unavailable. The trainer's verdict on the answer — trainerVerdict.
 
 import {apiRequest} from './http';
 
-/** Лучший ход по таблицам; category, dtm и dtz передаются как есть из ответа сервиса таблиц для этого хода. */
+/** Best move per tablebase; category, dtm and dtz are passed as is from the tablebase service response for this move. */
 export interface TablebaseMove {
     uci: string;
     san: string;
@@ -18,24 +18,24 @@ export interface TablebaseMove {
     dtz: number | null;
 }
 
-/** Ответ таблиц по позиции. */
+/** Tablebase answer for a position. */
 export interface TablebaseProbe {
-    /** win | loss | draw | cursed-win | blessed-loss | maybe-win | maybe-loss | unknown — для стороны, которая ходит. */
+    /** win | loss | draw | cursed-win | blessed-loss | maybe-win | maybe-loss | unknown — for the side to move. */
     category: string | null;
-    /** Расстояние до мата (dtm) и до обнуления счётчика 50 ходов (dtz) — в полуходах; null — таблицы не знают. */
+    /** Distance to mate (dtm) and to the 50-move counter reset (dtz) — in plies; null — the tablebases do not know. */
     dtm: number | null;
     dtz: number | null;
-    /** Лучший ход ходящей стороны (первый в ответе сервиса таблиц); null — ходов в ответе нет. */
+    /** Best move of the side to move (first in the tablebase service response); null — no moves in the response. */
     best: TablebaseMove | null;
-    /** tablebase — точный ответ таблиц; engine — таблицы недоступны, ответила оценка движка. */
+    /** tablebase — an exact tablebase answer; engine — tablebases unavailable, the engine evaluation answered. */
     source: 'tablebase' | 'engine';
 }
 
 /**
- * Итог хода игрока в эндшпильном тренажёре по ответу для соперника (он ходит): continue — играем дальше,
- * winLost — выигрыш упущен, drawLost — ничья упущена. По точным таблицам строго: для выигрыша у соперника должен
- * быть проигрыш. По оценке движка партию обрывает только явный вердикт (draw / win), спорная оценка maybe-* —
- * не повод засчитать ошибку.
+ * Outcome of the player's move in the endgame trainer by the answer for the opponent (who moves): continue — play on,
+ * winLost — the win is lost, drawLost — the draw is lost. Strict for exact tablebases: for a win the opponent must
+ * be losing. For an engine evaluation the game is cut off only by a clear verdict (draw / win); a disputed maybe-* evaluation is
+ * not grounds to count a mistake.
  */
 export function trainerVerdict(probe: TablebaseProbe, winning: boolean): 'continue' | 'winLost' | 'drawLost' {
     const category = probe.category;
@@ -47,7 +47,7 @@ export function trainerVerdict(probe: TablebaseProbe, winning: boolean): 'contin
     return category === 'win' || category === 'maybe-win' ? 'drawLost' : 'continue';
 }
 
-/** Запрос таблиц по позиции (FEN). Отказ сервера, в том числе запрет во время партии, — UiError с текстом по коду. */
+/** Tablebase query by position (FEN). A server refusal, including the ban during a game, is a UiError with text by code. */
 export function probeTablebase(fen: string): Promise<TablebaseProbe> {
     return apiRequest<TablebaseProbe>('/analysis/tablebase', {method: 'POST', body: JSON.stringify({fen})});
 }

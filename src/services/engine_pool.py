@@ -1,19 +1,20 @@
 # --- FILE: src/services/engine_pool.py ---
 """
-Пул долгоживущих процессов Stockfish.
+A pool of long-lived Stockfish processes.
 
-Раньше каждый запрос к боту или анализу запускал новый процесс движка (popen_uci) — это
-сотни миллисекунд на старт и неограниченное число параллельных процессов под нагрузкой.
-Пул держит не более ENGINE_POOL_SIZE процессов на один бинарник, переиспользует их между
-запросами и ограничивает число одновременных расчётов: при исчерпании пула ожидающий
-вызов получает EngineBusyError по таймауту, а не порождает новый процесс.
+Previously every bot or analysis request started a new engine process (popen_uci) -- that is
+hundreds of milliseconds to start and an unbounded number of parallel processes under load.
+The pool keeps at most ENGINE_POOL_SIZE processes per binary, reuses them between
+requests and limits the number of simultaneous calculations: when the pool is exhausted a waiting
+call gets EngineBusyError on timeout rather than spawning a new process.
 
-Пул синхронный и потокобезопасный: им пользуются из asyncio.to_thread (API) и из Celery.
+The pool is synchronous and thread-safe: it is used from asyncio.to_thread (API) and from Celery.
 
-Настройки (src/core/config.py): ENGINE_POOL_SIZE — предел процессов, ENGINE_ACQUIRE_TIMEOUT_S — сколько секунд ждать
-свободный движок. Пул живёт в памяти процесса: у каждого процесса API и у каждого воркера Celery свой пул, так что
-предел действует на процесс, а не на весь сервер. Путь к бинарнику передаёт вызывающий
-(bots/base.resolve_stockfish_path). Метрики Prometheus — время занятости движка, ожидание и отказы по видам работ.
+Settings (src/core/config.py): ENGINE_POOL_SIZE -- the process limit, ENGINE_ACQUIRE_TIMEOUT_S -- how many seconds to wait
+for a
+free engine. The pool lives in process memory: every API process and every Celery worker has its own pool, so
+the limit applies per process, not to the whole server. The path to the binary is passed by the caller
+(bots/base.resolve_stockfish_path). Prometheus metrics -- engine busy time, waiting and refusals by kind of work.
 """
 
 import atexit
@@ -34,17 +35,17 @@ from src.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-# Опции, которые боты меняют под свой стиль. Перед каждой выдачей движка они сбрасываются
-# к значениям полной силы, чтобы настройки одного вызова не «протекали» в следующий.
+# Options that bots change for their own style. Before every engine hand-out they are reset
+# to full-strength values so that the settings of one call do not "leak" into the next.
 _DEFAULT_OPTIONS: dict[str, int | bool] = {
     "Skill Level": 20,
     "UCI_LimitStrength": False,
 }
 
 
-# --- Бюджет движка (таск 23.3): время, пока движок занят, по видам работ ----------------------------------------
-# Главная статья расходов — процессор Stockfish. Каждая выдача движка из пула засчитывает время, пока он был занят,
-# виду работы из контекста вызова (engine_work). Метки — из конечного набора ENGINE_WORK_KINDS.
+# --- Engine budget (task 23.3): time while the engine is busy, by kind of work ---------------------------------
+# The main cost item is the Stockfish CPU. Every engine hand-out from the pool credits the time it was busy
+# to the kind of work from the call context (engine_work). Labels come from the finite set ENGINE_WORK_KINDS.
 
 ENGINE_WORK_KINDS = ("bot_move", "analysis", "coach", "simulation", "puzzles", "other")
 _work_kind: ContextVar[str] = ContextVar("engine_work_kind", default="other")
@@ -62,8 +63,9 @@ ENGINE_BUSY = Counter("regence_engine_busy_total", "Requests refused because eve
 @contextmanager
 def engine_work(kind: str) -> Iterator[None]:
     """
-    Вид работы для учёта времени движка внутри блока. Внешний вид важнее внутреннего: ход бота в симуляции турнира
-    засчитывается симуляции. Контекст переживает asyncio.to_thread (contextvars копируются в поток).
+    The kind of work for engine time accounting inside a block. The outer kind matters more than the inner: a bot move in a
+    tournament simulation
+    is credited to the simulation. The context survives asyncio.to_thread (contextvars are copied into the thread).
     """
     if kind not in ENGINE_WORK_KINDS:
         kind = "other"
@@ -78,29 +80,29 @@ def engine_work(kind: str) -> Iterator[None]:
 
 
 def current_engine_work() -> str:
-    """Вид работы текущего контекста вызова; вне блока engine_work — "other"."""
+    """The kind of work of the current call context; outside an engine_work block -- "other"."""
     return _work_kind.get()
 
 
 class EngineUnavailableError(RuntimeError):
-    """Бинарник Stockfish отсутствует или не запускается."""
+    """The Stockfish binary is missing or does not start."""
 
 
 class EngineBusyError(RuntimeError):
-    """Все движки пула заняты дольше допустимого времени ожидания."""
+    """All the pool's engines have been busy longer than the allowed wait time."""
 
 
 class EnginePool:
     """
-    Пул процессов Stockfish одного бинарника: не больше size процессов, свободные переиспользуются. acquire выдаёт
-    движок на время расчёта; если свободного нет дольше acquire_timeout_s — EngineBusyError.
+    A pool of Stockfish processes of one binary: at most size processes, idle ones are reused. acquire hands out
+    an engine for the duration of a calculation; if none is free for longer than acquire_timeout_s -- EngineBusyError.
     """
     def __init__(self, engine_path: str, size: int, acquire_timeout_s: float):
         self.engine_path = engine_path
         self.size = max(1, int(size))
         self.acquire_timeout_s = acquire_timeout_s
-        # Семафор ограничивает число одновременно выданных движков; в очереди лежат свободные запущенные процессы
-        # (последний освободившийся выдаётся первым). Процесс запускается только при выдаче, когда свободных нет.
+        # The semaphore limits the number of simultaneously handed-out engines; idle started processes sit in the queue
+        # (the last one released is handed out first). A process is started only on hand-out, when there are no idle ones.
         self._slots = threading.BoundedSemaphore(self.size)
         self._idle: queue.LifoQueue[chess.engine.SimpleEngine] = queue.LifoQueue()
         self._closed = False
@@ -125,7 +127,7 @@ class EnginePool:
 
     @staticmethod
     def _is_alive(engine: chess.engine.SimpleEngine) -> bool:
-        """Процесс движка ещё работает (вызывающий код мог проглотить EngineTerminatedError)."""
+        """The engine process is still running (the calling code may have swallowed EngineTerminatedError)."""
         try:
             return not engine.protocol.returncode.done()
         except Exception:
@@ -134,9 +136,9 @@ class EnginePool:
     @staticmethod
     def _configure(engine: chess.engine.SimpleEngine, options: dict) -> None:
         """
-        Настраивает движок перед выдачей: значения полной силы (_DEFAULT_OPTIONS), поверх них — options вызывающего.
-        Опции, которых у этой сборки движка нет, пропускаются; числовые приводятся к её допустимому диапазону
-        (например, UCI_Elo ниже минимума сборки становится минимумом).
+        Configures the engine before hand-out: full-strength values (_DEFAULT_OPTIONS), with the caller's options on top.
+        Options that this engine build does not have are skipped; numeric ones are clamped to its allowed range
+        (for example, UCI_Elo below the build's minimum becomes the minimum).
         """
         merged = {**_DEFAULT_OPTIONS, **options}
         supported: dict = {}
@@ -144,7 +146,7 @@ class EnginePool:
             option = engine.options.get(name)
             if option is None:
                 continue
-            # Числовые (spin) опции приводим к диапазону конкретной сборки движка.
+            # Numeric (spin) options are clamped to the range of the specific engine build.
             if option.type == "spin" and isinstance(value, (int, float)) and not isinstance(value, bool):
                 if option.min is not None:
                     value = max(option.min, value)
@@ -158,13 +160,13 @@ class EnginePool:
     @contextmanager
     def acquire(self, options: dict | None = None, timeout_s: float | None = None) -> Iterator[chess.engine.SimpleEngine]:
         """
-        Выдаёт движок в монопольное пользование на время блока with.
+        Hands out an engine for exclusive use for the duration of the with block.
 
-        options — UCI-опции поверх значений по умолчанию (полная сила).
-        Движок, упавший с ошибкой протокола или по таймауту, не возвращается в пул, а
-        завершается; вместо него при следующем запросе будет запущен новый процесс.
-        timeout_s — сколько ждать свободный движок (по умолчанию acquire_timeout_s пула); не дождались —
-        EngineBusyError. Время ожидания и время, пока движок был выдан, пишутся в метрики по виду работы
+        options -- UCI options on top of the defaults (full strength).
+        An engine that failed with a protocol error or a timeout is not returned to the pool but
+        terminated; a new process will be started instead on the next request.
+        timeout_s -- how long to wait for a free engine (by default the pool's acquire_timeout_s); if it did not arrive --
+        EngineBusyError. The wait time and the time the engine was handed out are written to the metrics by kind of work
         (current_engine_work).
         """
         if self._closed:
@@ -203,8 +205,8 @@ class EnginePool:
 
     def close(self) -> None:
         """
-        Закрывает пул: завершает свободные движки и запрещает новые выдачи. Движок, выданный в этот момент,
-        завершится при возврате.
+        Closes the pool: terminates idle engines and forbids new hand-outs. An engine handed out at this moment
+        terminates when it is returned.
         """
         self._closed = True
         while True:
@@ -217,13 +219,13 @@ class EnginePool:
 
 class EngineLease:
     """
-    Один движок пула на несколько вызовов подряд — например, на ход бота: анализ MultiPV, опорный ход с
-    ограничением силы и оценка этого хода. Без аренды каждый шаг заново вставал в очередь пула: под нагрузкой ход
-    ждал движок 2–3 раза и мог получить EngineBusyError посередине.
+    One pool engine for several calls in a row -- for example, for a bot move: MultiPV analysis, a reference move with
+    strength limiting and the evaluation of that move. Without a lease every step queued up in the pool anew: under load a move
+    waited for an engine 2-3 times and could get EngineBusyError in the middle.
 
-    Движок берётся при первом use() (если до движка дело не дошло — пул не трогается) и держится до close().
-    Опции UCI задаются на каждый use() заново поверх полной силы, как в acquire(). Ошибка протокола или таймаут
-    внутри use() сразу возвращают движок пулу как сломанный; следующий use() возьмёт новый.
+    The engine is taken on the first use() (if the engine is never needed the pool is not touched) and held until close().
+    UCI options are set anew on every use() on top of full strength, as in acquire(). A protocol error or a timeout
+    inside use() immediately returns the engine to the pool as broken; the next use() takes a new one.
     """
 
     def __init__(self, engine_path: str | None):
@@ -234,8 +236,9 @@ class EngineLease:
     @contextmanager
     def use(self, options: dict | None = None) -> Iterator[chess.engine.SimpleEngine]:
         """
-        Движок аренды: при первом обращении берётся из пула и остаётся за арендой до её конца, при следующих только
-        перенастраивается. Ошибка движка возвращает его в пул.
+        The lease's engine: on first access it is taken from the pool and stays with the lease until its end, on later ones
+        it is only
+        reconfigured. An engine error returns it to the pool.
         """
         fresh = self._engine is None
         if self._engine is None:
@@ -251,7 +254,10 @@ class EngineLease:
             raise
 
     def _release(self, *exc_info) -> None:
-        """Возвращает движок аренды пулу; exc_info — ошибка, с которой он возвращается (тогда пул его завершит)."""
+        """
+        Returns the lease's engine to the pool; exc_info -- the error with which it is returned (then the pool terminates
+        it).
+        """
         stack, self._stack, self._engine = self._stack, None, None
         if stack is not None:
             stack.__exit__(*exc_info)
@@ -272,8 +278,9 @@ _pools_lock = threading.Lock()
 
 def get_engine_pool(engine_path: str | None) -> EnginePool:
     """
-    Возвращает пул для указанного бинарника (по одному пулу на путь, создаётся лениво). Размер и время ожидания —
-    из настроек ENGINE_POOL_SIZE и ENGINE_ACQUIRE_TIMEOUT_S на момент создания. Пустой путь — EngineUnavailableError.
+    Returns the pool for the given binary (one pool per path, created lazily). Size and wait time --
+    from the settings ENGINE_POOL_SIZE and ENGINE_ACQUIRE_TIMEOUT_S at the time of creation. An empty path --
+    EngineUnavailableError.
     """
     if not engine_path:
         raise EngineUnavailableError("Stockfish path is not configured")
@@ -287,7 +294,7 @@ def get_engine_pool(engine_path: str | None) -> EnginePool:
 
 
 def close_all_engine_pools() -> None:
-    """Закрывает все пулы процесса и забывает их; следующий get_engine_pool создаст новый. Вызывается при выходе."""
+    """Closes all the process's pools and forgets them; the next get_engine_pool creates a new one. Called on exit."""
     with _pools_lock:
         pools = list(_pools.values())
         _pools.clear()
@@ -295,10 +302,10 @@ def close_all_engine_pools() -> None:
         pool.close()
 
 
-# python-chess держит для каждого SimpleEngine фоновый НЕ-daemon поток. Интерпретатор ждёт
-# такие потоки до вызова обычных atexit-обработчиков, поэтому процесс (Celery-воркер, pytest)
-# с открытым пулом зависал бы на выходе. threading._register_atexit срабатывает раньше этого
-# ожидания (так же завершается concurrent.futures); atexit — запасной вариант.
+# python-chess keeps a background NON-daemon thread for every SimpleEngine. The interpreter waits for
+# such threads before calling ordinary atexit handlers, so a process (a Celery worker, pytest)
+# with an open pool would hang on exit. threading._register_atexit fires before this
+# wait (concurrent.futures terminates the same way); atexit is a fallback.
 _register_early_exit_hook = getattr(threading, "_register_atexit", None)
 if _register_early_exit_hook is not None:
     _register_early_exit_hook(close_all_engine_pools)

@@ -1,13 +1,13 @@
 // --- FILE: frontend/src/i18n/catalogIndex.ts ---
-// Плоский список «ключ → тексты» каталога (таск 17.7): словарь терминов проверяет по нему каталоги, а режим «помощник
-// перевода» находит ключ по тексту, на который нажал игрок.
+// Flat "key -> texts" list of the catalog (task 17.7): the term glossary checks the catalogs through it, and the "translation
+// helper" mode finds the key by the text the player clicked.
 
 import {isPlural, type Language} from './core';
 import {CATALOGS} from './index';
 
 export interface CatalogEntry {
     key: string;
-    /** Сама строка или все формы числа. */
+    /** The string itself or all plural forms. */
     texts: string[];
 }
 
@@ -35,7 +35,7 @@ export function catalogEntries(language: Language): CatalogEntry[] {
 
 const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-/** Ключи, текст которых (с любыми подставленными параметрами) совпадает с показанным; точные совпадения — первыми. */
+/** Keys whose text (with any substituted parameters) matches the displayed one; exact matches first. */
 export function findKeysByText(language: Language, shown: string): string[] {
     const text = shown.replace(/\s+/g, ' ').trim();
     if (!text) return [];

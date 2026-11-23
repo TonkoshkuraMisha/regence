@@ -1,7 +1,7 @@
 # --- FILE: tests/test_deploy_config.py ---
 """
-Готовность к продакшену: /health проверяет зависимости, продакшен-режим не стартует со слабым
-SECRET_KEY и прячет документацию, CORS_ORIGINS задаётся из окружения.
+Production readiness: /health checks dependencies, production mode does not start with a weak
+SECRET_KEY and hides the documentation, CORS_ORIGINS is set from the environment.
 """
 
 import pytest
@@ -66,7 +66,7 @@ def test_debug_echo_websocket_is_gone():
     assert "/ws/ping" not in paths
 
 
-# --- Настройки --------------------------------------------------------------------------------
+# --- Settings ---------------------------------------------------------------------------------
 
 @pytest.mark.parametrize("weak_key", ["test", "change-me-dev-only-secret-key", "x" * 31])
 def test_production_refuses_weak_secret_key(monkeypatch, weak_key):

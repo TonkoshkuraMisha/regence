@@ -1,7 +1,7 @@
 # --- FILE: tests/test_casual_games.py ---
 """
-Товарищеские партии: отдельная очередь подбора, тип сохраняется в приглашении и реванше,
-рейтинг и античит такую партию не трогают, а подсказки движка во время неё всё равно закрыты.
+Casual games: a separate matchmaking queue, the type is kept in the invite and the rematch,
+rating and anti-cheat do not touch such a game, and engine hints are still blocked during it.
 """
 
 import pytest
@@ -29,14 +29,14 @@ async def _users(db_session, *ratings: int) -> list[User]:
     return users
 
 
-# --- подбор -------------------------------------------------------------------------------
+# --- matchmaking -------------------------------------------------------------------------------
 
 
 async def test_casual_and_rated_challenges_are_not_paired(db_session):
     a, b, c = await _users(db_session, 1500, 1500, 1500)
 
     assert await matchmaker.join_queue(a.id, "a", 1500, *TC, db=db_session, rated=False) is None
-    # Рейтинговый вызов с тем же контролем товарищеский не забирает.
+    # A casual challenge does not take a rated challenge with the same time control.
     assert await matchmaker.join_queue(b.id, "b", 1500, *TC, db=db_session, rated=True) is None
 
     game_id = await matchmaker.join_queue(c.id, "c", 1500, *TC, db=db_session, rated=False)
@@ -45,7 +45,7 @@ async def test_casual_and_rated_challenges_are_not_paired(db_session):
     assert {game.white_player_id, game.black_player_id} == {a.id, c.id}
     assert game.is_rated is False
     assert is_rated_state(await state_manager.get_game_state(game_id)) is False
-    # Рейтинговый вызов остался ждать.
+    # The rated challenge is still waiting.
     assert [p["user_id"] for p in await matchmaker.get_queue_players()] == [b.id]
 
 
@@ -82,7 +82,7 @@ async def test_rated_is_the_default(db_session):
     assert is_rated_state(await state_manager.get_game_state(game_id)) is True
 
 
-# --- приглашение и реванш -----------------------------------------------------------------
+# --- invite and rematch -----------------------------------------------------------------
 
 
 @pytest.mark.parametrize("rated", [True, False])
@@ -110,7 +110,7 @@ async def test_rematch_of_a_casual_game_is_casual(db_session):
     assert (game.white_player_id, game.black_player_id) == (b.id, a.id)
 
 
-# --- итог партии --------------------------------------------------------------------------
+# --- game result --------------------------------------------------------------------------
 
 
 async def test_casual_game_does_not_change_ratings(db_session):
@@ -134,7 +134,7 @@ async def test_casual_game_does_not_change_ratings(db_session):
 async def test_state_recovered_from_db_keeps_the_type(db_session):
     a, b = await _users(db_session, 1500, 1500)
     started = await matchmaker.start_pvp_game(a.id, b.id, *TC, db=db_session, is_rated=False)
-    await state_manager.redis.delete(f"game:{started['game_id']}:state")  # Redis потерял состояние
+    await state_manager.redis.delete(f"game:{started['game_id']}:state")  # Redis lost the state
 
     assert is_rated_state(await state_manager.get_game_state(started["game_id"])) is False
 
@@ -153,11 +153,11 @@ async def test_ws_messages_carry_the_type(db_session):
     assert socket.events("invite_created")[0]["rated"] is False
 
     await _run(a, [{"action": "join_queue", "base_time_ms": 180000, "increment_ms": 0, "rated": False}])
-    # Вызов снимается при отключении — проверяем старт партии из очереди другим путём.
+    # The challenge is removed on disconnect, so the game start from the queue is checked another way.
     await matchmaker.join_queue(a.id, "a", 1500, *TC, db=db_session, rated=False)
     game_id = await matchmaker.join_queue(b.id, "b", 1500, *TC, db=db_session, rated=False)
 
-    # Переподключение: снимок партии сообщает её тип.
+    # Reconnection: the game snapshot reports its type.
     snapshot = (await _run(b, [])).events("match_found")[0]
     assert snapshot["game_id"] == game_id and snapshot["is_rated"] is False
 
@@ -181,7 +181,7 @@ async def test_http_join_and_live_list_report_the_type(
 
 
 async def test_engine_help_is_closed_in_casual_games_too(client, db_session, test_user_1, test_user_2, token_user_1):
-    """Рейтинг не на кону, но напротив человек — подсказки движка так же нечестны."""
+    """No rating is at stake, but a human is on the other side, so engine hints are just as unfair."""
     await matchmaker.start_pvp_game(test_user_1.id, test_user_2.id, *TC, db=db_session, is_rated=False)
 
     response = client.post(

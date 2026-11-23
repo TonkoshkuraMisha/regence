@@ -1,17 +1,17 @@
 # --- FILE: scripts/trace_logs.py ---
 """
-Разбор журналов (src/core/logging_setup.py): показывает хронологию событий по одному признаку — игрок, партия, номер
-запроса, турнир — чтобы воспроизвести жалобу «у меня пропала партия».
+Log analysis (src/core/logging_setup.py): shows the chronology of events by one key - player, game, request
+number, tournament - to reproduce a complaint such as "my game disappeared".
 
-Откуда читает: файлы json-журнала (в разработке — logs/api.jsonl и logs/worker.jsonl, их пишет start_dev.ps1) или
-стандартный ввод (`docker compose logs --no-log-prefix api worker | python scripts/trace_logs.py game_id=7`).
-Строки не в формате json (чужие библиотеки, трассировки) пропускаются.
+Where it reads from: json log files (in development - logs/api.jsonl and logs/worker.jsonl, written by start_dev.ps1) or
+standard input (`docker compose logs --no-log-prefix api worker | python scripts/trace_logs.py game_id=7`).
+Lines not in json format (foreign libraries, tracebacks) are skipped.
 
     python scripts/trace_logs.py game_id=20767 logs/api.jsonl logs/worker.jsonl
     python scripts/trace_logs.py request_id=8906cace68764324 logs/api.jsonl
     python scripts/trace_logs.py user_id=1 --level WARNING logs/api.jsonl
 
-Цепочка по отчёту клиента: найти строку client_error, взять related_request_ids и разобрать каждый номер этой же командой.
+Chain from a client report: find the client_error line, take related_request_ids and trace each number with the same command.
 """
 
 import argparse
@@ -20,12 +20,12 @@ import sys
 from collections.abc import Iterable, Iterator
 
 LEVELS = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
-# Поля, которые не повторяются в хвосте строки: они уже в её начале.
+# Fields that are not repeated in the line's tail: they are already at its start.
 _HEAD_FIELDS = {"ts", "level", "logger", "component", "msg"}
 
 
 def parse_lines(lines: Iterable[str]) -> Iterator[dict]:
-    """Json-записи из строк журнала; не-json пропускаются."""
+    """Json records from log lines; non-json ones are skipped."""
     for line in lines:
         line = line.strip()
         if not line.startswith("{"):
@@ -39,8 +39,8 @@ def parse_lines(lines: Iterable[str]) -> Iterator[dict]:
 
 
 def matches(row: dict, wanted: dict[str, str], min_level: str = "DEBUG") -> bool:
-    """Запись подходит, если все пары поле=значение совпадают (число и строка сравниваются как строки)
-    и её уровень не ниже min_level. Значение в списке (related_request_ids) считается совпадением по вхождению."""
+    """A record matches if all field=value pairs match (a number and a string are compared as strings)
+    and its level is not below min_level. A value in a list (related_request_ids) matches by membership."""
     if LEVELS.index(row.get("level", "INFO")) < LEVELS.index(min_level):
         return False
     for key, value in wanted.items():
@@ -54,7 +54,7 @@ def matches(row: dict, wanted: dict[str, str], min_level: str = "DEBUG") -> bool
 
 
 def render(row: dict) -> str:
-    """Одна строка хронологии: время, уровень, источник, сообщение и остальные поля."""
+    """One chronology line: time, level, source, message and the other fields."""
     tail = " ".join(f"{key}={value}" for key, value in row.items() if key not in _HEAD_FIELDS and key != "exc")
     source = f"{row.get('component', '?')}/{row.get('logger', '?')}"
     line = f"{row.get('ts', '?')} {row.get('level', '?'):<7} {source}: {row['msg']}"
@@ -66,16 +66,16 @@ def render(row: dict) -> str:
 
 
 def trace(lines: Iterable[str], wanted: dict[str, str], min_level: str = "DEBUG") -> list[str]:
-    """Отфильтрованная и упорядоченная по времени хронология (строки уже отрисованы)."""
+    """A filtered and time-ordered chronology (the lines are already rendered)."""
     rows = [row for row in parse_lines(lines) if matches(row, wanted, min_level)]
     rows.sort(key=lambda row: row.get("ts", ""))
     return [render(row) for row in rows]
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Хронология событий из json-журнала Regence")
-    parser.add_argument("filters", nargs="+", help="поле=значение, например game_id=7; дальше — файлы журнала")
-    parser.add_argument("--level", default="DEBUG", choices=LEVELS, help="минимальный уровень")
+    parser = argparse.ArgumentParser(description="Chronology of events from the Regence json log")
+    parser.add_argument("filters", nargs="+", help="field=value, for example game_id=7; then the log files")
+    parser.add_argument("--level", default="DEBUG", choices=LEVELS, help="minimum level")
     args = parser.parse_args(argv)
     wanted: dict[str, str] = {}
     files: list[str] = []
@@ -86,7 +86,7 @@ def main(argv: list[str] | None = None) -> int:
         else:
             files.append(item)
     if not wanted:
-        parser.error("нужен хотя бы один фильтр поле=значение")
+        parser.error("at least one field=value filter is required")
     if files:
         lines: list[str] = []
         for path in files:
@@ -95,7 +95,7 @@ def main(argv: list[str] | None = None) -> int:
     else:
         lines = list(sys.stdin)
     out = trace(lines, wanted, args.level)
-    print("\n".join(out) if out else "ничего не найдено")
+    print("\n".join(out) if out else "nothing found")
     return 0 if out else 1
 
 

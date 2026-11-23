@@ -1,4 +1,4 @@
-// Счёт и внимание (таск 19.7): викторины целиком (верный ответ — по той же логике, что и генерация), «Шахи и взятия».
+// Calculation and attention (task 19.7): whole quizzes (the right answer — by the same logic as generation), "Checks and captures".
 
 import {act, fireEvent, render, screen} from '@testing-library/react';
 import {describe, expect, it, vi} from 'vitest';
@@ -15,8 +15,8 @@ async function settle() {
     for (let i = 0; i < 5; i++) await act(async () => Promise.resolve());
 }
 
-describe('викторины счёта', () => {
-    it.each(['calc_exchange', 'calc_distance', 'calc_square', 'calc_eval', 'calc_compare'] as QuizKind[])('%s: верные ответы — 100 очков', async (kind) => {
+describe('calculation quizzes', () => {
+    it.each(['calc_exchange', 'calc_distance', 'calc_square', 'calc_eval', 'calc_compare'] as QuizKind[])('%s: right answers — 100 points', async (kind) => {
         const games = await loadAllClassics();
         const pool = positionPool(games, []);
         const onFinish = vi.fn();
@@ -34,20 +34,20 @@ describe('викторины счёта', () => {
         expect(onFinish).toHaveBeenCalledWith(100, 0);
     }, 30_000);
 
-    it('неверный ответ — ошибка, правильный подсвечивается', async () => {
+    it('a wrong answer — an error, the right one is highlighted', async () => {
         render(<QuizGame kind="calc_square" seed={2} onFinish={vi.fn()}/>);
         await settle();
         const right = squareQuestion(2, 0).answer ? 'yes' : 'no';
         const wrong = right === 'yes' ? 'no' : 'yes';
         fireEvent.click(screen.getByTestId(`quiz-option-${wrong}`));
-        expect(screen.getByTestId('quiz-score')).toHaveTextContent('Верно: 0 · ошибок: 1');
+        expect(screen.getByTestId('quiz-score')).toHaveTextContent('Right: 0 · mistakes: 1');
         expect(screen.getByTestId(`quiz-option-${right}`).className).toContain('emerald');
     });
 
-    it('после ответа позицию можно разыграть на доске (гонку пешки и короля)', async () => {
+    it('after the answer the position can be played out on the board (a pawn-and-king race)', async () => {
         render(<QuizGame kind="calc_square" seed={2} onFinish={vi.fn()}/>);
         await settle();
-        expect(screen.queryByTestId('explorer-controls')).toBeNull();  // до ответа доска закрыта
+        expect(screen.queryByTestId('explorer-controls')).toBeNull();  // before the answer the board is closed
         fireEvent.click(screen.getByTestId('quiz-option-yes'));
         expect(screen.getByTestId('explorer-back')).toBeDisabled();
         const move = new Chess(squareFen(squareQuestion(2, 0))).moves({verbose: true})[0];
@@ -59,8 +59,8 @@ describe('викторины счёта', () => {
     });
 });
 
-describe('шахи и взятия', () => {
-    it('все верные отметки — 100 за позицию; лишняя — минус; разбор по цветам', async () => {
+describe('checks and captures', () => {
+    it('all right marks — 100 per position; an extra one — minus; review by colours', async () => {
         const games = await loadAllClassics();
         const pool = positionPool(games, []);
         const onFinish = vi.fn();
@@ -73,15 +73,15 @@ describe('шахи и взятия', () => {
                 fireEvent.click(document.querySelector(`[data-square="${uci.slice(2, 4)}"]`)!);
             }
             fireEvent.click(screen.getByTestId('checks-done'));
-            expect(screen.getByTestId('checks-review')).toHaveTextContent('пропущено: 0');
+            expect(screen.getByTestId('checks-review')).toHaveTextContent('missed: 0');
             fireEvent.click(screen.getByTestId('checks-next'));
         }
         expect(onFinish).toHaveBeenCalledWith(300, 0);
     }, 30_000);
 });
 
-describe('«Сравни два хода» (27.9)', () => {
-    it('ход мастера против линии слабее на пешку и больше, разбор после ответа', async () => {
+describe('"Compare two moves" (27.9)', () => {
+    it('a master move against a weaker line by a pawn and more, review after the answer', async () => {
         const games = await loadAllClassics();
         for (let seed = 0; seed < 40; seed++) {
             const q = compareQuestion(games, seed)!;
@@ -92,7 +92,7 @@ describe('«Сравни два хода» (27.9)', () => {
         await settle();
         const q = compareQuestion(games, 3 * 71)!;
         fireEvent.click(screen.getByTestId(`quiz-option-${q.other}`));
-        expect(screen.getByTestId('quiz-explain')).toHaveTextContent('сильнее');
+        expect(screen.getByTestId('quiz-explain')).toHaveTextContent('is stronger');
         expect(screen.getByTestId(`quiz-option-${q.best}`).className).toContain('emerald');
     }, 30_000);
 });

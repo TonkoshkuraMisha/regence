@@ -11,7 +11,7 @@ table = re.findall(r"\{\|.*?\n\|\}", text, flags=re.S)[1]
 
 
 def num(cell: str) -> float:
-    """Преобразует строковую запись очков в число для проверки зачёта финала."""
+    """Converts a string score entry to a number for checking the final's standings."""
     cell = cell.split("\n")[0].strip().replace("½", ".5")
     return float("0" + cell if cell.startswith(".") else cell)
 

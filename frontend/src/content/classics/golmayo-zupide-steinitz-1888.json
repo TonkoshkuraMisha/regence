@@ -1197,12 +1197,10 @@
   }
  ],
  "intro": {
-  "ru": "Шотландская партия, вариант с 4...Qh4, названный именем Стейница. Уже на 5-м ходу чёрные выигрывают пешку e4 с шахом (5...Qxe4+).",
   "uk": "Шотландська партія, варіант із 4...Qh4, названий іменем Стейніца. Уже на 5-му ході чорні виграють пішака e4 із шахом (5...Qxe4+).",
   "en": "A Scotch Game, the 4...Qh4 line that bears Steinitz's name. As early as move 5 Black wins the e4-pawn with check (5...Qxe4+)."
  },
  "summary": {
-  "ru": "Выигранную в дебюте пешку чёрные довели до победы в эндшпиле: ладья 51...Rh2+ и король 53...Kxh4 добивают пешки белых. Урок: материальный перевес из дебюта нужно уметь довести до эндшпиля — там он решает.",
   "uk": "Виграного в дебюті пішака чорні довели до перемоги в ендшпілі: тура 51...Rh2+ і король 53...Kxh4 добивають пішаків білих. Урок: матеріальну перевагу з дебюту треба вміти довести до ендшпілю — там вона вирішує.",
   "en": "Black converted the pawn won in the opening into a win in the endgame: the rook (51...Rh2+) and the king (53...Kxh4) finish off White's pawns. Lesson: you must know how to carry a material edge from the opening into the endgame — that is where it decides."
  }

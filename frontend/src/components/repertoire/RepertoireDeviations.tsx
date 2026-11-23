@@ -1,9 +1,9 @@
-// Отклонения от репертуара в сыгранной партии (таск 20.3) — блок в просмотре своей законченной партии:
-// «на 7-м ходу вы отошли от репертуара» (потренировать позицию / открыть в репертуаре) или «соперник сыграл ход,
-// которого нет в репертуаре» (добавить ответ). Данные — services/repertoire.ts, GET /repertoires/game/{gameId}/deviations
-// (src/services/repertoire_deviations.py). Без входа, в чужой партии и без репертуаров блока нет. Строка
-// отклонения (DeviationItem) общая с карточкой «Клубного тренера» в итоге партии (chessboard/CoachCards.tsx);
-// сам блок подключён в GameViewer.tsx.
+// Repertoire deviations in a played game (task 20.3): a block in the viewer of one's own finished game:
+// "on move 7 you left the repertoire" (train the position / open in the repertoire) or "the opponent played a move
+// that is not in the repertoire" (add a reply). Data is services/repertoire.ts, GET /repertoires/game/{gameId}/deviations
+// (src/services/repertoire_deviations.py). Without sign-in, in someone else's game and without repertoires there is no block. The deviation
+// row (DeviationItem) is shared with the "Club coach" card in the game result (chessboard/CoachCards.tsx);
+// the block itself is connected in GameViewer.tsx.
 
 import {useEffect, useState} from 'react';
 import {Link, useNavigate} from 'react-router-dom';
@@ -13,10 +13,10 @@ import {getToken} from '../../services/authToken';
 import {moveLabel, repertoireApi} from '../../services/repertoire';
 import type {Deviation} from '../../services/repertoire';
 
-// Сколько отклонений показывать в блоке: первые два (по одному на репертуар), чтобы блок не разрастался.
+// How many deviations to show in the block: the first two (one per repertoire), so that the block does not grow.
 const SHOWN = 2;
 
-/** Блок отклонений партии gameId; ошибка запроса не показывается — блок просто отсутствует. */
+/** Deviation block of game gameId; a request error is not shown: the block is simply absent. */
 export function RepertoireDeviations({gameId}: { gameId: string }) {
     const {t} = useI18n();
     const [results, setResults] = useState<Deviation[]>([]);
@@ -41,8 +41,8 @@ export function RepertoireDeviations({gameId}: { gameId: string }) {
 }
 
 /**
- * Одно отклонение: что произошло и что сделать — потренировать позицию (своя ошибка), добавить ответ (новый ход
- * соперника), открыть линию в репертуаре. Общий для блока в просмотре партии и карточки «Клубного тренера».
+ * One deviation: what happened and what to do: train the position (one's own mistake), add a reply (a new opponent
+ * move), open the line in the repertoire. Shared by the block in the game viewer and the "Club coach" card.
  */
 export function DeviationItem({deviation: d}: { deviation: Deviation }) {
     const {t} = useI18n();

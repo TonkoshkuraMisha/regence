@@ -1,4 +1,4 @@
-"""Распознавание тем без тега базы (таск 27.8): каждое правило на построенной позиции, и пустой ответ на обычной."""
+"""Theme recognition without a database tag (task 27.8): each rule on a built position, empty answer on an ordinary one."""
 
 import chess
 
@@ -35,24 +35,24 @@ def test_tag_combinations():
 def test_ordinary_position_gets_nothing_and_bad_input_is_safe():
     assert detect("r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3", ["f1c4", "g8f6"], []) == []
     assert detect("not a fen", ["e2e4"], []) == []
-    assert detect("6k1/8/6K1/8/8/8/8/R7 b - - 0 1", ["g8h8", "a1a7"], []) == []  # не мат — без темы
+    assert detect("6k1/8/6K1/8/8/8/8/R7 b - - 0 1", ["g8h8", "a1a7"], []) == []  # not a mate - no theme
 
 
-# --- Дополнительное покрытие: каждое правило на минимальной построенной позиции ---
+# --- Additional coverage: each rule on a minimal constructed position ---
 
 
 
 
 def test_passed_pawn_blocked_by_enemy_neighbour():
     board = chess.Board("8/p7/8/1P6/8/8/8/4K2k w - - 0 1")
-    assert not _passed(board, chess.B5, chess.WHITE)  # чёрная пешка a7 впереди на соседней вертикали
+    assert not _passed(board, chess.B5, chess.WHITE)  # the black pawn on a7 is ahead on the adjacent file
     assert _passed(chess.Board("8/7p/8/1P6/8/8/8/4K2k w - - 0 1"), chess.B5, chess.WHITE)
 
 
 def test_illegal_or_short_line_is_ignored():
     fen = "rnbqkbnr/pppp1ppp/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2"
-    assert detect(fen, ["g8f6", "a1a8"], ["opening"]) == []  # нелегальный ход решения
-    assert detect(fen, ["g8f6"], ["opening"]) == []  # решения нет вовсе
+    assert detect(fen, ["g8f6", "a1a8"], ["opening"]) == []  # an illegal solution move
+    assert detect(fen, ["g8f6"], ["opening"]) == []  # there is no solution at all
 
 
 def test_double_bishop_sacrifice():
@@ -105,7 +105,7 @@ def test_rook_lift():
 
 
 def test_wrong_bishop_seventh_rank_and_isolated_pawn():
-    # Белые: слон c1 (тёмнопольный) и пешка a5, поле превращения a8 светлое — «не тот» слон, защищается чёрный.
+    # White: bishop c1 (dark-squared) and pawn a5, the promotion square a8 is light - the "wrong" bishop, Black defends.
     assert "wrong_bishop" in detect("8/8/1K6/P7/8/8/8/2B4k w - - 0 1", ["b6c6", "h1g1"], [])
     codes = detect("4k3/p6p/8/8/3P4/8/8/R3K3 b - - 0 1", ["h7h6", "a1a7"], [])
     assert "seventh_rank" in codes and "isolated_pawn" in codes

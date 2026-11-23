@@ -1,5 +1,5 @@
 # --- FILE: tests/test_opening_explorer.py ---
-"""Справочник дебютов (таск 16.2): ходы со статистикой, название дебюта, партии мастеров только из архива."""
+"""Opening explorer (task 16.2): moves with statistics, opening name, master games only from the archive."""
 
 import pytest
 
@@ -22,7 +22,7 @@ async def indexed(db_session, test_user_1, test_user_2):
         (morphy, anderssen, "1. e4 e5 2. Nf3 Nc6 3. Bb5", "1-0", "1858.12.20"),
         (anderssen, morphy, "1. e4 e5 2. Nf3 Nc6 3. Bc4", "0-1", "1858.12.27"),
         (morphy, anderssen, "1. e4 c5", "1/2-1/2", "1859.01.01"),
-        (test_user_1, test_user_2, "1. e4 e5 2. Nf3 Nc6 3. Bb5", "1-0", None),  # игроки клуба — в статистике, не в «мастерах»
+        (test_user_1, test_user_2, "1. e4 e5 2. Nf3 Nc6 3. Bb5", "1-0", None),  # club players: in the stats, not in "masters"
     ]
     for white, black, moves, result, date in games:
         game = Game(white_player_id=white.id, black_player_id=black.id, status=GameStatus.COMPLETED, result=result,
@@ -37,7 +37,7 @@ async def test_moves_with_statistics_and_opening_names(client, indexed):
     body = client.post(API, json={"moves": ["e2e4", "e7e5", "g1f3", "b8c6"]}).json()
     assert body["opening"]["name"].startswith("King's Knight Opening")
     moves = {m["san"]: m for m in body["moves"]}
-    assert list(moves) == ["Bb5", "Bc4"]  # от частого к редкому
+    assert list(moves) == ["Bb5", "Bc4"]  # from most to least frequent
     assert (moves["Bb5"]["games"], moves["Bb5"]["white_wins"]) == (2, 2)
     assert moves["Bb5"]["opening"]["name"] == "Ruy Lopez"
     assert (moves["Bc4"]["black_wins"], moves["Bc4"]["opening"]["eco"]) == (1, "C50")

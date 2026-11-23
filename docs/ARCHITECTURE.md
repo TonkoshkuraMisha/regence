@@ -1,428 +1,468 @@
 <!-- --- FILE: docs/ARCHITECTURE.md --- -->
 
-# Как устроен regence: что работает, как и откуда берётся
+# How regence works: what runs, how, and where the data comes from
 
-Путеводитель для владельца проекта и для разработчика: по каждому разделу сайта — что он делает, в каких файлах это
-написано, откуда берутся данные и каким тестом это проверяется. Подробные правила каждого раздела записаны в начале
-его модуля (докстринг); этот документ — карта, которая к ним ведёт. Состояние на 17.11.2026 (спринт 33).
+A guide for the project owner and for developers: for each section of the site, what it does, which files implement it,
+where its data comes from and which test checks it. The detailed rules of each section are written at the top of its
+module (the docstring); this document is the map that leads to them. State as of 17.11.2026 (sprint 33).
 
-Связанные документы: запуск — `QUICKSTART.md`, развёртывание — `DEPLOY.md`, работа с ветками — `WORKFLOW.md`, план и
-история задач — `ToDo.md`, лицензии и источники — `ATTRIBUTION.md`, краткие правила для ИИ-помощника — `CLAUDE.md`.
+Related documents: launch — `QUICKSTART.md`, deployment — `DEPLOY.md`, working with branches — `WORKFLOW.md`, plan and
+task history — `ToDo.md`, licences and sources — `ATTRIBUTION.md`, short rules for the AI assistant — `CLAUDE.md`.
 
-## 1. Из чего состоит система
+## 1. What the system consists of
 
-| Часть | Что это | Где код |
+| Part | What it is | Where the code is |
 |---|---|---|
-| Клиент | Одностраничное приложение: React 19, TypeScript, Vite, Tailwind | `frontend/src/` |
-| API | FastAPI: HTTP-эндпоинты и один WebSocket для партий, лобби и уведомлений | `src/api/`, `src/main.py` |
-| Сервисы | Правила и расчёты, не зависящие от HTTP | `src/services/` |
-| База | PostgreSQL 16 через SQLAlchemy 2.0 (асинхронно), миграции Alembic | `src/models/`, `migrations/versions/` |
-| Redis | Состояние идущих партий, лобби, присутствие, лимиты, кэш оценок, брокер Celery | ключи — в §3 |
-| Фоновые задачи | Celery: очередь `analysis` (разбор партий, индекс позиций, напоминания) и `simulation` (партии ботов) | `src/worker/` |
-| Движок | Stockfish, только через пул процессов | `src/services/engine_pool.py` |
+| Client | Single-page application: React 19, TypeScript, Vite, Tailwind | `frontend/src/` |
+| API | FastAPI: HTTP endpoints and one WebSocket for games, the lobby and notifications | `src/api/`, `src/main.py` |
+| Services | Rules and calculations that do not depend on HTTP | `src/services/` |
+| Database | PostgreSQL 16 via SQLAlchemy 2.0 (async), Alembic migrations | `src/models/`, `migrations/versions/` |
+| Redis | State of games in progress, the lobby, presence, rate limits, the evaluation cache, the Celery broker | keys — in §3 |
+| Background tasks | Celery: the `analysis` queue (game review, position index, reminders) and `simulation` (bot games) | `src/worker/` |
+| Engine | Stockfish, only through the process pool | `src/services/engine_pool.py` |
 
-В продакшене это девять сервисов `docker-compose.prod.yml`: `web` (nginx со статикой клиента и прокси к API), `api`,
-`worker`, `worker-simulation`, `beat` (расписание Celery), `migrate`, `db`, `redis` и `backup`. Подробно —
-`DEPLOY.md`.
+In production these are the nine services of `docker-compose.prod.yml`: `web` (nginx with the client's static files and
+a proxy to the API), `api`, `worker`, `worker-simulation`, `beat` (the Celery schedule), `migrate`, `db`, `redis` and
+`backup`. Details — `DEPLOY.md`.
 
-## 2. Как проходит запрос
+## 2. How a request is handled
 
-1. Клиент вызывает эндпоинт (`frontend/src/services/*.ts` — по файлу на раздел) или шлёт действие в WebSocket
-   (`frontend/src/services/gameSocket.ts`). Компоненты в сеть сами не ходят: все сервисы зовут общий
-   `services/http.ts` — `apiRequest` (ответ JSON) или `apiFetch` (ответ целиком: текст PGN, заголовки), `apiUrl` —
-   адрес для ссылок. Он добавляет токен входа и Content-Type, а отказ превращает в `UiError` с текстом по коду
-   сервера (`services/apiErrors.ts`); сеть недоступна — «нет связи».
-2. Маршрут в `src/api/<раздел>.py` проверяет вход (`src/api/deps.py`), лимит запросов (`src/api/rate_limit.py`) и,
-   если эндпоинт выдаёт оценку или ход движка, — правило честной игры (`src/api/fair_play.py`).
-3. Маршрут вызывает сервис из `src/services/`; сервис читает и пишет базу через модели `src/models/`.
-4. Ответ — данные и **коды**, не тексты. Отказ — код из реестра `src/core/errors.py` с параметрами; клиент собирает
-   текст на языке игрока из каталогов `frontend/src/i18n/messages/{en,uk,ru}.ts`.
+1. The client calls an endpoint (`frontend/src/services/*.ts` — one file per section) or sends an action over the
+   WebSocket (`frontend/src/services/gameSocket.ts`). Components do not touch the network themselves: all services call
+   the shared `services/http.ts` — `apiRequest` (JSON response) or `apiFetch` (the whole response: PGN text, headers),
+   `apiUrl` — the address for links. It adds the sign-in token and Content-Type, and turns a failure into a `UiError`
+   with text chosen by the server's code (`services/apiErrors.ts`); if the network is unavailable — "no connection".
+2. The route in `src/api/<section>.py` checks the input (`src/api/deps.py`), the request rate limit
+   (`src/api/rate_limit.py`) and, if the endpoint returns an evaluation or an engine move, the fair play rule
+   (`src/api/fair_play.py`).
+3. The route calls a service from `src/services/`; the service reads and writes the database through the models in
+   `src/models/`.
+4. The response is data and **codes**, not texts. A failure is a code from the registry `src/core/errors.py` with
+   parameters; the client assembles the text in the player's language from the catalogs
+   `frontend/src/i18n/messages/{en,uk}.ts`.
 
-Список всех маршрутов собирает `src/main.py` (`create_app`); в разработке их видно на `/docs`.
+The list of all routes is assembled by `src/main.py` (`create_app`); in development they are visible at `/docs`.
 
-**WebSocket** (`src/api/websockets.py`, адрес `/api/v1/ws/matchmaking`). Вход — по одноразовому тикету
-(`POST /auth/ws-ticket`), не по токену в адресе. Каждое сообщение клиента — действие (`join_queue`, `make_move`,
-`resign`, `offer_draw`, `berserk`, `chat_message` и другие): у каждого своя функция-обработчик в `ACTION_HANDLERS`,
-лимит частоты по группам (`WS_RATE_LIMITS`) и короткая сессия базы на одно действие — соединение с базой
-освобождается до отправки ответа в сеть (`ActionContext.release_db`).
+**WebSocket** (`src/api/websockets.py`, address `/api/v1/ws/matchmaking`). Sign-in is by a one-time ticket
+(`POST /auth/ws-ticket`), not by a token in the address. Every client message is an action (`join_queue`, `make_move`,
+`resign`, `offer_draw`, `berserk`, `chat_message` and others): each has its own handler function in `ACTION_HANDLERS`,
+a rate limit by group (`WS_RATE_LIMITS`) and a short database session per action — the database connection is released
+before the response is sent to the network (`ActionContext.release_db`).
 
-## 3. Где лежат данные
+## 3. Where the data lives
 
-### PostgreSQL (источник правды для всего, что должно сохраниться)
+### PostgreSQL (the source of truth for everything that must persist)
 
-| Область | Таблицы | Модели |
+| Area | Tables | Models |
 |---|---|---|
-| Игроки | `users`, `email_tokens`, `user_achievements`, `product_events` | `user.py`, `email_token.py`, `achievement.py`, `product_event.py` |
-| Партии | `games`, `moves`, `imported_games` | `game.py`, `move.py`, `imported_game.py` |
-| Дебюты и позиции | `position_stats`, `position_games`, `repertoires`, `repertoire_moves`, `repertoire_cards` | `position.py`, `repertoire.py` |
-| Задачи и тренировки | `puzzles`, `puzzle_themes`, `puzzle_attempts`, `theme_progress`, `personal_puzzles`, `defense_drills`, `drill_records`, `guess_positions`, `lesson_progress`, `trainer_results`, `exam_results` | `puzzle.py`, `guess.py`, `lesson.py`, `trainer.py` |
-| Боты | `bot_personalities`, `bot_opening_stats`, `bot_ratings`, `bot_rivals`, `bot_rival_stats`, `bot_tunings`, `bot_tuning_log`, `ladder_beaten` | `personality.py`, `bot_memory.py`, `ladder.py` |
-| Турниры с ботами | `tournaments`, `tournament_players`, `tournament_games` | `tournament.py` |
-| Арены между людьми | `arenas`, `arena_players`, `arena_games`, `arena_reminders`, `arena_awards` | `arena.py` |
-| Команды | `teams`, `team_members` | `team.py` |
-| Библиотека и архив | `library_collections`, `library_games`, `library_game_collections`, `library_annotations`, `collection_entries` | `library.py`, `collection.py` |
-| Общение | `follows`, `notifications`, `direct_messages`, `blocks`, `hidden_conversations`, `posts`, `post_comments`, `post_likes`, `reports`, `study_materials` | `social.py`, `moderation.py`, `study.py` |
-| Бета | `invites`, `feedback` | `beta.py` |
+| Players | `users`, `email_tokens`, `user_achievements`, `product_events` | `user.py`, `email_token.py`, `achievement.py`, `product_event.py` |
+| Games | `games`, `moves`, `imported_games` | `game.py`, `move.py`, `imported_game.py` |
+| Openings and positions | `position_stats`, `position_games`, `repertoires`, `repertoire_moves`, `repertoire_cards` | `position.py`, `repertoire.py` |
+| Puzzles and training | `puzzles`, `puzzle_themes`, `puzzle_attempts`, `theme_progress`, `personal_puzzles`, `defense_drills`, `drill_records`, `guess_positions`, `lesson_progress`, `trainer_results`, `exam_results` | `puzzle.py`, `guess.py`, `lesson.py`, `trainer.py` |
+| Bots | `bot_personalities`, `bot_opening_stats`, `bot_ratings`, `bot_rivals`, `bot_rival_stats`, `bot_tunings`, `bot_tuning_log`, `ladder_beaten` | `personality.py`, `bot_memory.py`, `ladder.py` |
+| Tournaments with bots | `tournaments`, `tournament_players`, `tournament_games` | `tournament.py` |
+| Arenas between humans | `arenas`, `arena_players`, `arena_games`, `arena_reminders`, `arena_awards` | `arena.py` |
+| Teams | `teams`, `team_members` | `team.py` |
+| Library and archive | `library_collections`, `library_games`, `library_game_collections`, `library_annotations`, `collection_entries` | `library.py`, `collection.py` |
+| Social | `follows`, `notifications`, `direct_messages`, `blocks`, `hidden_conversations`, `posts`, `post_comments`, `post_likes`, `reports`, `study_materials` | `social.py`, `moderation.py`, `study.py` |
+| Beta | `invites`, `feedback` | `beta.py` |
 
-Схему меняют только миграции (`migrations/versions/`); CI применяет их на пустой базе и командой `alembic check`
-сверяет с моделями. Отчёт о состоянии схемы и открытые решения по ней — `docs/db-audit-2026-11-17.md`.
+The schema is changed only by migrations (`migrations/versions/`); CI applies them to an empty database and checks them
+against the models with the `alembic check` command. The report on the state of the schema and the open decisions about
+it — `docs/db-audit-2026-11-17.md`.
 
-### Redis (то, что живёт недолго или должно быть общим для нескольких процессов API)
+### Redis (what lives briefly or must be shared by several API processes)
 
-| Что | Ключи | Кто пишет |
+| What | Keys | Who writes |
 |---|---|---|
-| Состояние идущей партии: позиция, часы, версия, предложение ничьей, берсерк, расход квоты лага | `game:{id}:state`, `game:{id}:commands`, `game:{id}:moves` | `game_state.py` |
-| Какие партии идут и когда у каждой ближайший срок (флаг, неявка, брошенная партия) | `active_games`, `game_deadlines`, `games:pending_finish`, `user:{id}:current_game` | `game_state.py` |
-| Лобби и приватные вызовы | `queue:prefs:{id}` и ключи очереди | `matchmaker.py` |
-| Присутствие и зрители | `presence:user:{id}`, `game:{id}:spectators`, каналы `user:{id}` | `connection_manager.py` |
-| Ожидание пары в арене | `arena:{id}:waiting` | `arena.py` |
-| Долгий вход | `refresh:<хэш>` | `auth_sessions.py` |
-| Сессии честной партии (лестница, турнир) и запросы движка во время партии | ключи `fairplay:*`, сессии лестницы | `fair_play.py`, `ladder.py` |
-| Кэш оценок позиций, ответы эндшпильных таблиц, активная задача игрока, комнаты разбора | — | `move_check.py`, `tablebase.py`, `puzzles.py`, `study_room.py` |
-| Лимиты запросов | — | `rate_limit.py` |
+| State of a game in progress: position, clocks, version, draw offer, berserk, lag quota spent | `game:{id}:state`, `game:{id}:commands`, `game:{id}:moves` | `game_state.py` |
+| Which games are in progress and the nearest deadline of each (flag, no-show, abandoned game) | `active_games`, `game_deadlines`, `games:pending_finish`, `user:{id}:current_game` | `game_state.py` |
+| Lobby and private challenges | `queue:prefs:{id}` and the queue keys | `matchmaker.py` |
+| Presence and spectators | `presence:user:{id}`, `game:{id}:spectators`, `user:{id}` channels | `connection_manager.py` |
+| Waiting for a pairing in an arena | `arena:{id}:waiting` | `arena.py` |
+| Long-lived sign-in | `refresh:<hash>` | `auth_sessions.py` |
+| Fair-play game sessions (ladder, tournament) and engine requests during a game | `fairplay:*` keys, ladder sessions | `fair_play.py`, `ladder.py` |
+| Position evaluation cache, endgame tablebase responses, the player's active puzzle, review rooms | — | `move_check.py`, `tablebase.py`, `puzzles.py`, `study_room.py` |
+| Request rate limits | — | `rate_limit.py` |
 
-Партия пишется в базу по ходу игры (`sync_authoritative_state_to_db`) и окончательно — при завершении; если состояние
-в Redis пропало, оно восстанавливается из базы (`_recover_state_from_db`). Долгие сессии входа снимком базы не
-покрываются: сброс Redis выводит всех из них.
+A game is written to the database as it is played (`sync_authoritative_state_to_db`) and finally when it ends; if the
+state in Redis is lost, it is restored from the database (`_recover_state_from_db`). Long-lived sign-in sessions are not
+covered by a database snapshot: a Redis reset signs everyone out.
 
-### Файлы в репозитории
+### Files in the repository
 
-| Файл | Что в нём | Чем собран |
+| File | What it contains | How it is built |
 |---|---|---|
-| `data/puzzles/lichess_subset.csv.gz`, `lichess_themes_extra.csv.gz` | Выборка задач открытой базы lichess (CC0) | `scripts/dev/build_puzzle_subset.py`, `build_theme_extra.py` |
-| `data/puzzles/defense_drills.csv.gz` | Защитные упражнения | `scripts/dev/build_defense_drills.py` |
-| `data/drills/seeds.json` | Проверенные позиции упражнений-генераторов | `scripts/dev/build_drill_seeds.py` |
-| `src/services/data/openings.tsv` | Таблица дебютов (CC0) | `scripts/build_openings.py` |
-| `src/services/data/level_exams.json` | Экзамены уровней Большого курса | `scripts/build_level_exams.py` |
-| `src/services/bots/books/*.json` (22) | Дебютные книги ботов из партий мастеров | `scripts/build_opening_books.py`, `build_master_books.py` |
-| `src/services/bots/calibration.json` | Измеренная сила ботов | `scripts/calibrate_bots.py` |
-| `src/services/civility_lexicon.txt` | Словарь фильтра оскорблений | вручную |
-| `frontend/src/content/endgames.json` | Упражнения эндшпильного тренажёра, сверенные с таблицами | `scripts/build_endgames.py` |
-| `frontend/src/content/lessons/*.json` | Уроки школы на трёх языках | вручную; проверка — `validate.ts` и `scripts/verify_lessons.py` |
-| `frontend/src/i18n/messages/{en,uk,ru}.ts` | Все тексты интерфейса на трёх языках | вручную; ключи сверяет тест |
+| `data/puzzles/lichess_subset.csv.gz`, `lichess_themes_extra.csv.gz` | A selection of puzzles from the open lichess database (CC0) | `scripts/dev/build_puzzle_subset.py`, `build_theme_extra.py` |
+| `data/puzzles/defense_drills.csv.gz` | Defence exercises | `scripts/dev/build_defense_drills.py` |
+| `data/drills/seeds.json` | Verified positions for the generator exercises | `scripts/dev/build_drill_seeds.py` |
+| `src/services/data/openings.tsv` | Opening table (CC0) | `scripts/build_openings.py` |
+| `src/services/data/level_exams.json` | Level exams of the Grand Course | `scripts/build_level_exams.py` |
+| `src/services/bots/books/*.json` (22) | Bot opening books from masters' games | `scripts/build_opening_books.py`, `build_master_books.py` |
+| `src/services/bots/calibration.json` | Measured bot strength | `scripts/calibrate_bots.py` |
+| `src/services/civility_lexicon.txt` | Dictionary of the insult filter | by hand |
+| `frontend/src/content/endgames.json` | Exercises of the endgame trainer, checked against tablebases | `scripts/build_endgames.py` |
+| `frontend/src/content/lessons/*.json` | School lessons in two languages (en, uk) | by hand; checked by `validate.ts` and `scripts/verify_lessons.py` |
+| `frontend/src/i18n/messages/{en,uk}.ts` | All interface texts in two languages (en, uk) | by hand; keys are checked by a test |
 
-Задачи загружает в базу сервис `migrate` при каждом развёртывании (`scripts/import_puzzles.py`). Партии библиотеки
-владельца и архив мастеров в репозиторий не входят — их загружают скрипты (`DEPLOY.md`, раздел 9).
+Puzzles are loaded into the database by the `migrate` service at every deployment (`scripts/import_puzzles.py`). The
+owner's library games and the masters' archive are not part of the repository — they are loaded by scripts (`DEPLOY.md`,
+section 9).
 
-### Внешние сервисы
+### External services
 
-Сервер обращается наружу только в четырёх случаях: эндшпильные таблицы (`TABLEBASE_URL`, уходит только позиция),
-импорт партий игрока с lichess и chess.com (уходит ник, который игрок ввёл сам), почта по SMTP, Sentry (если задан
-`SENTRY_DSN`). Что именно и кому — `ATTRIBUTION.md`, раздел «Внешние сервисы».
+The server reaches out only in four cases: endgame tablebases (`TABLEBASE_URL`, only the position is sent), import of a
+player's games from lichess and chess.com (the nickname the player entered is sent), mail over SMTP, Sentry (if
+`SENTRY_DSN` is set). What exactly and to whom — `ATTRIBUTION.md`, section "External services".
 
-## 4. Разделы сайта
+## 4. Sections of the site
 
-У каждого раздела: что делает → файлы → откуда данные → чем проверяется. Имена тестов — файлы `tests/test_<имя>.py`.
+For each section: what it does → files → where the data comes from → how it is checked. Test names are the files
+`tests/test_<name>.py`.
 
-### 4.1. Вход и учётная запись
+### 4.1. Sign-in and account
 
-- **Что.** Регистрация по имени и паролю, вход, долгая сессия, смена пароля, необязательный e-mail со сбросом
-  пароля, выгрузка своих данных, удаление аккаунта (анонимизация: партии остаются у соперников без имени).
-- **Файлы.** `src/api/auth.py`, `src/api/account.py`, `src/core/security.py` (хэш пароля, JWT),
-  `src/services/auth_sessions.py`, `email_links.py`, `mailer.py`, `account.py`, `onboarding.py`, `legal.py` (согласие с условиями при регистрации, `/privacy`); клиент —
-  `services/authToken.ts`, `services/account.ts` (вход, регистрация, почта, пароль, выгрузка, удаление),
-  `components/AuthModal.tsx`, `components/Settings.tsx`, `components/EmailLinkPages.tsx`.
-- **Как.** Короткий access-токен (15 минут) живёт только в памяти страницы; долгий вход держит refresh-токен в cookie
-  HttpOnly, в Redis хранится только его хэш. Смена пароля и «выйти везде» увеличивают `users.token_version` — все
-  прежние токены перестают действовать.
-- **Тесты.** `auth_sessions`, `auth_hardening`, `token_lifecycle`, `account`, `email_links`, `onboarding`.
+- **What.** Registration by name and password, sign-in, long-lived session, password change, optional e-mail with
+  password reset, export of one's own data, account deletion (anonymisation: the games stay with the opponents without
+  a name).
+- **Files.** `src/api/auth.py`, `src/api/account.py`, `src/core/security.py` (password hash, JWT),
+  `src/services/auth_sessions.py`, `email_links.py`, `mailer.py`, `account.py`, `onboarding.py`, `legal.py` (consent to
+  the terms at registration, `/privacy`); client — `services/authToken.ts`, `services/account.ts` (sign-in,
+  registration, e-mail, password, export, deletion), `components/AuthModal.tsx`, `components/Settings.tsx`,
+  `components/EmailLinkPages.tsx`.
+- **How.** A short-lived access token (15 minutes) lives only in the page's memory; the long-lived sign-in keeps a
+  refresh token in an HttpOnly cookie, and only its hash is stored in Redis. A password change and "sign out
+  everywhere" increment `users.token_version` — all previous tokens stop working.
+- **Tests.** `auth_sessions`, `auth_hardening`, `token_lifecycle`, `account`, `email_links`, `onboarding`.
 
-### 4.2. Партия между людьми
+### 4.2. A game between humans
 
-- **Что.** Лобби с вызовами, автоподбор, приглашение по ссылке, рейтинговые и товарищеские партии, часы с добавкой,
-  предходы, ничья, сдача, реванш, зрители, чат, фора (материальная, по времени, «песочные часы» — время ходящего
-  уходит сопернику, флаг `games.hourglass`), шахматы Фишера.
-- **Файлы.** `src/api/websockets.py` (действия), `src/services/matchmaker.py` (лобби и старт партии),
-  `game_state.py` (позиция, часы, завершение), `game_engine.py` (правила: легальность, итог, флаг), `rating.py`,
-  `connection_manager.py`, `odds.py`, `chess960.py`; клиент — `components/Chessboard.tsx` и хуки в
+- **What.** A lobby with challenges, automatic matching, an invitation by link, rated and casual games, clocks with an
+  increment, premoves, draws, resignation, rematch, spectators, chat, odds (material, time, "hourglass" — the mover's
+  time goes to the opponent, the `games.hourglass` flag), Fischer random chess.
+- **Files.** `src/api/websockets.py` (actions), `src/services/matchmaker.py` (lobby and game start),
+  `game_state.py` (position, clocks, finish), `game_engine.py` (rules: legality, result, flag), `rating.py`,
+  `connection_manager.py`, `odds.py`, `chess960.py`; client — `components/Chessboard.tsx` and the hooks in
   `components/chessboard/hooks/` (`useGameSocket.ts`, `useClock.ts`, `usePremoves.ts`).
-- **Как идёт ход.** `make_move` → `GameStateManager.process_atomic_move`: в одной транзакции Redis (WATCH/MULTI)
-  проверяются очередь хода, версия состояния и легальность, списывается время, записывается новая позиция. Один и тот
-  же ход, присланный дважды, применяется один раз (`command_id`). Затем ход рассылается обоим игрокам и зрителям.
-- **Часы.** Время идёт только у стороны, которая ходит, и считается сервером от момента предыдущего хода; разрыв
-  связи часы не останавливает. **Квота лага:** клиент сообщает, сколько думал над ходом; разницу с временем сервера
-  (задержку сети) сервер возвращает игроку — не больше 300 мс за ход и 2 с за партию (`LAG_PER_MOVE_MS`,
-  `LAG_PER_GAME_MS`), и флаг падает с отсрочкой на остаток квоты.
-- **Конец партии.** Мат, пат и ничьи по правилам определяет `game_engine.py`; флаг, неявку на первый ход (30 с) и
-  брошенную партию (игрок отключён 3 минуты) — цикл `check_timeouts_loop`, который ведёт один процесс-лидер. Завершить
-  партию может только один из претендентов (`claim_game_end`). Итог пишет `finish_game`: рейтинг, архив, телеметрия
-  античита, очки арены, индекс позиций и разбор — в фоне.
-- **Рейтинг.** Отдельный для пули, блица, рапида и классики; категория — по оценке длительности «база + 40 × добавка»
-  (границы 3, 8 и 25 минут). Формула Эло, K = 40 первые 30 партий в категории, затем 20, от 2400 — 10.
-- **Тесты.** `game_state`, `game_moves_server`, `game_end_atomicity`, `game_end_reconciliation`, `disconnect_clock`,
+- **How a move goes.** `make_move` → `GameStateManager.process_atomic_move`: in a single Redis transaction
+  (WATCH/MULTI) the turn order, the state version and legality are checked, time is deducted and the new position is
+  recorded. The same move sent twice is applied once (`command_id`). Then the move is broadcast to both players and the
+  spectators.
+- **Clocks.** Time runs only for the side to move and is computed by the server from the moment of the previous move; a
+  lost connection does not stop the clock. **Lag quota:** the client reports how long it thought over the move; the
+  difference from the server's time (network delay) is returned to the player by the server — no more than 300 ms per
+  move and 2 s per game (`LAG_PER_MOVE_MS`, `LAG_PER_GAME_MS`), and the flag falls with a delay equal to the remainder
+  of the quota.
+- **End of the game.** Checkmate, stalemate and draws by the rules are determined by `game_engine.py`; the flag, a
+  no-show for the first move (30 s) and an abandoned game (the player disconnected for 3 minutes) are handled by the
+  `check_timeouts_loop` cycle, run by a single leader process. Only one of the claimants can finish the game
+  (`claim_game_end`). The result is written by `finish_game`: rating, archive, anti-cheat telemetry, arena points,
+  position index and review — in the background.
+- **Rating.** Separate for bullet, blitz, rapid and classical; the rating category is determined by the estimated
+  duration "base + 40 × increment" (boundaries 3, 8 and 25 minutes). The Elo formula, K = 40 for the first 30 games in
+  a category, then 20, from 2400 — 10.
+- **Tests.** `game_state`, `game_moves_server`, `game_end_atomicity`, `game_end_reconciliation`, `disconnect_clock`,
   `timeouts_loop`, `multiworker`, `matchmaking_rules`, `rating_categories`, `casual_games`, `odds_pvp`,
-  `chess960_pvp`, `ws_rate_limit`, `ws_db_sessions`, `arena_berserk_lag` (квота лага); браузер — `e2e/pvp-game.e2e.ts`.
+  `chess960_pvp`, `ws_rate_limit`, `ws_db_sessions`, `arena_berserk_lag` (lag quota); browser —
+  `e2e/pvp-game.e2e.ts`.
 
-### 4.3. Честная игра и античит
+### 4.3. Fair play and anti-cheat
 
-- **Правило.** Во время своей рейтинговой партии игрок не получает от сервера оценок и ходов движка: все такие
-  эндпоинты закрыты зависимостью `forbid_engine_help_during_game` (`src/api/fair_play.py`). Список эндпоинтов —
-  `CLAUDE.md`, правило 2. Запрос без токена с адреса, с которого сейчас кто-то играет, тоже получает отказ.
-- **Античит** (`src/services/anticheat.py`). После партии по телеметрии ходов считается штраф к фактору доверия
-  игрока (`users.trust_factor`, начинается со 100): ровный «машинный» ритм ходов по часам сервера — основной сигнал,
-  потеря фокуса окна только усиливает его. Ниже 30 — флаг `is_cheater` и заявка модератору на проверку; решает
-  человек (`src/services/moderation.py`), игрок может подать апелляцию.
-- **Телеметрия ходов** (таблица `moves`) — только буфер для античита: сводка по сторонам сразу пишется в
-  `games.telemetry_summary`, а сырые строки удаляет плановая задача `archive_move_telemetry` через 90 дней после
-  партии (срок апелляции, `src/services/telemetry_retention.py`).
-- **Тесты.** `fair_play`, `anticheat`, `engine_endpoints`, `moderation`, `telemetry_retention`.
+- **The rule.** During their own rated game the player gets no evaluations or engine moves from the server: all such
+  endpoints are guarded by the dependency `forbid_engine_help_during_game` (`src/api/fair_play.py`). The list of
+  endpoints — `CLAUDE.md`, rule 2. A request without a token from an address from which someone is currently playing
+  is also refused.
+- **Anti-cheat** (`src/services/anticheat.py`). After the game, a penalty to the player's trust factor
+  (`users.trust_factor`, starting at 100) is computed from the move telemetry: an even "machine" rhythm of moves by the
+  server's clock is the main signal, window focus loss only strengthens it. Below 30 — the `is_cheater` flag and a
+  review request to the moderator; a human decides (`src/services/moderation.py`), and the player may file an appeal.
+- **Move telemetry** (the `moves` table) is only a buffer for the anti-cheat: the per-side summary is written at once to
+  `games.telemetry_summary`, and the raw rows are deleted by the scheduled task `archive_move_telemetry` 90 days after
+  the game (the appeal period, `src/services/telemetry_retention.py`).
+- **Tests.** `fair_play`, `anticheat`, `engine_endpoints`, `moderation`, `telemetry_retention`.
 
-### 4.4. Движок Stockfish
+### 4.4. The Stockfish engine
 
-- **Правило.** Движок вызывается только через `get_engine_pool(path).acquire()` (`src/services/engine_pool.py`): не
-  больше `ENGINE_POOL_SIZE` процессов, запрос сверх предела ждёт и получает отказ «пул занят», а не новый процесс.
-- **Кто им пользуется.** Ход бота, разбор партии, наставник, «найти мат», симуляция турниров, проверка задач.
-  Время работы по видам — метрика `regence_engine_seconds_total{kind}`.
-- **В тестах и CI движка нет:** расчёты проверяются на подменах или на статическом анализаторе с фиксированным seed.
-- **Тесты.** `stockfish_engine`, `engine_budget`, `engine_info`.
+- **The rule.** The engine is called only through `get_engine_pool(path).acquire()` (`src/services/engine_pool.py`): no
+  more than `ENGINE_POOL_SIZE` processes; a request over the limit waits and gets a "pool busy" refusal, not a new
+  process.
+- **Who uses it.** A bot's move, game review, the mentor, "find the mate", tournament simulation, puzzle checking.
+  Working time by kind — the metric `regence_engine_seconds_total{kind}`.
+- **There is no engine in tests and CI:** calculations are checked on mocks or on a static analyser with a fixed seed.
+- **Tests.** `stockfish_engine`, `engine_budget`, `engine_info`.
 
-### 4.5. Разбор партии и наставник
+### 4.5. Game review and the mentor
 
-- **Что.** Разбор всей партии (точность, ошибки, график оценки), объяснение хода словами, подсказка по ступеням,
-  игра с наставником (проверка каждого своего хода), итог партии, «не согласен» с оценкой.
-- **Файлы.** `src/api/analysis.py`, `src/services/analysis_service.py` (оценка каждого хода движком),
-  `mentor_service.py` (детектор мотивов по правилам, без движка), `positional.py` (позиционные признаки), `coach.py`
-  (сборка объяснения), `move_check.py` (проверка хода и кэш оценок), `game_summary.py`; клиент —
-  `components/GameViewer.tsx`, `chessboard/CoachPanel.tsx`, хук `useCoachMode.ts`.
-- **Откуда текст.** Сервер отдаёт факты: код мотива, поля, фигуры, ключ шаблона. Предложение собирает клиент из
-  каталога `coach.*`. Главный принцип детектора — ложное объяснение хуже молчания.
-- **«Клубный тренер» после партии.** В итоге партии (`chessboard/GameSummaryPanel.tsx` → `CoachCards.tsx`) до трёх
-  карточек: задача из самой дорогой своей ошибки (решается прямо в панели), отклонение от репертуара (тренировать
-  или добавить ответ), урок Большого курса по теме ошибки. Сервер собирает готовое без движка
-  (`src/services/coach_cards.py`, `GET /learn/after-game/{id}`: таблица `personal_puzzles`, репертуары игрока);
-  модуль курса по теме выбирает клиент (`services/coachCards.ts`, данные `content/supercourse.ts`).
-- **Тесты.** `analysis_service`, `mentor_motifs`, `mentor_pins`, `positional`, `coach`, `coach_mode`, `game_summary`,
-  `coach_cards`; клиент — `CoachCards.test.tsx`.
+- **What.** Review of a whole game (accuracy, mistakes, evaluation graph), an explanation of a move in words, a hint by
+  steps, playing with the mentor (every one of your moves is checked), the game summary, "I disagree" with an
+  evaluation.
+- **Files.** `src/api/analysis.py`, `src/services/analysis_service.py` (engine evaluation of every move),
+  `mentor_service.py` (rule-based motif detector, no engine), `positional.py` (positional features), `coach.py`
+  (assembly of the explanation), `move_check.py` (move check and evaluation cache), `game_summary.py`; client —
+  `components/GameViewer.tsx`, `chessboard/CoachPanel.tsx`, the hook `useCoachMode.ts`.
+- **Where the text comes from.** The server returns facts: the motif code, fields, pieces, the template key. The client
+  assembles the sentence from the `coach.*` catalog. The detector's main principle: a false explanation is worse than
+  silence.
+- **The "club coach" after a game.** In the game summary (`chessboard/GameSummaryPanel.tsx` → `CoachCards.tsx`) up to
+  three cards: a puzzle from the player's costliest mistake (solved right in the panel), a deviation from the
+  repertoire (train it or add a reply), a Grand Course lesson on the theme of the mistake. The server assembles the
+  ready parts without the engine (`src/services/coach_cards.py`, `GET /learn/after-game/{id}`: the `personal_puzzles`
+  table, the player's repertoires); the client picks the course module for the theme (`services/coachCards.ts`, data in
+  `content/supercourse.ts`).
+- **Tests.** `analysis_service`, `mentor_motifs`, `mentor_pins`, `positional`, `coach`, `coach_mode`, `game_summary`,
+  `coach_cards`; client — `CoachCards.test.tsx`.
 
-### 4.6. Боты
+### 4.6. Bots
 
-- **Кто есть.** Семь исторических ботов первой волны (Филидор … Цукерторт, `src/services/bots/<имя>.py`), мастера
-  второй волны (`masters.py`; всего ботов с дебютной книгой — 22), мастера прошлого для «Машины времени»
-  (`guests.py`, 230 человек), вымышленные архетипы мастерской (`archetypes.py`, 22) и соперники, собранные игроком
-  из ползунков (`personality.py`, таблица `bot_personalities`). Числа — на 17.11.2026.
-- **Как бот выбирает ход** (`bots/base.py`, `style.py`). Оценку позиции даёт только Stockfish (до 8 лучших линий).
-  Стиль не меняет оценку: он начисляет бонусы кандидатам внутри окна от лучшего хода и так выбирает «по вкусу».
-  В дебюте бот играет по книге из партий своего прототипа. Сила ограничивается через `UCI_Elo`, ниже 1320 —
-  управляемыми ошибками. Время «раздумья» имитируется.
-- **Сила** — измеренная: `scripts/calibrate_bots.py` играет матчи с эталонами Stockfish и пишет
-  `calibration.json`. **Память** (`memory.py`): итоги своих дебютов и рейтинг по партиям с людьми. **Самоигра**
-  (`selfplay.py`, задача beat раз в 6 часов): архетипы подстраивают разброс под заявленную силу, каждый шаг — в
-  открытом журнале `bot_tuning_log`.
-- **Тесты.** `<имя>_bot` для каждого исторического бота, `style_presets`, `personality_bot`, `bot_strength`,
+- **Who there is.** Seven historical bots of the first wave (Philidor … Zukertort, `src/services/bots/<name>.py`),
+  masters of the second wave (`masters.py`; in all, bots with an opening book — 22), masters of the past for the "Time
+  Machine" (`guests.py`, 230 people), fictional archetypes of the workshop (`archetypes.py`, 22) and opponents the
+  player assembles from sliders (`personality.py`, the `bot_personalities` table). Numbers as of 17.11.2026.
+- **How a bot chooses a move** (`bots/base.py`, `style.py`). The position evaluation comes only from Stockfish (up to 8
+  best lines). Style does not change the evaluation: it awards bonuses to candidates within a window around the best
+  move and so chooses "to taste". In the opening the bot plays from a book built from its prototype's games. Strength
+  is limited through `UCI_Elo`, below 1320 — by controlled mistakes. "Thinking" time is simulated.
+- **Strength** is measured: `scripts/calibrate_bots.py` plays matches against Stockfish references and writes
+  `calibration.json`. **Memory** (`memory.py`): results of its own openings and a rating from games against humans.
+  **Self-play** (`selfplay.py`, a beat task every 6 hours): archetypes adjust their spread to the declared strength,
+  each step recorded in the public log `bot_tuning_log`.
+- **Tests.** `<name>_bot` for each historical bot, `style_presets`, `personality_bot`, `bot_strength`,
   `bot_memory`, `bot_selfplay`, `masters`, `masters_catalog`, `beginner_opponents`.
 
-### 4.7. Лестница, турниры с ботами, «Машина времени»
+### 4.7. Ladder, tournaments with bots, the "Time Machine"
 
-- **Лестница** (`src/services/ladder.py`): все исторические боты и все архетипы, включая соперников для новичков,
-  по возрастанию измеренной силы, и отдельный рейтинг. Прогресс — пройденные ступени по ключу соперника (таблица
-  `ladder_beaten`), текущая — первая непройденная выше самой сильной пройденной; новый соперник ничей прогресс не
-  сдвигает (ниже пройденного он «пропущен»). Честность партии проверяет сервер: запрос подсказки, возврат хода или
-  подмена соперника — партия не засчитывается.
-- **Турниры** (`tournaments.py`, правила — `tournament_rules.py`): круговые (таблицы Бергера) и на выбывание.
-  Партии ботов между собой играет отдельный воркер (`tournament_simulation.py`, очередь `simulation`). Результат
-  партии игрока приходит только из сохранения сыгранной партии — прислать его самому нельзя.
-- **Карьера** (`tournament_career.py`) — лестница готовых турниров нарастающей силы. **«Машина времени»**
-  (`time_machine.py`, 50 турниров) — знаменитые турниры прошлого в полном историческом составе плюс игрок; составы
-  и настоящие итоги сверены с открытыми источниками скриптами `scripts/dev/time_machine/` (порядок добавления
-  турнира — `scripts/dev/time_machine/README.md`).
-- **Тесты.** `ladder`, `tournaments`, `tournament_rules`, `tournament_play`, `tournament_simulation`,
-  `tournament_career`, `tournament_big`, `time_machine`, `time_machine_play`; браузер — `e2e/time-machine.e2e.ts`.
+- **Ladder** (`src/services/ladder.py`): all historical bots and all archetypes, including opponents for beginners,
+  in ascending order of measured strength, and a separate rating. Progress is the steps passed, keyed by opponent key
+  (the `ladder_beaten` table); the current step is the first unpassed one above the strongest passed one; a new
+  opponent shifts nobody's progress (below a passed one it is "skipped"). The fairness of a game is checked by the
+  server: a hint request, a takeback or a substituted opponent — and the game does not count.
+- **Tournaments** (`tournaments.py`, rules — `tournament_rules.py`): round-robin (Berger tables) and knockout. Games of
+  bots among themselves are played by a separate worker (`tournament_simulation.py`, the `simulation` queue). The result
+  of the player's game comes only from the saved played game — it cannot be submitted by hand.
+- **Career** (`tournament_career.py`) — a ladder of ready-made tournaments of increasing strength. **"Time Machine"**
+  (`time_machine.py`, 50 tournaments) — famous tournaments of the past with the full historical field plus the player;
+  the fields and the real results are checked against open sources by the scripts in `scripts/dev/time_machine/` (the
+  procedure for adding a tournament — `scripts/dev/time_machine/README.md`).
+- **Tests.** `ladder`, `tournaments`, `tournament_rules`, `tournament_play`, `tournament_simulation`,
+  `tournament_career`, `tournament_big`, `time_machine`, `time_machine_play`; browser — `e2e/time-machine.e2e.ts`.
 
-### 4.8. Арены между людьми и конференции
+### 4.8. Arenas between humans and conferences
 
-- **Что.** Турниры по времени: игрок играет партию за партией с теми, кто тоже ждёт. Победа — 2 очка, ничья — 1;
-  после двух побед подряд очки удваиваются («огонь»). Есть швейцарки по турам.
-- **Файлы.** `src/services/arena.py` (правила), `arena_schedule.py` (расписание), `conferences.py` (конференции),
-  `src/api/arenas.py`, `src/api/conferences.py`; клиент — `components/arena/`.
-- **Честный конец.** Новые пары создаются только до «последнего старта» (конец минус длительность партии), итоги —
-  когда доиграна последняя партия. Неявка на первый ход — поражение; ничья по соглашению до 10-го хода — 0 очков.
-- **Вход открыт всем.** В любую арену входит любой зарегистрированный игрок: порога сыгранных партий и арен
-  «только до такого-то рейтинга» нет (решение владельца 17.11.2026) — новичок может встретиться с сильнейшим.
-  Закрыт вход только игроку с флагом нечестной игры. При 500 участниках открывается следующее деление — это
-  вместимость таблицы, а не отбор.
-- **Награды** (`arena_awards.py`, таблица `arena_awards`): когда итоги окончательные, тройка таблицы (сыгравшие хотя
-  бы одну партию) получает места — уведомление, кубки в профиле, достижения «призёр арены» и «победитель арены».
-  Раздаёт плановая задача `arena_awards` каждые 5 минут. Страница арены отдаёт призёру его место
-  (`me.podium_place`, `arena_awards.place_of`), а любому игроку — `me.username`; клиент один раз показывает экран итогов
-  (`TournamentCelebration`: кубок призёру, значок места остальным, таблица участников со своей строкой, скачивание CSV).
-- **Лига месяца** (`arena_league.py`, `GET /arenas/league`, блок под списком на `/arenas`): сумма очков арен сезона
-  (календарный месяц UTC) в категории контроля; швейцарки не входят, категории — те, где расписание ставит арены
-  (пуля, блиц). Порядок: очки, лучшая арена, меньше арен. Считается при запросе, на рейтинг не влияет.
-- **Берсерк.** До своего первого хода — половина времени без добавки; победа приносит лишнее очко.
-- **Расписание.** У каждой из пяти конференций — своя зона времени, план задан в её местном времени: вечером блиц
-  3+2 каждый час, пуля 2+1 и вечерняя 5+3, в остальное время — блиц раз в три часа, плюс швейцарки. Арены создаются
-  при запросе списка на 6 часов вперёд. Напоминание о начале — задача beat раз в минуту.
-- **Конференции.** Страну игрок указывает сам (`users.country`); страна определяет конференцию (250 кодов в
-  `conferences.COUNTRIES`). Конференция запоминается при входе в арену; в зачёт арены идут 10 лучших игроков
-  конференции; Кубок конференций — сумма зачётов арен месяца. Смена конференции — раз в сезон.
-- **Матчи конференций** (`conference_match_rules.py` — чистые правила, формат арены `match` в `arena.py`): каждую
-  субботу две конференции по кругу (10 пар, хозяин чередуется по кругам), общий вечер или 19:00 хозяина. Записаться —
-  только игрокам двух конференций, до часа перед стартом; на старте составы по рейтингу (`arena_players.board`), два
-  тура 5+3 (на доске белыми и чёрными), счёт — победа 1, ничья ½ (`match_view`). Матчи создаются на 8 дней вперёд
-  (`ensure_schedule`), список — на `/conferences`, страница матча — `/arenas/{id}`. Кубков за матч нет.
-- **Тесты.** `arena`, `arena_swiss`, `arena_fair_end`, `arena_groups`, `arena_berserk_lag`, `arena_schedule`,
-  `conferences`, `arena_league`, `conference_matches`. Замысел и решения владельца — `docs/research/arenas.md`.
+- **What.** Timed tournaments: a player plays game after game against whoever is also waiting. A win is 2 points, a
+  draw is 1; after two wins in a row the points are doubled ("fire"). There are also Swiss arenas by rounds.
+- **Files.** `src/services/arena.py` (rules), `arena_schedule.py` (schedule), `conferences.py` (conferences),
+  `src/api/arenas.py`, `src/api/conferences.py`; client — `components/arena/`.
+- **Fair ending.** New pairs are created only until the "last start" (the end minus the game duration), the results
+  are final when the last game is finished. A no-show for the first move is a loss; a draw by agreement before move 10
+  is 0 points.
+- **Entry is open to everyone.** Any registered player can enter any arena: there is no threshold of games played and
+  no arenas "only up to such-and-such rating" (owner's decision of 17.11.2026) — a beginner may meet the strongest
+  player. Only a player with the unfair-play flag is barred. At 500 participants the next division opens — that is the
+  capacity of the table, not a selection.
+- **Awards** (`arena_awards.py`, the `arena_awards` table): when the results are final, the top three of the table
+  (those who played at least one game) receive places — a notification, trophies in the profile, the achievements
+  "arena podium finisher" and "arena winner". They are handed out by the scheduled task `arena_awards` every 5 minutes.
+  The arena page gives the podium finisher their place (`me.podium_place`, `arena_awards.place_of`), and any player
+  `me.username`; the client shows the results screen once (`TournamentCelebration`: a trophy for the podium finisher, a
+  place badge for the others, the table of participants with the player's own row, CSV download).
+- **Monthly league** (`arena_league.py`, `GET /arenas/league`, the block under the list on `/arenas`): the sum of arena
+  points in a season (a UTC calendar month) per time-control category; Swiss arenas are not included, the categories
+  are those where the schedule creates arenas (bullet, blitz). Order: points, best arena, fewer arenas. It is computed
+  on request and does not affect the rating.
+- **Berserk.** Before one's first move — half the time without an increment; a win brings an extra point.
+- **Schedule.** Each of the five conferences has its own time zone, the plan is set in its local time: in the evening
+  3+2 blitz every hour, 2+1 bullet and an evening 5+3, at other times — blitz every three hours, plus Swiss arenas.
+  Arenas are created on a list request, 6 hours ahead. The start reminder is a beat task once a minute.
+- **Conferences.** The player specifies their country themselves (`users.country`); the country determines the
+  conference (250 codes in `conferences.COUNTRIES`). The conference is remembered when entering an arena; the 10 best
+  players of a conference count toward the arena's score; the Conference Cup is the sum of the arena scores of the
+  month. A conference can be changed once a season.
+- **Conference matches** (`conference_match_rules.py` — pure rules, the arena format `match` in `arena.py`): every
+  Saturday two conferences play a round-robin (10 pairs, the host alternates by round), a shared evening or 19:00 of
+  the host. Only players of the two conferences can sign up, up to an hour before the start; at the start the rosters
+  are set by rating (`arena_players.board`), two rounds of 5+3 (on a board, with White and with Black), the score — a
+  win 1, a draw ½ (`match_view`). Matches are created 8 days ahead (`ensure_schedule`), the list is on `/conferences`,
+  the match page is `/arenas/{id}`. There are no trophies for a match.
+- **Tests.** `arena`, `arena_swiss`, `arena_fair_end`, `arena_groups`, `arena_berserk_lag`, `arena_schedule`,
+  `conferences`, `arena_league`, `conference_matches`. The concept and the owner's decisions — `docs/research/arenas.md`.
 
-### 4.9. Задачи и тренажёры
+### 4.9. Puzzles and trainers
 
-- **Задачи** (`src/services/puzzles.py`, `src/api/puzzles.py`). Решение клиенту не отправляется: сервер хранит, на
-  каком ходу решающий, проверяет каждый ход и отвечает ходом соперника. Рейтинг решателя — Эло против рейтинга
-  задачи. Источник — открытая база lichess (CC0), темы размечены по реестру `themes.py` (127 тем в 12 разделах,
-  описание — `docs/training/tactical-themes.md`).
-- **Свои ошибки** (`personal_puzzles.py`): из разбора своих партий, с повторением через 1, 3, 7 и 21 день.
-- **Защита** (`defense_drills.py`), **упражнения-генераторы** (`drill_generator.py`, `generated_drills.py` —
-  позиции строятся по seed и проверяются перебором), **матовые конструкции** (`mate_course.py`, `mate_patterns.py`),
-  **«Угадай ход мастера»** (`guess.py`, отбор позиций — `guess_selection.py`), **миниатюры** и **«Узнай структуру»**.
-- **Тренажёры зрения, памяти и счёта** считаются на клиенте (`frontend/src/trainers/`), сервер хранит результаты
-  (`src/api/trainers.py`, таблица `trainer_results`); учебные мини-игры — `mini_games.py`; с
-  другом по ссылке — комнаты `mini_game_rooms.py` (Redis, опрос раз в секунду, `/train/games/room/{code}`).
-- **Тесты.** `puzzles_api`, `puzzles_data`, `themes`, `theme_training`, `theme_detectors`, `personal_puzzles`,
+- **Puzzles** (`src/services/puzzles.py`, `src/api/puzzles.py`). The solution is not sent to the client: the server
+  stores which move the solver is on, checks every move and replies with the opponent's move. The solver's rating is
+  Elo against the puzzle's rating. The source is the open lichess database (CC0), themes are labelled according to the
+  `themes.py` registry (127 themes in 12 sections, description — `docs/training/tactical-themes.md`).
+- **Own mistakes** (`personal_puzzles.py`): from the review of one's own games, with repetition after 1, 3, 7 and 21
+  days.
+- **Defence** (`defense_drills.py`), **generator exercises** (`drill_generator.py`, `generated_drills.py` — positions
+  are built from a seed and verified by exhaustive search), **mating patterns** (`mate_course.py`, `mate_patterns.py`),
+  **"Guess the master's move"** (`guess.py`, position selection — `guess_selection.py`), **miniatures** and
+  **"Recognise the structure"**.
+- **Trainers for vision, memory and calculation** are computed on the client (`frontend/src/trainers/`), the server
+  stores the results (`src/api/trainers.py`, the `trainer_results` table); educational mini-games — `mini_games.py`;
+  with a friend by link — the rooms of `mini_game_rooms.py` (Redis, polling once a second,
+  `/train/games/room/{code}`).
+- **Tests.** `puzzles_api`, `puzzles_data`, `themes`, `theme_training`, `theme_detectors`, `personal_puzzles`,
   `defense_drills`, `generated_drills`, `mate_course`, `mate_patterns`, `guess_api`, `guess_selection`, `trainers`,
-  `mini_games`, `mini_game_rooms`, `miniatures`, `structure_quiz`; браузер — `e2e/puzzles.e2e.ts`, `puzzle-moves.e2e.ts`.
+  `mini_games`, `mini_game_rooms`, `miniatures`, `structure_quiz`; browser — `e2e/puzzles.e2e.ts`,
+  `puzzle-moves.e2e.ts`.
 
-### 4.10. Школа, Большой курс, план тренировок
+### 4.10. School, the Grand Course, the training plan
 
-- **Уроки** — файлы данных клиента: `frontend/src/content/lessons/*.json` (формат — `format.ts`, проверка —
-  `validate.ts`, список курсов — `courses.json`), компоненты — `components/learn/`. Сервер хранит только прогресс
-  (`lesson_progress`). Легальность ходов уроков проверяет тест клиента, ответы сверяет с движком
-  `scripts/verify_lessons.py`.
-- **Большой курс** (`content/supercourse.ts`, замысел — `docs/research/supercourse.md`): уровни 0–5 по разрядам и
-  ветви; шаг курса ведёт в уже готовый раздел. Экзамены уровней — `level_exam.py`, диагностика — `exam.py`.
-  **Автозачёт:** `GET /learn/course-progress` (`src/services/course_progress.py`) собирает выполненное по нормативам
-  (записи `lesson_progress`, ступени тем `theme_progress`, попытки `trainer_results`, оценки `exam_results`); клиент
-  (`services/courseProgress.ts`) сопоставляет его с шагами модуля и закрывает модуль сам. Вручную отмечаются только
-  модули без проверяемых шагов.
-- **Личный тренер:** карта навыков (`skills.py`), ежедневная разминка (`workout.py`, напоминание — задача beat в
-  16:00 UTC), программы тренировок (`content/programs.ts`). Новых таблиц нет: всё считается по уже собранным данным.
-- **Тесты.** `learn_progress`, `course_progress`, `exam`, `level_exams`, `skills`, `workout`; клиент —
-  `courseProgress.test.ts`, `SupercoursePage.test.tsx`; браузер — `e2e/course-library.e2e.ts`.
+- **Lessons** are client data files: `frontend/src/content/lessons/*.json` (format — `format.ts`, validation —
+  `validate.ts`, the course list — `courses.json`), components — `components/learn/`. The server stores only progress
+  (`lesson_progress`). The legality of the lessons' moves is checked by a client test, the answers are checked against
+  the engine by `scripts/verify_lessons.py`.
+- **The Grand Course** (`content/supercourse.ts`, concept — `docs/research/supercourse.md`): levels 0–5 by rank and
+  branch; a course step leads into an already existing section. Level exams — `level_exam.py`, diagnostics — `exam.py`.
+  **Auto-credit:** `GET /learn/course-progress` (`src/services/course_progress.py`) collects what has been done against
+  the standards (`lesson_progress` records, the `theme_progress` theme steps, `trainer_results` attempts, `exam_results`
+  grades); the client (`services/courseProgress.ts`) matches it against the module's steps and closes the module by
+  itself. Only modules without verifiable steps are marked manually.
+- **Personal coach:** the skill map (`skills.py`), the daily warm-up (`workout.py`, the reminder is a beat task at 16:00
+  UTC), training programmes (`content/programs.ts`). There are no new tables: everything is computed from data already
+  collected.
+- **Tests.** `learn_progress`, `course_progress`, `exam`, `level_exams`, `skills`, `workout`; client —
+  `courseProgress.test.ts`, `SupercoursePage.test.tsx`; browser — `e2e/course-library.e2e.ts`.
 
-### 4.11. Дебюты
+### 4.11. Openings
 
-- **Таблица дебютов** (`openings.py`, данные `openings.tsv`): дебют определяется по позиции, поэтому перестановки
-  ходов распознаются. **Индекс позиций** (`position_index.py`): первые 30 полуходов каждой законченной партии —
-  в `position_stats` и `position_games`; партии библиотеки — только в `position_library_games` (примеры, без
-  статистики). **Справочник** (`opening_explorer.py`) — ходы из позиции со статистикой и партии мастеров: архив и
-  публичные коллекции библиотеки; повтор (те же фамилии и год) показывается один раз — партией библиотеки.
-- **Репертуар** (`repertoire.py`, `repertoire_drill.py`, `repertoire_deviations.py`, `repertoire_starters.py`): свои
-  линии как граф позиций, повторение по расписанию SM-2, игра против репертуара, разбор отклонений в сыгранной партии.
-- **Тесты.** `opening_explorer`, `explorer_library`, `position_index`, `repertoire`, `repertoire_drill`, `repertoire_deviations`,
-  `repertoire_advanced`.
+- **The opening table** (`openings.py`, data `openings.tsv`): an opening is identified by the position, so transpositions
+  are recognised. **The position index** (`position_index.py`): the first 30 plies of every finished game — into
+  `position_stats` and `position_games`; library games — only into `position_library_games` (examples, no statistics).
+  **The explorer** (`opening_explorer.py`) — moves from a position with statistics and masters' games: the archive and
+  the public library collections; a duplicate (the same surnames and year) is shown once — as a library game.
+- **The repertoire** (`repertoire.py`, `repertoire_drill.py`, `repertoire_deviations.py`, `repertoire_starters.py`):
+  one's own lines as a graph of positions, scheduled repetition by SM-2, playing against the repertoire, review of
+  deviations in a played game.
+- **Tests.** `opening_explorer`, `explorer_library`, `position_index`, `repertoire`, `repertoire_drill`,
+  `repertoire_deviations`, `repertoire_advanced`.
 
-### 4.12. Архив, библиотека, просмотр, импорт
+### 4.12. Archive, library, viewing, import
 
-- **Архив чемпионов** — исторические партии из PGN (`src/db/seed.py`); их игроки хранятся в `users` с признаком
-  `is_bot` и без `username_key`. **«Просмотр»** (`src/api/watch.py`): идущие партии, архив с фильтрами, «Партия дня»,
-  «забавные подборки» (`collections.py`, таблицу заполняет `scripts/build_collections.py`).
-- **Библиотека партий** (`library.py`): дерево коллекций, видимость (публичная, владельца, служебная). При импорте
-  берутся только заголовки и главная линия — комментарии и варианты из изданий не берутся. Разметка пешечных
-  структур — `pawn_structures.py`. Правила работы с материалами — `docs/research/books-library-review.md`,
-  аннотации — `docs/research/library-annotations.md`.
-- **Импорт своих партий** с lichess и chess.com (`game_import.py`): по нику через открытые API или вставкой PGN.
-- **Тесты.** `library`, `library_text`, `library_annotations`, `pawn_structures`, `cbh_reader`, `watch`,
+- **The champions' archive** — historical games from PGN (`src/db/seed.py`); their players are stored in `users` with
+  the `is_bot` flag and without `username_key`. **"Watch"** (`src/api/watch.py`): games in progress, the archive with
+  filters, "Game of the day", "fun collections" (`collections.py`, the table is filled by
+  `scripts/build_collections.py`).
+- **The game library** (`library.py`): a tree of collections, visibility (public, owner's, service). On import only the
+  headers and the main line are taken — comments and variations from editions are not. Pawn structure markup —
+  `pawn_structures.py`. The rules for working with materials — `docs/research/books-library-review.md`, annotations —
+  `docs/research/library-annotations.md`.
+- **Import of one's own games** from lichess and chess.com (`game_import.py`): by nickname through open APIs or by
+  pasting PGN.
+- **Tests.** `library`, `library_text`, `library_annotations`, `pawn_structures`, `cbh_reader`, `watch`,
   `game_import`, `pgn_normalization`.
 
-### 4.13. Общение
+### 4.13. Social
 
-- **Игроки и уведомления** (`src/api/social.py`, `notifications.py`): поиск, подписки, вызов на партию, центр
-  уведомлений (запись в базе и доставка в открытые вкладки по WebSocket).
-- **Личные сообщения** (`direct_messages.py`), **лента** (`feed.py`), **карточки-вложения** (`attachments.py` —
-  сервер проверяет ссылку и сохраняет снимок данных на момент отправки).
-- **Уважительное общение** (`civility.py`): фильтр по словарю до отправки, придержание, квоты новичкам и
-  нарушителям. Автоматика только помечает — решает модератор (`moderation.py`, страница `/moderation`).
-- **Совместный разбор** (`study_room.py`): комната в Redis, ведущий управляет доской. **Команды и лига**
-  (`league.py`): сезон — календарный месяц, очки — за партии между игроками разных команд.
-- **Достижения** (`achievements.py`) — только за реальные результаты, считаются по уже имеющимся данным.
-- **Тесты.** `social`, `direct_messages`, `feed`, `civility`, `moderation`, `study_room`, `league`, `achievements`.
+- **Players and notifications** (`src/api/social.py`, `notifications.py`): search, follows, a challenge to a game, the
+  notification centre (a database record and delivery to open tabs over the WebSocket).
+- **Direct messages** (`direct_messages.py`), **the feed** (`feed.py`), **attachment cards** (`attachments.py` — the
+  server checks the link and stores a snapshot of the data as of the moment of sending).
+- **Respectful communication** (`civility.py`): a dictionary filter before sending, holding, quotas for beginners and
+  offenders. The automation only flags — the moderator decides (`moderation.py`, the `/moderation` page).
+- **Joint review** (`study_room.py`): a room in Redis, the host controls the board. **Teams and the league**
+  (`league.py`): a season is a calendar month, points are for games between players of different teams.
+- **Achievements** (`achievements.py`) — only for real results, computed from data already available.
+- **Tests.** `social`, `direct_messages`, `feed`, `civility`, `moderation`, `study_room`, `league`, `achievements`.
 
-### 4.14. Языки, оформление, приложение на телефоне
+### 4.14. Languages, appearance, the phone app
 
-- **Три языка** (en, uk, ru). Ни одной строки для игрока в коде сервера и в разметке компонентов: сервер отдаёт
-  коды, клиент — тексты из каталогов. Проверяют тесты `no_russian_in_api`, `error_codes`, `bot_content_keys` и тесты
-  каталогов на клиенте (одинаковые ключи и параметры во всех трёх языках).
-- **Оформление:** доски, наборы фигур, темы-комплекты, фоны, звуки (`frontend/src/config/boardAppearance.ts`,
-  `themePresets.ts`, `services/soundEngine.ts`). Каждый ассет — со свободной лицензией и записью в `ATTRIBUTION.md`
-  (тест `assets_licensing`).
-- **Установка на телефон:** сервис-воркер и манифест (`services/pwa.ts`, `public/sw.js`).
+- **Three languages** (en, uk, ru). Not a single player-facing string in the server code or in component markup: the
+  server returns codes, the client returns texts from the catalogs. This is checked by the tests `no_russian_in_api`,
+  `error_codes`, `bot_content_keys` and the catalog tests on the client (identical keys and parameters in all three
+  languages).
+- **Appearance:** boards, piece sets, theme bundles, backgrounds, sounds (`frontend/src/config/boardAppearance.ts`,
+  `themePresets.ts`, `services/soundEngine.ts`). Every asset has a free licence and an entry in `ATTRIBUTION.md` (test
+  `assets_licensing`).
+- **Installation on a phone:** a service worker and a manifest (`services/pwa.ts`, `public/sw.js`).
 
-### 4.15. Наблюдение за системой и бета
+### 4.15. System monitoring and the beta
 
-- **«Моя неделя»** (`src/services/weekly_summary.py`, `GET /workout/week`): итоги 7 суток по партиям, задачам и дням
-  активности и совет кодом; клиент — `components/WeekSummaryCard.tsx` под планом разминки.
-- **Таблица лидеров забегов на время** (`src/services/puzzle_leaders.py`, таблица `puzzle_timed_scores`): недельный зачёт и
-  рекорды (`users.puzzle_best_3/5`), `GET /puzzles/timed/leaders`; пополняется в `puzzles.finish_run`.
-- **Сводка по нарушениям** (`src/services/moderation_report.py`, `GET /moderation/summary`, только модератор): заявки за 30 суток по видам и решениям, очередь, нарушители, частые жалобы; клиент — `components/social/ViolationsSummary.tsx`.
-- **Алерты** (`ops/prometheus/alerts.yml`): правила Prometheus по метрикам `observability.py` (в т. ч. длина очередей Celery
-  `regence_celery_queue_length`), подключаются при выкладке (`DEPLOY.md`, раздел 6).
-- **Журналы** (`src/core/logging_setup.py`, `src/api/client_errors.py`, `scripts/trace_logs.py`; клиент —
-  `services/breadcrumbs.ts`, `services/clientErrors.ts`): json-строки с контекстом `request_id` / `user_id` / `game_id`,
-  сквозной номер запроса клиент ↔ API ↔ воркер, отчёты страницы об ошибках и перезагрузках со следом событий.
-- **Ошибки и метрики** (`src/core/observability.py`): Sentry при заданном `SENTRY_DSN`, метрики Prometheus на
-  `/metrics` (наружу не публикуются). **Продуктовые метрики** без сторонних трекеров (`product_metrics.py`, отчёт —
-  `scripts/product_metrics.py`). **Прозрачность:** журналы калибровки ботов и открытый API (`src/api/public.py`).
-- **Бета** (`beta.py`): коды-приглашения, «Сообщить о проблеме», еженедельная сводка.
-- **Тесты.** `observability`, `product_metrics`, `public_api`, `beta`, `deploy_config`.
+- **"My week"** (`src/services/weekly_summary.py`, `GET /workout/week`): the results of 7 days by games, puzzles and
+  days of activity, and advice as a code; client — `components/WeekSummaryCard.tsx` under the warm-up plan.
+- **The timed-run leaderboard** (`src/services/puzzle_leaders.py`, the `puzzle_timed_scores` table): the weekly standing
+  and records (`users.puzzle_best_3/5`), `GET /puzzles/timed/leaders`; filled in `puzzles.finish_run`.
+- **The violations summary** (`src/services/moderation_report.py`, `GET /moderation/summary`, moderator only): reports
+  over 30 days by kind and decision, the queue, offenders, frequent complaints; client —
+  `components/social/ViolationsSummary.tsx`.
+- **Alerts** (`ops/prometheus/alerts.yml`): Prometheus rules on the metrics of `observability.py` (including the length
+  of the Celery queues `regence_celery_queue_length`), connected at deployment (`DEPLOY.md`, section 6).
+- **Logs** (`src/core/logging_setup.py`, `src/api/client_errors.py`, `scripts/trace_logs.py`; client —
+  `services/breadcrumbs.ts`, `services/clientErrors.ts`): JSON lines with the context `request_id` / `user_id` /
+  `game_id`, an end-to-end request number client ↔ API ↔ worker, page reports of errors and reloads with a trail of
+  events.
+- **Errors and metrics** (`src/core/observability.py`): Sentry when `SENTRY_DSN` is set, Prometheus metrics at
+  `/metrics` (not published externally). **Product metrics** without third-party trackers (`product_metrics.py`, the
+  report — `scripts/product_metrics.py`). **Transparency:** the bot calibration logs and the open API
+  (`src/api/public.py`).
+- **The beta** (`beta.py`): invitation codes, "Report a problem", the weekly summary.
+- **Tests.** `observability`, `product_metrics`, `public_api`, `beta`, `deploy_config`.
 
-## 5. Фоновые и плановые задачи
+## 5. Background and scheduled tasks
 
-Задачи — `src/worker/tasks.py`, очереди и расписание — `src/worker/celery_app.py`.
+The tasks — `src/worker/tasks.py`, the queues and the schedule — `src/worker/celery_app.py`.
 
-| Задача | Очередь | Когда |
+| Task | Queue | When |
 |---|---|---|
-| `analyze_game`, `analyze_imported_game` | `analysis` | после завершения партии или импорта |
-| индекс позиций партии | `analysis` | после завершения партии |
-| `simulate_tournament_game` | `simulation` | партии ботов в турнире |
-| `workout_reminders` | `analysis` | beat, раз в день в 16:00 UTC |
-| `bot_selfplay` | `simulation` | beat, каждые 6 часов |
-| `arena_reminders` | `analysis` | beat, каждую минуту |
+| `analyze_game`, `analyze_imported_game` | `analysis` | after a game finishes or an import |
+| game position index | `analysis` | after a game finishes |
+| `simulate_tournament_game` | `simulation` | bot games in a tournament |
+| `workout_reminders` | `analysis` | beat, once a day at 16:00 UTC |
+| `bot_selfplay` | `simulation` | beat, every 6 hours |
+| `arena_reminders` | `analysis` | beat, every minute |
 
-Постановка задачи из API не ждёт брокер (`src/services/task_dispatch.py`): итог партии рассылается сразу, а при
-недоступном брокере разбор можно посчитать позже кнопкой на странице партии.
+Enqueueing a task from the API does not wait for the broker (`src/services/task_dispatch.py`): the game result is
+broadcast at once, and if the broker is unavailable the review can be computed later with a button on the game page.
 
-## 6. Клиент
+## 6. The client
 
-- `frontend/src/App.tsx` — шапка, меню и все маршруты (их около 60).
-- `components/Chessboard.tsx` — главная доска: партия с человеком, с ботом и свободный анализ; логика вынесена в
-  хуки `components/chessboard/hooks/`. Партия с ботом переживает перезагрузку: снимок в `localStorage`
-  (`services/botGameSnapshot.ts`, ключ `regence_bot_game`, срок сутки, только для того же игрока) пишется после каждого
-  хода и при закрытии страницы, а при открытии доски партия продолжается с часами за вычетом времени перезагрузки. В товарищеской партии с ботом есть пауза (часы стоят, бот не ходит, позиция скрыта; хранится в снимке как `paused`); в партии лестницы и турнира паузы нет, отмены партии с ботом нет вообще. Слева — кнопка «Новая партия» (окно по шагам `chessboard/NewGameDialog.tsx`:
-  соперник, время, старт), идущая партия, соперник-бот, турниры и лобби; справа — вкладки «Ходы / Чат / Наставник /
-  Рентген». Доступность (26.3): клетки — кнопки с подписью, ход с клавиатуры (Tab на доску, стрелки, Enter/пробел),
-  ходы объявляются словами в живой области и есть «Позиция словами» (`chessboard/BoardSpeech.tsx`); слова —
-  `services/a11y/speech.ts` (ключи `a11y.*`). В игре вслепую скрытые фигуры не называются.
-- `components/ui/` — общие компоненты дизайна (страница, карточки, кнопки, метки, вкладки, окно); правила —
-  `docs/design-system.md`, витрина — `/design`.
-- `components/<раздел>/` — страницы разделов; `services/<раздел>.ts` — обращения к API этого раздела, все — через
-  `services/http.ts` (профиль — `profile.ts`, учётная запись — `account.ts`, просмотр и разбор партии —
-  `analysis.ts`, лестница — `ladder.ts`, шахматы Фишера — `chess960.ts`, экзамены — `exam.ts`);
-  общие правила без сети тоже лежат здесь: дата партии `gameDates.ts`, нумерация ходов `moveNumbers.ts`;
-  клавиатура доски — `chessboard/hooks/useBoardKeyboard.ts` (главная доска и доски задач), чат партии —
-  `chessboard/gameChat.ts` (главная доска и партия 960); лимиты текстов — `config/textLimits.ts`;
-  `config/` — данные оформления и ботов; `content/` — учебное содержание; `trainers/` — логика тренажёров.
-- `i18n/` — три каталога сообщений и функции перевода; `test/` — общие заготовки тестов.
+- `frontend/src/App.tsx` — the header, the menu and all routes (about 60 of them).
+- `components/Chessboard.tsx` — the main board: a game with a human, with a bot and free analysis; the logic is moved
+  out into the hooks in `components/chessboard/hooks/`. A game with a bot survives a reload: a snapshot in
+  `localStorage` (`services/botGameSnapshot.ts`, key `regence_bot_game`, valid for a day, only for the same player) is
+  written after every move and when the page is closed, and when the board is opened the game continues with the clocks
+  reduced by the reload time. In a casual game with a bot there is a pause (the clocks stop, the bot does not move, the
+  position is hidden; stored in the snapshot as `paused`); in a ladder or tournament game there is no pause, and there
+  is no cancelling of a game with a bot at all. On the left — the "New game" button (a step-by-step window
+  `chessboard/NewGameDialog.tsx`: opponent, time, start), the game in progress, the bot opponent, tournaments and the
+  lobby; on the right — the tabs "Moves / Chat / Mentor / X-ray". Accessibility (26.3): squares are buttons with a
+  label, moves from the keyboard (Tab to the board, arrows, Enter/Space), moves are announced in words in a live region
+  and there is "Position in words" (`chessboard/BoardSpeech.tsx`); the words — `services/a11y/speech.ts` (keys
+  `a11y.*`). In blindfold play hidden pieces are not named.
+- `components/ui/` — shared design components (page, cards, buttons, labels, tabs, window); rules —
+  `docs/design-system.md`, showcase — `/design`.
+- `components/<section>/` — section pages; `services/<section>.ts` — calls to that section's API, all through
+  `services/http.ts` (profile — `profile.ts`, account — `account.ts`, game viewing and review — `analysis.ts`, ladder —
+  `ladder.ts`, Fischer random chess — `chess960.ts`, exams — `exam.ts`); shared rules without the network also live
+  here: the game date `gameDates.ts`, move numbering `moveNumbers.ts`; board keyboard —
+  `chessboard/hooks/useBoardKeyboard.ts` (the main board and the puzzle boards), game chat — `chessboard/gameChat.ts`
+  (the main board and the 960 game); text limits — `config/textLimits.ts`; `config/` — appearance and bot data;
+  `content/` — educational content; `trainers/` — trainer logic.
+- `i18n/` — the three message catalogs and the translation functions; `test/` — shared test fixtures.
 
-## 7. Правила, которые нельзя нарушать, и чем они проверяются
+## 7. Rules that must not be broken, and how they are checked
 
-| Правило | Проверка |
+| Rule | Check |
 |---|---|
-| Ни одной строки для игрока на сервере и в разметке компонентов | `tests/test_no_russian_in_api.py`, тесты каталогов клиента |
-| Коды ошибок сервера и каталоги клиента совпадают | `tests/test_error_codes.py` |
-| Эндпоинты с движком закрыты во время партии | `tests/test_fair_play.py`, `test_engine_endpoints.py` |
-| Движок — только через пул, с пределом процессов | `tests/test_engine_endpoints.py`, `test_engine_budget.py` |
-| Модели и миграции совпадают | `alembic check` в CI |
-| Ассеты — со свободной лицензией и записью в `ATTRIBUTION.md` | `tests/test_assets_licensing.py` |
-| Вёрстка не ломается на телефоне и на трёх языках | `frontend/e2e/layout.e2e.ts` |
-| Вход в арену открыт любому зарегистрированному игроку (никакого отбора по силе) | `tests/test_arena_groups.py` |
+| Not a single player-facing string on the server or in component markup | `tests/test_language_policy.py`, the client catalog tests |
+| The server's error codes and the client catalogs match | `tests/test_error_codes.py` |
+| Engine endpoints are closed during a game | `tests/test_fair_play.py`, `test_engine_endpoints.py` |
+| The engine only through the pool, with a process limit | `tests/test_engine_endpoints.py`, `test_engine_budget.py` |
+| Models and migrations match | `alembic check` in CI |
+| Assets have a free licence and an entry in `ATTRIBUTION.md` | `tests/test_assets_licensing.py` |
+| The layout does not break on a phone and in two languages (en, uk) | `frontend/e2e/layout.e2e.ts` |
+| Entry to an arena is open to any registered player (no selection by strength) | `tests/test_arena_groups.py` |
 
-## 8. Как убедиться самому
+## 8. How to check for yourself
 
-    uv run python project_status.py                 # сводка: git, план, миграции, калибровка ботов
-    uv run ruff check . --quiet                     # линтер
-    uv run mypy                                     # проверка типов
-    uv run python -m pytest -q --tb=short           # все тесты сервера (движок и сеть не нужны)
-    uv run pytest tests/test_arena.py -q            # один раздел: имя теста — из §4
+    uv run python project_status.py                 # summary: git, plan, migrations, bot calibration
+    uv run ruff check . --quiet                     # linter
+    uv run mypy                                     # type check
+    uv run python -m pytest -q --tb=short           # all server tests (no engine or network needed)
+    uv run pytest tests/test_arena.py -q            # one section: the test name is from §4
     cd frontend && npm run lint && npx vitest run --reporter=dot && npm run build
 
-Чтобы проследить раздел от кнопки до базы: открыть его страницу в `frontend/src/components/`, найти вызов в
-`frontend/src/services/`, по адресу — маршрут в `src/api/`, по маршруту — сервис в `src/services/`. В начале каждого
-сервиса написано, по каким правилам он работает и откуда берёт данные.
+To trace a section from the button to the database: open its page in `frontend/src/components/`, find the call in
+`frontend/src/services/`, by the address find the route in `src/api/`, by the route find the service in
+`src/services/`. At the top of each service it is written by which rules it works and where it takes its data from.

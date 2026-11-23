@@ -1,7 +1,7 @@
 // --- FILE: frontend/src/components/__tests__/SettingsExtra.test.tsx ---
-// Настройки (Settings.tsx), ветки вне основных тестов: фон страницы (узор и палитра), аватар и помощник перевода
-// уходят в профиль, отказы сервера при привязке почты и выгрузке данных показываются сообщением по коду, выгрузка
-// партий без единой партии сообщает, что выгружать нечего. Сеть — стаб fetch, ответы по адресу запроса.
+// Settings (Settings.tsx), branches outside the main tests: the page background (pattern and palette), the avatar and the translation helper
+// go to the profile, server refusals when linking an e-mail and exporting data are shown as a message by code, exporting
+// games without a single game says there is nothing to export. The network is a fetch stub, answers by request address.
 
 import {fireEvent, render, screen, waitFor} from '@testing-library/react';
 import {MemoryRouter} from 'react-router-dom';
@@ -51,8 +51,8 @@ afterEach(() => {
     setToken(null);
 });
 
-describe('Settings: профиль и фон страницы', () => {
-    it('узор и палитра страницы сохраняются в браузере', () => {
+describe('Settings: profile and page background', () => {
+    it('the pattern and palette of the page are saved in the browser', () => {
         stubFetch(() => response(200, {}));
         renderSettings();
         const patterns = screen.getByTestId('page-patterns').querySelectorAll('button');
@@ -64,7 +64,7 @@ describe('Settings: профиль и фон страницы', () => {
         expect(palettes[palettes.length - 1]).toHaveAttribute('aria-pressed', 'true');
     });
 
-    it('аватар и помощник перевода уходят в профиль', async () => {
+    it('the avatar and the translation helper go to the profile', async () => {
         const fetchMock = stubFetch(() => response(200, {email: null, avatar: null, translation_helper: false}));
         renderSettings();
         const piece = await screen.findByTestId('avatar-piece-wK');
@@ -77,35 +77,35 @@ describe('Settings: профиль и фон страницы', () => {
     });
 });
 
-describe('Settings: отказы сервера', () => {
-    it('отказ при привязке почты показывается под полем', async () => {
+describe('Settings: server refusals', () => {
+    it('a refusal when linking an e-mail is shown under the field', async () => {
         stubFetch((url) => (url.endsWith('/account/email')
             ? response(400, {detail: {code: 'invalid_credentials'}})
             : response(200, {email: null})));
         renderSettings();
-        await screen.findByText('E-mail не привязан.');
+        await screen.findByText('No e-mail linked.');
         fireEvent.change(screen.getByTestId('settings-email-input'), {target: {value: 'alice@example.com'}});
         fireEvent.change(screen.getByTestId('settings-email-password'), {target: {value: 'bad-pass'}});
         fireEvent.click(screen.getByTestId('settings-email-send'));
-        await waitFor(() => expect(screen.queryByText(/Письмо отправлено/)).toBeNull());
+        await waitFor(() => expect(screen.queryByText(/A letter has been sent/)).toBeNull());
         await waitFor(() => expect(document.querySelector('[role="alert"]')).not.toBeNull());
     });
 
-    it('отказ при выгрузке данных показывается сообщением', async () => {
+    it('a refusal when exporting data is shown as a message', async () => {
         stubFetch((url) => (url.endsWith('/account/export') ? response(500, {}) : response(200, {})));
         renderSettings();
         fireEvent.click(screen.getByTestId('settings-export'));
         await waitFor(() => expect(document.querySelector('[role="alert"]')).not.toBeNull());
     });
 
-    it('выгрузка партий без единой партии сообщает, что выгружать нечего', async () => {
+    it('exporting games without a single game says there is nothing to export', async () => {
         stubFetch((url) => (url.endsWith('/account/games.pgn') ? response(200, {}, '') : response(200, {})));
         renderSettings();
         fireEvent.click(screen.getByTestId('settings-export-games'));
         await waitFor(() => expect(document.querySelector('[role="alert"]')).not.toBeNull());
     });
 
-    it('отказ при выгрузке партий показывается сообщением', async () => {
+    it('a refusal when exporting games is shown as a message', async () => {
         stubFetch((url) => (url.endsWith('/account/games.pgn') ? response(500, {}) : response(200, {})));
         renderSettings();
         fireEvent.click(screen.getByTestId('settings-export-games'));

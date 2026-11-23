@@ -1,9 +1,9 @@
 // --- FILE: frontend/src/components/chessboard/types.ts ---
-// Типы лобби, Live-партий и чата (вынесено из Chessboard.tsx). Откуда приходят данные: списки лобби и идущих
-// партий — опрос по HTTP раз в 1,5 с (GET /profile/matchmaking/queue и /profile/games/live, хук useGameSocket),
-// сообщения чата — событие WebSocket chat_message.
+// Types of the lobby, Live games and chat (extracted from Chessboard.tsx). Where the data comes from: the lobby and in-progress
+// game lists are HTTP polling every 1.5 s (GET /profile/matchmaking/queue and /profile/games/live, the useGameSocket hook),
+// chat messages are the WebSocket chat_message event.
 
-/** Идущая партия между людьми в списке «Live» (строка ответа GET /profile/games/live). */
+/** A game in progress between humans in the "Live" list (a row of the GET /profile/games/live response). */
 export interface LiveGameItem {
     game_id: number;
     white_username: string;
@@ -13,30 +13,30 @@ export interface LiveGameItem {
     base_time_ms: number;
     increment_ms: number;
     spectators_count: number;
-    /** false — товарищеская партия (без рейтинга). */
+    /** false means a friendly game (unrated). */
     is_rated?: boolean;
 }
 
-/** Сообщение чата партии, как оно хранится на клиенте (собирается из события chat_message). */
+/** Game chat message as it is stored on the client (assembled from a chat_message event). */
 export interface ChatMessageItem {
     sender: string;
-    /** Текст, набранный игроком; у быстрой фразы пуст — её текст берётся из каталога по коду. */
+    /** Text typed by the player; empty for a quick phrase: its text is taken from the catalog by code. */
     text: string;
     preset?: ChatPresetId;
     timestamp: number;
 }
 
-/** Коды быстрых фраз — тот же список, что CHAT_PRESETS на сервере (src/api/websockets.py). */
+/** Quick phrase codes: the same list as CHAT_PRESETS on the server (src/api/websockets.py). */
 export const QUICK_CHAT_PRESETS = ['good_luck', 'thanks', 'nice_move', 'time_trouble'] as const;
 
 export type ChatPresetId = typeof QUICK_CHAT_PRESETS[number];
 
-/** Проверка кода быстрой фразы из события сервера: незнакомый код не показывается как фраза. */
+/** Validation of a quick phrase code from a server event: an unknown code is not shown as a phrase. */
 export function isChatPreset(value: unknown): value is ChatPresetId {
     return typeof value === 'string' && (QUICK_CHAT_PRESETS as readonly string[]).includes(value);
 }
 
-/** Ход пешки на последнюю горизонталь, который ждёт выбора фигуры; isPremove — превращение задано предходом. */
+/** A pawn move to the last rank that awaits a piece choice; isPremove means the promotion was set by a premove. */
 export interface PendingPromotion {
     from: string;
     to: string;
@@ -44,21 +44,21 @@ export interface PendingPromotion {
     isPremove?: boolean;
 }
 
-/** Открытый вызов в лобби (строка ответа GET /profile/matchmaking/queue). */
+/** Open challenge in the lobby (a row of the GET /profile/matchmaking/queue response). */
 export interface QueuePlayer {
     user_id: number;
     username: string;
     rating: number;
     base_time_ms: number;
     increment_ms: number;
-    /** false — вызов на товарищескую партию. */
+    /** false means a challenge to a friendly game. */
     rated?: boolean;
 }
 
 /**
- * Коды ошибок сервера, не связанные с матчмейкингом: они не должны сбрасывать поиск соперника
- * (в отличие от «уже в партии», «вызов неактуален» и т. п.). Коды — из реестра src/core/errors.py, приходят
- * в событии WebSocket error; разбирает их handleServerError в useGameSocket.
+ * Server error codes unrelated to matchmaking: they must not reset the opponent search
+ * (unlike "already in a game", "challenge is stale", etc.). The codes are from the src/core/errors.py registry and arrive
+ * in the WebSocket error event; handleServerError in useGameSocket parses them.
  */
 export const GAME_ACTION_ERROR_CODES: ReadonlySet<string> = new Set([
     'rate_limited',

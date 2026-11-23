@@ -1,4 +1,4 @@
-"""Ежедневная разминка (таск 22.2): шаги по самим тренировкам за сегодня, выбор тренажёра, серия дней подряд."""
+"""Daily workout (task 22.2): steps based on today's actual training, trainer choice, streak of consecutive days."""
 
 from datetime import UTC, datetime, timedelta
 
@@ -40,11 +40,11 @@ async def test_fresh_player_gets_defaults(db_session, test_user_1):
 
 async def test_steps_streak_and_weak_themes(db_session, test_user_1, test_user_2, puzzle):
     uid = test_user_1.id
-    for days_ago in (0, 1, 2, 4):  # 3 дня назад — пропуск: серия 3 (сегодня, вчера, позавчера)
+    for days_ago in (0, 1, 2, 4):  # 3 days ago is a gap: streak 3 (today, yesterday, the day before)
         when = NOW - timedelta(days=days_ago, hours=1)
         attempts(db_session, uid, puzzle.id, when, 5, solved=days_ago != 0)
         db_session.add(TrainerResult(user_id=uid, trainer="coord_find", level=1, score=5, time_ms=1, created_at=when))
-    attempts(db_session, test_user_2.id, puzzle.id, NOW, 5)  # чужие попытки не считаются
+    attempts(db_session, test_user_2.id, puzzle.id, NOW, 5)  # other players' attempts are not counted
     rep = Repertoire(user_id=uid, name="", color="white")
     db_session.add(rep)
     game = Game(white_player_id=uid, black_player_id=test_user_2.id, status=GameStatus.COMPLETED, result="0-1")
@@ -58,8 +58,8 @@ async def test_steps_streak_and_weak_themes(db_session, test_user_1, test_user_2
 
     plan = await workout.plan(db_session, test_user_1, NOW)
     puzzles, trainer, repertoire, mistake = plan["steps"]
-    assert puzzles["done"] == 5 and puzzles["themes"] == ["skewer"]  # 15 из 20 — слабая тема
-    assert trainer == {"kind": "trainer", "trainer": "coord_name", "done": True}  # coord_find уже делали чаще
+    assert puzzles["done"] == 5 and puzzles["themes"] == ["skewer"]  # 15 of 20 - a weak theme
+    assert trainer == {"kind": "trainer", "trainer": "coord_name", "done": True}  # coord_find was done more often already
     assert (repertoire["due"], repertoire["repertoire_id"], repertoire["done"]) == (1, rep.id, False)
     assert (mistake["due"], mistake["done"]) == (1, False)
     assert plan["complete"] and plan["streak"] == 3
@@ -72,7 +72,7 @@ async def test_api_requires_login(client, token_user_1):
 
 
 async def test_reminders_for_running_streaks_once_a_day(db_session, test_user_1, test_user_2, puzzle, monkeypatch):
-    """Напоминание (Celery beat): серия идёт, сегодня разминки нет — одно уведомление в день; выполнившим — нет."""
+    """Reminder (Celery beat): streak is going, no workout today - one notification a day; none for those who did it."""
     from sqlalchemy import select
 
     from src.models.social import Notification
@@ -88,20 +88,20 @@ async def test_reminders_for_running_streaks_once_a_day(db_session, test_user_1,
     for uid in (test_user_1.id, test_user_2.id):
         attempts(db_session, uid, puzzle.id, yesterday, 5)
         db_session.add(TrainerResult(user_id=uid, trainer="coord_find", level=1, score=5, time_ms=1, created_at=yesterday))
-    attempts(db_session, test_user_2.id, puzzle.id, NOW - timedelta(hours=1), 5)  # второй уже размялся сегодня
+    attempts(db_session, test_user_2.id, puzzle.id, NOW - timedelta(hours=1), 5)  # the second one already worked out today
     db_session.add(TrainerResult(user_id=test_user_2.id, trainer="tail", level=1, score=5, time_ms=1,
                                  created_at=NOW - timedelta(hours=1)))
     await db_session.commit()
 
     assert await workout.send_reminders(db_session, NOW) == 1
     assert delivered == [(test_user_1.id, "workout_reminder", {"streak": 1})]
-    assert await workout.send_reminders(db_session, NOW + timedelta(hours=2)) == 0  # уже напомнили сегодня
+    assert await workout.send_reminders(db_session, NOW + timedelta(hours=2)) == 0  # already reminded today
     kinds = (await db_session.execute(select(Notification.kind).where(Notification.user_id == test_user_1.id))).scalars().all()
     assert kinds == ["workout_reminder"]
 
 
 def test_beat_schedule_has_the_reminder():
-    import src.worker.tasks  # noqa: F401 — регистрирует задачи
+    import src.worker.tasks  # noqa: F401 — registers the tasks
     from src.worker.celery_app import celery_app
 
     assert celery_app.conf.beat_schedule["workout-reminders"]["task"] == "workout_reminders"

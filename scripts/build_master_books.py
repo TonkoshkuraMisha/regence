@@ -1,8 +1,8 @@
 """
-Дебютные книги мастеров второй волны (таск 21.5) из их партий в базе: архив исторических партий (`games` с
-архивными игроками) и библиотека партий (`library_games`, таски 27.1–27.3). Одинаковые партии считаются один раз.
-Ходы — первые 16 полуходов, только ходы самого мастера; формат — как у книг первой волны
-(scripts/build_opening_books.py): [ход UCI, доля %, число партий].
+Opening books of second-wave masters (task 21.5) from their games in the database: the archive of historical games (`games`
+archive players) and the game library (`library_games`, tasks 27.1-27.3). Identical games are counted once.
+Moves - the first 16 plies, only the master's own moves; the format is the same as for first-wave books
+(scripts/build_opening_books.py): [UCI move, share %, number of games].
 
     python scripts/build_master_books.py [--min-games 30]
 """
@@ -22,7 +22,7 @@ ARCHIVE_PASSWORD = "!historical_archive_no_login!"
 
 
 async def collect(surname: str, exclude: tuple[str, ...]) -> list[str]:
-    """Собирает дебютные ходы мастера из партий архива и библиотеки без дублей."""
+    """Collects the master's opening moves from archive and library games without duplicates."""
     from sqlalchemy import func, or_, select
     from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
     from sqlalchemy.orm import aliased
@@ -46,7 +46,7 @@ async def collect(surname: str, exclude: tuple[str, ...]) -> list[str]:
         )).scalars().all()
         for pgn in rows:
             parsed = library.parse_game(next(library.read_text(pgn), None)) if pgn else None
-            if parsed is not None:  # одна партия из архива и из библиотеки — по одному ключу ходов
+            if parsed is not None:  # one game from both the archive and the library - one move key
                 texts[parsed.moves_hash] = pgn
         games = (await db.execute(
             select(LibraryGame).where(or_(func.lower(LibraryGame.white).like(pattern.lower()),
@@ -59,7 +59,7 @@ async def collect(surname: str, exclude: tuple[str, ...]) -> list[str]:
 
 
 def build(master_id: str, pgns: list[str], min_games: int) -> None:
-    """Строит и сохраняет в JSON дебютную книгу для указанного мастера."""
+    """Builds and saves to JSON the opening book for the given master."""
     from src.services.bots.masters import MASTERS_BY_ID
 
     master = MASTERS_BY_ID[master_id]
@@ -79,7 +79,7 @@ def build(master_id: str, pgns: list[str], min_games: int) -> None:
 
 
 def main() -> None:
-    """Пересобирает дебютные книги всех дополнительных исторических мастеров."""
+    """Rebuilds the opening books of all additional historical masters."""
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--min-games", type=int, default=30)
     args = parser.parse_args()

@@ -1,15 +1,15 @@
 // --- FILE: frontend/src/components/ui/Page.tsx ---
-// Каркас страницы (общие компоненты дизайна, план владельца 18.11; docs/design-system.md): одинаковые ширина, поля и
-// заголовок на всех разделах. Ширины: narrow — чтение и списки (школа, правила), default — страницы с панелями
-// (задачи, турниры), wide — доска с панелями (игровой зал, разбор). Заголовок: иконка, название, одна строка
-// пояснения и место для действий справа (на телефоне — под названием).
+// Page frame (shared design components, owner plan of 18.11; docs/design-system.md): identical width, margins and
+// heading across all sections. Widths: narrow - reading and lists (school, rules), default - pages with panels
+// (puzzles, tournaments), wide - board with panels (game hall, analysis). Heading: icon, title, a single line
+// of explanation and a place for actions on the right (below the title on a phone).
 
 import type {ReactNode} from 'react';
 
-// Вид ширины страницы (см. заголовок файла).
+// Page width variant (see the file header).
 export type PageWidth = 'narrow' | 'default' | 'wide';
 
-// Предельная ширина содержимого по видам: 4xl, 6xl и 1600 px.
+// Maximum content width per variant: 4xl, 6xl and 1600 px.
 const WIDTHS: Record<PageWidth, string> = {
     narrow: 'max-w-4xl',
     default: 'max-w-6xl',
@@ -23,7 +23,7 @@ interface PageProps {
     testId?: string;
 }
 
-/** Контейнер страницы: ширина по виду, поля 12/16 px, вертикальный ритм 16 px. */
+/** Page container: width by variant, 12/16 px margins, 16 px vertical rhythm. */
 export function Page({width = 'default', children, className = '', testId}: PageProps) {
     return (
         <div data-testid={testId}
@@ -35,15 +35,15 @@ export function Page({width = 'default', children, className = '', testId}: Page
 
 interface PageHeaderProps {
     title: ReactNode;
-    /** Иконка раздела (lucide-react). */
+    /** Section icon (lucide-react). */
     icon?: ReactNode;
-    /** Одна-две строки: что здесь делают. */
+    /** One or two lines: what people do here. */
     description?: ReactNode;
-    /** Действия справа: обычно одна главная кнопка. */
+    /** Actions on the right: usually one main button. */
     actions?: ReactNode;
 }
 
-/** Заголовок страницы: иконка, название, пояснение и действия справа. */
+/** Page heading: icon, title, explanation and actions on the right. */
 export function PageHeader({title, icon, description, actions}: PageHeaderProps) {
     return (
         <header className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
@@ -61,13 +61,13 @@ export function PageHeader({title, icon, description, actions}: PageHeaderProps)
 
 interface SectionProps {
     title: ReactNode;
-    /** Справа от заголовка раздела: ссылка «Все», счётчик и т. п. */
+    /** To the right of the section heading: an "All" link, a counter, etc. */
     aside?: ReactNode;
     children: ReactNode;
     testId?: string;
 }
 
-/** Раздел страницы: заголовок второго уровня и содержимое с отступом 8 px. */
+/** Page section: a second-level heading and content indented by 8 px. */
 export function Section({title, aside, children, testId}: SectionProps) {
     return (
         <section className="flex flex-col gap-2" data-testid={testId}>

@@ -1,15 +1,15 @@
 # --- FILE: scripts/build_classics.py ---
 """
-Партии мастеров с объяснениями (таск 14.7): отбор партий из архива и разметка движком.
+Master games with explanations (task 14.7): selecting games from the archive and engine markup.
 
-Кандидаты — архивные партии, где отбор «Угадай ход мастера» (таблица guess_positions, scripts/build_guess_positions.py)
-нашёл моменты у победителя: результативные, 20–70 ходов, разные пары соперников, не больше --per-player партий одного
-победителя. Для каждой партии движок оценивает каждую позицию; к ходам с ошибкой или с тактической идеей наставник
-(src/services/coach.py) пишет объяснение кодами каталога coach.*; моменты отбора становятся остановками «что бы вы
-сыграли?» (с сохранёнными строками движка — ответ оценивается без сервера).
+Candidates are archive games where the "Guess the master's move" selection (the guess_positions table,
+scripts/build_guess_positions.py) found moments for the winner: decisive games, 20-70 moves, different pairs of opponents,
+at most --per-player games of one winner. For every game the engine evaluates each position; for moves with a mistake
+or a tactical idea the mentor (src/services/coach.py) writes an explanation with codes from the coach.* catalog;
+the selected moments become "what would you play?" stops (with stored engine lines - the answer is graded without a server).
 
-Результат — frontend/src/content/classics/<id>.json: ходы, оценки, комментарии, остановки и пустые места для
-вводного и итогового текстов (их пишет автор курса на трёх языках; при повторном запуске тексты сохраняются).
+The result is frontend/src/content/classics/<id>.json: moves, evaluations, comments, stops and blank places for
+the intro and summary texts (written by the course author in three languages; the texts are kept on re-run).
 
     python scripts/build_classics.py --count 30 --workers 8
 """
@@ -34,9 +34,9 @@ ARCHIVE_PASSWORD = "!historical_archive_no_login!"
 MATE = 100000
 MIN_MOVES, MAX_MOVES = 20, 70
 LANGUAGES = ("en", "uk", "ru")
-# Не для учебной подборки: партия, вокруг которой шёл публичный спор о честности игры.
+# Not for the teaching selection: a game around which there was a public dispute about fair play.
 EXCLUDED = ("carlsen-niemann-2022",)
-# Классика — партии с классическим контролем: быстрые, онлайновые, гандикапные и показательные события не берём.
+# Classics - games with a classical time control: rapid, online, handicap and exhibition events are not taken.
 NOT_CLASSICAL = re.compile(
     r"blitz|rapid|bullet|speed|online|chess\.com|chess24|titled|tuesday|\d-0|handicap|simul|armageddon|"
     r"meltwater|tour final|chessable|goldmoney|aimchess|airthings|champions chess|banter|lichess|blind|basque|"
@@ -46,15 +46,15 @@ NOT_CLASSICAL = re.compile(
 
 
 def _slug(white: str, black: str, year: str) -> str:
-    """Формирует строковый идентификатор классической партии по игрокам и году."""
+    """Builds a string identifier of a classical game from the players and the year."""
     def last(name: str) -> str:
-        """Извлекает фамилию шахматиста в нижнем регистре из заголовка PGN."""
+        """Extracts a chess player's lower-case surname from the PGN header."""
         return re.sub(r"[^a-z0-9]+", "-", name.split(",")[0].strip().lower()).strip("-")
     return f"{last(white)}-{last(black)}-{year}"
 
 
 async def _candidates(count: int, per_player: int, exclude: set[str]) -> list[dict]:
-    """Отбирает результативные классические партии чемпионов из архива."""
+    """Selects decisive classical games of champions from the archive."""
     from sqlalchemy import func, select
 
     from scripts.build_guess_positions import _sessions
@@ -111,12 +111,12 @@ async def _candidates(count: int, per_player: int, exclude: set[str]) -> list[di
 
 
 def _cp(score: chess.engine.PovScore, color: chess.Color) -> int:
-    """Переводит оценку позиции движком в сантипешки с точки зрения ходящего."""
+    """Converts the engine evaluation of a position to centipawns from the side to move's point of view."""
     return score.pov(color).score(mate_score=MATE) or 0
 
 
 def analyse(item: dict, depth: int) -> dict:
-    """Разбирает партию движком, формируя оценки, комментарии и остановки."""
+    """Analyses a game with the engine, producing evaluations, comments and stops."""
     from src.services.analysis_service import classify_move_by_cp_loss
     from src.services.bots.base import resolve_stockfish_path
     from src.services.coach import comment_for_move
@@ -174,7 +174,7 @@ def analyse(item: dict, depth: int) -> dict:
 
 
 def _write(data: dict) -> Path:
-    """Записывает размеченные классические партии в JSON-каталог клиента."""
+    """Writes the annotated classical games into the client's JSON catalog."""
     path = OUT / f"{data['id']}.json"
     texts = {"intro": {lang: "" for lang in LANGUAGES}, "summary": {lang: "" for lang in LANGUAGES}}
     if path.exists():
@@ -185,24 +185,24 @@ def _write(data: dict) -> Path:
 
 
 def main() -> None:
-    """Точка входа скрипта отбора и разметки классических партий мастеров."""
+    """Entry point of the script selecting and annotating classical master games."""
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--count", type=int, default=30)
     parser.add_argument("--per-player", type=int, default=2)
     parser.add_argument("--depth", type=int, default=14)
     parser.add_argument("--workers", type=int, default=4)
-    parser.add_argument("--exclude", nargs="*", default=list(EXCLUDED), help="id партий, которые не брать")
+    parser.add_argument("--exclude", nargs="*", default=list(EXCLUDED), help="ids of games not to take")
     args = parser.parse_args()
     OUT.mkdir(parents=True, exist_ok=True)
     chosen = asyncio.run(_candidates(args.count, args.per_player, set(args.exclude)))
-    print(f"Выбрано {len(chosen)} партий", flush=True)
+    print(f"Selected {len(chosen)} games", flush=True)
     with ProcessPoolExecutor(max_workers=args.workers) as pool:
         futures = [pool.submit(analyse, item, args.depth) for item in chosen]
         for done, future in enumerate(as_completed(futures), 1):
             data = future.result()
             path = _write(data)
-            print(f"[{done}/{len(chosen)}] {path.name}: {len(data['comments'])} комментариев, "
-                  f"{len(data['stops'])} остановок", flush=True)
+            print(f"[{done}/{len(chosen)}] {path.name}: {len(data['comments'])} comments, "
+                  f"{len(data['stops'])} stops", flush=True)
 
 
 if __name__ == "__main__":

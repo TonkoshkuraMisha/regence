@@ -1,13 +1,13 @@
 # --- FILE: tests/test_coach.py ---
 """
-Наставник словами (таск 11.2): комментарии к ходам и совет по позиции.
+The mentor in words (task 11.2): move comments and advice on a position.
 
-* Каталоги клиента на трёх языках содержат ровно те шаблоны, которые может отдать сервер, и не используют
-  параметров, которых сервер не присылает.
-* Объяснения правдивы: причина ошибки называется, только если её подтверждает ответ движка; размен не
-  выдаётся за потерю материала; идеей хода считается только то, что создал сам ход.
-* Разбор партии хранит версию формата, старый кэш не отдаётся и пересчитывается; без движка комментариев нет.
-* POST /analysis/advice — под правилом честной игры, со своим лимитом и кодами ошибок.
+* The client catalogs in three languages contain exactly the templates the server can emit and do not use
+  parameters the server does not send.
+* Explanations are truthful: a mistake's cause is named only if the engine's answer confirms it; a trade is not
+  passed off as a material loss; only what the move itself created counts as its idea.
+* Game analysis stores a format version; an old cache is not served and is recomputed; without an engine there are no comments.
+* POST /analysis/advice is under the fair-play rule, with its own limit and error codes.
 """
 
 import json
@@ -45,7 +45,7 @@ def _move(uci: str) -> chess.Move:
     return chess.Move.from_uci(uci)
 
 
-# --- каталоги ----------------------------------------------------------------------------------------------------
+# --- catalogs ----------------------------------------------------------------------------------------------------
 
 def _coach_catalog(language: str) -> dict[str, str]:
     text = (ROOT / "frontend" / "src" / "i18n" / "messages" / f"{language}.ts").read_text(encoding="utf-8")
@@ -64,7 +64,7 @@ def _coach_catalog(language: str) -> dict[str, str]:
     return texts
 
 
-@pytest.mark.parametrize("language", ["en", "uk", "ru"])
+@pytest.mark.parametrize("language", ["en", "uk"])
 def test_catalog_has_every_template_variant_and_only_known_params(language):
     catalog = _coach_catalog(language)
     expected = all_message_keys()
@@ -78,7 +78,7 @@ def test_every_template_has_all_variants():
     assert len(all_message_keys()) == len(TEMPLATES) * VARIANTS
 
 
-# --- нотация -------------------------------------------------------------------------------------------------------
+# --- notation -------------------------------------------------------------------------------------------------------
 
 def test_figurine_san():
     board = chess.Board("r3k2r/1P6/8/8/8/8/8/R3K2R w KQkq - 0 1")
@@ -90,7 +90,7 @@ def test_figurine_san():
     assert figurine_san(board, _move("e8c8")) == "O-O-O"
 
 
-# --- комментарии к ходам ---------------------------------------------------------------------------------------------
+# --- move comments ---------------------------------------------------------------------------------------------
 
 ITALIAN = "r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4"
 FORK_SETUP = "r2qk2r/ppp2ppp/2n5/4N3/2B5/8/PPP2PPP/R2QK2R w KQkq - 0 10"
@@ -100,14 +100,14 @@ MATE_IN_ONE = "r1bqkb1r/pppp1ppp/2n2n2/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 4
 
 def test_blunder_names_the_lost_piece_confirmed_by_the_reply():
     coach = comment_for_move(chess.Board(ITALIAN), _move("c4f7"), "e1g1", "e8f7", "Blunder")
-    # Лучший ход — рокировка: наставник называет её идею, а не просто «сильнее было» (таск B.4).
+    # The best move is castling: the mentor names its idea instead of just "it was stronger" (task B.4).
     assert _keys(coach) == ["coach.verdict.blunder", "coach.threat.hanging", "coach.best.pos_castle"]
     assert coach["comment"][1]["params"] == {"piece": "♗f7"}
     assert {"from": "e1", "to": "g1", "kind": "best"} in coach["arrows"]
 
 
 def test_unconfirmed_reason_is_not_named():
-    """Ответ движка не берёт слона — значит, «висящий слон» не причина, и наставник о нём молчит."""
+    """The engine's answer does not take the bishop, so a "hanging bishop" is no cause and the mentor stays silent."""
     coach = comment_for_move(chess.Board(ITALIAN), _move("c4f7"), "e1g1", "d7d6", "Blunder")
     assert "coach.threat.hanging" not in _keys(coach)
 
@@ -138,7 +138,7 @@ def test_checkmate_is_praised():
 
 
 def test_an_exchange_is_not_called_a_loss():
-    """Конь взял коня и отыгран — это размен, а не «фигуру можно взять с выигрышем»."""
+    """A knight took a knight and was recaptured: that is a trade, not "a piece can be won"."""
     knight_trade = chess.Board("rnbqkb1r/pppppppp/5n2/8/8/5N2/PPPPPPPP/RNBQKB1R w KQkq - 2 2")
     knight_trade.push_uci("f3e5")
     knight_trade.push_uci("b8c6")
@@ -147,8 +147,8 @@ def test_an_exchange_is_not_called_a_loss():
 
 
 def test_motif_not_created_by_the_move_is_not_its_idea():
-    """Король отошёл, а где-то на доске «сложилась» связка, — это не идея хода."""
-    board = chess.Board("4k3/8/8/8/1b6/8/3N4/4K2R w - - 0 1")  # связка Bb4–Nd2–Ke1 уже есть
+    """The king stepped away and a pin happened to "form" elsewhere on the board: that is not the move's idea."""
+    board = chess.Board("4k3/8/8/8/1b6/8/3N4/4K2R w - - 0 1")  # the Bb4-Nd2-Ke1 pin already exists
     coach = comment_for_move(board, _move("h1h2"), "h1h2", None, "Best")
     assert coach is None
 
@@ -166,7 +166,7 @@ def test_illegal_or_unknown_input_is_not_commented():
     assert comment_for_move(chess.Board(), _move("e2e4"), None, None, "Book") is None
 
 
-# --- совет по позиции -------------------------------------------------------------------------------------------------
+# --- advice on a position -------------------------------------------------------------------------------------------------
 
 def test_advice_with_mate_says_only_the_mate():
     advice = advice_for_position(chess.Board(MATE_IN_ONE), "h5f7")
@@ -191,7 +191,7 @@ def test_advice_without_engine_still_sees_a_free_piece():
     assert advice["comment"][0]["params"] == {"piece": "♞d5"}
 
 
-# --- разбор партии -------------------------------------------------------------------------------------------------------
+# --- game analysis -------------------------------------------------------------------------------------------------------
 
 def test_attach_comments_uses_the_engine_reply():
     board = chess.Board(ITALIAN)
@@ -276,5 +276,5 @@ def test_advice_has_its_own_rate_limit(client, no_engine, monkeypatch, freeze_ra
     limited = client.post(ADVICE_URL, json={"fen": MATE_IN_ONE})
     assert limited.status_code == 429
     assert limited.json()["detail"]["code"] == "engine_rate_limited"
-    # Анализ позиции считается отдельно — совет его квоту не тратит.
+    # Position analysis is counted separately: advice does not spend its quota.
     assert client.post("/api/v1/analysis/position", json={"moves": []}).status_code == 200

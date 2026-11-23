@@ -1,9 +1,9 @@
 // --- FILE: frontend/src/components/trainers/MiniatureGame.tsx ---
-// «Миниатюры» (таск 27.9): короткая партия из библиотеки, закончившаяся матом. Позиция перед последним ходом — найти
-// мат (засчитывается любой матующий ход, не только ход партии). После ответа доска не застывает: верный ход стоит на
-// доске, неверный — видна стрелка хода партии; позицию можно доиграть (usePositionExplorer). И ссылка на партию.
-// Данные: GET /library/miniatures (services/library.ts → src/api/library.py, src/services/miniatures.py): партии библиотеки, закончившиеся матом
-// за MAX_PLIES полуходов. Запускается из TrainersPage.tsx (тренажёр miniatures); 10 очков за каждый найденный мат.
+// "Miniatures" (task 27.9): a short library game that ended in mate. The position before the last move - find
+// the mate (any mating move counts, not only the game move). After the answer the board does not freeze: a correct move stays on
+// the board, for a wrong one the game move arrow is visible; the position can be played on (usePositionExplorer). And a link to the game.
+// Data: GET /library/miniatures (services/library.ts -> src/api/library.py, src/services/miniatures.py): library games that ended in mate
+// within MAX_PLIES plies. Launched from TrainersPage.tsx (the miniatures trainer); 10 points for each mate found.
 
 import {useEffect, useState} from 'react';
 import {Link} from 'react-router-dom';
@@ -14,16 +14,16 @@ import {ExplorerControls, usePositionExplorer} from '../puzzles/usePositionExplo
 import {libraryApi} from '../../services/library';
 import type {LibraryMiniature} from '../../services/library';
 
-/** Позиций в попытке; уходит серверу как count. */
+/** Positions per attempt; goes to the server as count. */
 export const MINIATURE_ROUNDS = 10;
 
-/** Свойства игры: seed (тот же seed — тот же набор) и onFinish(очки, ошибки). */
+/** Game props: seed (same seed - same set) and onFinish(score, mistakes). */
 interface Props {
     seed: number;
     onFinish: (score: number, mistakes: number) => void;
 }
 
-/** Даёт ли ход uci мат в позиции fen. */
+/** Whether the move uci gives mate in the position fen. */
 export function isMate(fen: string, uci: string): boolean {
     const game = new Chess(fen);
     try {
@@ -34,7 +34,7 @@ export function isMate(fen: string, uci: string): boolean {
     return game.isCheckmate();
 }
 
-/** Попытка из MINIATURE_ROUNDS позиций; пока набор грузится или загрузка не удалась, рисуется заглушка. */
+/** An attempt of MINIATURE_ROUNDS positions; while the set loads or loading failed, a placeholder is rendered. */
 export function MiniatureGame({seed, onFinish}: Props) {
     const {t} = useI18n();
     const [items, setItems] = useState<LibraryMiniature[] | null>(null);
@@ -68,7 +68,7 @@ export function MiniatureGame({seed, onFinish}: Props) {
         const ok = isMate(item.fen, uci);
         setVerdict({ok, move: uci});
         setScore((s) => (ok ? {...s, correct: s.correct + 1} : {...s, wrong: s.wrong + 1}));
-        // Верный ход ставится на доску; неверный — нет: с позиции задачи видна стрелка хода партии, его можно сыграть.
+        // A correct move is put on the board; a wrong one is not: from the task position the game move arrow is visible, it can be played.
         explorer.start(item.fen, ok ? [uci] : []);
     };
     const next = () => {
@@ -80,7 +80,7 @@ export function MiniatureGame({seed, onFinish}: Props) {
         setVerdict(null);
         explorer.stop();
     };
-    // Стрелка хода партии — только пока на доске позиция задачи (после неверного ответа).
+    // The game move arrow - only while the board shows the task position (after a wrong answer).
     const shown = verdict && !verdict.ok && explorer.plies === 0 ? item.answer : null;
 
     return (

@@ -1,5 +1,5 @@
 # --- FILE: tests/test_game_summary.py ---
-"""Итог партии (таск 11.5): тип партии по синтетическим графикам оценки, ключевые моменты, эндпоинт разбора."""
+"""Game summary (task 11.5): game type from synthetic evaluation curves, key moments, the review endpoint."""
 
 import json
 
@@ -12,7 +12,7 @@ from src.services.game_summary import summarize
 
 
 def moves_from(evals: list[int], losses: dict[int, int] | None = None) -> list[dict]:
-    """Ходы разбора по оценкам после каждого полухода (белые — нечётные полуходы). losses: ply → cp_loss."""
+    """Review moves from evaluations after each ply (White is the odd plies). losses: ply -> cp_loss."""
     losses = losses or {}
     return [
         {"ply": ply, "color": "white" if ply % 2 else "black", "eval_cp": value, "cp_loss": losses.get(ply, 0)}
@@ -51,7 +51,7 @@ def test_balanced():
 
 
 def test_gradual():
-    # Белые в дебюте были заметно хуже (не доминирование), затем без грубых ошибок соперника набрали перевес.
+    # White was clearly worse in the opening (no domination), then gained an advantage without gross opponent errors.
     evals = [-120, -180, -190, -160, -120, -60, 160, 200, 260, 300, 380, 420]
     summary = summarize(moves_from(evals), "1-0")
     assert summary["kind"] == "gradual" and summary["lead_changes"] == 1
@@ -101,7 +101,7 @@ async def test_cached_analysis_comes_with_a_summary(client, db_session):
 
 
 def test_punishing_a_blunder_is_the_best_moment():
-    # Детский мат: 3…Кf6?? — уже выигранная позиция, а 4.Фxf7# — ход, который это использовал.
+    # Scholar's mate: 3...Nf6?? is already a won position, and 4.Qxf7# is the move that exploited it.
     evals = [30, 25, 30, 40, 50, 10000, 10000]
     summary = summarize(moves_from(evals, {6: 9950}), "1-0")
     assert summary["kind"] == "decisive_blunder" and summary["turning_point_ply"] == 6
@@ -109,9 +109,9 @@ def test_punishing_a_blunder_is_the_best_moment():
 
 
 def test_missed_punishment_is_listed():
-    # 3.… чёрные зевают (−250), 4. белые не наказывают (теряют 230), дальше ровно.
+    # 3... Black blunders (-250), 4. White does not punish it (loses 230), then equal.
     evals = [20, 25, 30, 280, 50, 40, 30, 35]
     summary = summarize(moves_from(evals, {4: 250, 5: 230}), "1/2-1/2")
     assert summary["missed"] == [{"ply": 5, "color": "white", "cp": 230}]
-    # Наказали — пропуска нет.
+    # Punished: no missed chance.
     assert summarize(moves_from(evals, {4: 250}), "1/2-1/2")["missed"] == []

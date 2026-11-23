@@ -1,7 +1,7 @@
 // --- FILE: frontend/src/config/players.ts ---
-// Имена игроков, которые присылает сервер, — на языке игрока. Сервер хранит у ботов нейтральные имена
-// (src/api/bots.py): исторический бот — его id («morphy»), общий соперник мастерской — «workshop_opponent»,
-// архетип в архиве партий — «archetype:<id>». Обычные имена игроков показываются как есть.
+// Player names sent by the server - in the player's language. For bots the server stores neutral names
+// (src/api/bots.py): a historical bot - its id ("morphy"), the shared workshop opponent - "workshop_opponent",
+// an archetype in the game archive - "archetype:<id>". Ordinary player names are shown as is.
 
 import {hasMessage, t as translateNow, uiMessage} from '../i18n';
 import type {I18n, MessageParam} from '../i18n';
@@ -16,7 +16,7 @@ function historicalBotId(username: string): HistoricalBotId | null {
     return id in HISTORICAL_BOTS ? (id as HistoricalBotId) : null;
 }
 
-/** Имя игрока как сообщение: подпись бота или архетипа из каталога, иначе — имя как есть. */
+/** Player name as a message: a bot or archetype label from the catalog, otherwise the name as is. */
 export function playerNameMessage(username: string | null | undefined): MessageParam {
     if (!username) return '';
     const botId = historicalBotId(username);
@@ -29,14 +29,14 @@ export function playerNameMessage(username: string | null | undefined): MessageP
     return username;
 }
 
-/** Имя игрока для показа на текущем языке компонента (t из useI18n) или на текущем языке приложения. */
+/** Player name for display in the current language of the component (t from useI18n) or of the application. */
 export function displayPlayerName(username: string | null | undefined, t: I18n['t'] = translateNow): string {
     const message = playerNameMessage(username);
     if (typeof message !== 'object') return String(message);
     return 'text' in message ? message.text : t(message.key);
 }
 
-/** Соперник ступени лестницы: исторический бот — по id, архетип — по id архетипа. */
+/** Ladder step opponent: a historical bot - by id, an archetype - by archetype id. */
 export function ladderOpponentName(kind: 'historical' | 'archetype', id: string, t: I18n['t'] = translateNow): string {
     if (kind === 'historical') {
         const key = `bots.profiles.${id}.shortName`;

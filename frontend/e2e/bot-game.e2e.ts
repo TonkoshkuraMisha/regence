@@ -1,5 +1,5 @@
-// Партия против исторического бота на основной доске в настоящем браузере: ходы перетаскиванием и двумя щелчками
-// чередуются, после каждого хода бот отвечает (Stockfish на сервере), позиция на доске остаётся корректной.
+// A game against a historical bot on the main board in a real browser: drag moves and two-click moves
+// alternate, the bot replies after every move (Stockfish on the server), the board position stays correct.
 
 import {expect, test} from '@playwright/test';
 import type {Page} from '@playwright/test';
@@ -8,9 +8,9 @@ import {loginNewPlayer, openNewGame} from './helpers.ts';
 
 const PIECES: Record<string, string> = {wp: 'P', wn: 'N', wb: 'B', wr: 'R', wq: 'Q', wk: 'K', bp: 'p', bn: 'n', bb: 'b', br: 'r', bq: 'q', bk: 'k'};
 
-/** Расстановка с доски (alt картинок фигур) → FEN-расстановка. */
+/** Board setup (alt of the piece images) → FEN placement. */
 async function placement(page: Page): Promise<string> {
-    // Строкой, а не функцией: конфиг TypeScript для E2E не знает типов DOM (код выполняется в браузере).
+    // A string, not a function: the TypeScript config for E2E does not know DOM types (the code runs in the browser).
     const pieces = await page.evaluate(`Array.from(document.querySelectorAll('[data-square]')).map((cell) => ({
         square: cell.getAttribute('data-square') ?? '',
         piece: cell.querySelector('img')?.getAttribute('alt') ?? '',
@@ -34,7 +34,7 @@ async function placement(page: Page): Promise<string> {
     return rows.join('/');
 }
 
-/** Ход белых без особых правил (рокировку и взятие на проходе по одной доске не проверить): взятие, если есть. */
+/** A White move without special rules (castling and en passant cannot be checked from a single board): a capture if there is one. */
 function chooseMove(board: string, seed: number) {
     const game = new Chess(`${board} w - - 0 1`);
     const moves = game.moves({verbose: true}).filter((m) => !m.promotion);
@@ -45,12 +45,12 @@ function chooseMove(board: string, seed: number) {
 
 const square = (page: Page, name: string) => page.locator(`[data-square="${name}"]`).first();
 
-test('партия с ботом: ходы перетаскиванием и щелчками, бот отвечает', async ({page, request}) => {
+test('game with a bot: drag and click moves, the bot replies', async ({page, request}) => {
     test.setTimeout(180_000);
     await loginNewPlayer(page, request, 'bot');
     await page.goto('/');
     await openNewGame(page, 'bot');
-    await page.getByRole('button', {name: '♔ Белыми'}).first().click();
+    await page.getByRole('button', {name: '♔ White'}).first().click();
     await expect.poll(() => placement(page)).toBe('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR');
 
     for (let turn = 0; turn < 8; turn++) {
@@ -64,11 +64,11 @@ test('партия с ботом: ходы перетаскиванием и щ�
             await square(page, move.from).click();
             await square(page, move.to).click();
         }
-        // Ход белых виден на доске…
+        // White's move is visible on the board…
         await expect.poll(async () => (await placement(page)) !== before, {timeout: 10_000}).toBe(true);
         game.move({from: move.from, to: move.to});
         const afterOurs = game.fen().split(' ')[0];
-        // …затем бот отвечает: позиция отличается от той, что была сразу после нашего хода, и это легальный ход чёрных.
+        // …then the bot replies: the position differs from the one right after our move, and it is a legal Black move.
         await expect.poll(async () => (await placement(page)) !== afterOurs, {timeout: 30_000}).toBe(true);
         const afterBot = await placement(page);
         const blackToMove = new Chess(`${afterOurs} b - - 0 1`);

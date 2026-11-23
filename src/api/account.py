@@ -1,12 +1,13 @@
 # --- FILE: src/api/account.py ---
 """
-Учётная запись (/account; таски 17.5, 23.1, 24.3): выгрузка своих данных и партий, удаление аккаунта
-(src/services/account.py), привязка e-mail и сброс пароля по ссылке из письма (src/services/email_links.py,
-отправка — src/services/mailer.py).
+Account (/account; tasks 17.5, 23.1, 24.3): export of one's own data and games, account deletion
+(src/services/account.py), e-mail binding and password reset via a link from an e-mail (src/services/email_links.py,
+sending - src/services/mailer.py).
 
-Привязка и удаление требуют пароль; неудачные попытки считаются тем же счётчиком, что и неудачные входы. Письма
-ограничены по адресу получателя и по адресу отправителя запроса (RATE_LIMIT_EMAIL_*). Подтверждение адреса и сброс
-пароля идут без входа — по одноразовому токену из письма (таблица email_tokens).
+Binding and deletion require the password; failed attempts are counted by the same counter as failed logins. E-mails
+are limited by the recipient address and by the address of the request sender (RATE_LIMIT_EMAIL_*). Address confirmation and
+password
+reset work without logging in - by a one-time token from the e-mail (table email_tokens).
 """
 
 from typing import Literal
@@ -34,9 +35,9 @@ class DeleteAccountRequest(BaseModel):
     password: str = Field(..., min_length=1, max_length=128)
 
 
-# Простая проверка формы адреса; настоящая проверка — письмо со ссылкой.
+# A simple check of the address shape; the real check is the e-mail with a link.
 EMAIL_PATTERN = r"^[^@\s]+@[^@\s]+\.[^@\s]+$"
-Language = Literal["en", "uk", "ru"]
+Language = Literal["en", "uk"]
 
 
 class EmailRequest(BaseModel):
@@ -60,7 +61,7 @@ class ResetConfirm(BaseModel):
 
 
 async def _check_password(user: User, password: str) -> None:
-    """Подтверждение паролем; неудачные попытки — под тем же лимитом, что и вход."""
+    """Password confirmation; failed attempts fall under the same limit as login."""
     account = f"account:{user.username_key or username_key(user.username)}"
     await ensure_below_limit(
         "login_failures", account,
@@ -73,7 +74,8 @@ async def _check_password(user: User, password: str) -> None:
 
 
 async def _limit_mail(request: Request, email: str) -> None:
-    """Письма со ссылками: не больше N на адрес и на IP за окно — чтобы через нас не засыпали чужой ящик."""
+    """E-mails with links: at most N per address and per IP within the window - so that we cannot be used to flood someone
+    else's mailbox."""
     window = settings.RATE_LIMIT_EMAIL_WINDOW_S
     await enforce_rate_limit("mail", f"ip:{client_ip(request)}", settings.RATE_LIMIT_EMAIL_PER_IP, window,
                              "too_many_emails")
@@ -83,7 +85,7 @@ async def _limit_mail(request: Request, email: str) -> None:
 
 @router.get("/export")
 async def export_my_data(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """Все данные игрока одним файлом JSON (GDPR, право на переносимость); только свои, нужен вход."""
+    """All of the player's data as one JSON file (GDPR, right to portability); only one's own, login required."""
     data = await service.export_data(db, user)
     return JSONResponse(data, headers={"Content-Disposition": f'attachment; filename="regence-{user.id}.json"'})
 
@@ -92,9 +94,9 @@ async def export_my_data(user: User = Depends(get_current_user), db: AsyncSessio
 async def export_my_games_pgn(offset: int = Query(0, ge=0), user: User = Depends(get_current_user),
                               db: AsyncSession = Depends(get_db)):
     """
-    Свои завершённые партии одним файлом PGN (таск 24.3) — открыть в любой шахматной программе. За один запрос —
-    не больше account.GAMES_PGN_LIMIT партий, от старых к новым; общее число — в заголовке X-Total-Count, дальше —
-    параметр offset.
+    One's own finished games as a single PGN file (task 24.3) - to open in any chess program. Per request
+    at most account.GAMES_PGN_LIMIT games, from oldest to newest; the total is in the X-Total-Count header, further pages -
+    the offset parameter.
     """
     text, total = await service.games_pgn(db, user, offset)
     return PlainTextResponse(text, media_type="application/x-chess-pgn", headers={
@@ -109,9 +111,9 @@ async def delete_my_account(
         db: AsyncSession = Depends(get_db),
 ):
     """
-    Удаление своего аккаунта с подтверждением паролем. Строка в users не стирается, а обезличивается: имя
-    заменяется на deleted_<id>, личные данные и свои записи (прогресс, задачи, турниры, импорт) удаляются, все
-    токены отзываются; партии остаются у соперников. Пока идёт партия — отказ 409 account_in_game.
+    Deletion of one's own account with password confirmation. The users row is not erased but anonymised: the name
+    is replaced by deleted_<id>, personal data and own records (progress, puzzles, tournaments, imports) are deleted, all
+    tokens are revoked; games stay with the opponents. While a game is in progress - refusal 409 account_in_game.
     """
     await _check_password(user, payload.password)
     await service.delete_account(db, user)
@@ -122,7 +124,7 @@ async def request_email(
         payload: EmailRequest, request: Request,
         user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
 ):
-    """Привязать e-mail: письмо со ссылкой подтверждения; адрес попадёт в профиль только по ссылке."""
+    """Bind an e-mail: an e-mail with a confirmation link; the address reaches the profile only via the link."""
     await _check_password(user, payload.password)
     await _limit_mail(request, payload.email)
     await email_links.request_verification(db, user, payload.email, payload.language)
@@ -132,7 +134,7 @@ async def request_email(
 async def remove_email(
         payload: DeleteAccountRequest, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
 ):
-    """Отвязать e-mail (с паролем): после этого сбросить пароль по почте нельзя."""
+    """Unbind the e-mail (with password): afterwards the password cannot be reset by e-mail."""
     await _check_password(user, payload.password)
     user.email = None
     await db.commit()
@@ -140,7 +142,8 @@ async def remove_email(
 
 @router.post("/email/verify")
 async def verify_email(payload: TokenRequest, db: AsyncSession = Depends(get_db)):
-    """Ссылка из письма (без входа — по токену из неё): адрес подтверждён и записан в профиль (users.email)."""
+    """Link from the e-mail (no login - by the token in it): the address is confirmed and written to the profile
+    (users.email)."""
     user = await email_links.confirm_verification(db, payload.token)
     return {"email": user.email}
 
@@ -148,8 +151,9 @@ async def verify_email(payload: TokenRequest, db: AsyncSession = Depends(get_db)
 @router.post("/password-reset", status_code=status.HTTP_202_ACCEPTED)
 async def request_password_reset(payload: ResetRequest, request: Request, db: AsyncSession = Depends(get_db)):
     """
-    Письмо со ссылкой сброса (без входа). Ответ одинаковый, есть такой адрес или нет, — чтобы по нему нельзя было
-    узнать, привязан ли адрес к чьему-то аккаунту.
+    An e-mail with a reset link (no login). The response is the same whether such an address exists or not, so that it cannot
+    be used to
+    find out whether an address is bound to someone's account.
     """
     await _limit_mail(request, payload.email)
     await email_links.request_reset(db, payload.email, payload.language)
@@ -157,5 +161,5 @@ async def request_password_reset(payload: ResetRequest, request: Request, db: As
 
 @router.post("/password-reset/confirm", status_code=status.HTTP_204_NO_CONTENT)
 async def confirm_password_reset(payload: ResetConfirm, db: AsyncSession = Depends(get_db)):
-    """Новый пароль по ссылке из письма: все сессии и прочие ссылки сброса отзываются."""
+    """New password via the link from the e-mail: all sessions and other reset links are revoked."""
     await email_links.confirm_reset(db, payload.token, payload.new_password)

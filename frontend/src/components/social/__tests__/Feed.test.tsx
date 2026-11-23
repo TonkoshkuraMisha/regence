@@ -1,4 +1,4 @@
-// Лента и публикации (таск 30.2): лента, публикация с карточкой, «нравится», комментарии, публикации в профиле.
+// The feed and posts (task 30.2): the feed, a post with a card, "like", comments, posts in the profile.
 
 import {act, fireEvent, render, screen, waitFor} from '@testing-library/react';
 import {MemoryRouter, Route, Routes} from 'react-router-dom';
@@ -27,7 +27,7 @@ function stubFetch(handler: Handler) {
 }
 
 const post = (id: number, extra: Record<string, unknown> = {}) => ({
-    id, author: 'magnus', avatar: null, body: `Пост ${id}`, attachment: null, created_at: '2026-11-17T10:00:00Z',
+    id, author: 'magnus', avatar: null, body: `Post ${id}`, attachment: null, created_at: '2026-11-17T10:00:00Z',
     likes: 0, liked: false, comments: 0, mine: false, hidden: false, ...extra,
 });
 
@@ -48,8 +48,8 @@ afterEach(() => {
     vi.unstubAllGlobals();
 });
 
-describe('лента', () => {
-    it('публикации подписок, «нравится» и публикация с карточкой', async () => {
+describe('feed', () => {
+    it('posts of the people you follow, "like" and a post with a card', async () => {
         const fetchMock = stubFetch((url, init) => {
             if (url.endsWith('/like')) return post(1, {likes: 1, liked: true});
             if (init?.method === 'POST') {
@@ -60,65 +60,65 @@ describe('лента', () => {
             return {posts: [post(1)], page: 20};
         });
         at('/feed');
-        expect(await screen.findByText('Пост 1')).toBeInTheDocument();
+        expect(await screen.findByText('Post 1')).toBeInTheDocument();
         await act(async () => fireEvent.click(screen.getByTestId('feed-like')));
         expect(screen.getByTestId('feed-like')).toHaveAttribute('aria-pressed', 'true');
         expect(screen.getByTestId('feed-like')).toHaveTextContent('1');
 
-        fireEvent.change(screen.getByTestId('feed-input'), {target: {value: 'Бессмертная!'}});
+        fireEvent.change(screen.getByTestId('feed-input'), {target: {value: 'Immortal!'}});
         fireEvent.click(screen.getByTestId('feed-attach-toggle'));
         fireEvent.change(screen.getByTestId('feed-attach-ref'), {target: {value: 'https://x.example/library/game/5'}});
         expect(screen.getByTestId('feed-attach-kind')).toHaveValue('library');
         await act(async () => fireEvent.click(screen.getByTestId('feed-publish')));
         const sent = fetchMock.mock.calls.find(([u, i]) => String(u).endsWith('/api/v1/feed') && i?.method === 'POST');
-        expect(JSON.parse(String(sent?.[1]?.body))).toEqual({body: 'Бессмертная!', attachment: {kind: 'library', ref: '5'}, send_anyway: false});
+        expect(JSON.parse(String(sent?.[1]?.body))).toEqual({body: 'Immortal!', attachment: {kind: 'library', ref: '5'}, send_anyway: false});
         const cards = await screen.findAllByTestId('feed-post');
-        expect(cards[0]).toHaveTextContent('Бессмертная!');
+        expect(cards[0]).toHaveTextContent('Immortal!');
         expect(cards[0]).toHaveTextContent('Anderssen — Kieseritzky · 1-0 · 1851');
         expect(screen.getByTestId('attachment-library').querySelector('a')).toHaveAttribute('href', '/library/game/5');
     });
 
-    it('«Поделиться» открывает поле с готовым достижением; ошибка — текстом каталога', async () => {
+    it('"Share" opens a field with a ready achievement; an error — a catalog text', async () => {
         stubFetch((_url, init) => (init?.method === 'POST' ? new Error('posting_banned') : {posts: [], page: 20}));
         at('/feed', {attach: {kind: 'achievement', ref: 'first_game'}});
         expect(await screen.findByTestId('feed-empty')).toBeInTheDocument();
-        expect(screen.getByTestId('attachment-achievement')).toHaveTextContent('Первая партия');
+        expect(screen.getByTestId('attachment-achievement')).toHaveTextContent('First game');
         await act(async () => fireEvent.click(screen.getByTestId('feed-publish')));
-        expect(await screen.findByRole('alert')).toHaveTextContent('Модератор временно запретил вам публикации и комментарии');
+        expect(await screen.findByRole('alert')).toHaveTextContent('A moderator has suspended your posts and comments for now');
     });
 
-    it('страница публикации: комментарии и новый комментарий', async () => {
+    it('the post page: comments and a new comment', async () => {
         stubFetch((url, init) => {
             if (url.endsWith('/comments') && init?.method === 'POST') {
-                return {id: 2, author: 'me', body: 'Спасибо', created_at: null, mine: true, can_delete: true};
+                return {id: 2, author: 'me', body: 'Thanks', created_at: null, mine: true, can_delete: true};
             }
             return {post: post(4, {comments: 1}), comments: [
-                {id: 1, author: 'magnus', body: 'Красиво', created_at: null, mine: false, can_delete: false}]};
+                {id: 1, author: 'magnus', body: 'Beautiful', created_at: null, mine: false, can_delete: false}]};
         });
         at('/feed/post/4');
-        expect(await screen.findByText('Красиво')).toBeInTheDocument();
-        fireEvent.change(screen.getByTestId('comment-input'), {target: {value: 'Спасибо'}});
+        expect(await screen.findByText('Beautiful')).toBeInTheDocument();
+        fireEvent.change(screen.getByTestId('comment-input'), {target: {value: 'Thanks'}});
         await act(async () => fireEvent.click(screen.getByTestId('comment-send')));
         expect(screen.getAllByTestId('post-comment')).toHaveLength(2);
-        expect(screen.getByTestId('feed-post')).toHaveTextContent('Комментариев: 2');
+        expect(screen.getByTestId('feed-post')).toHaveTextContent('Comments: 2');
     });
 
-    it('гость: просьба войти; публикации игрока в профиле видны', async () => {
+    it('a guest: a request to log in; a player\'s posts in the profile are visible', async () => {
         setToken(null);
         stubFetch(() => ({posts: [post(3)], page: 20}));
         at('/feed');
         expect(screen.getByTestId('feed-login')).toBeInTheDocument();
         render(<MemoryRouter><ProfilePosts username="magnus"/></MemoryRouter>);
-        await waitFor(() => expect(screen.getByTestId('profile-posts')).toHaveTextContent('Пост 3'));
+        await waitFor(() => expect(screen.getByTestId('profile-posts')).toHaveTextContent('Post 3'));
     });
 });
 
-describe('мелочи', () => {
-    it('ссылка на партию библиотеки и уведомление о комментарии', () => {
+describe('small things', () => {
+    it('a link to a library game and a comment notification', () => {
         expect(detectAttachment('/library/game/12')).toEqual({kind: 'library', ref: '12'});
         expect(detectAttachment('/game/12')).toEqual({kind: 'game', ref: '12'});
         const n = {id: 1, kind: 'post_comment', payload: {from: 'magnus', post_id: 7}, created_at: null, read: false} as AppNotification;
         expect(notificationLink(n)).toBe('/feed/post/7');
-        expect(notificationText(n, makeI18n('ru').t)).toBe('Новый комментарий от magnus к вашей публикации');
+        expect(notificationText(n, makeI18n('en').t)).toBe('New comment from magnus on your post');
     });
 });

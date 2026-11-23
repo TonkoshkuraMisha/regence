@@ -1,12 +1,13 @@
 # --- FILE: src/services/study_room.py ---
 """
-Совместный разбор и занятие с тренером (таск 17.3). Комната живёт в Redis (TTL ROOM_TTL_S, продлевается при каждом
-изменении): ведущий меняет доску (позиция, ходы, стрелки, подсветка, «призрачная» фигура), задаёт вопрос (ход или выбор
-из вариантов, с таймером); участники раз в секунду спрашивают состояние (если версия не изменилась — ответ пустой),
-пишут в чат и отвечают на вопрос. Тексты в комнате — ввод людей (чат, вопрос ведущего), строк интерфейса тут нет.
+Joint review and a lesson with a coach (task 17.3). The room lives in Redis (TTL ROOM_TTL_S, extended on every
+change): the host changes the board (position, moves, arrows, highlights, a "ghost" piece), asks a question (a move or a choice
+of options, with a timer); participants poll the state once a second (if the version has not changed - the reply is empty),
+write in the chat and answer the question. Texts in the room are human input (chat, the host's question), there are no
+interface strings here.
 
-Данные: ключ Redis study:<код> (JSON комнаты), в базу ничего не пишется. Ошибки — коды study_* (src/core/errors.py).
-Вызывает src/api/study.py.
+Data: the Redis key study:<code> (room JSON), nothing is written to the database. Errors are study_* codes
+(src/core/errors.py). Called by src/api/study.py.
 """
 
 import json
@@ -18,31 +19,31 @@ import chess
 from src.core.errors import DomainError
 from src.db import redis as redis_module
 
-# Время жизни ключа комнаты в Redis, секунды; продлевается при каждой записи.
+# Lifetime of the room key in Redis, seconds; extended on every write.
 ROOM_TTL_S = 6 * 3600
-# Сколько последних сообщений чата хранится.
+# How many of the latest chat messages are kept.
 CHAT_KEEP = 50
-# Предел длины текста сообщения и вопроса, символы.
+# Limit on the length of a message and question text, characters.
 MAX_TEXT = 300
-# Пределы числа стрелок и подсвеченных полей на доске; лишнее отбрасывается.
+# Limits on the number of arrows and highlighted squares on the board; the excess is dropped.
 MAX_ARROWS = 24
 MAX_HIGHLIGHTS = 32
-# Предел числа вариантов ответа в вопросе-выборе.
+# Limit on the number of answer options in a choice question.
 MAX_OPTIONS = 6
-# Допустимые цвета стрелок и тона подсветки; неизвестное значение заменяется первым.
+# Allowed arrow colours and highlight tones; an unknown value is replaced by the first.
 COLORS = ("green", "red", "blue", "yellow")
 TONES = ("light", "dark")
-# Участник считается присутствующим, если опрашивал состояние не позже стольких секунд назад.
+# A participant counts as present if they polled the state no more than this many seconds ago.
 PRESENCE_S = 15
 
 
 def _key(code: str) -> str:
-    """Ключ Redis комнаты по её коду."""
+    """Redis key of the room by its code."""
     return f"study:{code}"
 
 
 async def _load(code: str) -> dict:
-    """Комната из Redis; нет ключа (не было или истёк TTL) — study_room_not_found."""
+    """Room from Redis; no key (never existed or the TTL expired) - study_room_not_found."""
     raw = await redis_module.redis_client.get(_key(code))
     if not raw:
         raise DomainError("study_room_not_found")
@@ -50,23 +51,23 @@ async def _load(code: str) -> dict:
 
 
 async def _save(code: str, room: dict) -> None:
-    """Записывает комнату и заново ставит TTL."""
+    """Writes the room and sets the TTL anew."""
     await redis_module.redis_client.set(_key(code), json.dumps(room), ex=ROOM_TTL_S)
 
 
 def _bump(room: dict) -> None:
-    """Увеличивает версию состояния: по ней poll понимает, что у участника данные устарели."""
+    """Increases the state version: poll uses it to see that a participant's data is stale."""
     room["version"] = int(room.get("version", 0)) + 1
 
 
 def _host(room: dict, user_id: int) -> None:
-    """Проверка, что действие делает ведущий; иначе study_host_only."""
+    """Check that the action is made by the host; otherwise study_host_only."""
     if room["host_id"] != user_id:
         raise DomainError("study_host_only")
 
 
 def _clean_board(state: dict) -> dict:
-    """Проверенная позиция доски: FEN (возможная по правилам), стрелки, подсветка, призрак."""
+    """Validated board position: FEN (possible by the rules), arrows, highlights, ghost."""
     fen = str(state.get("fen", ""))
     try:
         board = chess.Board(fen)
@@ -90,7 +91,7 @@ def _clean_board(state: dict) -> dict:
 
 
 async def create(host_id: int, username: str) -> dict:
-    """Новая комната с начальной позицией; код — 8 знаков из url-безопасного алфавита. Возвращает вид для ведущего."""
+    """New room with the starting position; the code is 8 URL-safe characters. Returns the view for the host."""
     code = secrets.token_urlsafe(6).replace("-", "a").replace("_", "b")[:8]
     room = {"code": code, "host_id": host_id, "host": username, "version": 1, "created_at": time.time(),
             "board": {"fen": chess.STARTING_FEN, "last_move": None, "arrows": [], "highlights": [], "ghost": None},
@@ -101,8 +102,8 @@ async def create(host_id: int, username: str) -> dict:
 
 def view(room: dict, user_id: int | None) -> dict:
     """
-    Состояние комнаты для участника: доска, чат, присутствующие и вопрос без верного ответа (ответ виден после
-    раскрытия). Ведущий дополнительно видит ответы участников.
+    Room state for a participant: board, chat, those present and the question without the correct answer (the answer is
+    visible after it is revealed). The host additionally sees the participants' answers.
     """
     now = time.time()
     present = sorted(name for name, seen in room.get("seen", {}).items() if now - seen < PRESENCE_S)
@@ -124,7 +125,7 @@ def view(room: dict, user_id: int | None) -> dict:
 
 
 async def poll(code: str, user_id: int, username: str, since: int) -> dict | None:
-    """Состояние комнаты, если версия новее since (иначе None); отмечает участника присутствующим."""
+    """Room state if the version is newer than since (otherwise None); marks the participant as present."""
     room = await _load(code)
     room.setdefault("seen", {})[username] = time.time()
     await _save(code, room)
@@ -134,7 +135,7 @@ async def poll(code: str, user_id: int, username: str, since: int) -> dict | Non
 
 
 async def set_board(code: str, user_id: int, state: dict) -> dict:
-    """Ведущий заменяет доску (проверка и очистка — _clean_board); версия растёт."""
+    """The host replaces the board (validation and cleaning - _clean_board); the version grows."""
     room = await _load(code)
     _host(room, user_id)
     room["board"] = _clean_board(state)
@@ -144,7 +145,7 @@ async def set_board(code: str, user_id: int, state: dict) -> dict:
 
 
 async def say(code: str, user_id: int, username: str, text: str) -> dict:
-    """Сообщение в чат комнаты; хранятся последние CHAT_KEEP сообщений."""
+    """A chat message in the room; the last CHAT_KEEP messages are stored."""
     room = await _load(code)
     message = " ".join(text.split())[:MAX_TEXT]
     if not message:
@@ -156,7 +157,7 @@ async def say(code: str, user_id: int, username: str, text: str) -> dict:
 
 
 async def ask(code: str, user_id: int, question: dict) -> dict:
-    """Вопрос ведущего: kind=move (ответ — ход на своей доске; correct — список ходов UCI) или choice (варианты)."""
+    """The host's question: kind=move (answer is a move on one's board; correct - a list of UCI moves) or choice (options)."""
     room = await _load(code)
     _host(room, user_id)
     kind = question.get("kind")
@@ -186,7 +187,7 @@ async def ask(code: str, user_id: int, question: dict) -> dict:
 
 
 async def answer(code: str, user_id: int, username: str, value: str | int) -> dict:
-    """Ответ участника на вопрос ведущего: один раз, пока идёт время и ответ не раскрыт."""
+    """A participant's answer to the host's question: once, while time remains and the answer is not revealed."""
     room = await _load(code)
     question = room.get("question")
     if not question or question.get("revealed") or time.time() > question["deadline"]:
@@ -201,7 +202,7 @@ async def answer(code: str, user_id: int, username: str, value: str | int) -> di
 
 
 async def reveal(code: str, user_id: int) -> dict:
-    """Ведущий раскрывает верный ответ на вопрос."""
+    """The host reveals the correct answer to the question."""
     room = await _load(code)
     _host(room, user_id)
     if not room.get("question"):

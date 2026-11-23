@@ -1,21 +1,23 @@
 # --- FILE: src/services/mini_games.py ---
 """
-Игры тренеров (таск 19.8) — учебные игры с упрощёнными правилами поверх python-chess (обычный движок их не знает).
+Trainer games (task 19.8) - teaching games with simplified rules on top of python-chess (the ordinary engine does not know
+them).
 
-* pawn_war — «Пешечный бой»: только пешки; побеждает первый, кто провёл пешку или съел все пешки соперника.
-* king_pawns — «Король и пешки»: короли и по восемь пешек; побеждает первый, кто провёл пешку (или поставил мат).
-* queen_vs_pawns — «Ферзь против восьми пешек»: белый ферзь съедает все пешки — победа белых; пешка дошла или
-  ферзь потерян — чёрных.
-* rook_vs_pawns — «Ладья против пешек»: белая ладья против четырёх пешек, те же условия.
-* capture_flag — «Захват флага»: короли и пешки; побеждает первый, кто довёл короля до последней горизонтали соперника
-  (или провёл пешку — это правило общее для всех игр).
+* pawn_war - "Pawn War": pawns only; the first to get a pawn through or capture all of the opponent's pawns wins.
+* king_pawns - "King and Pawns": kings and eight pawns each; the first to get a pawn through (or deliver mate) wins.
+* queen_vs_pawns - "Queen against Eight Pawns": the white queen captures all pawns - White wins; a pawn arrives or
+  the queen is lost - Black wins.
+* rook_vs_pawns - "Rook against Pawns": a white rook against four pawns, the same conditions.
+* capture_flag - "Capture the Flag": kings and pawns; the first to bring the king to the opponent's back rank wins
+  (or gets a pawn through - this rule is common to all games).
 
-Если у стороны, которая ходит, нет ходов — ничья (в играх с королями: под шахом — поражение). Превращение — сразу
-конец игры (в ферзя). Без королей проверки шаха нет — ходы псевдолегальные. Бот — перебор с альфа-бета-отсечением и
-простой оценкой (материал, продвижение пешек, путь короля к флагу): для этих игр этого достаточно.
+If the side to move has no moves it is a draw (in games with kings: if in check - a loss). Promotion ends
+the game at once (to a queen). Without kings there is no check test - moves are pseudo-legal. The bot is a search with
+alpha-beta pruning and a simple evaluation (material, pawn advancement, the king's path to the flag): for these games that
+is enough.
 
-Сервер ничего не хранит: позицию (FEN) с каждым ходом присылает клиент, сервер проверяет ход по правилам игры,
-подводит итог и отвечает ходом бота (src/api/mini_games.py). Рейтинга и записи результатов у этих игр нет.
+The server stores nothing: the client sends the position (FEN) with each move, the server checks the move by the game rules,
+sums up the result and replies with the bot's move (src/api/mini_games.py). These games have no rating and no result records.
 """
 
 from dataclasses import dataclass
@@ -27,7 +29,7 @@ from src.core.errors import DomainError
 
 @dataclass(frozen=True)
 class MiniGame:
-    """Игра: код, начальная позиция и есть ли на доске короли (с королями ходы легальные, без — псевдолегальные)."""
+    """Game: code, starting position and whether there are kings on the board (kings: legal moves, none: pseudo-legal)."""
 
     id: str
     fen: str
@@ -42,7 +44,7 @@ GAMES: dict[str, MiniGame] = {
     "capture_flag": MiniGame("capture_flag", "4k3/pppppppp/8/8/8/8/PPPPPPPP/4K3 w - - 0 1", kings=True),
 }
 
-# Оценка бота (в условных сантипешках): WIN — выигранная игра, заведомо больше любой суммы материала и бонусов.
+# Bot evaluation (in conventional centipawns): WIN is a won game, deliberately larger than any sum of material and bonuses.
 WIN = 100_000
 PIECE_VALUE = {chess.PAWN: 100, chess.KNIGHT: 300, chess.BISHOP: 300, chess.ROOK: 500, chess.QUEEN: 900, chess.KING: 0}
 
@@ -56,8 +58,8 @@ def get_game(game_id: str) -> MiniGame:
 
 def board_of(game: MiniGame, fen: str) -> chess.Board:
     """
-    Доска по FEN клиента. Проверяется только синтаксис и наличие обоих королей в играх с королями: позиции без
-    королей для обычных шахмат невозможны, поэтому общая проверка позиции здесь не применяется.
+    Board from the client's FEN. Only the syntax and the presence of both kings in games with kings are checked: positions
+    without kings are impossible for ordinary chess, so the general position validation is not applied here.
     """
     try:
         board = chess.Board(fen)
@@ -69,16 +71,16 @@ def board_of(game: MiniGame, fen: str) -> chess.Board:
 
 
 def moves(game: MiniGame, board: chess.Board) -> list[chess.Move]:
-    """Ходы по правилам игры: с королями — легальные, без — псевдолегальные; превращение — только в ферзя."""
+    """Moves by the game rules: with kings - legal, without - pseudo-legal; promotion - only to a queen."""
     source = board.legal_moves if game.kings else board.pseudo_legal_moves
     return [m for m in source if m.promotion in (None, chess.QUEEN)]
 
 
 def result(game: MiniGame, board: chess.Board) -> str | None:
-    """Итог: '1-0', '0-1', '1/2-1/2' или None (игра продолжается). Проверяется после каждого хода."""
+    """Result: '1-0', '0-1', '1/2-1/2' or None (the game continues). Checked after every move."""
     last_rank = {chess.WHITE: 7, chess.BLACK: 0}
-    # Пешка дошла (превратилась) — победа её стороны. Ферзей в начале игр нет (кроме белого в «Ферзь против
-    # пешек»), значит, ферзь на последней горизонтали — превращение.
+    # A pawn arrived (promoted) - its side wins. There are no queens at the start of the games (except White's in "Queen
+    # against Pawns"), so a queen on the last rank is a promotion.
     for color in (chess.WHITE, chess.BLACK):
         if game.id == "queen_vs_pawns" and color == chess.WHITE:
             continue
@@ -89,7 +91,7 @@ def result(game: MiniGame, board: chess.Board) -> str | None:
             king = board.king(color)
             if king is not None and chess.square_rank(king) == last_rank[color]:
                 return "1-0" if color == chess.WHITE else "0-1"
-    # Съедены все пешки соперника; в играх «фигура против пешек» потеря белой фигуры — победа чёрных.
+    # All opponent pawns captured; in the "piece against pawns" games, losing the white piece is a Black win.
     if game.id == "pawn_war":
         if not board.pieces(chess.PAWN, chess.BLACK):
             return "1-0"
@@ -108,7 +110,7 @@ def result(game: MiniGame, board: chess.Board) -> str | None:
 
 
 def play(game: MiniGame, board: chess.Board, uci: str) -> str | None:
-    """Ход игрока (UCI; превращение можно не указывать — ферзь). Возвращает итог после хода."""
+    """Player move (UCI; promotion may be omitted - queen). Returns the result after the move."""
     if result(game, board) is not None:
         raise DomainError("mini_game_over")
     try:
@@ -126,8 +128,9 @@ def play(game: MiniGame, board: chess.Board, uci: str) -> str | None:
 
 def evaluate(game: MiniGame, board: chess.Board) -> int:
     """
-    Оценка с точки зрения стороны, которая ходит: оконченная игра — ±WIN (ничья — 0), иначе материал по PIECE_VALUE
-    плюс бонус за продвижение — квадрат числа пройденных горизонталей × 6 у пешки и × 25 у короля в «Захвате флага».
+    Evaluation from the point of view of the side to move: a finished game is +-WIN (a draw is 0), otherwise material by
+    PIECE_VALUE plus a bonus for advancement - the square of the number of ranks travelled x 6 for a pawn and x 25 for a
+    king in "Capture the Flag".
     """
     outcome = result(game, board)
     if outcome is not None:
@@ -147,11 +150,11 @@ def evaluate(game: MiniGame, board: chess.Board) -> int:
 
 
 def _search(game: MiniGame, board: chess.Board, depth: int, alpha: int, beta: int) -> int:
-    """Перебор на depth полуходов с альфа-бета-отсечением (negamax): оценка для стороны, которая ходит."""
+    """Search to depth plies with alpha-beta pruning (negamax): evaluation for the side to move."""
     if depth == 0 or result(game, board) is not None:
         return evaluate(game, board)
     best = -WIN * 2
-    # Сначала взятия и продвижения — отсечения работают лучше.
+    # Captures and advances first - cutoffs work better.
     ordered = sorted(moves(game, board), key=lambda m: (board.is_capture(m), m.promotion is not None), reverse=True)
     for move in ordered:
         board.push(move)
@@ -167,8 +170,8 @@ def _search(game: MiniGame, board: chess.Board, depth: int, alpha: int, beta: in
 
 def bot_move(game: MiniGame, board: chess.Board, depth: int = 3) -> chess.Move | None:
     """
-    Ход бота: лучший по перебору на depth полуходов; при равенстве — первый в порядке «взятия, превращения, запись
-    хода» (детерминированно, без случайности). None — ходов нет.
+    Bot move: the best by search to depth plies; on a tie, the first in the order "captures, promotions, move
+    notation" (deterministic, no randomness). None - there are no moves.
     """
     best_move, best_score = None, -WIN * 3
     ordered = sorted(moves(game, board), key=lambda m: (board.is_capture(m), m.promotion is not None, m.uci()), reverse=True)

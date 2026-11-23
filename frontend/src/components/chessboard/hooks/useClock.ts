@@ -1,26 +1,26 @@
 // --- FILE: frontend/src/components/chessboard/hooks/useClock.ts ---
-// Часы партии на главной доске. Хук только ведёт обратный отсчёт у стороны, которая ходит. Откуда берётся время:
-// в партии с человеком и у зрителя — с сервера (white_time_ms и black_time_ms в событиях match_found, move_made,
-// berserk, game_over; useGameSocket ставит их через setWhiteTimeMs и setBlackTimeMs), между событиями часы идут
-// локально и каждый ход сверяются с сервером; флаг в такой партии фиксирует сервер. В партии с ботом часы целиком
-// на клиенте: начальное время и добавку ставит useBotGame, он же объявляет поражение по времени.
+// Game clock on the main board. The hook only counts down for the side to move. Where the time comes from:
+// in a game against a human and for a spectator, from the server (white_time_ms and black_time_ms in the match_found, move_made,
+// berserk, game_over events; useGameSocket sets them via setWhiteTimeMs and setBlackTimeMs), between events the clock runs
+// locally and is reconciled with the server on every move; the flag in such a game is fixed by the server. In a bot game the clock is entirely
+// on the client: useBotGame sets the initial time and increment, and it also declares a loss on time.
 
 import {useCallback, useEffect, useRef, useState} from 'react';
 
 export type ClockColor = 'white' | 'black';
 
 export interface UseClockOptions {
-    /** Часы идут визуально (игрок, бот, зритель) — партия активна и не завершена. */
+    /** The clock runs visually (player, bot, spectator): the game is active and not finished. */
     isTicking: boolean;
     /**
-     * Звуковое предупреждение о цейтноте играет только участнику партии, а не зрителю —
-     * это условие строже, чем isTicking (у зрителя часы идут, а звука нет), поэтому передаётся отдельно.
+     * The audible low-time warning plays only for a participant of the game, not a spectator:
+     * this condition is stricter than isTicking (a spectator's clock runs but there is no sound), so it is passed separately.
      */
     isParticipant: boolean;
     currentTurn: ClockColor;
     myColor: ClockColor;
     onLowTime: () => void;
-    /** «Песочные часы» (фора, таск 21.1): время, которое тратит ходящий, прибавляется сопернику. */
+    /** "Hourglass clock" (handicap, task 21.1): the time the mover spends is added to the opponent. */
     hourglass?: boolean;
 }
 
@@ -29,26 +29,26 @@ export interface UseClockResult {
     blackTimeMs: number;
     setWhiteTimeMs: React.Dispatch<React.SetStateAction<number>>;
     setBlackTimeMs: React.Dispatch<React.SetStateAction<number>>;
-    /** Сбрасывает флаг «предупреждение уже проиграно» — перед новой партией. */
+    /** Resets the "warning already played" flag, before a new game. */
     resetLowTimeWarning: () => void;
     /**
-     * Добавка за ход стороне, которая его сделала (отрицательное значение снимает добавку — при возврате хода).
-     * Нужна только партии с ботом: в партии с человеком время после хода присылает сервер уже с добавкой.
+     * Increment for the side that made the move (a negative value removes the increment, on a take-back).
+     * Needed only by a bot game: in a game against a human the server sends the time after the move already with the increment.
      */
     applyIncrement: (moverColor: ClockColor, incrementSeconds: number) => void;
 }
 
 /**
- * Шаг, с которым меняются цифры на часах (как в formatTime): секунды, а в цейтноте (< 30 с) — десятые.
- * В состояние React время попадает, только когда меняется видимое значение: раньше каждые 50 мс
- * перерисовывался весь Chessboard — доска, журнал ходов, панели (20 раз в секунду на любой партии).
+ * Step at which the digits on the clock change (as in formatTime): seconds, and in time trouble (< 30 s) tenths.
+ * Time gets into React state only when the visible value changes: before, every 50 ms
+ * the whole Chessboard re-rendered: board, move log, panels (20 times a second in any game).
  */
 export function displayBucket(ms: number): number {
     const value = Math.max(0, ms);
     return value >= 30000 ? Math.floor(value / 1000) : -1 - Math.floor(value / 100);
 }
 
-/** Точное время в ref, в состоянии — его копия на шаге отображения; сеттер меняет оба. */
+/** Exact time in a ref, in state its copy at the display step; the setter changes both. */
 function useClockValue(initial: number) {
     const exactRef = useRef(initial);
     const [shown, setShown] = useState(initial);
@@ -57,7 +57,7 @@ function useClockValue(initial: number) {
         exactRef.current = next;
         setShown(next);
     }, []);
-    /** Тик часов: точное время меняется всегда, состояние — только когда меняются цифры на часах. */
+    /** Clock tick: the exact time always changes, the state only when the digits on the clock change. */
     const tick = useCallback((delta: number) => {
         const before = exactRef.current;
         const after = Math.max(0, before - delta);
@@ -68,19 +68,19 @@ function useClockValue(initial: number) {
 }
 
 /**
- * Часы партии: тиканье раз в 50мс от стороны, которая сейчас ходит, звуковое предупреждение
- * о цейтноте (не больше 10 с, один раз за партию) и начисление добавки за ход. Не знает ничего об
- * источнике партии (PvP/бот/зритель) — только о том, идут ли часы и чей сейчас ход. Начальные 3 минуты —
- * заглушка до первой партии: настоящее время ставит вызывающий сеттерами.
+ * Game clock: ticking every 50 ms for the side currently to move, an audible warning
+ * about time trouble (no more than 10 s, once per game) and crediting the increment per move. It knows nothing about
+ * the game's source (PvP/bot/spectator), only whether the clock runs and whose turn it is. The initial 3 minutes are
+ * a placeholder until the first game: the caller sets the real time with the setters.
  */
 export function useClock({isTicking, isParticipant, currentTurn, myColor, onLowTime, hourglass = false}: UseClockOptions): UseClockResult {
     const [whiteTimeMs, setWhiteTimeMs, tickWhite] = useClockValue(180000);
     const [blackTimeMs, setBlackTimeMs, tickBlack] = useClockValue(180000);
-    // Предупреждение о цейтноте уже прозвучало в этой партии (сбрасывает resetLowTimeWarning).
+    // The low-time warning has already sounded in this game (resetLowTimeWarning resets it).
     const lowTimeWarnedRef = useRef(false);
 
-    // Тик: с часов ходящего снимается время, реально прошедшее с прошлого тика (а не «50 мс»), поэтому часы не
-    // отстают, когда вкладка в фоне и браузер замедляет таймеры. Смена хода перезапускает отсчёт.
+    // Tick: the time actually elapsed since the previous tick (not "50 ms") is taken off the mover's clock, so the clock does not
+    // lag when the tab is in the background and the browser slows timers. A change of turn restarts the countdown.
     useEffect(() => {
         if (!isTicking) return;
 
@@ -103,7 +103,7 @@ export function useClock({isTicking, isParticipant, currentTurn, myColor, onLowT
         return () => clearInterval(interval);
     }, [isTicking, currentTurn, tickWhite, tickBlack, hourglass]);
 
-    // Звуковое предупреждение о цейтноте (< 10 секунд на часах игрока)
+    // Audible low-time warning (< 10 seconds on the player's clock)
     useEffect(() => {
         if (!isParticipant || lowTimeWarnedRef.current) return;
         const myRemainingMs = myColor === 'white' ? whiteTimeMs : blackTimeMs;
@@ -129,7 +129,7 @@ export function useClock({isTicking, isParticipant, currentTurn, myColor, onLowT
     return {whiteTimeMs, blackTimeMs, setWhiteTimeMs, setBlackTimeMs, resetLowTimeWarning, applyIncrement};
 }
 
-/** Форматирует остаток времени как mm:ss (от часа — h:mm:ss), с десятыми при цейтноте < 30 с; ноль — «00:00». */
+/** Formats the remaining time as mm:ss (h:mm:ss from an hour), with tenths in time trouble < 30 s; zero is "00:00". */
 export function formatTime(ms: number): string {
     const totalMs = Math.max(0, ms);
     const totalSecs = Math.floor(totalMs / 1000);

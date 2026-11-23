@@ -1,9 +1,9 @@
 // --- FILE: frontend/src/components/trainers/MiniGames.tsx ---
-// Игры тренеров (таск 19.8): /train/games — пять учебных игр с упрощёнными правилами; /train/games/:id — партия против
-// бота (за белых или за чёрных), вдвоём за одним устройством или с другом по ссылке (комната — MiniGameRoom.tsx). Правила и бот — на сервере (src/services/mini_games.py):
-// клиент присылает позицию и ход щелчками «откуда» — «куда», сервер проверяет ход и подводит итог. Первая победа над
-// ботом записывается в прогресс уроков (miniProgressId) — по ней засчитывается шаг курса.
-// Данные: сервер — src/api/mini_games.py (/api/v1/mini-games/{игра}/move и /bot-first), правила — src/services/mini_games.py. Подключено в App.tsx.
+// Coach games (task 19.8): /train/games - five teaching games with simplified rules; /train/games/:id - a game against a
+// bot (as White or Black), two on one device, or with a friend by link (room - MiniGameRoom.tsx). Rules and bot - on the server (src/services/mini_games.py):
+// the client sends the position and a move by clicks "from" - "to", the server checks the move and sums up the result. The first win over
+// the bot is recorded in lesson progress (miniProgressId) - the course step is counted by it.
+// Data: server - src/api/mini_games.py (/api/v1/mini-games/{game}/move and /bot-first), rules - src/services/mini_games.py. Wired in App.tsx.
 
 import {useEffect, useState} from 'react';
 import {Link, useNavigate, useParams} from 'react-router-dom';
@@ -17,10 +17,10 @@ import {getToken} from '../../services/authToken';
 import {saveLessonProgress} from '../../services/lessonProgress';
 import {miniRoomsApi} from '../../services/miniGameRooms';
 
-/** Коды игр — те же, что знает сервер (src/services/mini_games.py); порядок — порядок карточек. */
+/** Game codes - the same as the server knows (src/services/mini_games.py); order is the order of the cards. */
 export const MINI_GAMES = ['pawn_war', 'king_pawns', 'queen_vs_pawns', 'rook_vs_pawns', 'capture_flag'] as const;
 export type MiniGameId = typeof MINI_GAMES[number];
-/** Стартовые позиции игр; должны совпадать с src/services/mini_games.py. */
+/** Start positions of the games; must match src/services/mini_games.py. */
 const START: Record<MiniGameId, string> = {
     pawn_war: '8/pppppppp/8/8/8/8/PPPPPPPP/8 w - - 0 1',
     king_pawns: '4k3/pppppppp/8/8/8/8/PPPPPPPP/4K3 w - - 0 1',
@@ -29,15 +29,15 @@ const START: Record<MiniGameId, string> = {
     capture_flag: '4k3/pppppppp/8/8/8/8/PPPPPPPP/4K3 w - - 0 1',
 };
 
-/** Режим партии: игрок за белых против бота, игрок за чёрных против бота или двое за одним устройством. */
+/** Game mode: the player as White against the bot, the player as Black against the bot, or two on one device. */
 type Mode = 'bot-white' | 'bot-black' | 'hotseat';
 
-/** Запись прогресса игры тренера: lesson_progress «mini-<id>», выполнена после первой победы над ботом. */
+/** Coach game progress record: lesson_progress "mini-<id>", completed after the first win over the bot. */
 export function miniProgressId(id: string): string {
     return `mini-${id.replace(/_/g, '-')}`;
 }
 
-/** Карточки пяти игр. */
+/** Cards of the five games. */
 export function MiniGamesPage() {
     const {t} = useI18n();
     return (
@@ -61,7 +61,7 @@ export function MiniGamesPage() {
     );
 }
 
-/** Партия: ход щелчками «откуда» — «куда», проверку и ответ бота делает сервер; победа над ботом записывается в прогресс. */
+/** A game: moves by clicks "from" - "to", the check and the bot reply are done by the server; a win over the bot is recorded in progress. */
 export function MiniGamePage() {
     const {t} = useI18n();
     const {gameId = ''} = useParams<{ gameId: string }>();
@@ -116,7 +116,7 @@ export function MiniGamePage() {
         postMiniGame(`/${id}/move`, {fen, move, bot: mode !== 'hotseat'}).then((r) => {
             setFen(r.fen);
             setResult(r.result);
-            // Победа над ботом засчитывает шаг курса и программы (автозачёт, services/courseProgress.ts).
+            // A win over the bot counts the course and programme step (auto-credit, services/courseProgress.ts).
             const token = getToken();
             if (token && mode !== 'hotseat' && r.result === (mySide === 'white' ? '1-0' : '0-1')) {
                 saveLessonProgress(token, miniProgressId(id), {step: 0, steps_total: 1, completed: true}).catch(() => undefined);
@@ -142,7 +142,7 @@ export function MiniGamePage() {
                         {t(`miniGames.modes.${m === 'bot-white' ? 'botWhite' : m === 'bot-black' ? 'botBlack' : 'hotseat'}`)}
                     </button>
                 ))}
-                {/* С другом по сети (19.8): комната на двоих, цвет — случайно; только вошедшим. */}
+                {/* With a friend over the network (19.8): a room for two, colour - random; signed-in only. */}
                 <button type="button" disabled={!getToken()} data-testid="mini-mode-online"
                         title={getToken() ? undefined : t('miniGames.room.loginToCreate')}
                         onClick={() => miniRoomsApi.create(id).then((r) => navigate(`/train/games/room/${r.code}`))

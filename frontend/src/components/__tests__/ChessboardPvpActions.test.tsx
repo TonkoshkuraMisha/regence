@@ -1,7 +1,7 @@
 // --- FILE: frontend/src/components/__tests__/ChessboardPvpActions.test.tsx
-// Действия игрока и зрителя в партии с человеком (Chessboard.tsx): отмена партии до второго полухода уходит на
-// сервер командой abort_game, выход из просмотра — командой leave_spectate. События WebSocket подаются так же,
-// как в ChessboardPvp.test.tsx; решение об отмене принимает сервер, клиент только отправляет команду.
+// Actions of a player and a spectator in a game with a person (Chessboard.tsx): aborting the game before the second half-move goes to
+// the server as the abort_game command, leaving the view as the leave_spectate command. WebSocket events are fed the same way
+// as in ChessboardPvp.test.tsx; the server decides on the abort, the client only sends the command.
 
 import {act, fireEvent, render, screen} from '@testing-library/react';
 import {MemoryRouter} from 'react-router-dom';
@@ -40,7 +40,7 @@ const SPECTATE = {
     fen: '', pgn: '1. e4 e5', state_version: 2,
 };
 
-/** Последний зарегистрированный обработчик события (эффект мог переподписаться). */
+/** The last registered handler of the event (the effect could have resubscribed). */
 async function emitAct(event: string, data: unknown) {
     await act(async () => {
         const calls = onMock.mock.calls.filter(([name]: [string]) => name === event);
@@ -76,21 +76,21 @@ afterEach(() => {
     localStorage.clear();
 });
 
-describe('действия в партии с человеком', () => {
-    it('«Отменить игру» до второго полухода отправляет abort_game', async () => {
+describe('actions in a game with a person', () => {
+    it('"Abort game" before the second half-move sends abort_game', async () => {
         renderBoard();
         await emitAct('match_found', MATCH);
         await act(async () => {
-            fireEvent.click(screen.getByRole('button', {name: /Отменить игру/}));
+            fireEvent.click(screen.getByRole('button', {name: /Abort game/}));
         });
         expect(sendMock).toHaveBeenCalledWith('abort_game', {game_id: 5});
     });
 
-    it('зритель выходит из просмотра: leave_spectate, доска возвращается свободной', async () => {
+    it('a spectator leaves the view: leave_spectate, the board becomes free again', async () => {
         renderBoard();
         await emitAct('spectate_started', SPECTATE);
         await act(async () => {
-            fireEvent.click(screen.getByRole('button', {name: /Выйти из просмотра/}));
+            fireEvent.click(screen.getByRole('button', {name: /Stop watching/}));
         });
         expect(sendMock).toHaveBeenCalledWith('leave_spectate', {game_id: 9});
     });

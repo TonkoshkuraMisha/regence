@@ -1,30 +1,30 @@
 // --- FILE: frontend/src/components/chessboard/odds.ts ---
-// Игра с форой (таск 21.1): готовые форы для партии с ботом и с человеком по ссылке. Материальная фора — начальная
-// позиция без фигуры у дающего фору (ферзевый конь или ладья, ферзь, f-пешка; рокировка с убранной ладьёй
-// пропадает); фора по времени — у дающего треть времени; «песочные часы» — время, потраченное одним, прибавляется
-// другому. Партия идёт с позиции (таск 9.6), рейтинг не меняет. В партии с ботом позицию и часы строит клиент
-// (useBotGame); в партии с человеком клиент только передаёт вид форы и кто её даёт (inviteOddsFields), а позицию,
-// время и ход «песочных часов» считает сервер (src/services/odds.py, game_state.py), клиент их лишь показывает.
+// Games with odds (task 21.1): ready odds for a game with a bot and with a person by link. Material odds - the starting
+// position without a piece of the odds giver (queen's knight or rook, queen, f-pawn; castling with the removed rook
+// is lost); time odds - the giver has a third of the time; "hourglass" - the time spent by one is added to
+// the other. The game starts from a position (task 9.6) and does not change the rating. In a game with a bot the client builds the position and clocks
+// (useBotGame); in a game with a person the client only passes the odds kind and who gives it (inviteOddsFields), while the position,
+// time and the "hourglass" move are computed by the server (src/services/odds.py, game_state.py), the client only shows them.
 
-/** Виды форы (с ботом и с человеком); подписи — каталог odds.kinds.*. */
+/** Odds kinds (with a bot and with a person); labels - catalog odds.kinds.*. */
 export const ODDS = ['none', 'knight', 'rook', 'queen', 'pawn', 'time', 'tempo', 'hourglass'] as const;
 export type OddsKind = typeof ODDS[number];
 export type OddsGiver = 'me' | 'opponent';
 
-/** Выбор игрока: вид форы и кто её даёт (для «песочных часов» дающего нет — они общие). */
+/** The player's choice: odds kind and who gives it (for "hourglass" there is no giver - it is common). */
 export interface OddsChoice {
     kind: OddsKind;
     giver: OddsGiver;
 }
 
-// «Два хода подряд»: пропуска хода в правилах нет, поэтому позиция, где получающий фору уже сыграл e4+d4 (e5+d5);
-// ключ — цвет дающего (src/services/odds.py, TEMPO_FEN).
+// "Two moves in a row": the rules have no pass, so the position where the receiver has already played e4+d4 (e5+d5);
+// the key is the giver's colour (src/services/odds.py, TEMPO_FEN).
 const TEMPO_FEN = {
     white: 'rnbqkbnr/ppp2ppp/8/3pp3/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
     black: 'rnbqkbnr/pppppppp/8/8/3PP3/8/PPP2PPP/RNBQKBNR b KQkq - 0 1',
 } as const;
 const START = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
-// Поле убираемой фигуры: [белые, чёрные].
+// The square of the removed piece: [white, black].
 const REMOVED: Partial<Record<OddsKind, [string, string]>> = {
     knight: ['b1', 'b8'],
     rook: ['a1', 'a8'],
@@ -32,7 +32,7 @@ const REMOVED: Partial<Record<OddsKind, [string, string]>> = {
     pawn: ['f2', 'f7'],
 };
 
-/** Начальная позиция с материальной форой; null — фора не материальная. */
+/** Starting position with material odds; null - the odds are not material. */
 export function oddsFen(kind: OddsKind, giver: 'white' | 'black'): string | null {
     if (kind === 'tempo') return TEMPO_FEN[giver];
     const squares = REMOVED[kind];
@@ -49,28 +49,28 @@ export function oddsFen(kind: OddsKind, giver: 'white' | 'black'): string | null
     return [packed, 'w', castling || '-', ...rest].join(' ');
 }
 
-/** Стартовое время сторон с форой по времени: у дающего фору — треть (не меньше минуты). */
+/** Starting time of the sides with time odds: the giver has a third (at least a minute). */
 export function oddsTimes(kind: OddsKind, giver: 'white' | 'black', whiteMs: number, blackMs: number): { white: number; black: number } {
     if (kind !== 'time') return {white: whiteMs, black: blackMs};
     const cut = (ms: number) => Math.max(60_000, Math.round(ms / 3));
     return giver === 'white' ? {white: cut(whiteMs), black: blackMs} : {white: whiteMs, black: cut(blackMs)};
 }
 
-/** Есть ли у форы дающий: нет у «без форы» и у «песочных часов» (они общие) — выбор «кто даёт» не показывается. */
+/** Whether the odds have a giver: none for "no odds" and for "hourglass" (common) - the "who gives" choice is not shown. */
 export function hasGiver(kind: OddsKind): boolean {
     return kind !== 'none' && kind !== 'hourglass';
 }
 
 /**
- * Поля приглашения для сервера (действие WebSocket create_invite): giver «me» — фору даёт создатель ссылки.
- * Пустой odds_kind — без форы.
+ * Invitation fields for the server (WebSocket action create_invite): giver "me" - the link creator gives the odds.
+ * An empty odds_kind - no odds.
  */
 export function inviteOddsFields(odds: OddsChoice): { odds_kind: string; odds_giver: 'creator' | 'acceptor' } {
     return {odds_kind: odds.kind === 'none' ? '' : odds.kind,
         odds_giver: odds.giver === 'me' ? 'creator' : 'acceptor'};
 }
 
-/** Кто даёт фору по цвету: «я» — мой цвет, «соперник» — противоположный. */
+/** Who gives the odds by colour: "me" - my colour, "opponent" - the opposite one. */
 export function giverColor(giver: OddsGiver, myColor: 'white' | 'black'): 'white' | 'black' {
     if (giver === 'me') return myColor;
     return myColor === 'white' ? 'black' : 'white';

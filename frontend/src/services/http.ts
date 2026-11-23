@@ -1,10 +1,10 @@
 // --- FILE: frontend/src/services/http.ts ---
-// Общий запрос к API сервера (/api/v1/…) для модулей services/*.ts: адрес из config/api.ts (API_BASE_URL), токен входа
-// из authToken.ts, если игрок вошёл (без входа запрос уходит без него — открытые разделы сервер отдаёт и так), JSON-тело
-// с заголовком Content-Type. Отказ сервера превращается в UiError с текстом по коду ошибки (apiErrors.ts, коды —
-// src/core/errors.py); сеть недоступна — UiError «нет связи». Компоненты в сеть сами не ходят: они вызывают сервис,
-// а сервис — apiRequest (ответ JSON) или apiFetch (ответ целиком: текст PGN, заголовки) (правило проекта: компонент
-// рисует, services/*.ts ходит в сеть).
+// Common request to the server API (/api/v1/...) for services/*.ts modules: address from config/api.ts (API_BASE_URL), login token
+// from authToken.ts if the player is logged in (without login the request goes without it — open sections are served anyway), JSON body
+// with a Content-Type header. A server refusal becomes a UiError with text by error code (apiErrors.ts, codes —
+// src/core/errors.py); network unavailable — UiError "no connection". Components do not hit the network themselves: they call a service,
+// and the service calls apiRequest (JSON response) or apiFetch (whole response: PGN text, headers) (project rule: a component
+// renders, services/*.ts goes to the network).
 
 import {API_BASE_URL} from '../config/api';
 import {uiMessage} from '../i18n';
@@ -13,23 +13,23 @@ import {readApiErrorOr, UiError} from './apiErrors';
 import {getToken} from './authToken';
 import {addBreadcrumb, CLIENT_ERRORS_PATH, newRequestId} from './breadcrumbs';
 
-/** HTTP-ответ «без содержимого»: такой запрос возвращает undefined, тела у него нет. */
+/** HTTP "no content" response: such a request returns undefined, it has no body. */
 const NO_CONTENT = 204;
 
-/** Запасной текст отказа: ключ каталога или ключ по HTTP-статусу (например, 429 от прокси без тела). */
+/** Fallback refusal text: a catalog key or a key by HTTP status (e.g. 429 from a proxy without a body). */
 export type Fallback = MessageKey | ((status: number) => MessageKey);
 
-/** Полный адрес пути API — для ссылок (href скачивания PGN и т. п.), а не для запросов из кода. */
+/** Full address of an API path — for links (href of a PGN download etc.), not for requests from code. */
 export const apiUrl = (path: string) => `${API_BASE_URL}/api/v1${path}`;
 
 /**
- * Запрос к /api/v1{path}; ответ — проверенный Response (статус 2xx), тело читает вызывающий: текст, заголовки.
- * Заголовки из init дополняют общие (токен и Content-Type), а не заменяют их.
+ * Request to /api/v1{path}; the response is a checked Response (2xx status), the body is read by the caller: text, headers.
+ * Headers from init extend the common ones (token and Content-Type), not replace them.
  */
 export async function apiFetch(path: string, init: RequestInit = {}, fallback: Fallback = 'common.networkError'): Promise<Response> {
     const token = getToken();
-    // Сквозной номер запроса: сервер пишет его в каждую строку журнала и возвращает в X-Request-ID; он же — в отчётах
-    // об ошибках страницы (clientErrors.ts). Запросы самих отчётов в след не пишутся.
+    // End-to-end request number: the server writes it to every log line and returns it in X-Request-ID; it is also in the reports
+    // of page errors (clientErrors.ts). Requests of the reports themselves are not traced.
     const requestId = newRequestId();
     const tracked = path !== CLIENT_ERRORS_PATH;
     const label = `${init.method ?? 'GET'} ${path.split('?')[0]}`;
@@ -53,7 +53,7 @@ export async function apiFetch(path: string, init: RequestInit = {}, fallback: F
     return res;
 }
 
-/** Запрос к /api/v1{path}; ответ — разобранный JSON (204 — undefined). fallback — текст отказа без известного кода. */
+/** Request to /api/v1{path}; the response is parsed JSON (204 — undefined). fallback — refusal text without a known code. */
 export async function apiRequest<T>(path: string, init: RequestInit = {}, fallback: Fallback = 'common.networkError'): Promise<T> {
     const res = await apiFetch(path, init, fallback);
     if (res.status === NO_CONTENT) return undefined as T;

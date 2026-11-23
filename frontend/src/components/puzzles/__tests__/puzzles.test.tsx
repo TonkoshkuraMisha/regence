@@ -1,4 +1,4 @@
-// Страница задач (таск 13.3): решение с проверкой на сервере, ошибка и показ решения, подсказка, режим на время.
+// The puzzle page (task 13.3): solving with a server check, a mistake and showing the solution, a hint, the timed mode.
 
 import {act, fireEvent, render, screen, waitFor} from '@testing-library/react';
 import {MemoryRouter, Route, Routes, useLocation} from 'react-router-dom';
@@ -8,7 +8,7 @@ import {PuzzleBoard} from '../PuzzleBoard';
 import {resetThemeRegistryCache} from '../../../services/themes';
 import {setToken} from '../../../services/authToken';
 
-// Чёрные уводят ладью: ...Le2, затем Ld8+ Le8 Lxe8#.
+// Black deflects the rook: ...Re2, then Rd8+ Re8 Rxe8#.
 const PUZZLE = {
     id: 7, fen: '4r1k1/5ppp/8/8/8/8/3R1PPP/3R2K1 b - - 0 1', first_move: 'e8e2', rating: 1480,
     themes: ['back_rank_mate', 'mate_in_2'], color: 'white', solution_length: 2,
@@ -84,22 +84,22 @@ async function start() {
 }
 
 describe('PuzzlesPage', () => {
-    it('до старта — карточки режимов по группам вместо пустой доски; с задачей — вкладки (план владельца 18.11)', async () => {
+    it('before the start — mode cards by group instead of an empty board; with a puzzle — tabs (owner plan 18.11)', async () => {
         stub((url) => (url.includes('/daily') || url.includes('/next') ? PUZZLE : {}));
         renderPage();
         const intro = await screen.findByTestId('puzzle-mode-rated');
-        expect(intro).toHaveTextContent('По рейтингу');
-        expect(intro).toHaveTextContent('решённая его поднимает');
-        expect(intro).toContainElement(screen.getByTestId('puzzle-next'));  // «Начать» — в карточке выбранного режима
+        expect(intro).toHaveTextContent('By rating');
+        expect(intro).toHaveTextContent('a solved one raises it');
+        expect(intro).toContainElement(screen.getByTestId('puzzle-next'));  // "Start" — in the card of the chosen mode
         expect(document.querySelector('[data-square]')).toBeNull();
-        expect(screen.queryByRole('tablist')).toBeNull();  // вкладки не повторяют карточки
-        // Остальные режимы — карточки с описанием; щелчок выбирает режим.
-        expect(screen.getByTestId('puzzle-mode-timed')).toHaveTextContent('три ошибки');
+        expect(screen.queryByRole('tablist')).toBeNull();  // the tabs do not repeat the cards
+        // The other modes are cards with a description; a click chooses the mode.
+        expect(screen.getByTestId('puzzle-mode-timed')).toHaveTextContent('three mistakes');
 
         fireEvent.click(screen.getByTestId('puzzle-mode-daily'));
-        await waitFor(() => expect(screen.getByTestId('puzzle-mode-info')).toHaveTextContent('Одна задача в день'));
+        await waitFor(() => expect(screen.getByTestId('puzzle-mode-info')).toHaveTextContent('One puzzle a day'));
         expect(screen.getAllByRole('tablist').map((list) => list.getAttribute('aria-label')))
-            .toEqual(['Решать', 'Тренироваться', 'Свои партии']);
+            .toEqual(['Solve', 'Train', 'Your games']);
         expect(screen.getByTestId('puzzle-mode-daily')).toHaveAttribute('aria-selected', 'true');
 
         await act(async () => {
@@ -109,7 +109,7 @@ describe('PuzzlesPage', () => {
         expect(square('e2').querySelector('img')?.getAttribute('alt')).toBe('br');
     });
 
-    it('ход соперника, проверка каждого хода сервером, ответ и итог', async () => {
+    it('the opponent\'s move, a server check of every move, the answer and the result', async () => {
         const calls = stub((url, init) => {
             if (url.includes('/next')) return PUZZLE;
             const move = JSON.parse(String(init?.body)).move;
@@ -120,7 +120,7 @@ describe('PuzzlesPage', () => {
         await start();
         expect(screen.getByTestId('puzzle-profile').textContent).toContain('1500');
         expect(square('e2').querySelector('img')?.getAttribute('alt')).toBe('br');
-        expect(screen.getByTestId('puzzle-status').textContent).toContain('белыми');
+        expect(screen.getByTestId('puzzle-status').textContent).toContain('White');
 
         await play('d2', 'd8');
         await act(async () => {
@@ -129,21 +129,21 @@ describe('PuzzlesPage', () => {
         expect(square('e8').querySelector('img')?.getAttribute('alt')).toBe('br');
         await play('d8', 'e8');
 
-        expect(await screen.findByTestId('puzzle-outcome')).toHaveTextContent('Решено! Рейтинг +12');
+        expect(await screen.findByTestId('puzzle-outcome')).toHaveTextContent('Solved! Rating +12');
         expect(calls.filter((c) => c.url.includes('/move')).map((c) => c.body)).toEqual([{move: 'd2d8'}, {move: 'd8e8'}]);
-        expect(screen.getByTestId('puzzle-themes').textContent).toContain('Мат по последней горизонтали');
+        expect(screen.getByTestId('puzzle-themes').textContent).toContain('Back-rank mate');
         expect(screen.getByTestId('puzzle-chart')).toBeTruthy();
-        // Шкала рейтинга: границы округлены до десятков с запасом над и под точками 1500 и 1510.
+        // The rating scale: the bounds are rounded to tens with a margin above and below the points 1500 and 1510.
         expect(screen.getByTestId('puzzle-chart-scale').textContent).toBe('152015051490');
     });
 
-    it('после задачи доска свободна: позицию можно доиграть и вернуть (решение владельца 18.11)', async () => {
+    it('after the puzzle the board is free: the position can be played on and returned (owner decision 18.11)', async () => {
         stub((url) => (url.includes('/next') ? PUZZLE : {correct: true, done: true, reply: null, solution: null, result: RESULT}));
         await start();
         await play('d2', 'd8');
-        expect(await screen.findByTestId('puzzle-outcome')).toHaveTextContent('Решено!');
+        expect(await screen.findByTestId('puzzle-outcome')).toHaveTextContent('Solved!');
         expect(screen.queryByTestId('explorer-controls')).toBeNull();
-        // Задача закончена — ход за чёрных (закрыться ладьёй) делается прямо на доске и начинает разбор.
+        // The puzzle is finished — a move for Black (covering with the rook) is made right on the board and starts the review.
         await play('e2', 'e8');
         expect(square('e8').querySelector('img')?.getAttribute('alt')).toBe('br');
         expect(screen.getByTestId('explorer-back')).not.toBeDisabled();
@@ -153,7 +153,7 @@ describe('PuzzlesPage', () => {
         expect(square('e2').querySelector('img')?.getAttribute('alt')).toBe('br');
     });
 
-    it('неверный ход: отметка, итог, решение показывается на доске', async () => {
+    it('a wrong move: a mark, the result, the solution is shown on the board', async () => {
         stub((url) => url.includes('/next') ? PUZZLE : {
             correct: false, done: true, reply: null, solution: ['d2d8', 'e2e8', 'd8e8'],
             result: {...RESULT, solved: false, delta: -14, rating_after: 1486, streak: 0},
@@ -161,15 +161,15 @@ describe('PuzzlesPage', () => {
         await start();
         await play('d2', 'd5');
         expect(await screen.findByTestId('puzzle-mark-wrong')).toBeTruthy();
-        expect(screen.getByTestId('puzzle-outcome')).toHaveTextContent('В этот раз нет. Рейтинг -14');
-        expect(screen.getByTestId('puzzle-solution').textContent).toBe('Решение: 2. ♖d8+ ♜e8 3. ♖xe8#');
+        expect(screen.getByTestId('puzzle-outcome')).toHaveTextContent('Not this time. Rating -14');
+        expect(screen.getByTestId('puzzle-solution').textContent).toBe('Solution: 2. ♖d8+ ♜e8 3. ♖xe8#');
         await act(async () => {
             await vi.advanceTimersByTimeAsync(3000);
         });
         expect(square('e8').querySelector('img')?.getAttribute('alt')).toBe('wr');
     });
 
-    it('подсказка подсвечивает фигуру, затем ход; «Разобрать с наставником» передаёт позицию', async () => {
+    it('the hint highlights a piece, then a move; "Review with the mentor" passes the position on', async () => {
         let hints = 0;
         stub((url) => {
             if (url.includes('/next')) return PUZZLE;
@@ -184,7 +184,7 @@ describe('PuzzlesPage', () => {
             fireEvent.click(screen.getByTestId('puzzle-hint'));
         });
         expect(screen.getByTestId('puzzle-hint-d2')).toBeTruthy();
-        expect(screen.getByTestId('puzzle-hint-text').textContent).toContain('подсвеченная фигура');
+        expect(screen.getByTestId('puzzle-hint-text').textContent).toContain('highlighted piece');
         await act(async () => {
             fireEvent.click(screen.getByTestId('puzzle-hint'));
         });
@@ -202,7 +202,7 @@ describe('PuzzlesPage', () => {
         expect(location.state.analyzeFen).toBe('6k1/5ppp/8/8/8/8/3RrPPP/3R2K1 w - - 1 2');
     });
 
-    it('выбор темы уходит в запрос; задача дня', async () => {
+    it('the theme choice goes into the request; the daily puzzle', async () => {
         const calls = stub((url) => ({...PUZZLE, daily: url.includes('/daily') || undefined}));
         renderPage();
         const select = await screen.findByTestId('puzzle-theme');
@@ -215,10 +215,10 @@ describe('PuzzlesPage', () => {
         await act(async () => {
             fireEvent.click(screen.getByTestId('puzzle-mode-daily'));
         });
-        await waitFor(() => expect(screen.getByTestId('puzzle-info').textContent).toContain('задача дня'));
+        await waitFor(() => expect(screen.getByTestId('puzzle-info').textContent).toContain('puzzle of the day'));
     });
 
-    it('«Спасите партию» (27.9): задачи с целью «ничья» без выбора темы', async () => {
+    it('"Save the game" (27.9): puzzles with a "draw" goal without a theme choice', async () => {
         const calls = stub(() => ({...PUZZLE, goal: 'draw', themes: ['perpetual_check']}));
         renderPage();
         await screen.findByTestId('puzzle-theme');
@@ -226,15 +226,15 @@ describe('PuzzlesPage', () => {
             fireEvent.click(screen.getByTestId('puzzle-mode-save'));
         });
         await waitFor(() => expect(calls.some((c) => c.url.endsWith('/train?goal=draw'))).toBe(true));
-        expect(screen.getByTestId('save-intro')).toHaveTextContent('Найдите ничью');
-        await waitFor(() => expect(screen.getByTestId('puzzle-next')).not.toBeDisabled());  // ход соперника сыгран
+        expect(screen.getByTestId('save-intro')).toHaveTextContent('Find the draw');
+        await waitFor(() => expect(screen.getByTestId('puzzle-next')).not.toBeDisabled());  // the opponent's move is played
         await act(async () => {
             fireEvent.click(screen.getByTestId('puzzle-next'));
         });
         expect(calls.filter((c) => c.url.endsWith('/train?goal=draw')).length).toBe(2);
     });
 
-    it('режим на время: таймер, счёт с сервера, рекорд', async () => {
+    it('timed mode: a timer, the score from the server, a record', async () => {
         const run = {run_id: 'r1', minutes: 3, solved: 0, mistakes: 0, seconds_left: 180, over: false};
         const calls = stub((url) => {
             if (url.includes('/timed/leaders')) {
@@ -251,8 +251,8 @@ describe('PuzzlesPage', () => {
         await act(async () => {
             fireEvent.click(await screen.findByTestId('puzzle-mode-timed'));
         });
-        expect(screen.getByTestId('puzzle-timed-setup').textContent).toContain('рекорд: 4');
-        // Таблица лидеров: топ и своя строка ниже топа.
+        expect(screen.getByTestId('puzzle-timed-setup').textContent).toContain('record: 4');
+        // The leaderboard: the top and one's own row below the top.
         expect(await screen.findByText('Anna')).toBeInTheDocument();
         expect(screen.getAllByTestId('leader-row').map((row) => row.textContent)).toEqual(['1Anna9', '25TestPlayer2']);
         await act(async () => {
@@ -262,17 +262,17 @@ describe('PuzzlesPage', () => {
             await vi.advanceTimersByTimeAsync(600);
         });
         expect(screen.getByTestId('puzzle-run').textContent).toContain('3:00'.slice(0, 1));
-        // Темы в забеге не подсказываются.
+        // Themes are not hinted in the run.
         expect(screen.queryByTestId('puzzle-themes')).toBeNull();
         await play('d2', 'd8');
         await act(async () => {
             await vi.advanceTimersByTimeAsync(1000);
         });
-        expect(await screen.findByTestId('puzzle-timed-result')).toHaveTextContent('решено 1, рекорд 4');
+        expect(await screen.findByTestId('puzzle-timed-result')).toHaveTextContent('Run over: 1 solved, record 4');
         expect(calls.some((c) => c.url.includes('/timed/finish'))).toBe(true);
     });
 
-    it('ошибка сервера показывается', async () => {
+    it('a server error is shown', async () => {
         vi.stubGlobal('fetch', vi.fn(async (input: string | URL | Request) => {
             const url = String(input);
             if (url.includes('/next')) {
@@ -284,12 +284,12 @@ describe('PuzzlesPage', () => {
         await act(async () => {
             fireEvent.click(await screen.findByTestId('puzzle-next'));
         });
-        expect(await screen.findByRole('alert')).toHaveTextContent('Сейчас нет подходящих задач');
+        expect(await screen.findByRole('alert')).toHaveTextContent('No suitable puzzles right now');
     });
 });
 
 describe('PuzzleBoard', () => {
-    it('превращение — выбор фигуры', () => {
+    it('promotion — a piece choice', () => {
         const onMove = vi.fn();
         render(<PuzzleBoard fen="8/P7/8/8/8/8/k7/4K3 w - - 0 1" orientation="white" interactive onMove={onMove}/>);
         fireEvent.click(square('a7'));
@@ -298,7 +298,7 @@ describe('PuzzleBoard', () => {
         expect(onMove).toHaveBeenCalledWith('a7a8n');
     });
 
-    it('не своя очередь и неинтерактивная доска — ходов нет', () => {
+    it('not your turn and a non-interactive board — no moves', () => {
         const onMove = vi.fn();
         render(<PuzzleBoard fen="8/P7/8/8/8/8/k7/4K3 w - - 0 1" orientation="black" interactive={false} onMove={onMove}/>);
         fireEvent.click(square('a7'));
@@ -310,7 +310,7 @@ describe('PuzzleBoard', () => {
 });
 
 describe('solutionSan', () => {
-    it('нумерация ходов с белых и с чёрных', () => {
+    it('move numbering from White and from Black', () => {
         expect(solutionSan('4r1k1/5ppp/8/8/8/8/3R1PPP/3R2K1 b - - 0 1', ['e8e2', 'd2d8'])).toBe('1… ♜e2 2. ♖d8+');
         expect(solutionSan('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1', ['e2e4', 'e7e5', 'g1f3']))
             .toBe('1. e4 e5 2. ♘f3');
@@ -318,7 +318,7 @@ describe('solutionSan', () => {
     });
 });
 
-describe('«Кандидаты» (27.9)', () => {
+describe('"Candidates" (27.9)', () => {
     async function startWithCandidates() {
         renderPage();
         fireEvent.click(await screen.findByTestId('candidates-toggle'));
@@ -330,7 +330,7 @@ describe('«Кандидаты» (27.9)', () => {
         });
     }
 
-    it('щелчки отмечают кандидатов, а не ходят; верный ход среди них — отмечено', async () => {
+    it('clicks mark candidates and do not move; the right move among them — marked', async () => {
         const calls = stub((url, init) => {
             if (url.includes('/next')) return PUZZLE;
             const move = JSON.parse(String(init?.body)).move;
@@ -342,18 +342,18 @@ describe('«Кандидаты» (27.9)', () => {
         expect(screen.getByTestId('candidates-ready')).toBeDisabled();
         await play('d2', 'd8');
         await play('g1', 'f1');
-        expect(calls.some((c) => c.url.includes('/move'))).toBe(false);  // это отметки, не ходы
-        expect(screen.getByTestId('candidates-panel')).toHaveTextContent('отмечено 2');
+        expect(calls.some((c) => c.url.includes('/move'))).toBe(false);  // these are marks, not moves
+        expect(screen.getByTestId('candidates-panel')).toHaveTextContent('2 marked');
         await act(async () => fireEvent.click(screen.getByTestId('candidates-ready')));
         await play('d2', 'd8');
         await act(async () => {
             await vi.advanceTimersByTimeAsync(500);
         });
         await play('d8', 'e8');
-        expect(await screen.findByTestId('candidates-verdict')).toHaveTextContent('был среди ваших кандидатов');
+        expect(await screen.findByTestId('candidates-verdict')).toHaveTextContent('was among your candidates');
     });
 
-    it('неверный первый ход: лучший ход берётся из решения, его не было среди кандидатов', async () => {
+    it('a wrong first move: the best move is taken from the solution, it was not among the candidates', async () => {
         stub((url) => (url.includes('/next') ? PUZZLE
             : {correct: false, done: true, reply: null, solution: ['d2d8', 'e2e8', 'd8e8'], result: {...RESULT, solved: false, delta: -10}}));
         await startWithCandidates();
@@ -361,6 +361,6 @@ describe('«Кандидаты» (27.9)', () => {
         await play('h2', 'h3');
         await act(async () => fireEvent.click(screen.getByTestId('candidates-ready')));
         await play('h2', 'h3');
-        expect(await screen.findByTestId('candidates-verdict')).toHaveTextContent('не было среди кандидатов');
+        expect(await screen.findByTestId('candidates-verdict')).toHaveTextContent('was not among your candidates');
     });
 });

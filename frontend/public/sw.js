@@ -1,20 +1,20 @@
 // --- FILE: frontend/public/sw.js ---
-// Сервис-воркер приложения (таск 24.2). Задача скромная: установка на главный экран и честная офлайн-страница, а не
-// игра без сети — партии, задачи и разбор живут на сервере.
+// Service worker of the app (task 24.2). The task is modest: installation to the home screen and an honest offline page, not
+// play without a network: games, puzzles and review live on the server.
 //
-// * Переходы по страницам — сначала сеть; без сети — /offline.html (на трёх языках, свой скрипт: CSP запрещает
-//   встроенные).
-// * Файлы сборки и картинки (/assets/, /icons/) — из кэша, если уже были загружены: имена сборки Vite с хэшем не
-//   меняются, а фигуры и текстуры кэшируются по мере показа.
-// * /api/ и всё чужое не трогаем: ответы сервера не должны устаревать в кэше.
-// Новая версия файла (VERSION) при следующем открытии удаляет старые кэши.
+// * Page navigations: network first; without a network, /offline.html (in three languages, its own script: CSP forbids
+//   inline ones).
+// * Build files and images (/assets/, /icons/): from the cache if already loaded: Vite build names with a hash do not
+//   change, and pieces and textures are cached as they are shown.
+// * /api/ and everything foreign are not touched: server responses must not go stale in a cache.
+// A new file version (VERSION) deletes the old caches on the next open.
 
 const VERSION = 'v1';
 const SHELL_CACHE = `regence-shell-${VERSION}`;
 const ASSET_CACHE = `regence-assets-${VERSION}`;
 const OFFLINE_URL = '/offline.html';
 const SHELL = [OFFLINE_URL, '/offline.js', '/favicon.svg', '/icons/icon-192.png', '/manifest.webmanifest'];
-// Сколько файлов держать в кэше картинок и сборки: старые версии сборки и редкие фигуры вытесняются.
+// How many files to keep in the image and build cache: old build versions and rare pieces are evicted.
 const ASSET_LIMIT = 300;
 
 self.addEventListener('install', (event) => {
@@ -25,7 +25,7 @@ self.addEventListener('activate', (event) => {
     event.waitUntil(
         caches.keys()
             .then((keys) => Promise.all(keys
-                // Кэши прежнего имени платформы (michess-…, до 18.11.2026) тоже удаляются.
+                // Caches of the former platform name (michess-..., before 18.11.2026) are deleted too.
                 .filter((key) => (key.startsWith('regence-') || key.startsWith('michess-')) && key !== SHELL_CACHE && key !== ASSET_CACHE)
                 .map((key) => caches.delete(key))))
             .then(() => self.clients.claim()),
@@ -38,7 +38,7 @@ async function trim(cache) {
 }
 
 async function fromCacheOrNetwork(request) {
-    // Сначала во всех кэшах: файлы офлайн-страницы лежат в кэше оболочки.
+    // First in all caches: the offline page files are in the shell cache.
     const cached = await caches.match(request);
     if (cached) return cached;
     const cache = await caches.open(ASSET_CACHE);

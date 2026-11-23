@@ -1,7 +1,7 @@
 # --- FILE: src/models/team.py ---
 """
-Команды и сезонная лига (таск 17.2): игрок состоит не больше чем в одной команде. Очки лиги считаются по сыгранным
-рейтинговым партиям между игроками разных команд (src/services/league.py) — отдельной таблицы результатов нет.
+Teams and the season league (task 17.2): a player belongs to at most one team. League points are counted from played
+rated games between players of different teams (src/services/league.py) - there is no separate results table.
 """
 
 from datetime import datetime
@@ -13,22 +13,22 @@ from src.models.base import Base
 
 
 class Team(Base):
-    """Команда сезонной лиги: название и владелец."""
+    """A season league team: a name and an owner."""
     __tablename__ = "teams"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    # Имя команды — текст игрока (не строка интерфейса); уникально без учёта регистра (проверяет сервис).
+    # The team name is player text (not an interface string); unique case-insensitively (checked by the service).
     name: Mapped[str] = mapped_column(String(30), unique=True)
     owner_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class TeamMember(Base):
-    """Участник команды. Игрок состоит не больше чем в одной команде."""
+    """A team member. A player belongs to at most one team."""
     __tablename__ = "team_members"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     team_id: Mapped[int] = mapped_column(ForeignKey("teams.id", ondelete="CASCADE"), index=True)
-    # Один игрок — одна команда.
+    # One player - one team.
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), unique=True)
     joined_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

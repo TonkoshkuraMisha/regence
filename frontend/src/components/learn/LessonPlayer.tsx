@@ -1,7 +1,7 @@
 // --- FILE: frontend/src/components/learn/LessonPlayer.tsx ---
-// Проигрыватель урока школы (таск 14.1): шаги урока (объяснение, показ, «найдите ход», вопрос с выбором), затем
-// экзамен из контрольных вопросов. Вопрос засчитывается в экзамене, если на него ответили с первой попытки.
-// Проигрыватель в сеть не ходит: урок (Lesson, content/lessons/format.ts) приходит от LearnPage.tsx, о прогрессе сообщают onStep и onFinish.
+// School lesson player (task 14.1): lesson steps (an explanation, a demonstration, "find the move", a multiple-choice question), then
+// an exam of control questions. A question counts in the exam if it was answered on the first attempt.
+// The player does not go to the network: the lesson (Lesson, content/lessons/format.ts) comes from LearnPage.tsx, progress is reported by onStep and onFinish.
 
 import {useCallback, useEffect, useRef, useState} from 'react';
 import {Chess} from 'chess.js';
@@ -11,12 +11,12 @@ import type {BoardArrow} from '../puzzles/PuzzleBoard';
 import {localized} from '../../content/lessons';
 import type {ChoiceStep, DemoAction, FindMoveStep, Lesson, QuestionStep, Step} from '../../content/lessons/format';
 
-/** Пауза (мс) после хода в «показе»: ход успевают увидеть, прежде чем пойдёт следующее действие. */
+/** Pause (ms) after a move in a "demonstration": the move can be seen before the next action goes. */
 export const DEMO_MOVE_MS = 600;
-/** Пауза (мс) перед ответным ходом соперника в шаге «найдите ход». */
+/** Pause (ms) before the opponent's reply move in a "find the move" step. */
 export const REPLY_DELAY_MS = 600;
 
-/** Итог экзамена: сколько вопросов решено с первой попытки и сколько всего. */
+/** Exam result: how many questions were solved on the first attempt and how many in total. */
 export interface LessonResult {
     examScore: number;
     examTotal: number;
@@ -24,20 +24,20 @@ export interface LessonResult {
 
 export interface LessonPlayerProps {
     lesson: Lesson;
-    /** С какого шага начать (продолжение урока). */
+    /** Which step to start from (resuming a lesson). */
     initialStep?: number;
-    /** Игрок дошёл до шага step (номер с нуля). */
+    /** The player reached step step (a zero-based number). */
     onStep?: (step: number) => void;
-    /** Урок и экзамен пройдены. */
+    /** The lesson and the exam are completed. */
     onFinish?: (result: LessonResult) => void;
-    /** Кнопки под итогом урока (следующий урок, все курсы). */
+    /** Buttons under the lesson result (next lesson, all courses). */
     finishActions?: React.ReactNode;
 }
 
-/** Фаза урока: шаги → заставка экзамена → экзамен → итог. */
+/** Lesson phase: steps -> exam intro -> exam -> result. */
 type Phase = 'steps' | 'examIntro' | 'exam' | 'done';
 
-/** Что нарисовано на доске сейчас: позиция, стрелки, подсветка, «призрак» фигуры (ghost) и последний ход. */
+/** What is drawn on the board now: position, arrows, highlight, the piece "ghost" and the last move. */
 interface BoardState {
     fen: string;
     arrows: BoardArrow[];
@@ -46,7 +46,7 @@ interface BoardState {
     lastMove: { from: string; to: string } | null;
 }
 
-/** Начальное состояние доски шага; без позиции в шаге — начальная расстановка. */
+/** Initial board state of a step; without a position in the step, the starting setup. */
 function boardOf(step: Step | QuestionStep): BoardState {
     return {
         fen: ('fen' in step && step.fen) || new Chess().fen(),
@@ -57,14 +57,14 @@ function boardOf(step: Step | QuestionStep): BoardState {
     };
 }
 
-/** Сторона внизу: заданная шагом; для «найдите ход» — сторона, чей ход; иначе белые. */
+/** Side at the bottom: the one set by the step; for "find the move", the side to move; otherwise White. */
 function orientationOf(step: Step, fen: string): 'white' | 'black' {
     if (step.orientation) return step.orientation;
     if (step.type === 'find_move') return fen.split(' ')[1] === 'b' ? 'black' : 'white';
     return 'white';
 }
 
-/** Выполняет ход uci (с превращением, если указано) и возвращает новую позицию и поля хода. */
+/** Performs the move uci (with promotion if given) and returns the new position and the move squares. */
 function apply(fen: string, uci: string): { fen: string; from: string; to: string } {
     const game = new Chess(fen);
     game.move({from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4]});
@@ -72,8 +72,8 @@ function apply(fen: string, uci: string): { fen: string; from: string; to: strin
 }
 
 /**
- * Проигрыватель: шаги по очереди, затем экзамен. Подсказка или неверный ход лишают вопроса зачёта (firstTry); все таймеры
- * показа и ответа лежат в timers и сбрасываются при смене шага и размонтировании.
+ * Player: steps in turn, then the exam. A hint or a wrong move deprives a question of credit (firstTry); all the timers
+ * of the demonstration and the answer live in timers and are reset on a step change and on unmount.
  */
 export function LessonPlayer({lesson, initialStep = 0, onStep, onFinish, finishActions}: LessonPlayerProps) {
     const {t, tp, language} = useI18n();
@@ -83,7 +83,7 @@ export function LessonPlayer({lesson, initialStep = 0, onStep, onFinish, finishA
 
     const step: Step | null = phase === 'steps' ? lesson.steps[index] : phase === 'exam' ? lesson.exam[index] : null;
 
-    // --- состояние текущего шага ---------------------------------------------------------------------
+    // --- state of the current step -------------------------------------------------------------------
     const [board, setBoard] = useState<BoardState>(() => boardOf(lesson.steps[Math.min(initialStep, lesson.steps.length - 1)]));
     const [taskIndex, setTaskIndex] = useState(0);
     const [feedback, setFeedback] = useState<{ text: string; ok: boolean } | null>(null);
@@ -104,7 +104,7 @@ export function LessonPlayer({lesson, initialStep = 0, onStep, onFinish, finishA
         timers.current.push(setTimeout(fn, ms));
     };
 
-    // Новый шаг — новая доска и сброс ответа.
+    // A new step means a new board and the answer reset.
     useEffect(() => {
         clearTimers();
         if (!step) return;
@@ -120,12 +120,12 @@ export function LessonPlayer({lesson, initialStep = 0, onStep, onFinish, finishA
         return clearTimers;
     }, [phase, index]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // Отчёт о дальнем шаге.
+    // Report of the furthest step.
     useEffect(() => {
         if (phase === 'steps') onStep?.(index);
     }, [phase, index]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // Показ: действия по очереди.
+    // Demonstration: actions in turn.
     useEffect(() => {
         if (!step || step.type !== 'demo') return;
         clearTimers();
@@ -138,7 +138,7 @@ export function LessonPlayer({lesson, initialStep = 0, onStep, onFinish, finishA
                 case 'move': {
                     const moved = apply(fen, action.uci);
                     fen = moved.fen;
-                    // Ход снимает подсветку: она показывала, какая фигура пойдёт.
+                    // A move clears the highlight: it showed which piece would move.
                     later(() => setBoard((b) => ({...b, fen: moved.fen, lastMove: {from: moved.from, to: moved.to}, highlights: []})), delay);
                     delay += DEMO_MOVE_MS;
                     break;
@@ -175,7 +175,7 @@ export function LessonPlayer({lesson, initialStep = 0, onStep, onFinish, finishA
         return clearTimers;
     }, [step, demoRun]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // --- ответы ----------------------------------------------------------------------------------------
+    // --- answers -------------------------------------------------------------------------------------
     const onMove = useCallback((uci: string) => {
         if (!step || step.type !== 'find_move' || solved || waiting) return;
         const task = step.line[taskIndex];
@@ -224,7 +224,7 @@ export function LessonPlayer({lesson, initialStep = 0, onStep, onFinish, finishA
         setHint((current) => current ? {from: answer.slice(0, 2), to: answer.slice(2, 4)} : {from: answer.slice(0, 2), to: null});
     };
 
-    // --- переходы ----------------------------------------------------------------------------------------
+    // --- transitions ---------------------------------------------------------------------------------
     const next = () => {
         if (phase === 'steps') {
             if (index < lesson.steps.length - 1) setIndex(index + 1);
@@ -365,7 +365,7 @@ export function LessonPlayer({lesson, initialStep = 0, onStep, onFinish, finishA
     );
 }
 
-/** Варианты ответа вопроса: выбранный окрашивается верным или неверным цветом, после верного выбора кнопки блокируются. */
+/** Answer options of a question: the chosen one is coloured correct or incorrect, after a correct choice the buttons are locked. */
 function ChoiceOptions({step, chosen, solved, onChoose}: {
     step: ChoiceStep;
     chosen: number | null;

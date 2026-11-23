@@ -1,9 +1,9 @@
 # --- FILE: src/core/instance.py ---
 """
-Идентификатор текущего процесса API (имя хоста, номер процесса и случайный хвост) для координации через Redis.
+The identifier of the current API process (host name, process number and a random tail) for coordination via Redis.
 
-Им подписывается лидер цикла часов партий (ключ timeouts:leader, src/services/game_state.py) и рассылка событий
-между процессами (src/services/connection_manager.py). Создаётся заново при каждом старте процесса.
+It signs the leader of the game clock loop (key timeouts:leader, src/services/game_state.py) and the event broadcast
+between processes (src/services/connection_manager.py). It is created anew at every process start.
 """
 
 import os

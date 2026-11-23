@@ -1,22 +1,24 @@
 # --- FILE: src/api/bots.py ---
 """
-Боты (/bots): каталог соперников, ход бота, ответ на предложение ничьей, сохранение сыгранной партии.
+Bots (/bots): the catalogue of opponents, the bot's move, the reply to a draw offer, saving a played game.
 
-* Кто есть: AVAILABLE_BOTS — исторические боты и мастера с годами жизни и заявленной силой; /catalog добавляет
-  архетипы мастерской и измеренную силу (calibration.json), /guests — мастеров прошлого из «Машины времени».
-  Имена и описания на языке игрока — в каталогах клиента по id.
-* Ход: /move — исторический бот (src/services/bots/base.py), /custom-move — соперник из настроек характера
-  (src/services/bots/personality.py). Оба — под лимитом RATE_LIMIT_BOT_MOVE и правилом честной игры: во время
-  своей партии с человеком ход движка получить нельзя. Время «раздумья» бота считает сервер
-  (calculate_authentic_thinking_time_ms), клиент выдерживает паузу.
-* Партия с ботом идёт на клиенте и сохраняется целиком после окончания (/save-game). Итог определяет сервер, а
-  не клиент: ходы переигрываются, результат берётся с доски; сдача даёт только поражение игрока; при упавшем
-  флаге побеждает сторона, у которой осталось время, а если ей нечем ставить мат — ничья. Часы партии с ботом идут
-  на клиенте, поэтому сторону с упавшим флагом сервер берёт из присланного результата
-  (resolve_bot_game_outcome). Сохранение обновляет лестницу
-  (src/services/ladder.py), турнир (src/services/tournaments.py) и память бота (src/services/bots/memory.py).
-* В таблице users у каждого бота своя запись с меткой вместо пароля — войти под ботом нельзя; соперники
-  мастерской играют под общей записью CUSTOM_BOT_USERNAME, а имя персоналии хранится в games.personality_name.
+* Who exists: AVAILABLE_BOTS - historical bots and masters with their years of life and declared strength; /catalog adds
+  workshop archetypes and the measured strength (calibration.json), /guests - masters of the past from the "Time Machine".
+  Names and descriptions in the player's language are in the client catalogues by id.
+* Move: /move - a historical bot (src/services/bots/base.py), /custom-move - an opponent built from character settings
+  (src/services/bots/personality.py). Both are under the RATE_LIMIT_BOT_MOVE limit and the fair-play rule: during
+  one's own game with a human an engine move cannot be obtained. The bot's "thinking" time is computed by the server
+  (calculate_authentic_thinking_time_ms), the client keeps the pause.
+* A game with a bot runs on the client and is saved in full after it ends (/save-game). The result is determined by the server,
+not
+  the client: the moves are replayed, the result is taken from the board; resignation gives only a loss to the player; on a
+  fallen
+  flag the side that has time left wins, and if it cannot deliver mate - a draw. The clocks of a game with a bot run
+  on the client, so the server takes the side with the fallen flag from the submitted result
+  (resolve_bot_game_outcome). Saving updates the ladder
+  (src/services/ladder.py), the tournament (src/services/tournaments.py) and the bot's memory (src/services/bots/memory.py).
+* In the users table every bot has its own row with a marker instead of a password - one cannot log in as a bot; workshop
+  opponents play under the shared row CUSTOM_BOT_USERNAME, and the personality name is stored in games.personality_name.
 """
 
 import asyncio
@@ -45,7 +47,7 @@ from src.models.user import User
 from src.services import engine_info, move_check, openings, product_metrics
 from src.services import ladder as ladder_service
 from src.services import tournaments as tournament_service
-from src.services.bots import BOT_INSTANCES  # единственный реестр ботов (src/services/bots/__init__.py)
+from src.services.bots import BOT_INSTANCES  # the single registry of bots (src/services/bots/__init__.py)
 from src.services.bots import calibration as bot_calibration
 from src.services.bots import memory as bot_memory
 from src.services.bots import selfplay as bot_selfplay
@@ -61,14 +63,14 @@ from src.services.task_dispatch import schedule_game_analysis_in_background, sch
 
 router = APIRouter()
 
-# Те же зависимости, что и в остальных разделах: get_db — сессия базы на запрос (src/db/session.py),
-# get_current_user — вошедший игрок (src/api/deps.py).
+# The same dependencies as in the other sections: get_db - the database session per request (src/db/session.py),
+# get_current_user - the logged-in player (src/api/deps.py).
 get_db = getattr(deps, "get_db", None) or getattr(db_session, "get_db", None)
 get_current_user = getattr(deps, "get_current_user", None)
 
-# Исторические боты. Имя, титул и девиз на языке игрока — в каталогах клиента (bots.profiles.<id>);
-# здесь — данные: id (он же имя бота-пользователя в базе), имя для PGN (латиница, как в архивах партий),
-# годы, заявленная сила, портрет.
+# Historical bots. The name, title and motto in the player's language are in the client catalogues (bots.profiles.<id>);
+# here is data: id (also the bot user's name in the database), the PGN name (Latin, as in game archives),
+# years, declared strength, portrait.
 AVAILABLE_BOTS = [
     {
         "id": "philidor",
@@ -119,7 +121,8 @@ AVAILABLE_BOTS = [
         "rating": 2120,
         "avatar": "/assets/champions/zukertort.jpg",
     },
-    # Мастера второй волны (таск 21.5): портреты — из раздела чемпионов; с 18.11 — ступени лестницы, как все боты.
+    # Second-wave masters (task 21.5): portraits come from the champions section; since 18.11 they are ladder rungs, like all
+    # bots.
     *({"id": m.id, "pgn_name": m.pgn_name, "era": m.era, "rating": m.rating,
        "avatar": f"/assets/champions/{m.id.capitalize()}.jpg"} for m in MASTERS),
 ]
@@ -128,31 +131,31 @@ logger = logging.getLogger(__name__)
 
 BOT_METADATA = {b["id"]: b for b in AVAILABLE_BOTS}
 
-# Служебный «хэш» в hashed_password, по которому учётная запись опознаётся как бот.
-# Это не валидный bcrypt-хэш, поэтому войти под ботом невозможно.
+# A service "hash" in hashed_password by which the account is recognised as a bot.
+# It is not a valid bcrypt hash, so logging in as a bot is impossible.
 BOT_PASSWORD_MARKER = "!historical_bot_no_login!"
 
 
-# Общий бот-пользователь для партий с персоналиями из мастерской: в базе соперник — он,
-# а в PGN и архиве показывается имя персоналии (games.personality_name).
+# The shared bot user for games with workshop personalities: in the database the opponent is it,
+# while the PGN and the archive show the personality name (games.personality_name).
 CUSTOM_BOT_ID = "custom"
 CUSTOM_BOT_USERNAME = "workshop_opponent"
 CUSTOM_BOT_RATING = 1500
 
 
 def reserved_bot_usernames() -> set[str]:
-    """Имена (и id) ботов, которые нельзя занять при регистрации (сравнение без регистра)."""
+    """Names (and ids) of bots that cannot be taken at registration (compared case-insensitively)."""
     names: set[str] = {CUSTOM_BOT_USERNAME.casefold()}
     for bot in AVAILABLE_BOTS:
         names.add(str(bot["id"]).casefold())
-    # Имена-ключи архетипов в архиве («archetype:rusher») правила имён и так не пропускают (двоеточие),
-    # а сами id архетипов занимать нельзя, чтобы игрок не выдавал себя за соперника из лестницы.
+    # Archetype key names in the archive ("archetype:rusher") are rejected by the name rules anyway (the colon),
+    # but the archetype ids themselves cannot be taken, so that a player cannot impersonate a ladder opponent.
     names.update(archetype_id.casefold() for archetype_id in ARCHETYPES_BY_ID)
     return names
 
 
-# Темп «раздумья» исторических ботов первой волны: множитель к времени на ход (меньше 1 — играет быстрее).
-# Числа заданы вручную; у остальных ботов и соперников мастерской множитель 1.
+# The "thinking" pace of first-wave historical bots: a multiplier of the time per move (below 1 - plays faster).
+# The numbers are set by hand; other bots and workshop opponents have multiplier 1.
 BOT_TEMPO_MULTIPLIER = {
     "morphy": 0.72,
     "labourdonnais": 0.78,
@@ -165,21 +168,22 @@ BOT_TEMPO_MULTIPLIER = {
 
 
 class BotMoveRequest(BaseModel):
-    """Запрос хода исторического бота (POST /bots/move): кто ходит и в какой позиции."""
-    bot_id: str = Field(default="philidor", description="ID исторического бота")
-    fen: str = Field(..., max_length=100, description="Текущая позиция на доске в формате FEN")
+    """Request for a historical bot's move (POST /bots/move): who moves and in which position."""
+    bot_id: str = Field(default="philidor", description="ID of the historical bot")
+    fen: str = Field(..., max_length=100, description="Current position on the board in FEN format")
 
 
 class BotComment(BaseModel):
-    """Реплика бота: ключ каталога botComments на клиенте и параметры (текст на языке игрока — там)."""
+    """A bot remark: a botComments catalogue key on the client and parameters (the text in the player's language is there)."""
     key: str
     params: dict[str, int | str] = Field(default_factory=dict)
 
 
 class BotMoveResponse(BaseModel):
     """
-    Ход бота: запись хода, позиция после него, источник хода (source: дебютная книга или движок), реплика бота и
-    время «раздумья», которое клиент выдерживает перед показом хода.
+    The bot's move: the move record, the position after it, the source of the move (source: opening book or engine), the bot's
+    remark and
+    the "thinking" time that the client keeps before showing the move.
     """
     bot_id: str
     uci: str
@@ -187,21 +191,22 @@ class BotMoveResponse(BaseModel):
     fen_after: str
     source: str
     comment: BotComment
-    thinking_time_ms: int = Field(default=650, description="Рекомендуемое время размышления бота в мс")
+    thinking_time_ms: int = Field(default=650, description="Recommended bot thinking time in ms")
 
 
 class CustomBotMoveRequest(BaseModel):
     """
-    Запрос хода соперника мастерской: позиция и либо настройки характера, либо id сохранённой персоналии (не оба
-    сразу).
+    A request for a workshop opponent's move: the position and either character settings or the id of a saved personality (not
+    both
+    at once).
     """
     config: BotPersonalityConfig | None = Field(
-        default=None, description="Характер соперника (ползунки, веса фигур, сила); по умолчанию — сбалансированный",
+        default=None, description="Opponent character (sliders, piece weights, strength); balanced by default",
     )
     personality_id: int | None = Field(
-        default=None, description="Сохранённая персоналия игрока (нужен вход) — вместо config",
+        default=None, description="A saved personality of the player (login required) - instead of config",
     )
-    fen: str = Field(..., max_length=100, description="Текущая позиция на доске в формате FEN")
+    fen: str = Field(..., max_length=100, description="Current position on the board in FEN format")
 
     @model_validator(mode="after")
     def _config_or_saved(self) -> CustomBotMoveRequest:
@@ -212,50 +217,54 @@ class CustomBotMoveRequest(BaseModel):
 
 class BotGameSaveRequest(BaseModel):
     """
-    Сыгранная партия с ботом для сохранения: соперник, цвет игрока, ходы, заявленный итог, контроль времени и признаки
-    особой партии (лестница, турнир, наставник, вслепую, своя начальная позиция). Итог сервер определяет сам.
+    A played game with a bot to be saved: the opponent, the player's colour, moves, the claimed result, time control and flags
+    of
+    a special game (ladder, tournament, mentor, blindfold, custom start position). The result is determined by the server
+    itself.
     """
-    bot_id: str = Field(..., description="ID исторического бота или 'custom' — персоналия из мастерской")
-    personality_id: int | None = Field(default=None, description="Для bot_id='custom': сохранённая персоналия")
+    bot_id: str = Field(..., description="ID of the historical bot or 'custom' - a personality from the workshop")
+    personality_id: int | None = Field(default=None, description="For bot_id='custom': a saved personality")
     personality_name: str | None = Field(
         default=None, min_length=3, max_length=30,
-        description="Для bot_id='custom' без сохранения: имя соперника из конструктора",
+        description="For bot_id='custom' without saving: the opponent name from the constructor",
     )
-    ladder: bool = Field(default=False, description="Партия клубной лестницы (открыта POST /bots/ladder/start)")
-    tournament_game_id: int | None = Field(default=None, description="Партия турнира игрока (таск 15.3)")
-    assisted: bool = Field(default=False, description="Игрок пользовался наставником: партия учебная")
-    blindfold: int | None = Field(default=None, ge=1, le=4, description="Игра вслепую (таск 19.5): ступень 1–4")
-    peeks: int = Field(default=0, ge=0, le=10_000, description="Сколько раз игрок подсмотрел позицию")
-    player_color: str = Field(..., description="Цвет игрока ('white' или 'black')")
-    result: str = Field(..., description="Результат партии ('1-0', '0-1', '1/2-1/2')")
+    ladder: bool = Field(default=False, description="A club ladder game (opened by POST /bots/ladder/start)")
+    tournament_game_id: int | None = Field(default=None, description="The player's tournament game (task 15.3)")
+    assisted: bool = Field(default=False, description="The player used the mentor: a training game")
+    blindfold: int | None = Field(default=None, ge=1, le=4, description="Blindfold play (task 19.5): tier 1-4")
+    peeks: int = Field(default=0, ge=0, le=10_000, description="How many times the player peeked at the position")
+    player_color: str = Field(..., description="The player's colour ('white' or 'black')")
+    result: str = Field(..., description="Game result ('1-0', '0-1', '1/2-1/2')")
     termination: str | None = Field(
         default=None,
-        description="Для незавершённой на доске позиции: 'resignation' (игрок сдался), 'timeout' (упал флаг) или "
-                    "'agreement' (бот принял ничью, таск 21.4; не для лестницы и турнира)",
+        description="For a position not finished on the board: 'resignation' (the player resigned), 'timeout' (flag fell) or "
+                    "'agreement' (the bot accepted a draw, task 21.4; not for ladder and tournament)",
     )
-    moves_uci: list[str] = Field(default_factory=list, max_length=1000, description="Список сделанных ходов в формате UCI")
+    moves_uci: list[str] = Field(default_factory=list, max_length=1000, description="List of moves made in UCI format")
     start_fen: str | None = Field(
         default=None, max_length=120,
-        description="Начальная позиция партии (FEN), если она начата не с обычной расстановки",
+        description="Starting position of the game (FEN), if it did not start from the standard setup",
     )
-    # Границы — чтобы значение из запроса поместилось в INTEGER-колонку и не давало 500.
-    base_time_ms: int = Field(default=180000, ge=1000, le=86_400_000, description="Базовый контроль времени в мс")
-    increment_ms: int = Field(default=0, ge=0, le=3_600_000, description="Добавление времени на ход в мс")
+    # Bounds - so that a value from the request fits an INTEGER column and does not cause a 500.
+    base_time_ms: int = Field(default=180000, ge=1000, le=86_400_000, description="Base time control in ms")
+    increment_ms: int = Field(default=0, ge=0, le=3_600_000, description="Time increment per move in ms")
 
 
 class BotGameSaveResponse(BaseModel):
     """
-    Ответ на сохранение: id партии и её итог, исход для лестницы, турнир и причина технического поражения в нём,
-    изменение рейтинга.
+    The save response: the game id and its result, the outcome for the ladder, the tournament and the reason for a technical
+    loss in it,
+    the rating change.
     """
     game_id: int
     status: str
     result: str
     ladder: ladder_service.LadderOutcome | None = None
     tournament_id: int | None = None
-    # Причина поражения в турнире вместо результата на доске (код, как у лестницы: engine_hint, takeback, coach...).
+    # The reason for a loss in a tournament instead of the board result (a code, as for the ladder: engine_hint, takeback,
+    # coach...).
     tournament_forfeit: str | None = None
-    # Все турниры рейтинговые (15.4): изменение рейтинга игрока в категории контроля турнира.
+    # All tournaments are rated (15.4): the change of the player's rating in the tournament's time-control category.
     rating_before: int | None = None
     rating_after: int | None = None
     rating_delta: int | None = None
@@ -268,12 +277,12 @@ def calculate_authentic_thinking_time_ms(
         source: str,
 ) -> int:
     """
-    Вычисляет реалистичное человеческое время на ход (в мс) для исторического мастера
-    с учётом его темпа, дебютной книги, единственного ответа или тактической сложности позиции.
+    Computes a realistic human time per move (in ms) for a historical master
+    taking into account his pace, the opening book, a single reply or the tactical complexity of the position.
 
-    Это имитация для клиента, а не время работы движка: единственный ход — около 0,3 с, ход по книге — 0,4–0,7 с
-    плюс немного с каждым ходом партии, остальные — от 0,32 до 2,9 с (больше ходов и взятий на доске, шах или
-    взятие — дольше; в позиции с десятью и менее фигурами — быстрее). В значении есть случайная составляющая.
+    This is an imitation for the client, not the engine's running time: a single move - about 0.3 s, a book move - 0.4-0.7 s
+    plus a little with each move of the game, the others - from 0.32 to 2.9 s (more moves and captures on the board, a check or
+    a capture - longer; with ten pieces or fewer - faster). The value has a random component.
     """
     legal_moves = list(board.legal_moves)
     num_legal = len(legal_moves)
@@ -308,8 +317,8 @@ def calculate_authentic_thinking_time_ms(
 
 def _replay_moves(moves_uci: list[str], start_fen: str | None = None) -> chess.Board:
     """
-    Переигрывает ходы с историей (нужна для правил повторения) от обычной расстановки или
-    от start_fen; ValueError при нелегальном ходе или невозможной начальной позиции.
+    Replays moves with history (needed for repetition rules) from the standard setup or
+    from start_fen; ValueError for an illegal move or an impossible starting position.
     """
     board = board_from_start_fen(start_fen)
     for uci_str in moves_uci:
@@ -325,16 +334,16 @@ def _replay_moves(moves_uci: list[str], start_fen: str | None = None) -> chess.B
 
 def resolve_bot_game_outcome(board: chess.Board, payload: BotGameSaveRequest) -> tuple[str, str]:
     """
-    Итог партии с ботом определяет сервер, а не клиент:
-    - позиция на доске финальная (мат, пат, повторение, ...) — результат с доски;
-    - игрок сдался — только поражение игрока;
-    - упал флаг — победа стороны с неупавшим флагом, но ничья, если у неё нет материала
-      для мата (правило ФИДЕ 6.9). Часы партии с ботом живут на клиенте, поэтому сторону
-      с упавшим флагом сервер берёт из присланного результата;
-    - бот согласился на ничью (termination='agreement') — ничья. Согласие сервер не запоминает и проверить не
-      может, поэтому в партиях лестницы и турнира такой итог не принимается (проверка — в save_bot_game).
-    Иначе партия не завершена, и «победу» сохранить нельзя.
-    Возвращает (результат, причина окончания).
+    The result of a game with a bot is determined by the server, not the client:
+    - the position on the board is final (mate, stalemate, repetition, ...) - the result from the board;
+    - the player resigned - only a loss for the player;
+    - the flag fell - a win for the side whose flag did not fall, but a draw if it has no material
+      to mate (FIDE rule 6.9). The clocks of a game with a bot live on the client, so the side
+      with the fallen flag is taken by the server from the submitted result;
+    - the bot agreed to a draw (termination='agreement') - a draw. The server does not remember the agreement and cannot verify
+      it, so in ladder and tournament games such a result is not accepted (the check is in save_bot_game).
+    Otherwise the game is not finished, and a "win" cannot be saved.
+    Returns (result, termination reason).
     """
     outcome = terminal_outcome(board)
     if outcome is not None:
@@ -365,12 +374,12 @@ def _build_pgn_string(
         result: str,
         start_fen: str | None = None,
 ) -> tuple[str, str]:
-    """Строит валидный PGN-документ с заголовками и возвращает (pgn_text, final_fen)."""
+    """Builds a valid PGN document with headers and returns (pgn_text, final_fen)."""
     board = board_from_start_fen(start_fen)
     custom_start = not is_standard_start(board)
     pgn_game = chess.pgn.Game()
     if custom_start:
-        # Заголовки SetUp/FEN — стандартный способ записать партию не с начальной расстановки.
+        # The SetUp/FEN headers are the standard way to record a game that does not start from the initial setup.
         pgn_game.setup(board)
     pgn_game.headers["Event"] = "Historical Bot Match"
     pgn_game.headers["Site"] = "Regence Bot Arena"
@@ -397,7 +406,7 @@ def _build_pgn_string(
 
 
 async def _get_or_create_bot_user(db: AsyncSession, bot_id: str) -> User:
-    """Находит или создаёт запись бота в таблице пользователей (исторического или общего для персоналий)."""
+    """Finds or creates the bot record in the users table (a historical one or the one shared by personalities)."""
     if bot_id == CUSTOM_BOT_ID:
         bot_username, bot_rating = CUSTOM_BOT_USERNAME, CUSTOM_BOT_RATING
     else:
@@ -409,8 +418,8 @@ async def _get_or_create_bot_user(db: AsyncSession, bot_id: str) -> User:
     if bot_user is not None:
         if bot_user.is_bot:
             return bot_user
-        # Имя занято человеком (до запрета регистрации имён ботов) — не приписываем ему
-        # партии бота, а заводим бота под служебным именем.
+        # The name is taken by a human (before the ban on registering bot names) - we do not attribute
+        # the bot's games to them, but create the bot under a service name.
         bot_username = f"{bot_username}_bot"
         res = await db.execute(select(User).where(User.username == bot_username))
         bot_user = res.scalar_one_or_none()
@@ -420,9 +429,9 @@ async def _get_or_create_bot_user(db: AsyncSession, bot_id: str) -> User:
     bot_user = User(
         username=bot_username,
         hashed_password=BOT_PASSWORD_MARKER,
-        # Фиксированная «историческая сила» бота — одинаковая во всех категориях: это чисто отображаемое
-        # значение, рейтинг самого бота партии не меняют. Партии с ботом не рейтинговые (is_rated=False), кроме
-        # турнирных — там меняется только рейтинг игрока.
+        # The bot's fixed "historical strength" - the same in all categories: this is a purely displayed
+        # value, the bot's own rating is not changed by games. Games with a bot are not rated (is_rated=False), except
+        # tournament ones - there only the player's rating changes.
         bullet_rating=bot_rating,
         blitz_rating=bot_rating,
         rapid_rating=bot_rating,
@@ -441,7 +450,7 @@ def _prepare_game_kwargs(
         final_fen: str,
         payload: BotGameSaveRequest,
 ) -> dict:
-    """Формирует словарь полей модели Game для завершённой партии с ботом."""
+    """Builds the dictionary of Game model fields for a finished game with a bot."""
     now_utc = datetime.now(UTC)
     return {
         "white_player_id": white_id,
@@ -457,20 +466,20 @@ def _prepare_game_kwargs(
         "finished_at": now_utc,
         "pgn_date": now_utc.strftime("%Y.%m.%d"),
         "site": "Regence Bot Arena",
-        # У партии с произвольной позиции дебюта нет.
+        # A game from an arbitrary position has no opening.
         "eco": None if payload.start_fen else openings.eco_code(payload.moves_uci),
     }
 
 
 def _playable_board(fen: str) -> chess.Board:
-    """Позиция, в которой боту есть что ходить; иначе 400."""
+    """A position in which the bot has something to move; otherwise 400."""
     try:
         board = chess.Board(fen)
     except ValueError:
         raise ApiError(400, "invalid_fen") from None
 
-    # chess.Board принимает и невозможные позиции (без короля, короли рядом, под шахом сторона,
-    # которая только что ходила) — движок на них может упасть и выбыть из пула.
+    # chess.Board also accepts impossible positions (no king, kings adjacent, the side that has just
+    # moved is in check) - the engine may crash on them and drop out of the pool.
     if not board.is_valid():
         raise ApiError(400, "invalid_position")
 
@@ -482,8 +491,8 @@ def _playable_board(fen: str) -> chess.Board:
 @router.get("/engine")
 async def get_engine_info():
     """
-    Движок этой установки для «О проекте» (таск 23.1): версия, лицензия GPL-3.0 и исходники именно этой версии.
-    Сведения без опасности для честной игры — ни оценок, ни ходов.
+    The engine of this installation for "About" (task 23.1): version, GPL-3.0 licence and the sources of exactly this version.
+    Information that is harmless to fair play - no evaluations, no moves.
     """
     return await asyncio.to_thread(engine_info.describe, resolve_stockfish_path())
 
@@ -493,15 +502,15 @@ PUBLIC_LIMIT = Depends(rate_limit("public_api", "RATE_LIMIT_PUBLIC_API", code="p
 
 @router.get("/calibration/runs", dependencies=[PUBLIC_LIMIT])
 async def get_calibration_runs():
-    """Журналы прогонов калибровки (таск 24.3): протоколы матчей и партии — как записаны при прогоне."""
+    """Calibration run logs (task 24.3): match protocols and games - as recorded during the run."""
     return {"calibration": bot_calibration.load_calibration().get("meta"), "runs": bot_calibration.runs()}
 
 
 @router.get("/calibration/runs/{name}", response_class=PlainTextResponse, dependencies=[PUBLIC_LIMIT])
 async def get_calibration_run(name: str = Path(..., max_length=80)):
     """
-    Один журнал прогона калибровки текстом (PGN партий или протокол матчей) — файл, записанный
-    scripts/calibrate_bots.py; 404, если такого журнала нет. Открыт всем, под лимитом открытого API.
+    One calibration run log as text (PGN of games or a match protocol) - the file written by
+    scripts/calibrate_bots.py; 404 if there is no such log. Open to everyone, under the open API limit.
     """
     text = await asyncio.to_thread(bot_calibration.read_run, name)
     if text is None:
@@ -512,9 +521,10 @@ async def get_calibration_run(name: str = Path(..., max_length=80)):
 @router.get("/catalog")
 async def get_bot_catalog(db: AsyncSession = Depends(get_db)):
     """
-    Сила ботов и архетипы мастерской: заявленный рейтинг и измеренный матчами с якорями Stockfish
-    (scripts/calibrate_bots.py), если калибровка уже была. У исторических ботов — ещё live: рейтинг по партиям с
-    людьми, их число и поправка силы движка (таск 32.1).
+    Bot strength and workshop archetypes: the declared rating and the one measured by matches with Stockfish anchors
+    (scripts/calibrate_bots.py), if calibration has already been run. Historical bots also have live: the rating from games
+    with
+    humans, their number and the engine strength correction (task 32.1).
     """
     def strength(key: str, declared: int) -> dict:
         s = bot_calibration.strength_of(key, declared)
@@ -522,7 +532,7 @@ async def get_bot_catalog(db: AsyncSession = Depends(get_db)):
                 "games": s.games, "ci95": s.ci95}
 
     live = await bot_memory.live_strength(db)
-    # Архетипы — с ползунками силы, подстроенными самоигрой (таск 32.3).
+    # Archetypes - with strength sliders tuned by self-play (task 32.3).
     await bot_selfplay.refresh(db)
 
     def live_of(key: str) -> dict | None:
@@ -542,7 +552,7 @@ async def get_bot_catalog(db: AsyncSession = Depends(get_db)):
 
 @router.get("/tuning-log", dependencies=[PUBLIC_LIMIT])
 async def get_tuning_log(db: AsyncSession = Depends(get_db)):
-    """Открытый журнал подстройки характера самоигрой (таск 32.3): что измерено и как сдвинуты ползунки силы."""
+    """Open log of character tuning by self-play (task 32.3): what was measured and how the strength sliders were shifted."""
     rows = await bot_selfplay.journal(db)
     return {"entries": [{
         "key": r.key, "created_at": r.created_at.isoformat() if r.created_at else None, "games": r.games,
@@ -553,7 +563,7 @@ async def get_tuning_log(db: AsyncSession = Depends(get_db)):
 
 @router.get("/rivalry")
 async def get_rivalry(db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
-    """Какие исторические боты помнят игрока (таск 32.2): сколько партий и сколько очков в них набрал бот."""
+    """Which historical bots remember the player (task 32.2): how many games and how many points the bot scored in them."""
     rivals = await bot_memory.rivals_of(db, current_user.id)
     return {"rivals": [{"bot_id": r.bot_id, "games": r.games, "bot_points": r.points,
                         "remembers": r.games >= bot_memory.RIVAL_MIN_GAMES} for r in rivals]}
@@ -562,9 +572,11 @@ async def get_rivalry(db: AsyncSession = Depends(get_db), current_user: User = D
 @router.get("/guests", dependencies=[PUBLIC_LIMIT])
 async def get_guests():
     """
-    Мастера прошлого — каталог соперников (таск 28.5): участники турниров «Машины времени», с каждым можно сыграть
-    отдельную партию. Сервер отдаёт ключи и числа: имя и строку о мастере клиент берёт из каталога по id, названия
-    турниров — по ключам; фирменные дебюты — названия из открытой таблицы дебютов.
+    Masters of the past - a catalogue of opponents (task 28.5): participants of the "Time Machine" tournaments, each can be
+    played in
+    a separate game. The server serves keys and numbers: the name and the line about the master are taken by the client from
+    the catalogue by id, tournament
+    names - by keys; signature openings - names from the open openings table.
     """
     from src.services import time_machine
 
@@ -584,7 +596,8 @@ async def get_guests():
 
 @router.get("/guests/{guest_id}", dependencies=[PUBLIC_LIMIT])
 async def get_guest(guest_id: str = Path(..., max_length=40)):
-    """Характер мастера прошлого — чтобы начать с ним партию: тот же, с которым он играет в историческом турнире."""
+    """The character of a master of the past - to start a game with him: the same one he plays with in the historical
+    tournament."""
     guest = GUESTS_BY_ID.get(guest_id)
     if guest is None:
         raise ApiError(404, "guest_not_found")
@@ -593,8 +606,8 @@ async def get_guest(guest_id: str = Path(..., max_length=40)):
 
 class DrawOfferRequest(BaseModel):
     """
-    Предложение ничьей боту: позиция, кто соперник и каким цветом он играет; для соперника мастерской — его
-    характер (config) или id сохранённой персоналии.
+    A draw offer to a bot: the position, who the opponent is and which colour it plays; for a workshop opponent - its
+    character (config) or the id of a saved personality.
     """
     fen: str = Field(..., max_length=100)
     bot_id: str = Field(..., max_length=40)
@@ -603,7 +616,7 @@ class DrawOfferRequest(BaseModel):
     personality_id: int | None = None
 
 
-# Отношение исторических мастеров к ничьей (таск 21.4): атакующие романтики соглашаются неохотно.
+# The attitude of historical masters to a draw (task 21.4): attacking romantics agree reluctantly.
 HISTORICAL_DRAW_ATTITUDE = {"labourdonnais": -40, "anderssen": -60, "morphy": -40, "zukertort": -20}
 
 
@@ -613,10 +626,14 @@ HISTORICAL_DRAW_ATTITUDE = {"labourdonnais": -40, "anderssen": -60, "morphy": -4
 ])
 async def draw_offer(payload: DrawOfferRequest, request: Request, db: AsyncSession = Depends(get_db)):
     """
-    Ответ бота на предложение ничьей (таск 21.4): по оценке позиции за бота и его отношению к ничьей. В дебюте
-    (до 10-го хода, personality.DRAW_OFFER_MIN_MOVE) бот не соглашается — партия ещё не началась — и движок не
-    вызывается. Оценка берётся из кэша оценок или считается движком (move_check.evaluate_cached); это оценка
-    позиции, поэтому эндпоинт закрыт правилом честной игры и лимитом ходов бота. Сервер согласие не запоминает.
+    The bot's reply to a draw offer (task 21.4): by the evaluation of the position for the bot and its attitude to a draw. In
+    the opening
+    (before move 10, personality.DRAW_OFFER_MIN_MOVE) the bot does not agree - the game has not really started - and the engine
+    is not
+    called. The evaluation is taken from the evaluation cache or computed by the engine (move_check.evaluate_cached); it is an
+    evaluation
+    of the position, so the endpoint is closed by the fair-play rule and the bot move limit. The server does not remember the
+    agreement.
     """
     board = _playable_board(payload.fen)
     if payload.bot_id == CUSTOM_BOT_ID:
@@ -641,8 +658,8 @@ async def draw_offer(payload: DrawOfferRequest, request: Request, db: AsyncSessi
 @router.get("/openings")
 async def search_openings(q: str = Query("", max_length=60), epd: list[str] = Query(default_factory=list, max_length=120)):
     """
-    Дебюты для мастерской (таск 21.2): поиск по названию или коду ECO, либо записи по позициям (EPD) — чтобы
-    показать названия уже выбранных. Названия — английские имена собственные из открытой таблицы.
+    Openings for the workshop (task 21.2): search by name or ECO code, or entries by positions (EPD) - to
+    show the names of the already chosen ones. The names are English proper names from the open table.
     """
     table = openings.lines()
     found = [table[key] for key in epd if key in table] if epd else openings.search(q)
@@ -652,8 +669,8 @@ async def search_openings(q: str = Query("", max_length=60), epd: list[str] = Qu
 @router.get("/list")
 async def get_available_bots():
     """
-    Возвращает список доступных исторических ботов (AVAILABLE_BOTS) и статус движка Stockfish: найден ли его
-    бинарник на этом сервере. Открыт всем.
+    Returns the list of available historical bots (AVAILABLE_BOTS) and the Stockfish engine status: whether its
+    binary is found on this server. Open to everyone.
     """
     return {
         "bots": AVAILABLE_BOTS,
@@ -664,7 +681,7 @@ async def get_available_bots():
 @router.post(
     "/move",
     response_model=BotMoveResponse,
-    # Ход бота на произвольной позиции — та же подсказка движка, что и анализ.
+    # A bot move in an arbitrary position is the same engine hint as analysis.
     dependencies=[
         Depends(rate_limit("bot_move", "RATE_LIMIT_BOT_MOVE")),
         Depends(forbid_engine_help_during_game),
@@ -672,10 +689,11 @@ async def get_available_bots():
 )
 async def get_bot_move(payload: BotMoveRequest, request: Request, db: AsyncSession = Depends(get_db)):
     """
-    Принимает FEN позиции и возвращает ответный ход выбранного исторического бота. Доступно и гостю. Перед ходом:
-    запрос отмечается в сессии лестницы или турнира игрока (подсказка, возврат хода или подмена соперника —
-    src/services/ladder.py), бот подгружает свою память (итоги дебютов, а в дебюте — и память об этом сопернике,
-    src/services/bots/memory.py). Сам выбор хода — синхронный расчёт в отдельном потоке.
+    Takes the FEN of a position and returns the reply move of the chosen historical bot. Available to a guest too. Before the
+    move:
+    the request is noted in the player's ladder or tournament session (a hint, takeback or opponent swap -
+    src/services/ladder.py), the bot loads its memory (opening results, and in the opening also the memory of this opponent,
+    src/services/bots/memory.py). The move choice itself is a synchronous computation in a separate thread.
     """
     bot = BOT_INSTANCES.get(payload.bot_id)
     if bot is None:
@@ -685,7 +703,7 @@ async def get_bot_move(payload: BotMoveRequest, request: Request, db: AsyncSessi
     user_id = await optional_user_id(request, db)
     await ladder_service.note_bot_move_request(user_id, board, payload.bot_id)
     await bot_memory.refresh(db, payload.bot_id)
-    # Память о сопернике (таск 32.2) нужна только в дебюте — пока бот играет по книге.
+    # The memory of the opponent (task 32.2) is needed only in the opening - while the bot plays by the book.
     in_opening = (board.fullmove_number - 1) * 2 + (board.turn == chess.BLACK) < bot_memory.BOOK_PLIES
     bot_memory.use_rival(await bot_memory.load_rival(db, payload.bot_id, user_id) if in_opening else None)
     with engine_work("bot_move"):
@@ -711,7 +729,7 @@ async def get_bot_move(payload: BotMoveRequest, request: Request, db: AsyncSessi
 @router.post(
     "/custom-move",
     response_model=BotMoveResponse,
-    # Общий с /move лимит: та же нагрузка на Stockfish и та же подсказка движка.
+    # A limit shared with /move: the same load on Stockfish and the same engine hint.
     dependencies=[
         Depends(rate_limit("bot_move", "RATE_LIMIT_BOT_MOVE")),
         Depends(forbid_engine_help_during_game),
@@ -721,9 +739,10 @@ async def get_custom_bot_move(
         payload: CustomBotMoveRequest, request: Request, db: AsyncSession = Depends(get_db),
 ):
     """
-    Ход соперника, собранного из ползунков характера (src/services/bots/personality.py): характер прислан в
-    запросе (доступно гостю) или берётся из сохранённой персоналии игрока (нужен вход, чужая — 404). Запрос так же
-    отмечается в сессии лестницы или турнира.
+    The move of an opponent built from character sliders (src/services/bots/personality.py): the character is sent in
+    the request (available to a guest) or taken from the player's saved personality (login required, someone else's - 404). The
+    request is likewise
+    noted in the ladder or tournament session.
     """
     board = _playable_board(payload.fen)
     config = payload.config
@@ -751,7 +770,7 @@ async def get_custom_bot_move(
 
 
 async def _bearer_user(request: Request, db: AsyncSession) -> User:
-    """Пользователь по заголовку Authorization или 401 — для сохранённых персоналий."""
+    """The user by the Authorization header or 401 - for saved personalities."""
     scheme, _, token = request.headers.get("authorization", "").partition(" ")
     user = await deps.user_from_token(db, token) if scheme.lower() == "bearer" and token else None
     if user is None:
@@ -762,7 +781,7 @@ async def _bearer_user(request: Request, db: AsyncSession) -> User:
 async def _ladder_game_for_save(
         user: User, payload: BotGameSaveRequest,
 ) -> tuple[ladder_service.LadderSession, int, ladder_service.Rung]:
-    """Открытая партия лестницы, которой соответствует сохраняемая партия, или 409."""
+    """The open ladder game that the game being saved corresponds to, or 409."""
     session = await ladder_service.get_session(user.id)
     found = ladder_service.find_rung(session.rung_key) if session else None
     if session is None or found is None:
@@ -778,7 +797,8 @@ async def _ladder_game_for_save(
 async def _tournament_game_for_save(
         db: AsyncSession, user: User, payload: BotGameSaveRequest,
 ) -> tournament_service.PlayerGame:
-    """Партия турнира игрока, которой соответствует сохраняемая партия: соперник, цвет и контроль — как в турнире."""
+    """The player's tournament game that the game being saved corresponds to: opponent, colour and time control - as in the
+    tournament."""
     assert payload.tournament_game_id is not None
     try:
         played = await tournament_service.player_game(db, user, payload.tournament_game_id)
@@ -795,7 +815,7 @@ async def _tournament_game_for_save(
         raise ApiError(409, "tournament_game_mismatch")
     session = await ladder_service.get_session(user.id, "tournament")
     if session is None or session.tournament_game_id != played.game.id:
-        # Партию турнира начинают через POST /tournaments/{id}/games/{game_id}/start (таск A.2).
+        # A tournament game is started via POST /tournaments/{id}/games/{game_id}/start (task A.2).
         raise ApiError(409, "tournament_game_not_started")
     return played
 
@@ -803,7 +823,7 @@ async def _tournament_game_for_save(
 async def _resolve_personality_for_save(
         db: AsyncSession, user: User, payload: BotGameSaveRequest,
 ) -> tuple[str | None, int | None]:
-    """(имя персоналии, её целевой рейтинг) для партии с ботом 'custom'; для исторических — (None, None)."""
+    """(personality name, its target rating) for a game with the 'custom' bot; for historical ones - (None, None)."""
     if payload.bot_id != CUSTOM_BOT_ID:
         return None, None
     if payload.personality_id is not None:
@@ -811,13 +831,14 @@ async def _resolve_personality_for_save(
         return personality.name, personality_config(personality).target_elo
     if payload.personality_name is None:
         raise ApiError(400, "custom_opponent_missing")
-    # Архетип мастерской (в том числе соперник лестницы) — по ключу «archetype:<id>»: в архиве его имя
-    # покажется на языке игрока.
+    # A workshop archetype (including a ladder opponent) - by the key "archetype:<id>": in the archive its name
+    # will be shown in the player's language.
     archetype = ARCHETYPES_BY_KEY.get(payload.personality_name)
     if archetype is not None:
         return archetype.key, archetype.config.target_elo
-    # Мастер прошлого («Машина времени») — под именем из PGN («Фамилия, Имя»): правила имён игроков к нему не
-    # применяются (запятая и пробел в них запрещены — занять такое имя персоналией нельзя), сила — из реестра.
+    # A master of the past ("Time Machine") - under the PGN name ("Surname, Name"): the player name rules do not
+    # apply to it (a comma and a space are forbidden in them - such a name cannot be taken by a personality), the strength is
+    # from the registry.
     guest = GUESTS_BY_PGN_NAME.get(payload.personality_name)
     if guest is not None:
         return guest.pgn_name, guest.rating
@@ -830,22 +851,22 @@ async def _resolve_personality_for_save(
 async def _remember_bot_game(db: AsyncSession, payload: BotGameSaveRequest, result: str, player_rating: int,
                              player_id: int) -> None:
     """
-    Память исторического бота после партии (src/services/bots/memory.py): итог сыгранных ходов дебютной книги —
-    всегда; память об этом сопернике — если игрок не пользовался наставником; рейтинг бота по партиям с людьми —
-    если к тому же партия не вслепую. Сбой здесь только записывается в журнал.
+    The historical bot's memory after a game (src/services/bots/memory.py): the outcome of the opening book moves played -
+    always; the memory of this opponent - if the player did not use the mentor; the bot's rating from games with humans -
+    if additionally the game is not blindfold. A failure here is only written to the log.
     """
     bot_color = chess.BLACK if payload.player_color == "white" else chess.WHITE
     book = BOT_INSTANCES[payload.bot_id].opening_book
     try:
         await bot_memory.record_book(db, payload.bot_id, book, payload.moves_uci, bot_color, result)
-        # Память о сопернике (32.2): по завершённой партии без помощи — как игрок играет на самом деле.
+        # The memory of the opponent (32.2): from a finished game without help - how the player really plays.
         if not payload.assisted and payload.moves_uci:
             await bot_memory.record_rival(db, payload.bot_id, player_id, book, payload.moves_uci, bot_color, result)
         if not payload.assisted and not payload.blindfold and payload.moves_uci:
             await bot_memory.record_rating(
                 db, payload.bot_id, int(str(BOT_METADATA[payload.bot_id]["rating"])), player_rating,
                 bot_memory.bot_points(result, bot_color))
-    except Exception as exc:  # память — не главное: партия уже в архиве
+    except Exception as exc:  # memory is not the main thing: the game is already in the archive
         await db.rollback()
         logger.warning("Bot memory update failed for %s: %s", payload.bot_id, exc)
 
@@ -857,17 +878,18 @@ async def save_bot_game(
         current_user: User = Depends(get_current_user),
 ):
     """
-    Сохраняет завершённую партию против исторического бота или персоналии из мастерской. Только для вошедших.
+    Saves a finished game against a historical bot or a personality from the workshop. Only for logged-in users.
 
-    Что делает: переигрывает присланные ходы и сам определяет итог (resolve_bot_game_outcome), пишет партию в
-    games (без рейтинга, кроме турнирной), для партии лестницы обновляет рейтинг и ступень лестницы, для партии
-    турнира — записывает результат в турнир, меняет рейтинг игрока и ставит в очередь открывшиеся партии ботов, обновляет
-    память исторического бота и ставит фоновый разбор. Партия лестницы или турнира должна совпадать с открытой
-    на сервере (соперник, цвет, контроль) — иначе 409; подсказка или возврат хода в турнирной партии дают
-    поражение, а не результат с доски.
+    What it does: replays the submitted moves and determines the result itself (resolve_bot_game_outcome), writes the game to
+    games (without rating, except a tournament one), for a ladder game updates the rating and the ladder rung, for a tournament
+    game - records the result in the tournament, changes the player's rating and queues the bot games that have opened up,
+    updates
+    the historical bot's memory and queues a background review. A ladder or tournament game must match the one opened
+    on the server (opponent, colour, time control) - otherwise 409; a hint or a takeback in a tournament game gives
+    a loss, not the board result.
     """
     if payload.blindfold and (payload.ladder or payload.tournament_game_id):
-        # Игра вслепую — тренировка: в лестнице и турнире её нет (таск 19.5).
+        # Blindfold play is training: it does not exist in the ladder and the tournament (task 19.5).
         raise ApiError(400, "blindfold_not_allowed")
     if payload.bot_id != CUSTOM_BOT_ID and payload.bot_id not in BOT_METADATA:
         raise ApiError(404, "bot_not_found", bot_id=payload.bot_id)
@@ -881,11 +903,11 @@ async def save_bot_game(
     if payload.result not in ("1-0", "0-1", "1/2-1/2"):
         raise ApiError(400, "invalid_result")
 
-    # Партию без ходов в архив не пишем — кроме засчитываемых (лестница, турнир), сданных или проигранных по
-    # времени до первого хода: иначе турнирная партия осталась бы открытой, а тур — незакрытым.
+    # A game without moves is not written to the archive - except counted ones (ladder, tournament) resigned or lost on
+    # time before the first move: otherwise the tournament game would stay open, and the round unclosed.
     counted = ladder_game is not None or tournament_game is not None
     if counted and payload.termination == "agreement":
-        # Согласие бота на ничью сервер не запоминает — в засчитываемой партии его не подделать.
+        # The server does not remember the bot's agreement to a draw - in a counted game it cannot be forged.
         raise ApiError(400, "termination_required")
     if not payload.moves_uci and not (counted and payload.termination in ("resignation", "timeout")):
         raise ApiError(400, "empty_moves")
@@ -895,7 +917,7 @@ async def save_bot_game(
         result, termination = resolve_bot_game_outcome(final_board, payload)
     except DomainValueError as exc:
         raise exc.to_http(400) from exc
-    # Обычная расстановка, присланная как FEN, — это не «своя позиция».
+    # The standard setup submitted as FEN is not a "custom position".
     start_fen = None if is_standard_start(final_board) else final_board.root().fen()
     payload = payload.model_copy(update={"result": result, "termination": termination, "start_fen": start_fen})
 
@@ -910,12 +932,12 @@ async def save_bot_game(
 
     def _pgn_player(user: User) -> tuple[str, int]:
         if user.id == bot_user.id:
-            # Соперник-персоналия — под своим именем (архетип — под английским именем) и с целевой силой.
+            # A personality opponent - under its own name (an archetype - under its English name) and with the target strength.
             if personality_name:
                 archetype = ARCHETYPES_BY_KEY.get(personality_name)
                 name = archetype.pgn_name if archetype else personality_name
                 return name, personality_elo or user.rating_for(category)
-            # Исторический бот — под именем для PGN, как партии мастеров в архиве.
+            # A historical bot - under the PGN name, like masters' games in the archive.
             return str(BOT_METADATA[payload.bot_id]["pgn_name"]), user.rating_for(category)
         return user.username, user.rating_for(category)
 
@@ -959,16 +981,16 @@ async def save_bot_game(
     tournament_forfeit = None
     rating_change = None
     if tournament_game is not None:
-        # Подсказка движка, анализ, возврат хода или наставник во время партии турнира — поражение (таск A.2):
-        # «незасчитанной» партии в турнире быть не может.
+        # An engine hint, analysis, takeback or mentor during a tournament game is a loss (task A.2):
+        # an "uncounted" game cannot exist in a tournament.
         tournament_session = await ladder_service.get_session(current_user.id, "tournament")
         tournament_forfeit = (
             (tournament_session.assisted if tournament_session else None) or ("coach" if payload.assisted else None)
         )
         tournament_result = tournament_service.loss_for(payload.player_color) if tournament_forfeit else result
         await ladder_service.clear_session(current_user.id, "tournament")
-        # Результат — в турнир; партии ботов, которые от него открылись, считает воркер.
-        # Все турниры рейтинговые (решение владельца): рейтинг игрока — по итогу партии в турнире.
+        # The result goes to the tournament; the bot games opened by it are counted by the worker.
+        # All tournaments are rated (owner's decision): the player's rating - by the game result in the tournament.
         rating_change = tournament_service.apply_rating(current_user, tournament_game, tournament_result)
         new_game.is_rated = True
         if tournament_game.color == "white":
@@ -982,13 +1004,14 @@ async def save_bot_game(
         schedule_tournament_simulations_in_background(
             await tournament_service.mark_for_queue(db, tournament_game.tournament)
         )
-    # Опыт бота (таск 32.1): дебютные варианты — по любой партии из начальной позиции; рейтинг — без помощи,
-    # игры вслепую и своей позиции. Сбой памяти партию не ломает: она уже сохранена.
+    # The bot's experience (task 32.1): opening lines - from any game from the initial position; rating - without help,
+    # blindfold games and custom positions. A memory failure does not break the game: it is already saved.
     if payload.bot_id in BOT_INSTANCES and not personality_name and start_fen is None:
         await _remember_bot_game(db, payload, result,
                                  rating_change.before if rating_change else current_user.rating_for(category),
                                  current_user.id)
-    # Фоновый разбор: итог партии готов заранее, а из ошибок игрока делаются личные задачи (таск 13.5).
+    # Background review: the game result is ready in advance, and personal puzzles are made from the player's mistakes (task
+    # 13.5).
     schedule_game_analysis_in_background(new_game.id)
 
     return BotGameSaveResponse(

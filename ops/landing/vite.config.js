@@ -1,4 +1,4 @@
-// Сборка Worker страницы ожидания (нужна cf deploy): плагин Cloudflare берёт настройки из cloudflare.config.ts.
+// Build of the waiting-page Worker (needed by cf deploy): the Cloudflare plugin takes its settings from cloudflare.config.ts.
 import { defineConfig } from "vite";
 import { cloudflare } from "@cloudflare/vite-plugin";
 

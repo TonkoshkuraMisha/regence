@@ -1,10 +1,10 @@
 # --- FILE: src/services/puzzle_leaders.py ---
 """
-Таблица лидеров забегов на время (таск 26.1, «соревнование по задачам»). Два зачёта для каждой длины забега (3 и 5 минут):
-«неделя» — лучшие счёта текущей недели (понедельник UTC → понедельник; таблица puzzle_timed_scores, которую пополняет
-record_week при завершении забега) и «всё время» — рекорды игроков (users.puzzle_best_3 / puzzle_best_5). В таблицу не
-попадают нарушители честной игры (is_cheater), боты и удалённые аккаунты. Игрок видит и своё место, если оно ниже топа.
-Забеги на время играются по правилам puzzles.start_run; здесь только учёт и выдача.
+Leaderboard of timed runs (task 26.1, "puzzle competition"). Two standings for each run length (3 and 5 minutes):
+"week" - the best scores of the current week (Monday UTC -> Monday; the puzzle_timed_scores table, which is filled by
+record_week when a run finishes) and "all time" - players' records (users.puzzle_best_3 / puzzle_best_5). Fair-play
+violators (is_cheater), bots and deleted accounts do not enter the table. A player also sees their own place if it is below
+the top. Timed runs are played by the rules of puzzles.start_run; only accounting and output are here.
 """
 
 import datetime as dt
@@ -15,27 +15,27 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.models.puzzle import PuzzleTimedScore
 from src.models.user import User
 
-# Длины забегов, по которым ведётся таблица (как puzzles.TIMED_MINUTES), и зачёты.
+# Run lengths the table is kept for (as puzzles.TIMED_MINUTES), and the standings.
 MINUTES = (3, 5)
 SCOPES = ("week", "all")
-# Сколько мест показывает таблица.
+# How many places the table shows.
 TOP = 20
 
 
 def week_start(day: dt.date) -> dt.date:
-    """Понедельник недели, в которую попадает день (UTC)."""
+    """Monday of the week the day falls into (UTC)."""
     return day - dt.timedelta(days=day.weekday())
 
 
 def _eligible():
-    """Кто попадает в таблицу: живые игроки без пометки нарушителя."""
+    """Who enters the table: live players without a violator mark."""
     return (User.is_cheater == False, User.is_bot == False, User.deleted_at.is_(None))  # noqa: E712
 
 
 async def record_week(db: AsyncSession, user_id: int, minutes: int, score: int, today: dt.date | None = None) -> None:
     """
-    Запоминает счёт забега в недельной таблице: строка игрока за неделю хранит лучший счёт. Без commit — его делает
-    вызывающий. Забеги одного игрока идут по одному (забег в Redis один), поэтому гонки на строке нет.
+    Remembers a run's score in the weekly table: a player's row for the week keeps the best score. Without commit - the
+    caller does it. One player's runs go one at a time (there is one run in Redis), so there is no race on the row.
     """
     if minutes not in MINUTES or score <= 0:
         return
@@ -49,7 +49,7 @@ async def record_week(db: AsyncSession, user_id: int, minutes: int, score: int, 
 
 
 def _ranked(rows: list[tuple[int, str, int]]) -> list[dict]:
-    """Места по убыванию счёта; равные счета делят место (1, 2, 2, 4)."""
+    """Places by descending score; equal scores share a place (1, 2, 2, 4)."""
     out: list[dict] = []
     for index, (user_id, username, score) in enumerate(rows):
         place = out[-1]["place"] if out and out[-1]["score"] == score else index + 1
@@ -61,8 +61,8 @@ async def leaders(
         db: AsyncSession, minutes: int, scope: str, user_id: int | None = None, today: dt.date | None = None,
 ) -> dict:
     """
-    Таблица {rows: [{place, username, score, me}], me: моя строка или None}. rows — топ TOP; me — строка игрока,
-    если он в зачёте (в том числе ниже топа). Неизвестная длина или зачёт — пустая таблица.
+    Table {rows: [{place, username, score, me}], me: my row or None}. rows - the TOP top; me - the player's row,
+    if they are in the standings (including below the top). An unknown length or standing gives an empty table.
     """
     if minutes not in MINUTES or scope not in SCOPES:
         return {"rows": [], "me": None}

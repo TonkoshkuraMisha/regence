@@ -1,7 +1,8 @@
 # --- FILE: tests/test_bot_strength.py ---
 """
-Сила ботов (таск 10.5): ограничение UCI_Elo в Stockfish действует только на его собственный выбор хода, поэтому
-сила бота задаётся опорным ходом — ходом движка с ограничением силы, — а стиль выбирает среди равных ему ходов.
+Bot strength (task 10.5): Stockfish's UCI_Elo limit affects only its own move choice, so
+a bot's strength is set by a reference move (the engine's move under the strength limit),
+and the style chooses among moves equal to it.
 """
 
 from contextlib import contextmanager
@@ -17,17 +18,17 @@ from src.services.bots import BOT_INSTANCES
 from src.services.bots import base as bots_base
 from src.services.bots.personality import BotPersonalityConfig, PersonalityBot
 
-# Позиция из миттельшпиля — вне дебютных книг ботов.
+# A middlegame position, outside the bots' opening books.
 FEN = "r2q1rk1/pp2bppp/2n1pn2/3p4/3P4/2NBPN2/PP3PPP/R2Q1RK1 w - - 0 10"
 BOARD = chess.Board(FEN)
 BEST, REF, NEAR, BLUNDER = (BOARD.parse_san(s) for s in ("Rc1", "g3", "a3", "Bxh7+"))
-# Настоящая функция: на время каждого теста conftest подменяет её заглушкой.
+# The real function: conftest replaces it with a stub for the duration of each test.
 REAL_REFERENCE_MOVE = bots_base.strength_reference_move
 
 
 @pytest.fixture
 def engine(monkeypatch):
-    """Подменённый движок: MultiPV-оценки, опорный ход и оценка отдельного хода; записывает вызовы."""
+    """A stub engine: MultiPV scores, the reference move and the score of a single move; it records the calls."""
     calls: dict[str, list] = {"reference": [], "score": []}
 
     def install(scores: dict[chess.Move, float], reference: chess.Move | None, reference_score: float = 0.0):
@@ -58,11 +59,11 @@ def test_bot_plays_moves_as_strong_as_the_reference_not_the_best(engine):
     engine({BEST: 300, REF: 0, NEAR: -20, BLUNDER: -400}, reference=REF)
     bot = BOT_INSTANCES["philidor"].__class__(stockfish_path="stockfish")
     played = {bot.choose_move(FEN)["uci"] for _ in range(30)}
-    assert played <= {REF.uci(), NEAR.uci()}  # ни лучший ход (сильнее заявленного), ни зевок
+    assert played <= {REF.uci(), NEAR.uci()}  # neither the best move (stronger than rated) nor a blunder
 
 
 def test_style_may_not_upgrade_the_reference_move(engine):
-    # Ход на 60 сп лучше опорного — в пределах половины окна, но сильнее заявленной силы: не играется.
+    # A move 60 cp better than the reference is within half the window but stronger than the rated strength: it is not played.
     engine({BEST: 60, REF: 0, NEAR: -20}, reference=REF)
     bot = BOT_INSTANCES["anderssen"].__class__(stockfish_path="stockfish")
     assert {bot.choose_move(FEN)["uci"] for _ in range(30)} <= {REF.uci(), NEAR.uci()}
@@ -71,7 +72,7 @@ def test_style_may_not_upgrade_the_reference_move(engine):
 def test_reference_outside_multipv_is_scored_separately(engine):
     calls = engine({BEST: 50, NEAR: 40}, reference=BLUNDER, reference_score=-200)
     bot = BOT_INSTANCES["morphy"].__class__(stockfish_path="stockfish")
-    assert bot.choose_move(FEN)["uci"] == BLUNDER.uci()  # опорный ход слабый — и бот играет на этом уровне
+    assert bot.choose_move(FEN)["uci"] == BLUNDER.uci()  # the reference move is weak, and the bot plays at that level
     assert calls["score"] == [BLUNDER]
     assert calls["reference"] == [bot.uci_elo]
 
@@ -88,14 +89,14 @@ def test_personality_requests_its_target_strength(engine):
     assert calls["reference"] == [1700]
     calls["reference"].clear()
     PersonalityBot(BotPersonalityConfig(target_elo=900), stockfish_path="stockfish").choose_move(FEN)
-    assert calls["reference"] == [1320]  # слабее Stockfish не играет — дальше намеренные ошибки
+    assert calls["reference"] == [1320]  # Stockfish cannot play weaker; deliberate mistakes take over from here
 
 
 def test_reference_needs_engine_and_strength_limit(monkeypatch):
-    monkeypatch.undo()  # настоящая функция вместо заглушки из conftest
-    assert bots_base.strength_reference_move(BOARD, None, 1500, 0.1) is None  # нет движка
+    monkeypatch.undo()  # the real function instead of the conftest stub
+    assert bots_base.strength_reference_move(BOARD, None, 1500, 0.1) is None  # no engine
     assert bots_base.strength_reference_move(BOARD, "/no/such/stockfish", 1500, 0.1) is None
-    assert bots_base.strength_reference_move(BOARD, "stockfish", None, 0.1) is None  # без ограничения силы
+    assert bots_base.strength_reference_move(BOARD, "stockfish", None, 0.1) is None  # no strength limit
 
 
 def test_analysis_runs_at_full_strength(monkeypatch):
@@ -109,11 +110,11 @@ def test_analysis_runs_at_full_strength(monkeypatch):
     monkeypatch.setattr(bots_base, "get_engine_pool", lambda path: Pool())
     monkeypatch.setattr(bots_base.os.path, "exists", lambda path: True)
     assert bots_base.analyse_with_stockfish(board=BOARD, engine_path="stockfish") == {}
-    assert seen == [{}]  # без UCI_LimitStrength: оно не влияет на analyse, а оценки нужны честные
+    assert seen == [{}]  # without UCI_LimitStrength: it does not affect analyse, and the scores must be honest
 
 
 def test_bot_move_takes_the_engine_from_the_pool_once(monkeypatch):
-    """Анализ, опорный ход и его отдельная оценка — на одном движке: в очередь пула ход встаёт один раз."""
+    """Analysis, the reference move and its separate score run on one engine: the move joins the pool queue once."""
     pov = lambda cp: chess.engine.PovScore(chess.engine.Cp(cp), BOARD.turn)  # noqa: E731
 
     class Engine:
@@ -134,10 +135,10 @@ def test_bot_move_takes_the_engine_from_the_pool_once(monkeypatch):
         acquired.append(options)
         yield Engine()
 
-    monkeypatch.setattr(bots_base, "strength_reference_move", REAL_REFERENCE_MOVE)  # вместо заглушки conftest
+    monkeypatch.setattr(bots_base, "strength_reference_move", REAL_REFERENCE_MOVE)  # instead of the conftest stub
     monkeypatch.setattr(engine_pool, "get_engine_pool", lambda path: SimpleNamespace(acquire=acquire))
     monkeypatch.setattr(bots_base, "get_engine_pool", lambda path: pytest.fail("each step must use the lease"))
     monkeypatch.setattr(bots_base.os.path, "exists", lambda path: True)
     bot = BOT_INSTANCES["morphy"].__class__(stockfish_path="stockfish")
-    assert bot.choose_move(FEN)["uci"] == BLUNDER.uci()  # опорный ход вне MultiPV оценён отдельно
+    assert bot.choose_move(FEN)["uci"] == BLUNDER.uci()  # the reference move outside MultiPV is scored separately
     assert acquired == [{}]

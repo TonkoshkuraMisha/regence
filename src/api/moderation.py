@@ -1,5 +1,5 @@
 # --- FILE: src/api/moderation.py ---
-"""Модерация (таск 17.4): жалобы, апелляция на флаг нечестной игры, очередь и решения модератора."""
+"""Moderation (task 17.4): reports, appeal against the unfair-play flag, the queue and the moderator's decisions."""
 
 from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel, Field
@@ -35,7 +35,7 @@ class ReportIn(BaseModel):
 
 
 class TranslationIn(BaseModel):
-    language: str = Field(..., pattern="^(en|uk|ru)$")
+    language: str = Field(..., pattern="^(en|uk)$")
     key: str = Field(..., min_length=1, max_length=150, pattern=r"^[A-Za-z0-9_.]+$")
     current: str | None = Field(None, max_length=300)
     suggestion: str = Field(..., min_length=1, max_length=300)
@@ -51,7 +51,7 @@ class ResolveIn(BaseModel):
 
 
 class TextReportIn(BaseModel):
-    """Жалоба на сообщение, публикацию или комментарий (таск 30.3): «dm:12», «post:5», «comment:7»."""
+    """A report about a message, post or comment (task 30.3): "dm:12", "post:5", "comment:7"."""
     subject: str = Field(..., pattern=r"^(dm|post|comment):\d{1,12}$")
     reason: str = Field("abuse", pattern="^(cheating|abuse|spam|other)$")
 
@@ -63,7 +63,7 @@ def _moderator(user: User) -> None:
 
 @router.get("/me")
 async def my_status(db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
-    """Роль, отключён ли чат, есть ли флаг и открытая апелляция — для интерфейса."""
+    """The role, whether chat is disabled, whether there is a flag and an open appeal - for the interface."""
     open_appeal = await db.scalar(select(Report.id).where(
         Report.target_id == user.id, Report.kind == "appeal", Report.status == "open")) is not None
     until = user.chat_banned_until
@@ -73,7 +73,7 @@ async def my_status(db: AsyncSession = Depends(get_db), user: User = Depends(get
 
 @router.post("/reports", status_code=status.HTTP_201_CREATED)
 async def create_report(payload: ReportIn, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
-    """Жалоба на игрока или на сообщение в чате партии."""
+    """A report about a player or about a message in a game chat."""
     target = (await db.execute(select(User).where(func.lower(User.username) == payload.target.lower()))).scalar_one_or_none()
     if target is None:
         raise ApiError(404, "user_not_found", username=payload.target)
@@ -122,7 +122,7 @@ async def review_queue(db: AsyncSession = Depends(get_db), user: User = Depends(
 
 @router.get("/summary")
 async def violations_summary(db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
-    """Сводка по нарушениям за 30 суток (src/services/moderation_report.py) — только модератору."""
+    """A summary of violations over 30 days (src/services/moderation_report.py) - for the moderator only."""
     _moderator(user)
     return await moderation_report.summary(db)
 

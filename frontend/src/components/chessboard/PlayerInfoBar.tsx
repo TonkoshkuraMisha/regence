@@ -1,8 +1,8 @@
 // --- FILE: frontend/src/components/chessboard/PlayerInfoBar.tsx ---
-// Панель игрока над и под доской: аватар, имя, рейтинг (с изменением после партии), отметка берсерка, взятые фигуры,
-// перевес в материале и часы. Только разметка, все числа — от Chessboard: имя и рейтинг — из события match_found
-// (в партии с ботом — из профиля бота), изменение рейтинга — из game_over, время — из хука useClock, взятые фигуры
-// и перевес — расчёт по позиции (calculateMaterialBalance).
+// Player bar above and below the board: avatar, name, rating (with the change after a game), berserk mark, captured pieces,
+// material advantage and clock. Markup only, all numbers come from Chessboard: name and rating from the match_found event
+// (in a bot game, from the bot profile), rating change from game_over, time from the useClock hook, captured pieces
+// and advantage are computed from the position (calculateMaterialBalance).
 
 import {Zap} from 'lucide-react';
 import {formatTime} from './hooks/useClock';
@@ -12,31 +12,31 @@ import type {HistoricalBotProfile} from '../../config/champions';
 export interface PlayerInfoBarProps {
     boardWidthPx: number;
     isResizing: boolean;
-    /** Аватар исторического бота вместо дефолтной пешки-заглушки — когда бот играет этой стороной. */
+    /** Avatar of a historical bot instead of the default pawn placeholder, when the bot plays this side. */
     botProfile: HistoricalBotProfile | null;
     isWhiteSide: boolean;
-    /** Подпись, когда партия ещё не идёт (свободный анализ) — задаётся вызывающим, т.к. отличается для верхней/нижней панели. */
+    /** Label when no game is in progress yet (free analysis); set by the caller because it differs for the top/bottom bar. */
     idleLabel: string;
-    /** Партия (PvP/бот/просмотр) идёт — иначе показываем idleLabel и превью времени вместо часов. */
+    /** A game (PvP/bot/spectating) is in progress; otherwise idleLabel and a time preview are shown instead of the clock. */
     showGameInfo: boolean;
     playerInfo: { username: string; rating: string };
-    /** Игрок сыграл «берсерк» в партии арены (33.3): половина времени без добавки. */
+    /** The player played "berserk" in an arena game (33.3): half the time without increment. */
     berserk?: boolean;
-    /** Партия только что завершилась и сервер прислал изменение рейтинга (может отсутствовать для конкретной стороны). */
+    /** The game has just ended and the server sent a rating change (may be absent for a particular side). */
     hasRatingInfo: boolean;
     ratingDelta?: number;
-    /** Значки фигур соперника, взятых этой стороной; пусто в партии с нестандартной начальной позиции. */
+    /** Icons of the opponent's pieces captured by this side; empty in a game from a non-standard starting position. */
     capturedSymbols: string[];
-    /** Перевес этой стороны в материале в пешках; 0 — перевеса нет, плашка не показывается. */
+    /** This side's material advantage in pawns; 0 means no advantage, the badge is not shown. */
     advantage: number;
     timeMs: number;
-    /** Время выбранного контроля — показывается на часах, пока партия не идёт. */
+    /** Time of the selected control: shown on the clock while no game is in progress. */
     idlePreviewMs: number;
 }
 
 /**
- * Панель игрока над/под доской: аватар, имя, рейтинг (с изменением после партии), взятые
- * фигуры, перевес в материале и часы. Используется зеркально для верхней и нижней стороны.
+ * Player bar above/below the board: avatar, name, rating (with the change after a game), captured
+ * pieces, material advantage and clock. Used mirrored for the top and bottom side.
  */
 export function PlayerInfoBar({
     boardWidthPx, isResizing, botProfile, isWhiteSide, idleLabel, showGameInfo, playerInfo,

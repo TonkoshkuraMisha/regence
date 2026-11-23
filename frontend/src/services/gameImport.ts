@@ -1,22 +1,22 @@
 // --- FILE: frontend/src/services/gameImport.ts ---
-// Импорт партий с lichess, chess.com и из PGN (таск 24.1): /api/v1/imports. Только с входом — партии привязаны к
-// игроку; после импорта сервер сам разбирает их в фоне и делает задачи «Мои ошибки» из промахов игрока.
-// Маршруты — src/api/game_import.py, правила — src/services/game_import.py. Импорт и разбор сервер закрывает на
-// время партии с человеком (честная игра): иначе в «импорт» можно было бы вставить идущую партию и получить оценку.
+// Import of games from lichess, chess.com and PGN (task 24.1): /api/v1/imports. Login required — games are tied to the
+// player; after import the server analyses them in the background and builds "My mistakes" puzzles from the player's slips.
+// Routes — src/api/game_import.py, rules — src/services/game_import.py. The server blocks import and analysis while a
+// game against a human is in progress (fair play): otherwise a live game could be pasted into "import" to get an evaluation.
 
 import {apiRequest} from './http';
 
-/** Сайт, с которого партии берутся по нику. */
+/** Site from which games are fetched by nickname. */
 export type ImportSource = 'lichess' | 'chesscom';
-/** Откуда партия попала в список: с сайта или из вставленного PGN. */
+/** Where the game in the list came from: a site or a pasted PGN. */
 export type ImportedSource = ImportSource | 'pgn';
 export type ImportSpeed = 'bullet' | 'blitz' | 'rapid' | 'classical' | 'daily';
 
-/** Импортированная партия в списке (game_import.view на сервере). */
+/** Imported game in the list (game_import.view on the server). */
 export interface ImportedGameView {
     id: number;
     source: ImportedSource;
-    /** Каким цветом играл сам игрок: по нику на сайте или по имени в заголовках PGN. */
+    /** Which colour the player themself had: by nickname on the site or by name in the PGN headers. */
     color: 'white' | 'black';
     white: string;
     black: string;
@@ -25,47 +25,47 @@ export interface ImportedGameView {
     result: string;
     speed: ImportSpeed | null;
     played_at: string | null;
-    /** Разбор движком уже готов. */
+    /** Engine analysis is already ready. */
     analyzed: boolean;
-    /** Сколько задач «Мои ошибки» сделано из этой партии. */
+    /** How many "My mistakes" puzzles were made from this game. */
     puzzles: number;
 }
 
-/** Итог одного импорта: что добавлено, сколько партий уже было и сколько пропущено как непригодные. */
+/** Result of one import: what was added, how many games already existed and how many were skipped as unusable. */
 export interface ImportResult {
     added: ImportedGameView[];
     duplicates: number;
     skipped: number;
 }
 
-/** Страница списка: total — всего партий у игрока, max — предел хранения (настройка GAME_IMPORT_MAX_STORED). */
+/** List page: total — all games of the player, max — storage limit (setting GAME_IMPORT_MAX_STORED). */
 export interface ImportedList {
     total: number;
     max: number;
     games: ImportedGameView[];
 }
 
-/** Размер страницы списка импортированных партий. */
+/** Page size of the imported games list. */
 export const IMPORT_PAGE = 20;
-/** Сколько последних партий можно запросить за один импорт (выбор в форме). */
+/** How many recent games can be requested per import (choice in the form). */
 export const IMPORT_COUNTS = [5, 10, 20] as const;
 const call = <T>(path: string, init: RequestInit = {}) => apiRequest<T>(`/imports${path}`, init);
 
-/** Эндпоинты импорта; все требуют входа. */
+/** Import endpoints; all require login. */
 export const importApi = {
-    /** Последние партии игрока с сайта по нику (сервер сам обращается к открытому API сайта). */
+    /** The player's latest games from a site by nickname (the server itself calls the site's open API). */
     fetchSite: (source: ImportSource, username: string, max: number) =>
         call<ImportResult>('/fetch', {method: 'POST', body: JSON.stringify({source, username, max})}),
-    /** Партии из вставленного PGN; player — имя игрока в заголовках, по нему определяется его цвет. */
+    /** Games from a pasted PGN; player — the player's name in the headers, used to determine their colour. */
     pastePgn: (pgn: string, player: string, max: number) =>
         call<ImportResult>('/pgn', {method: 'POST', body: JSON.stringify({pgn, player, max})}),
     list: (offset = 0) => call<ImportedList>(`/games?offset=${offset}&limit=${IMPORT_PAGE}`),
-    /** Одна партия; puzzle_plies — полуходы, из которых сделаны задачи «Мои ошибки». */
+    /** One game; puzzle_plies — plies from which "My mistakes" puzzles were made. */
     game: (id: number | string) => call<ImportedGameView & { puzzle_plies: number[] }>(`/games/${id}`),
     remove: (id: number) => call<void>(`/games/${id}`, {method: 'DELETE'}),
 };
 
-/** Итог с точки зрения игрока: win / loss / draw; unknown — результат в партии не записан («*»). */
+/** Outcome from the player's point of view: win / loss / draw; unknown — no result recorded in the game ("*"). */
 export function outcome(game: ImportedGameView): 'win' | 'loss' | 'draw' | 'unknown' {
     if (game.result === '1/2-1/2') return 'draw';
     if (game.result === '1-0') return game.color === 'white' ? 'win' : 'loss';
@@ -73,18 +73,18 @@ export function outcome(game: ImportedGameView): 'win' | 'loss' | 'draw' | 'unkn
     return 'unknown';
 }
 
-/** Соперник игрока в импортированной партии: имя и рейтинг той стороны, за которую играл не он. */
+/** The player's opponent in an imported game: name and rating of the side the player did not play. */
 export function opponentOf(game: ImportedGameView): { name: string; rating: number | null } {
     return game.color === 'white'
         ? {name: game.black, rating: game.black_rating}
         : {name: game.white, rating: game.white_rating};
 }
 
-// Ник на сайте запоминается в браузере — удобство, не данные: без него всё работает.
-// Ключи localStorage: regence_import_nick_lichess и regence_import_nick_chesscom.
+// The nickname on the site is remembered in the browser — a convenience, not data: everything works without it.
+// localStorage keys: regence_import_nick_lichess and regence_import_nick_chesscom.
 const NICK_KEY = 'regence_import_nick';
 
-/** Ник, с которым игрок импортировал партии с этого сайта в прошлый раз; пусто — не запомнен. */
+/** Nickname the player last used to import games from this site; empty — not remembered. */
 export function savedNick(source: ImportSource): string {
     try {
         return localStorage.getItem(`${NICK_KEY}_${source}`) ?? '';
@@ -97,6 +97,6 @@ export function rememberNick(source: ImportSource, nick: string): void {
     try {
         localStorage.setItem(`${NICK_KEY}_${source}`, nick);
     } catch {
-        // приватный режим — без запоминания
+        // private mode — nothing is remembered
     }
 }

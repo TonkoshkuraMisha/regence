@@ -1,18 +1,19 @@
 # --- FILE: src/services/collections.py ---
 """
-«Забавные подборки» архива (таск 16.3). Для каждой партии считаются показатели (game_metrics), по ним — места в
-подборках (rank_collections). Подборки:
+"Fun collections" of the archive (task 16.3). Metrics are computed for each game (game_metrics), and places in the
+collections from them (rank_collections). The collections:
 
-* shortest — самые короткие партии, закончившиеся матом (неявки и мгновенные сдачи — не «короткие партии»);
-* checks — больше всего шахов;
-* capture_streak — самая длинная серия взятий подряд;
-* peaceful — самые мирные: меньше всего взятий, при равенстве — длиннее партия (без взятий — первыми);
-* promotions — больше всего превращений;
-* pawn_wars — больше всего проходных пешек на доске одновременно;
-* stalemates — «триумфальные ничьи»: партия закончилась патом (самые длинные — первыми).
+* shortest — the shortest games that ended in mate (no-shows and instant resignations are not "short games");
+* checks — the most checks;
+* capture_streak — the longest streak of consecutive captures;
+* peaceful — the most peaceful: the fewest captures, on a tie — the longer game (without captures — first);
+* promotions — the most promotions;
+* pawn_wars — the most passed pawns on the board at once;
+* stalemates — "triumphant draws": the game ended in stalemate (the longest first).
 
-Модуль только считает. Таблицу подборок (collection_entries) заполняет scripts/build_collections.py по PGN партий
-архива, а отдаёт её раздел «Просмотр» (src/api/watch.py).
+The module only computes. The collections table (collection_entries) is filled by scripts/build_collections.py from the PGN of
+the archive
+games, and it is served by the "Browse" section (src/api/watch.py).
 """
 
 import io
@@ -22,17 +23,17 @@ from dataclasses import dataclass
 import chess
 import chess.pgn
 
-# Коды подборок (по ним клиент берёт названия из каталогов) и число партий в каждой.
+# Collection codes (the client takes names from the catalogs by them) and the number of games in each.
 COLLECTIONS = ("shortest", "checks", "capture_streak", "peaceful", "promotions", "pawn_wars", "stalemates")
 PER_COLLECTION = 10
-MIN_PEACEFUL_PLIES = 40   # короткая партия без взятий — не «мирная», а просто короткая (40 полуходов — 20 ходов)
+MIN_PEACEFUL_PLIES = 40   # a short game without captures is not "peaceful" but just short (40 half-moves — 20 moves)
 
 
 @dataclass(frozen=True)
 class Metrics:
     """
-    Показатели одной партии для подборок: длина, шахи, взятия и самая длинная их серия, превращения, проходные пешки,
-    мат или пат.
+    Metrics of one game for the collections: length, checks, captures and their longest streak, promotions, passed pawns,
+    mate or stalemate.
     """
     plies: int
     decisive: bool
@@ -43,12 +44,12 @@ class Metrics:
     passed_pawns: int
     stalemate: bool
     checkmate: bool
-    # Подпись ходов: в архиве есть дубли одной партии — в подборке каждая партия один раз.
+    # Move signature: the archive has duplicates of one game — in a collection each game appears once.
     signature: int
 
 
 def passed_pawns(board: chess.Board) -> int:
-    """Число проходных пешек обеих сторон: впереди на своей и соседних вертикалях нет пешек соперника."""
+    """Number of passed pawns of both sides: ahead on its own and adjacent files there are no opponent pawns."""
     total = 0
     for color in (chess.WHITE, chess.BLACK):
         enemy = board.pieces(chess.PAWN, not color)
@@ -64,9 +65,10 @@ def passed_pawns(board: chess.Board) -> int:
 
 def game_metrics(pgn: str) -> Metrics | None:
     """
-    Показатели партии по её PGN. None — партия из своей позиции (есть заголовок FEN), без результата или без ходов: в
-    подборки она не идёт. Шах считается после каждого хода, проходные пешки — после каждого хода чёрных (берётся
-    наибольшее число за партию), мат и пат — по последней позиции.
+    Metrics of a game by its PGN. None — a game from its own position (a FEN header), without a result or without moves: it
+    does not
+    go into collections. Check is counted after each move, passed pawns — after each Black move (the largest
+    number per game is taken), mate and stalemate — by the final position.
     """
     game = chess.pgn.read_game(io.StringIO(pgn))
     if game is None or "FEN" in game.headers or game.headers.get("Result") not in ("1-0", "0-1", "1/2-1/2"):
@@ -82,7 +84,7 @@ def game_metrics(pgn: str) -> Metrics | None:
         board.push(move)
         plies += 1
         checks += board.is_check()
-        if board.pawns and plies % 2 == 0:  # раз в ход: проходные меняются медленно, а счёт недешёвый
+        if board.pawns and plies % 2 == 0:  # once per move: passed pawns change slowly, and the count is not cheap
             most_passed = max(most_passed, passed_pawns(board))
     if plies == 0:
         return None
@@ -93,13 +95,13 @@ def game_metrics(pgn: str) -> Metrics | None:
 
 def rank_collections(metrics: dict[int, Metrics], size: int = PER_COLLECTION) -> dict[str, list[tuple[int, int]]]:
     """
-    Места в подборках: {подборка: [(id партии, показатель), …]}; при равенстве — меньший id. metrics — показатели по
-    id партии, size — сколько партий в подборке. Условия отбора — в описании модуля.
+    Places in the collections: {collection: [(game id, metric), ...]}; on a tie — the smaller id. metrics — metrics by
+    game id, size — how many games in a collection. The selection conditions are in the module description.
     """
     items = list(metrics.items())
 
     def top(candidates, key, value) -> list[tuple[int, int]]:
-        """Первые size партий по ключу сортировки; одна и та же партия (в архиве есть дубли) берётся один раз."""
+        """The first size games by the sort key; one and the same game (the archive has duplicates) is taken once."""
         chosen: list[tuple[int, int]] = []
         seen: set[int] = set()
         for gid, m in sorted(candidates, key=lambda item: (key(item[1]), item[0])):

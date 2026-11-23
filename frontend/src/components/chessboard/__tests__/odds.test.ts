@@ -1,11 +1,11 @@
-// Игра с форой (таск 21.1): позиции материальных фор легальны и без нужной фигуры, фора по времени, кто даёт фору.
+// Games with odds (task 21.1): material-odds positions are legal and lack the needed piece, time odds, who gives the odds.
 
 import {Chess} from 'chess.js';
 import {describe, expect, it} from 'vitest';
 import {giverColor, hasGiver, inviteOddsFields, ODDS, oddsFen, oddsTimes} from '../odds';
 
-describe('форы', () => {
-    it('материальные форы: позиция легальна, фигуры нет, рокировка с убранной ладьёй пропадает', () => {
+describe('odds', () => {
+    it('material odds: the position is legal, the piece is gone, castling with the removed rook is lost', () => {
         expect(oddsFen('knight', 'white')).toBe('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/R1BQKBNR w KQkq - 0 1');
         expect(oddsFen('rook', 'black')).toBe('1nbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQk - 0 1');
         expect(oddsFen('queen', 'black')).toBe('rnb1kbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
@@ -20,7 +20,7 @@ describe('форы', () => {
         expect(oddsFen('hourglass', 'white')).toBeNull();
     });
 
-    it('«два хода подряд»: получающий уже сыграл e4+d4 (e5+d5), ход у дающего, позиция легальна', () => {
+    it('"two moves in a row": the receiver has already played e4+d4 (e5+d5), the giver is to move, the position is legal', () => {
         const whiteGives = new Chess(oddsFen('tempo', 'white')!);
         expect(whiteGives.turn()).toBe('w');
         expect(whiteGives.get('e5')?.type).toBe('p');
@@ -32,7 +32,7 @@ describe('форы', () => {
         expect(hasGiver('tempo')).toBe(true);
     });
 
-    it('фора по времени — треть часов, не меньше минуты; кто даёт фору', () => {
+    it('time odds - a third of the clock, at least a minute; who gives the odds', () => {
         expect(oddsTimes('time', 'white', 300_000, 300_000)).toEqual({white: 100_000, black: 300_000});
         expect(oddsTimes('time', 'black', 120_000, 120_000)).toEqual({white: 120_000, black: 60_000});
         expect(oddsTimes('knight', 'white', 300_000, 300_000)).toEqual({white: 300_000, black: 300_000});
@@ -41,8 +41,8 @@ describe('форы', () => {
     });
 });
 
-describe('партия с форой по сети (21.1)', () => {
-    it('доска клиента восстанавливается из PGN сервера с заголовками SetUp/FEN', () => {
+describe('a game with odds over the network (21.1)', () => {
+    it('the client board is restored from the server PGN with SetUp/FEN headers', () => {
         const fen = oddsFen('queen', 'white')!;
         const start = new Chess();
         start.loadPgn(`[SetUp "1"]\n[FEN "${fen}"]`);
@@ -55,7 +55,7 @@ describe('партия с форой по сети (21.1)', () => {
         expect(inviteOddsFields({kind: 'none', giver: 'me'}).odds_kind).toBe('');
     });
 
-    it('у «песочных часов» и «без форы» нет дающего', () => {
+    it('"hourglass" and "no odds" have no giver', () => {
         expect(hasGiver('hourglass')).toBe(false);
         expect(hasGiver('none')).toBe(false);
         expect(hasGiver('time')).toBe(true);

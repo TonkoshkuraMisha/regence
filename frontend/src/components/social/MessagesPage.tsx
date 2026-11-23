@@ -1,12 +1,12 @@
 // --- FILE: frontend/src/components/social/MessagesPage.tsx ---
-// Личные сообщения (таск 30.1): слева — переписки, справа — переписка с игроком и поле ввода с вложением-карточкой
-// (партия, позиция, задача, урок, турнир). Ниже списка — «Кто может мне писать» и чёрный список. Новое сообщение
-// приходит событием "direct_message" из сокета (если он открыт) и опросом раз в POLL_MS.
-// Другие страницы открывают переписку с готовым вложением: navigate('/messages/<имя>', {state: {attach: {kind, ref}}}).
-// Данные: services/messages.ts — messagesApi (/api/v1/messages: переписки, переписка с игроком по 50 сообщений,
-// отправка, чтение, скрытие, блокировка, настройка «Кто может мне писать»); текст — до 1000 знаков (BODY_MAX в
-// src/services/direct_messages.py). После изменений страница шлёт window-событие regence:dm-changed — по нему
-// колокольчик (SocialHeader.tsx) обновляет число непрочитанных. Роут — App.tsx.
+// Direct messages (task 30.1): conversations on the left, on the right a conversation with a player and an input field with a card attachment
+// (game, position, puzzle, lesson, tournament). Below the list are "Who can message me" and a blocklist. A new message
+// arrives as a "direct_message" event from the socket (if it is open) and by polling every POLL_MS.
+// Other pages open a conversation with a ready attachment: navigate('/messages/<name>', {state: {attach: {kind, ref}}}).
+// Data: services/messages.ts, messagesApi (/api/v1/messages: conversations, a conversation with a player 50 messages at a time,
+// sending, reading, hiding, blocking, the "Who can message me" setting); the text is up to 1000 characters (BODY_MAX in
+// src/services/direct_messages.py). After changes the page sends a window event regence:dm-changed, by which
+// the bell (SocialHeader.tsx) refreshes the unread count. Route is App.tsx.
 
 import {useCallback, useEffect, useRef, useState} from 'react';
 import type {FormEvent, KeyboardEvent} from 'react';
@@ -25,12 +25,12 @@ import type {AttachmentDraft} from './AttachmentPicker';
 import {FlaggedNotice, HeldNote, isTextFlagged, RulesLink, TextReportButton} from './Civility';
 import {DIRECT_MESSAGE_MAX, DIRECT_MESSAGES_PAGE} from '../../config/textLimits';
 
-// Период опроса списка переписок и открытой переписки (мс), если событие сокета не пришло.
+// Polling period of the conversation list and the open conversation (ms) if no socket event arrived.
 export const POLL_MS = 15_000;
-// Варианты настройки «кто может писать мне» (совпадают с POLICIES в src/services/direct_messages.py).
+// Options of the "who can message me" setting (match POLICIES in src/services/direct_messages.py).
 const POLICIES: DmPolicy[] = ['all', 'following', 'nobody'];
 
-/** Список переписок со счётчиком непрочитанных и последней репликой. */
+/** Conversation list with an unread counter and the last line. */
 function ConversationList({items, active}: { items: Conversation[]; active?: string }) {
     const {t} = useI18n();
     if (items.length === 0) return <p className="text-sm text-boxwood/70 p-2" data-testid="dm-empty">{t('dm.empty')}</p>;
@@ -58,7 +58,7 @@ function ConversationList({items, active}: { items: Conversation[]; active?: str
     );
 }
 
-/** Настройка «Кто может мне писать» и чёрный список с возвратом в список. */
+/** The "Who can message me" setting and a blocklist with a return to the list. */
 function DmSettingsPanel() {
     const {t} = useI18n();
     const [settings, setSettings] = useState<DmSettings | null>(null);
@@ -96,7 +96,7 @@ function DmSettingsPanel() {
     );
 }
 
-/** Переписка с одним игроком: подгрузка ранних сообщений, отправка, вложение, скрытие, блокировка и причина отказа сервера. */
+/** Conversation with one player: loading earlier messages, sending, an attachment, hiding, blocking and the server refusal reason. */
 function ThreadView({username, initialAttach, onChanged}: {
     username: string;
     initialAttach: AttachmentDraft | null;
@@ -113,7 +113,7 @@ function ThreadView({username, initialAttach, onChanged}: {
     const [flagged, setFlagged] = useState(false);
     const navigate = useNavigate();
     const bottom = useRef<HTMLDivElement>(null);
-    // Колбэк родителя — через ref: иначе каждая его перерисовка заново запускала бы загрузку переписки.
+    // Parent callback via ref: otherwise each of its re-renders would restart loading the conversation.
     const changed = useRef(onChanged);
     useEffect(() => {
         changed.current = onChanged;
@@ -124,7 +124,7 @@ function ThreadView({username, initialAttach, onChanged}: {
         messagesApi.thread(username).then((next) => {
             setThread((prev) => {
                 if (!prev) setHasEarlier(next.messages.length >= DIRECT_MESSAGES_PAGE);
-                // Уже подгруженные ранние сообщения не теряются при обновлении.
+                // Already loaded earlier messages are not lost on refresh.
                 const earlier = prev ? prev.messages.filter((m) => next.messages.length > 0 && m.id < next.messages[0].id) : [];
                 return {...next, messages: [...earlier, ...next.messages]};
             });
@@ -283,7 +283,7 @@ function ThreadView({username, initialAttach, onChanged}: {
     );
 }
 
-/** Двухколоночная страница: слева переписки и настройки, справа выбранная переписка (на узком экране — по очереди); требует входа. */
+/** Two-column page: conversations and settings on the left, the selected conversation on the right (one after the other on a narrow screen); requires sign-in. */
 export function MessagesPage() {
     const {t} = useI18n();
     const {username} = useParams<{ username?: string }>();

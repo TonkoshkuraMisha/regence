@@ -1,7 +1,7 @@
 # --- FILE: src/api/trainers.py ---
 """
-Тренажёры (таск 19.1): запись результата попытки, личные рекорды и история для графика. Тренажёры считаются на
-клиенте, поэтому сервер только проверяет границы значений: рекорды — личные, на рейтинг они не влияют.
+Trainers (task 19.1): recording an attempt result, personal records and history for a chart. Trainers are computed on the
+client, so the server only checks the value bounds: records are personal and do not affect the rating.
 """
 
 from fastapi import APIRouter, Depends, Path
@@ -18,17 +18,18 @@ from src.models.user import User
 
 router = APIRouter(dependencies=[Depends(rate_limit("trainers", "RATE_LIMIT_PUZZLES"))])
 
-# Известные тренажёры: «Тихая тропа», «Двойной удар», «Маршрут коня», «Хвост» (таск 16.5); координаты (19.2):
-# уровень у них — сочетание настроек (сторона, координаты на доске, 30/60 с), см. frontend/src/trainers/coordinates.ts.
+# Known trainers: "Quiet Path", "Fork", "Knight's Route", "Tail" (task 16.5); coordinates (19.2):
+# their level is a combination of settings (side, coordinates on the board, 30/60 s), see frontend/src/trainers/coordinates.ts.
 TRAINERS = ("quiet_path", "double_strike", "knight_route", "tail",
             "coord_find", "coord_name", "coord_color", "coord_diagonal",
-            # Память (19.3): «Восстанови позицию» и «Запомни партию».
+            # Memory (19.3): "Restore the position" and "Remember the game".
             "memory_position", "memory_game",
-            # Головоломки на доске (19.4): уровень расстановки — номер задачи, обхода — размер доски (3 — 8×8).
+            # Board puzzles (19.4): for placement the level is the puzzle number, for the tour - the board size (3 - 8x8).
             "board_placement", "knight_tour",
-            # Визуализация (19.6): ход вслепую и «Где фигура?», уровень — число полуходов вслепую (1–10).
+            # Visualisation (19.6): a blindfold move and "Where is the piece?", the level is the number of plies blindfold
+            # (1-10).
             "blind_move", "blind_where",
-            # Счёт и внимание (19.7): уровней нет (всегда 1).
+            # Counting and attention (19.7): there are no levels (always 1).
             "calc_checks", "calc_exchange", "calc_distance", "calc_square", "calc_eval", "calc_compare",
             "structure_quiz", "plan_quiz")
 MAX_LEVEL = 20
@@ -57,7 +58,7 @@ async def _best(db: AsyncSession, user_id: int, trainer: str, level: int | None 
 
 @router.post("/results")
 async def save_result(payload: ResultIn, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
-    """Результат попытки; record — побит ли личный рекорд уровня."""
+    """An attempt result; record - whether the level's personal record was beaten."""
     _check(payload.trainer)
     previous = await _best(db, user.id, payload.trainer, payload.level)
     db.add(TrainerResult(user_id=user.id, **payload.model_dump()))
@@ -68,7 +69,7 @@ async def save_result(payload: ResultIn, db: AsyncSession = Depends(get_db), use
 
 @router.get("/records")
 async def records(db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
-    """По каждому тренажёру: лучший результат, самый высокий пройденный уровень, число попыток."""
+    """For each trainer: the best result, the highest level passed, the number of attempts."""
     rows = (await db.execute(
         select(TrainerResult.trainer, func.max(TrainerResult.score), func.max(TrainerResult.level), func.count())
         .where(TrainerResult.user_id == user.id).group_by(TrainerResult.trainer)
@@ -80,7 +81,7 @@ async def records(db: AsyncSession = Depends(get_db), user: User = Depends(get_c
 @router.get("/history/{trainer}")
 async def history(trainer: str = Path(..., max_length=32), db: AsyncSession = Depends(get_db),
                   user: User = Depends(get_current_user)):
-    """Последние результаты тренажёра — для графика (старые первыми)."""
+    """The latest results of a trainer - for a chart (oldest first)."""
     _check(trainer)
     rows = (await db.execute(
         select(TrainerResult).where(TrainerResult.user_id == user.id, TrainerResult.trainer == trainer)

@@ -1,11 +1,12 @@
 # --- FILE: src/api/game_import.py ---
 """
-Импорт партий с lichess, chess.com и из PGN (таск 24.1): список, разбор с наставником, личные задачи.
+Import of games from lichess, chess.com and PGN (task 24.1): list, review with the mentor, personal puzzles.
 
-Только для вошедших: партии привязаны к игроку. Во время партии с человеком импорт и разбор закрыты
-(forbid_engine_help_during_game): иначе в «импорт» можно было бы вставить PGN идущей партии и получить оценку
-движка. Частота импорта — RATE_LIMIT_GAME_IMPORT за RATE_LIMIT_GAME_IMPORT_WINDOW_S на игрока; разбор — общий
-лимит анализа партий.
+Only for logged-in users: games are bound to the player. During a game with a human import and review are closed
+(forbid_engine_help_during_game): otherwise the PGN of a game in progress could be pasted into the "import" and an engine
+evaluation obtained. The import frequency is RATE_LIMIT_GAME_IMPORT per RATE_LIMIT_GAME_IMPORT_WINDOW_S per player; the review
+has the shared
+game analysis limit.
 """
 
 from typing import Literal
@@ -41,7 +42,7 @@ class SiteImportRequest(BaseModel):
 
 class PgnImportRequest(BaseModel):
     pgn: str = Field(..., min_length=1, max_length=game_import.MAX_PGN_CHARS)
-    player: str = Field("", max_length=game_import.NAME_MAX, description="Ваше имя в заголовках PGN")
+    player: str = Field("", max_length=game_import.NAME_MAX, description="Your name in the PGN headers")
     max: int = Field(10, ge=1, le=50)
 
 
@@ -55,7 +56,7 @@ def _limit(requested: int) -> int:
 
 
 async def _finish(db: AsyncSession, user: User, result: dict) -> dict:
-    """Новые партии — в фоновый разбор (и задачи из ошибок); клиенту — их карточки."""
+    """New games go to the background review (and puzzles from mistakes); the client gets their cards."""
     added_ids: list[int] = result["added"]
     schedule_imported_analyses_in_background(added_ids)
     games = [await db.get(ImportedGame, imported_id) for imported_id in added_ids]
@@ -71,7 +72,7 @@ def _http(exc: game_import.GameImportError):
 @router.post("/fetch", dependencies=[Depends(forbid_engine_help_during_game), Depends(import_rate_limit)])
 async def import_from_site(payload: SiteImportRequest, user: User = Depends(get_current_user),
                            db: AsyncSession = Depends(get_db)):
-    """Последние партии игрока с lichess или chess.com по нику."""
+    """The player's latest games from lichess or chess.com by nickname."""
     try:
         result = await game_import.import_from_site(db, user, payload.source, payload.username, _limit(payload.max))
     except game_import.GameImportError as exc:
@@ -82,7 +83,7 @@ async def import_from_site(payload: SiteImportRequest, user: User = Depends(get_
 @router.post("/pgn", dependencies=[Depends(forbid_engine_help_during_game), Depends(import_rate_limit)])
 async def import_pgn(payload: PgnImportRequest, user: User = Depends(get_current_user),
                      db: AsyncSession = Depends(get_db)):
-    """Партии из вставленного PGN; сторона игрока — по имени в заголовках."""
+    """Games from the pasted PGN; the player's side is determined by the name in the headers."""
     try:
         result = await game_import.import_pgn(db, user, payload.pgn, payload.player, _limit(payload.max))
     except game_import.GameImportError as exc:
@@ -127,7 +128,7 @@ def _report(game: ImportedGame, data: dict) -> dict:
 @router.get("/games/{imported_id}/analysis", response_model=FullGameAnalysisResponse | None,
             dependencies=[Depends(forbid_engine_help_during_game)])
 async def get_analysis(imported_id: int, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """Готовый разбор (после фоновой задачи) или null."""
+    """The finished review (after the background task) or null."""
     game = await _own(db, user, imported_id)
     data = game_import.cached_analysis(game)
     return _report(game, data) if data is not None else None
@@ -140,7 +141,8 @@ async def get_analysis(imported_id: int, user: User = Depends(get_current_user),
 )
 async def run_analysis(imported_id: int, http: Request, force: bool = Query(default=False),
                        user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """Разбор по запросу — если фоновая задача ещё не дошла или брокер недоступен; затем задачи из ошибок."""
+    """A review on request - if the background task has not reached it yet or the broker is unavailable; then puzzles from
+    mistakes."""
     game = await _own(db, user, imported_id)
     async with _game_analysis_lock(f"imported:{imported_id}"):
         try:
@@ -154,5 +156,5 @@ async def run_analysis(imported_id: int, http: Request, force: bool = Query(defa
     try:
         await personal_puzzles.extract_for_imported(db, game.id)
     except EngineBusyError:
-        pass  # задачи досчитает следующий разбор; сам разбор уже готов
+        pass  # the next review will compute the puzzles; the review itself is already done
     return _report(game, data)

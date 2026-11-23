@@ -1,7 +1,7 @@
 # --- FILE: tests/test_simulation_strength.py ---
 """
-Сила участников в симуляции турнирных партий (таск 28.2): чем ниже рейтинг, тем чаще выбирается не лучший ход.
-Раньше при коротком времени на ход рейтинг в партиях ботов ничего не значил (2400 против 1600 — 3,5 из 8).
+Participant strength in tournament game simulation (task 28.2): the lower the rating, the more often a non-best move is chosen.
+Previously, with a short time per move, rating meant nothing in bot games (2400 vs 1600 scored 3.5 of 8).
 """
 
 import random
@@ -24,7 +24,7 @@ def test_temperature_falls_with_rating():
     temperatures = [temperature_cp(r) for r in ratings]
     assert temperatures == sorted(temperatures, reverse=True)
     assert temperature_cp(300) == temperature_cp(800) and temperature_cp(2800) == temperature_cp(3200)
-    # Между опорными точками — линейно.
+    # Between anchor points - linear.
     assert temperature_cp(1800) == pytest.approx((temperature_cp(1600) + temperature_cp(2000)) / 2)
     assert temperature_cp(2400) < temperature_cp(1600) / 3
 
@@ -34,7 +34,7 @@ def test_strong_player_picks_the_best_move_more_often():
     scores = {best: 30.0, good: 10.0, pawn_down: -70.0, piece_down: -270.0}
     master, club, novice = (move_weights(scores, {}, temperature_cp(r)) for r in (2400, 1600, 800))
     assert share(master, best) > share(club, best) > share(novice, best)
-    # Мастер почти не отдаёт пешку и не зевает фигуру; у клубного игрока это редкость, у новичка — обычное дело.
+    # A master almost never gives up a pawn or blunders a piece; for a club player it is rare, for a beginner common.
     assert share(master, pawn_down) < 0.01 and share(master, piece_down) < 1e-6
     assert 0.05 < share(club, pawn_down) < 0.25 and share(club, piece_down) < 0.02
     assert share(novice, piece_down) > 0.05
@@ -54,17 +54,17 @@ def test_style_tilts_the_choice_but_cannot_rescue_a_bad_move():
     scores = {quiet: 20.0, sharp: 0.0, losing: -300.0}
     plain = move_weights(scores, {}, 60.0)
     attacker = move_weights(scores, {sharp: 500.0, losing: 500.0}, 60.0)
-    # Любимый ход при небольшой потере становится равным лучшему…
+    # A favourite move with a small loss becomes equal to the best...
     assert plain[sharp] < 1.0 and attacker[sharp] == 1.0
-    # …но бонус стиля ограничен половиной температуры: проигрывающий ход остаётся почти невозможным.
+    # ...but the style bonus is capped at half the temperature: a losing move stays almost impossible.
     assert attacker[losing] < 0.001
-    # Штраф стиля делает хороший ход менее вероятным, но не запрещает его.
+    # A style penalty makes a good move less likely but does not forbid it.
     wary = move_weights(scores, {quiet: -500.0}, 60.0)
     assert 0 < wary[quiet] < plain[quiet]
 
 
 class ScriptedBot:
-    """Бот с заданными оценками ходов: книги нет, движка нет."""
+    """A bot with given move evaluations: no book, no engine."""
 
     stockfish_path = None
     search_depth = 6
@@ -81,7 +81,7 @@ class ScriptedBot:
 
 
 def test_simulated_player_uses_the_book_first(monkeypatch):
-    monkeypatch.setattr(sim, "analyse_with_stockfish", lambda **kwargs: pytest.fail("книжный ход движка не требует"))
+    monkeypatch.setattr(sim, "analyse_with_stockfish", lambda **kwargs: pytest.fail("a book move does not need the engine"))
     player = SimulatedPlayer(ScriptedBot(book=(chess.Move.from_uci("c2c4"), {"key": "book.x"})), 2000)
     assert player.choose_move(chess.STARTING_FEN) == {"uci": "c2c4", "source": "opening_book"}
 
@@ -103,7 +103,7 @@ def test_simulated_player_chooses_by_rating(monkeypatch):
 
     master, club, novice = best_share(2400), best_share(1600), best_share(800)
     assert master > 0.99 and 0.6 < club < 0.9 and novice < 0.55 and master > club > novice
-    # Оцениваются лучшие ходы на полной силе, с пониженными глубиной и временем.
+    # The best moves are evaluated at full strength, with reduced depth and time.
     assert calls[0]["multipv"] == sim.SIM_CANDIDATES and calls[0]["depth"] == 6 and calls[0]["time_limit"] == 0.1
 
 
@@ -132,11 +132,11 @@ def test_historic_tournaments_simulate_masters_at_their_declared_strength():
     declared = int(str(BOT_METADATA["chigorin"]["rating"]))
     measured = strength_of("chigorin", declared).rating
     chigorin = TournamentPlayer(seat=1, kind="bot", bot_key="chigorin", rating=measured)
-    # В обычном турнире — сила на старте (измеренная), в «Машине времени» — заявленная, историческая.
+    # In a regular tournament - the starting (measured) strength, in the "Time Machine" - the declared, historical one.
     assert sim.simulation_rating(chigorin) == measured
     assert sim.simulation_rating(chigorin, historic=True) == declared == 2150
     assert sim.player_for(chigorin, historic=True).rating == declared
-    # У мастеров прошлого и архетипов заявленная сила и есть сила на старте.
+    # For past masters and archetypes the declared strength is the starting strength.
     keres = GUESTS_BY_ID["keres"]
     guest = TournamentPlayer(seat=2, kind="personality", bot_key=keres.key, rating=keres.rating,
                              personality_name=keres.pgn_name, config_json=keres.config.model_dump_json())
@@ -144,7 +144,7 @@ def test_historic_tournaments_simulate_masters_at_their_declared_strength():
 
 
 def test_weak_player_loses_a_match_to_a_strong_one_on_the_static_analyser(monkeypatch):
-    # Без движка (как в CI): статический анализатор видит на два полухода — и этого хватает, чтобы сила решала.
+    # Without an engine (as in CI): the static analyser sees two plies ahead - enough for strength to decide.
     monkeypatch.setattr(sim, "analyse_with_stockfish", lambda **kwargs: {})
 
     def judge(board: chess.Board) -> str:

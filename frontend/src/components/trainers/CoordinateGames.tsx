@@ -1,7 +1,7 @@
 // --- FILE: frontend/src/components/trainers/CoordinateGames.tsx ---
-// Тренажёры координат (таск 19.2): на время — сколько верных ответов за отведённое время (30 или 60 с). Доска своя, простая: поля крупные,
-// касанием, без фигур; за чёрных доска перевёрнута; координаты по краю можно скрыть.
-// Данные: вопросы и правила — trainers/coordinates.ts (чистые функции по seed); цвета — тема доски из config/boardAppearance.ts.
+// Coordinate trainers (task 19.2): timed - how many correct answers in the allotted time (30 or 60 s). Its own simple board: large squares,
+// by touch, no pieces; for Black the board is flipped; the edge coordinates can be hidden.
+// Data: questions and rules - trainers/coordinates.ts (pure functions by seed); colours - the board theme from config/boardAppearance.ts.
 
 import {useEffect, useMemo, useRef, useState} from 'react';
 import {useI18n} from '../../i18n';
@@ -9,7 +9,7 @@ import {BOARD_THEMES, getSavedBoardThemeKey} from '../../config/boardAppearance'
 import {FILES, coordQuestion, isCorrect, levelToOptions} from '../../trainers/coordinates';
 import type {CoordOptions, CoordTrainer} from '../../trainers/coordinates';
 
-/** Свойства игры: вид тренажёра, уровень (кодирует настройки попытки), seed и onFinish(очки, ошибки). */
+/** Game props: trainer kind, level (encodes the attempt settings), seed and onFinish(score, mistakes). */
 interface Props {
     trainer: CoordTrainer;
     level: number;
@@ -17,7 +17,7 @@ interface Props {
     onFinish: (score: number, mistakes: number) => void;
 }
 
-/** Простая доска 8×8 из кнопок: сторона снизу и подписи — по options, highlight — выделенное поле, marks — отметки верно/неверно. Её же использует BlindGames. */
+/** A simple 8×8 board of buttons: the bottom side and labels - by options, highlight - the highlighted square, marks - correct/wrong marks. BlindGames uses it too. */
 export function CoordBoard({options, highlight, marks, onSquare}: {
     options: CoordOptions; highlight?: string | null; marks?: Record<string, 'good' | 'bad'>; onSquare?: (square: string) => void;
 }) {
@@ -52,8 +52,8 @@ export function CoordBoard({options, highlight, marks, onSquare}: {
 }
 
 /**
- * Попытка на время (options.seconds). Счёт и ошибки дублируются в result (ref), чтобы таймер отдал в onFinish актуальные значения;
- * finished не даёт завершить попытку дважды.
+ * A timed attempt (options.seconds). The score and mistakes are duplicated in result (ref) so the timer passes current values to onFinish;
+ * finished prevents completing the attempt twice.
  */
 export function CoordinateGame({trainer, level, seed, onFinish}: Props) {
     const {t} = useI18n();
@@ -133,7 +133,7 @@ export function CoordinateGame({trainer, level, seed, onFinish}: Props) {
     );
 }
 
-/** Настройки попытки вместо уровня: сторона, координаты, время. */
+/** Attempt settings instead of a level: side, coordinates, time. */
 export function CoordOptionsPicker({value, onChange}: { value: CoordOptions; onChange: (value: CoordOptions) => void }) {
     const {t} = useI18n();
     const button = (active: boolean) => `px-3 py-1.5 rounded border text-sm ${active ? 'bg-amber-800 border-amber-400 text-white' : 'bg-black/35 border-amber-900/50'}`;

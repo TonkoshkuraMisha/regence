@@ -1,5 +1,5 @@
 # --- FILE: tests/test_mate_finder.py ---
-"""«Найти мат» (таск 16.4): линия мата из ответа движка, глубина, ошибки, правило честной игры. Движок подменён."""
+""""Find the mate" (task 16.4): mate line from the engine reply, depth, errors, the fair-play rule. Engine mocked."""
 
 import chess
 import pytest
@@ -25,7 +25,7 @@ def engine(monkeypatch):
 
 
 def test_mate_line_is_cut_to_the_mating_move(client, engine):
-    engine[BACK_RANK] = (1, ["a1a8", "g8h7"])          # движок может дописать ход после мата — его не показываем
+    engine[BACK_RANK] = (1, ["a1a8", "g8h7"])          # the engine may append a move after the mate; we do not show it
     body = client.post(API, json={"fen": BACK_RANK, "moves": 2}).json()
     assert body == {"found": True, "mate_in": 1, "line": ["a1a8"], "san": ["Ra8#"]}
 
@@ -33,7 +33,7 @@ def test_mate_line_is_cut_to_the_mating_move(client, engine):
 def test_longer_mate_than_asked_or_losing_side(client, engine):
     engine[BACK_RANK] = (3, ["a1a8"])
     assert client.post(API, json={"fen": BACK_RANK, "moves": 2}).json()["found"] is False
-    engine[BACK_RANK] = (-2, ["a1a2"])                  # мат получает сторона, которая ходит
+    engine[BACK_RANK] = (-2, ["a1a2"])                  # the side to move gets mated
     assert client.post(API, json={"fen": BACK_RANK, "moves": 5}).json()["found"] is False
 
 
@@ -42,7 +42,7 @@ def test_validation(client, engine):
     bad = client.post(API, json={"fen": "8/8/8/8/8/8/8/8 w - - 0 1", "moves": 1})
     assert bad.status_code == 400
     mated = client.post(API, json={"fen": "R5k1/5ppp/8/8/8/8/8/6K1 b - - 0 1", "moves": 1}).json()
-    assert mated["found"] is False                       # мат уже стоит — искать нечего
+    assert mated["found"] is False                       # the mate is already on the board; nothing to look for
 
 
 def test_engine_unavailable_is_503(client, monkeypatch):

@@ -1,5 +1,5 @@
-// Общие компоненты дизайна (план владельца 18.11): виды кнопок, карточка-ссылка и карточка-кнопка, прогресс с ролью,
-// вкладки со стрелками клавиатуры, каркас страницы; витрина /design рисуется на трёх языках.
+// Shared design components (owner plan 18.11): button kinds, a link card and a button card, progress with a role,
+// tabs with keyboard arrows, the page frame; the /design showcase is drawn in both languages.
 
 import {fireEvent, render, screen} from '@testing-library/react';
 import {MemoryRouter} from 'react-router-dom';
@@ -8,8 +8,8 @@ import {Badge, Button, ButtonLink, buttonClasses, Card, EmptyState, Page, PageHe
 import {DesignGallery} from '../../DesignGallery';
 import {setLanguage} from '../../../i18n';
 
-describe('кнопки', () => {
-    it('вид и размер дают свои классы; ссылка выглядит так же', () => {
+describe('buttons', () => {
+    it('the kind and size give their own classes; a link looks the same', () => {
         expect(buttonClasses('primary', 'lg')).toContain('bg-amber-700');
         expect(buttonClasses('primary', 'lg')).toContain('px-5');
         expect(buttonClasses('danger')).toContain('bg-rose-900/70');
@@ -19,8 +19,8 @@ describe('кнопки', () => {
     });
 });
 
-describe('карточки', () => {
-    it('с to — ссылка, с onClick — кнопка, иначе — блок', () => {
+describe('cards', () => {
+    it('with to — a link, with onClick — a button, otherwise — a block', () => {
         const onClick = vi.fn();
         render(<MemoryRouter>
             <Card to="/learn" title="link" testId="c1"/>
@@ -37,8 +37,8 @@ describe('карточки', () => {
     });
 });
 
-describe('показатели и каркас', () => {
-    it('прогресс сообщает значение читалкам, пустое состояние — с действием, заголовок страницы — h1', () => {
+describe('indicators and frame', () => {
+    it('progress reports the value to screen readers, an empty state — with an action, the page heading — h1', () => {
         render(<MemoryRouter>
             <Page testId="page"><PageHeader title="Title" description="desc" actions={<Button>act</Button>}/></Page>
             <ProgressBar value={3} max={10} label="Progress"/>
@@ -52,8 +52,8 @@ describe('показатели и каркас', () => {
     });
 });
 
-describe('вкладки', () => {
-    it('щелчок и стрелки клавиатуры меняют выбор', () => {
+describe('tabs', () => {
+    it('a click and keyboard arrows change the selection', () => {
         const onChange = vi.fn();
         render(<SegmentedControl label="modes" value="a" onChange={onChange} testIdPrefix="t"
                                  options={[{id: 'a', label: 'A'}, {id: 'b', label: 'B'}, {id: 'c', label: 'C'}]}/>);
@@ -66,13 +66,13 @@ describe('вкладки', () => {
     });
 });
 
-describe('витрина /design', () => {
-    it.each(['ru', 'uk', 'en'] as const)('рисуется на языке %s без ключей вместо текста', (language) => {
+describe('/design showcase', () => {
+    it.each(['uk', 'en'] as const)('is drawn in language %s without keys instead of text', (language) => {
         setLanguage(language, {persist: false});
         render(<MemoryRouter><DesignGallery/></MemoryRouter>);
         const page = screen.getByTestId('design-gallery');
         expect(page.textContent).not.toMatch(/design\.\w+/);
         expect(screen.getAllByRole('progressbar').length).toBeGreaterThan(2);
-        setLanguage('ru', {persist: false});
+        setLanguage('en', {persist: false});
     });
 });

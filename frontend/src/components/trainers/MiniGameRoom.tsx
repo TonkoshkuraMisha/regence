@@ -1,9 +1,9 @@
 // --- FILE: frontend/src/components/trainers/MiniGameRoom.tsx ---
-// Игра тренера с человеком по сети (таск 19.8): /train/games/room/:code — комната на двоих. Создатель отправляет
-// ссылку, второй игрок входит по ней; ходы щелчками «откуда» — «куда», как в игре с ботом. О ходе соперника страница
-// узнаёт, опрашивая комнату раз в POLL_MS; после конца — «Ещё раз» (новая комната, цвета меняются), и страница
-// соперника переходит туда сама (next). Правила и состояние — на сервере (services/miniGameRooms.ts).
-// Подключено в App.tsx.
+// A coach game with a human over the network (task 19.8): /train/games/room/:code - a room for two. The creator sends
+// the link, the second player joins by it; moves by clicks "from" - "to", as in the game with a bot. The page learns about the opponent's
+// move by polling the room every POLL_MS; after the end - "Again" (a new room, colours swap), and the
+// opponent's page goes there by itself (next). Rules and state - on the server (services/miniGameRooms.ts).
+// Wired in App.tsx.
 
 import {useCallback, useEffect, useState} from 'react';
 import {Link, useNavigate, useParams} from 'react-router-dom';
@@ -18,10 +18,10 @@ import {PuzzleBoard} from '../puzzles/PuzzleBoard';
 import type {MiniGameId} from './MiniGames';
 import {Button} from '../ui';
 
-/** Период опроса комнаты (мс): так страница узнаёт о ходе соперника, отдельного канала для комнат нет. */
+/** Room polling period (ms): this is how the page learns about the opponent's move, there is no separate channel for rooms. */
 export const POLL_MS = 1000;
 
-/** Комната: ход уходит вместе с номером версии (room.version) — сервер отклоняет устаревший ход; сторону игрока определяет room.you (null — не участник: в ожидающую комнату можно войти, иначе только наблюдать). */
+/** Room: a move goes with the version number (room.version) - the server rejects a stale move; the player's side is determined by room.you (null - not a participant: one can join a waiting room, otherwise only watch). */
 export function MiniGameRoomPage() {
     const {t} = useI18n();
     const navigate = useNavigate();
@@ -32,7 +32,7 @@ export function MiniGameRoomPage() {
     const [copied, setCopied] = useState(false);
     const loggedIn = Boolean(getToken());
 
-    // Комната «ещё раз» (next) или новая комната из ответа на «Ещё раз» — переход туда; иначе — показать.
+    // A "again" room (next) or a new room from the "Again" response - go there; otherwise - show.
     const show = useCallback((next: MiniRoom) => {
         const target = next.next ?? (next.code !== code ? next.code : null);
         if (target) {
@@ -61,7 +61,7 @@ export function MiniGameRoomPage() {
         setError(null);
         request.then(show).catch((err) => setError(errorMessage(err, 'common.networkError')));
     };
-    // Код игры от сервера — один из MINI_GAMES (незнакомый сервер не создаст).
+    // The game code from the server is one of MINI_GAMES (an unknown one the server will not create).
     const game = room.game_id as MiniGameId;
     const turn = room.fen.split(' ')[1] === 'w' ? 'white' : 'black';
     const myTurn = room.you !== null && !room.result && !room.waiting && turn === room.you;

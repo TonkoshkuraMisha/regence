@@ -1,4 +1,4 @@
-"""Любимые дебюты соперников мастерской (таск 21.2): поиск в таблице, проверка выбора, ходы по линии и перестановки."""
+"""Favourite openings of workshop opponents (task 21.2): table lookup, choice validation, line moves and transpositions."""
 
 import chess
 import pytest
@@ -30,7 +30,7 @@ def test_table_has_lines_and_search():
     assert found[0].name == "Sicilian Defense" and len(found) == 20
     assert all(o.eco.startswith("C6") for o in openings.search("c6"))
     assert openings.search("  ") == []
-    # Ходы каждой записи ведут в её позицию.
+    # The moves of each entry lead to its position.
     for item in list(openings.lines().values())[::50]:
         board = chess.Board()
         for uci in item.moves:
@@ -40,13 +40,13 @@ def test_table_has_lines_and_search():
 
 def test_config_validation():
     config = BotPersonalityConfig(openings_white=[RUY, RUY], openings_black=[SICILIAN])
-    assert config.openings_white == [RUY]  # повтор убирается
+    assert config.openings_white == [RUY]  # a duplicate is removed
     with pytest.raises(ValidationError) as unknown:
         BotPersonalityConfig(openings_white=["nope"])
     assert unknown.value.errors()[0]["type"] == "bot_opening_unknown"
     with pytest.raises(ValidationError):
         BotPersonalityConfig(openings_black=[SICILIAN] * 4)
-    assert BotPersonalityConfig.model_validate_json("{}").openings_white == []  # старые сохранённые — без дебютов
+    assert BotPersonalityConfig.model_validate_json("{}").openings_white == []  # old saved ones: no openings
 
 
 def test_bot_plays_its_lines_by_colour_and_transposition():
@@ -54,10 +54,10 @@ def test_bot_plays_its_lines_by_colour_and_transposition():
     first = bot._book_move(chess.Board())
     assert first[0].uci() == "e2e4" and first[1] == {"key": "personality.favoriteOpening", "params": {"name": "Ruy Lopez"}}
     assert bot._book_move(board_after("e4", "e5"))[0].uci() == "g1f3"
-    assert bot._book_move(board_after("e4", "c5")) is None  # соперник свернул — дальше движок
-    assert bot._book_move(board_after("e4"))[0].uci() == "c7c5"  # чёрными — свой чёрный дебют
+    assert bot._book_move(board_after("e4", "c5")) is None  # the opponent deviated: the engine takes over
+    assert bot._book_move(board_after("e4"))[0].uci() == "c7c5"  # as Black: its own Black opening
     assert bot._book_move(board_after("d4")) is None
-    # Перестановка ходов: 1.Nf3 Nc6 2.e4 e5 — та же позиция испанской, бот продолжает Bb5.
+    # Move transposition: 1.Nf3 Nc6 2.e4 e5 - the same Spanish position, the bot continues with Bb5.
     assert bot._book_move(board_after("Nf3", "Nc6", "e4", "e5"))[0].uci() == "f1b5"
     assert favorite_moves(BotPersonalityConfig()) == {}
 

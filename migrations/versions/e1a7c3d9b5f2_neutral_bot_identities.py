@@ -2,16 +2,16 @@
 
 """neutral_bot_identities
 
-Таск 11.0c: сервер не хранит и не отдаёт русские тексты — имена на языке игрока ставит клиент.
+Task 11.0c: the server neither stores nor serves human-language texts - names in the player's language are set by the client.
 
-* Боты-пользователи получают нейтральные имена: исторический бот — свой id («morphy»), общий соперник из
-  мастерской — «workshop_opponent» (служебные «… [бот]» — «<id>_bot»).
-* Партии с архетипами мастерской хранят в personality_name ключ «archetype:<id>» вместо русского имени.
-* В заголовках PGN русские имена ботов заменяются именами для PGN (латиница, как в архивах мастеров), имена
-  архетипов — английскими.
+* Bot users get neutral names: a historical bot gets its own id ("morphy"), the shared workshop opponent gets
+  "workshop_opponent" (service accounts "... [bot]" become "<id>_bot").
+* Games with workshop archetypes store the key "archetype:<id>" in personality_name instead of the legacy localised name.
+* In PGN headers the legacy localised bot names are replaced by PGN names (Latin, as in the masters' archives); archetype names
+  become English.
 
-Обратная миграция возвращает прежние имена. Персоналия игрока, названная в точности как архетип, при переходе
-станет архетипом (неразличимы по данным); на ход партий и рейтинги это не влияет.
+The downgrade restores the former names. A player's personality named exactly like an archetype will become the archetype
+on upgrade (they are indistinguishable by data); this affects neither the moves of games nor ratings.
 
 Revision ID: e1a7c3d9b5f2
 Revises: c8e1f4a7b2d5
@@ -28,30 +28,30 @@ down_revision: str | Sequence[str] | None = "c8e1f4a7b2d5"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
-# id бота → (прежнее имя пользователя, имя для PGN)
+# bot id -> (former user name, name for PGN); the former names are legacy Russian data matched against the database, keep as is
 BOTS = {
-    "philidor": ("Ф.-А. Филидор", "Philidor, François-André"),
-    "labourdonnais": ("Л.-Ш. Лабурдонне", "La Bourdonnais, Louis-Charles"),
-    "staunton": ("Г. Стаунтон", "Staunton, Howard"),
-    "anderssen": ("А. Андерсен", "Anderssen, Adolf"),
-    "morphy": ("Пол Морфи", "Morphy, Paul"),
-    "paulsen": ("Л. Паульсен", "Paulsen, Louis"),
-    "zukertort": ("И. Цукерторт", "Zukertort, Johannes"),
+    "philidor": ("\u0424.-\u0410. \u0424\u0438\u043b\u0438\u0434\u043e\u0440", "Philidor, François-André"),
+    "labourdonnais": ("\u041b.-\u0428. \u041b\u0430\u0431\u0443\u0440\u0434\u043e\u043d\u043d\u0435", "La Bourdonnais, Louis-Charles"),
+    "staunton": ("\u0413. \u0421\u0442\u0430\u0443\u043d\u0442\u043e\u043d", "Staunton, Howard"),
+    "anderssen": ("\u0410. \u0410\u043d\u0434\u0435\u0440\u0441\u0435\u043d", "Anderssen, Adolf"),
+    "morphy": ("\u041f\u043e\u043b \u041c\u043e\u0440\u0444\u0438", "Morphy, Paul"),
+    "paulsen": ("\u041b. \u041f\u0430\u0443\u043b\u044c\u0441\u0435\u043d", "Paulsen, Louis"),
+    "zukertort": ("\u0418. \u0426\u0443\u043a\u0435\u0440\u0442\u043e\u0440\u0442", "Zukertort, Johannes"),
 }
-WORKSHOP = ("Соперник-из-мастерской", "workshop_opponent")
+WORKSHOP = ("\u0421\u043e\u043f\u0435\u0440\u043d\u0438\u043a-\u0438\u0437-\u043c\u0430\u0441\u0442\u0435\u0440\u0441\u043a\u043e\u0439", "workshop_opponent")
 
-# id архетипа → (прежнее русское имя, имя для PGN)
+# archetype id -> (former legacy name, name for PGN); matched against the database, keep as is
 ARCHETYPES = {
-    "rusher": ("Торопыга", "Rusher"),
-    "quiet": ("Тихоня", "Quiet One"),
-    "pawn_keeper": ("Пешечник", "Pawn Keeper"),
-    "cavalier": ("Кавалерист", "Cavalier"),
-    "centralist": ("Центровик", "Centralist"),
-    "fortress": ("Крепость", "Fortress"),
-    "adventurer": ("Авантюрист", "Adventurer"),
-    "strategist": ("Стратег", "Strategist"),
-    "hunter": ("Охотник", "Hunter"),
-    "combinator": ("Комбинатор", "Combinator"),
+    "rusher": ("\u0422\u043e\u0440\u043e\u043f\u044b\u0433\u0430", "Rusher"),
+    "quiet": ("\u0422\u0438\u0445\u043e\u043d\u044f", "Quiet One"),
+    "pawn_keeper": ("\u041f\u0435\u0448\u0435\u0447\u043d\u0438\u043a", "Pawn Keeper"),
+    "cavalier": ("\u041a\u0430\u0432\u0430\u043b\u0435\u0440\u0438\u0441\u0442", "Cavalier"),
+    "centralist": ("\u0426\u0435\u043d\u0442\u0440\u043e\u0432\u0438\u043a", "Centralist"),
+    "fortress": ("\u041a\u0440\u0435\u043f\u043e\u0441\u0442\u044c", "Fortress"),
+    "adventurer": ("\u0410\u0432\u0430\u043d\u0442\u044e\u0440\u0438\u0441\u0442", "Adventurer"),
+    "strategist": ("\u0421\u0442\u0440\u0430\u0442\u0435\u0433", "Strategist"),
+    "hunter": ("\u041e\u0445\u043e\u0442\u043d\u0438\u043a", "Hunter"),
+    "combinator": ("\u041a\u043e\u043c\u0431\u0438\u043d\u0430\u0442\u043e\u0440", "Combinator"),
 }
 
 
@@ -70,8 +70,8 @@ def _replace_pgn_names(
         old: str, new: str, *, bot_username: str | None = None, personality_name: str | None = None,
 ) -> None:
     """
-    Имя в заголовках White/Black — только в партиях этого бота (или этой персоналии): партии мастеров в
-    историческом архиве с тем же именем в заголовке (например, «Morphy, Paul») не трогаются.
+    The name in the White/Black headers - only in games of this bot (or this personality): masters' games in the
+    historical archive with the same name in the header (for example "Morphy, Paul") are left alone.
     """
     condition = "pgn LIKE :pattern"
     params: dict[str, str] = {"pattern": f'%"{old}"]%'}
@@ -94,7 +94,7 @@ def _replace_pgn_names(
 def upgrade() -> None:
     for bot_id, (old_name, pgn_name) in BOTS.items():
         _rename_user(old_name, bot_id)
-        _rename_user(f"{old_name} [бот]", f"{bot_id}_bot")
+        _rename_user(f"{old_name} [\u0431\u043e\u0442]", f"{bot_id}_bot")
         for username in (bot_id, f"{bot_id}_bot"):
             _replace_pgn_names(old_name, pgn_name, bot_username=username)
     _rename_user(*WORKSHOP)
@@ -123,5 +123,5 @@ def downgrade() -> None:
     for bot_id, (old_name, pgn_name) in BOTS.items():
         for username in (bot_id, f"{bot_id}_bot"):
             _replace_pgn_names(pgn_name, old_name, bot_username=username)
-        _rename_user(f"{bot_id}_bot", f"{old_name} [бот]")
+        _rename_user(f"{bot_id}_bot", f"{old_name} [\u0431\u043e\u0442]")
         _rename_user(bot_id, old_name)

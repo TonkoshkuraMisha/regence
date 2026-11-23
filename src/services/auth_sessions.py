@@ -1,18 +1,21 @@
 # --- FILE: src/services/auth_sessions.py ---
 """
-Сессии входа (таск 17.5): короткий access-токен в памяти клиента + долгий refresh-токен в httpOnly-cookie.
+Login sessions (task 17.5): a short access token in client memory + a long refresh token in an httpOnly cookie.
 
-Раньше JWT жил сутки в localStorage — любой внедрённый на страницу скрипт (XSS) мог его унести. Теперь:
-* access-токен (JWT, ACCESS_TOKEN_EXPIRE_MINUTES) клиент держит только в памяти и шлёт в Authorization, как прежде;
-* refresh-токен — случайная строка в cookie HttpOnly + SameSite=Strict, путь /api/v1/auth: скрипт страницы её не
-  видит, на чужие сайты и на остальные запросы API она не уходит. В Redis — только её хэш: refresh:<sha256> →
-  «<user_id>:<token_version>», срок REFRESH_TOKEN_EXPIRE_DAYS, продлевается при каждом обновлении.
-* Отзыв: выход удаляет запись; «выйти везде», смена пароля и удаление аккаунта увеличивают token_version — все
-  refresh-токены с прежней версией перестают действовать. Версию из записи с users.token_version сверяет маршрут
-  обновления (src/api/auth.py); этот модуль только хранит и читает запись.
+Previously the JWT lived a day in localStorage — any script injected into the page (XSS) could steal it. Now:
+* the access token (JWT, ACCESS_TOKEN_EXPIRE_MINUTES) is kept by the client only in memory and sent in Authorization, as
+  before;
+* the refresh token is a random string in a cookie HttpOnly + SameSite=Strict, path /api/v1/auth: page script cannot
+  see it, and it is not sent to other sites or to the rest of the API requests. Redis holds only its hash: refresh:<sha256> →
+  "<user_id>:<token_version>", lifetime REFRESH_TOKEN_EXPIRE_DAYS, extended on every refresh.
+* Revocation: logout deletes the record; "log out everywhere", password change and account deletion increase token_version —
+  all
+  refresh tokens with the old version stop working. The version from the record is compared with users.token_version by the
+  refresh
+  route (src/api/auth.py); this module only stores and reads the record.
 
-Токен при обновлении не меняется (без ротации): у игрока бывает несколько вкладок, и ротация обрывала бы сессию
-в той, что обновилась второй.
+The token does not change on refresh (no rotation): a player may have several tabs, and rotation would break the session
+in the one that refreshed second.
 """
 
 import hashlib
@@ -27,13 +30,13 @@ from src.db import redis as redis_module
 
 logger = logging.getLogger(__name__)
 
-# Имя cookie с refresh-токеном и начало ключа Redis, под которым хранится запись сессии.
+# Name of the cookie with the refresh token and the start of the Redis key under which the session record is stored.
 REFRESH_COOKIE = "regence_refresh"
 REFRESH_PREFIX = "refresh:"
 
 
 def _key(token: str) -> str:
-    """Ключ Redis для токена: в ключе — sha256 токена, так что по содержимому Redis сам токен не восстановить."""
+    """Redis key for a token: the key holds the sha256 of the token, so the token cannot be recovered from Redis contents."""
     return REFRESH_PREFIX + hashlib.sha256(token.encode()).hexdigest()
 
 
@@ -42,12 +45,12 @@ def _ttl_s() -> int:
 
 
 def cookie_secure() -> bool:
-    """Secure по умолчанию в продакшене; браузеры принимают такие cookie и на http://localhost."""
+    """Secure by default in production; browsers accept such cookies on http://localhost too."""
     return settings.is_production if settings.COOKIE_SECURE is None else settings.COOKIE_SECURE
 
 
 def read_refresh_cookie(cookies: Mapping[str, str]) -> str | None:
-    """Refresh-токен из cookie запроса. Прежнее имя (michess_refresh) не читается: сайт не выкладывался, сессий под ним нет."""
+    """Refresh token from the request cookie. The former name (michess_refresh) is not read: the site was never deployed."""
     return cookies.get(REFRESH_COOKIE)
 
 
@@ -59,14 +62,14 @@ def set_refresh_cookie(response: Response, token: str) -> None:
 
 
 def clear_refresh_cookie(response: Response, name: str = REFRESH_COOKIE) -> None:
-    """Стирает refresh-cookie (по умолчанию — под текущим именем)."""
+    """Erases the refresh cookie (by default — under the current name)."""
     response.delete_cookie(
         name, httponly=True, secure=cookie_secure(), samesite="strict", path=f"{settings.API_V1_STR}/auth",
     )
 
 
 async def issue(user_id: int, token_version: int) -> str:
-    """Новая сессия входа: случайный refresh-токен и запись о нём в Redis на REFRESH_TOKEN_EXPIRE_DAYS дней."""
+    """New login session: a random refresh token and a record about it in Redis for REFRESH_TOKEN_EXPIRE_DAYS days."""
     token = secrets.token_urlsafe(32)
     await redis_module.redis_client.set(_key(token), f"{user_id}:{token_version}", ex=_ttl_s())
     return token
@@ -74,8 +77,8 @@ async def issue(user_id: int, token_version: int) -> str:
 
 async def lookup(token: str | None) -> tuple[int, int] | None:
     """
-    (user_id, token_version) по refresh-токену и продление его срока; None — токена нет или он отозван. Недоступный
-    Redis — тоже None: игроку придётся войти заново.
+    (user_id, token_version) by refresh token and extension of its lifetime; None — no token or it is revoked. Unavailable
+    Redis is also None: the player will have to log in again.
     """
     if not token:
         return None
@@ -94,7 +97,7 @@ async def lookup(token: str | None) -> tuple[int, int] | None:
 
 
 async def revoke(token: str | None) -> None:
-    """Выход: удаляет запись сессии этого токена. Сбой Redis только пишется в лог — запись истечёт сама по сроку."""
+    """Logout: deletes the session record of this token. A Redis failure is only logged — the record will expire by itself."""
     if not token:
         return
     try:

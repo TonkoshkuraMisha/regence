@@ -1,12 +1,12 @@
 """
-Экзамены уровней Большого курса (таск 27.12) → src/services/data/level_exams.json. Не для CI: нужны база задач и
+Level exams of the Grand Course (task 27.12) -> src/services/data/level_exams.json. Not for CI: needs the puzzle database and
 Stockfish.
 
-На каждый уровень 0–5 — фиксированный набор из QUESTIONS позиций по ветвям курса: тактика (T, разделы A–E каталога),
-мат и атака (M, F–G), эндшпиль (E, J), стратегия (S, L), расчёт (C, K). Позиции — задачи базы (CC0) около порога
-разряда уровня (LEVEL_TARGETS, ±SPREAD). Позиция берётся, только если ответ объективно единственный: первый ход
-решения — лучший ход движка с отрывом от второго не меньше GAP_CP, либо мат (тогда засчитывается любой мат).
-Набор хранится целиком (позиция, ответ, рейтинг, id задачи в базе) — от базы и её id после сборки не зависит.
+For each level 0-5 a fixed set of QUESTIONS positions across the course branches: tactics (T, catalog sections A-E),
+mate and attack (M, F-G), endgame (E, J), strategy (S, L), calculation (C, K). Positions are database puzzles (CC0) near the
+level's rank threshold (LEVEL_TARGETS, ±SPREAD). A position is taken only if the answer is objectively unique: the first
+move of the solution is the engine's best move leading the second by at least GAP_CP, or a mate (then any mate counts).
+The set is stored in full (position, answer, rating, puzzle id) - after the build it does not depend on the database.
 
     python scripts/build_level_exams.py --time 0.5
 """
@@ -27,7 +27,7 @@ sys.path.insert(0, str(ROOT))
 OUT = ROOT / "src" / "services" / "data" / "level_exams.json"
 LEVEL_TARGETS = (800, 1000, 1200, 1400, 1600, 1800)
 SPREAD = 250
-# Ветвь → разделы каталога тем и число вопросов (всего 12).
+# Branch -> theme catalog sections and number of questions (12 in total).
 BRANCHES = {"T": ("ABCDE", 4), "M": ("FG", 3), "E": ("J", 2), "S": ("L", 2), "C": ("K", 1)}
 GAP_CP = 150
 MATE = 100_000
@@ -35,7 +35,7 @@ CANDIDATES = 40
 
 
 async def _candidates(sections: str, low: int, high: int, used: set[str]) -> list[tuple[str, str, str, int]]:
-    """Отбирает из базы задачи нужной ветви и рейтинга для экзамена уровня."""
+    """Selects from the database the puzzles of the required branch and rating for a level exam."""
     from sqlalchemy import select
     from sqlalchemy.ext.asyncio import create_async_engine
     from sqlalchemy.pool import NullPool
@@ -45,7 +45,7 @@ async def _candidates(sections: str, low: int, high: int, used: set[str]) -> lis
     from src.services.themes import THEMES
 
     codes = [t.code for t in THEMES if t.section in sections]
-    # Свой движок базы на каждый asyncio.run: пул общего привязан к уже закрытому циклу событий.
+    # The database's own engine for each asyncio.run: the shared pool is bound to an already closed event loop.
     engine = create_async_engine(settings.async_database_url, poolclass=NullPool)
     async with engine.connect() as db:
         rows = (await db.execute(
@@ -57,7 +57,7 @@ async def _candidates(sections: str, low: int, high: int, used: set[str]) -> lis
 
 
 def _verified(engine: chess.engine.SimpleEngine, fen: str, moves: str, limit: chess.engine.Limit) -> dict | None:
-    """Проверяет движком единственность лучшего хода и полное решение задачи."""
+    """Uses the engine to check that the best move is unique and the full solution of the puzzle."""
     board = chess.Board(fen)
     first, *rest = moves.split()
     board.push_uci(first)
@@ -75,14 +75,14 @@ def _verified(engine: chess.engine.SimpleEngine, fen: str, moves: str, limit: ch
         gap = best.score(mate_score=MATE) - infos[1]["score"].pov(board.turn).score(mate_score=MATE)
         if gap < GAP_CP:
             return None
-    # moves — решение целиком (ход игрока, ответ соперника, …): в тесте оно доигрывается до конца.
+    # moves - the whole solution (player's move, opponent's reply, ...): in the test it is played out to the end.
     return {"fen": board.fen(), "previous_move": first, "answer": answer.uci(), "moves": rest, "mate": bool(mate)}
 
 
 def main() -> None:
-    """Собирает и сохраняет наборы позиций для экзаменов по уровням курса."""
+    """Builds and saves position sets for the course level exams."""
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--time", type=float, default=0.5, help="Секунд движка на позицию")
+    parser.add_argument("--time", type=float, default=0.5, help="Engine seconds per position")
     parser.add_argument("--seed", type=int, default=2712)
     args = parser.parse_args()
 
@@ -90,7 +90,7 @@ def main() -> None:
 
     path = resolve_stockfish_path()
     if not path:
-        raise SystemExit("Stockfish не найден: python scripts/setup_stockfish.py")
+        raise SystemExit("Stockfish not found: python scripts/setup_stockfish.py")
     rng = random.Random(args.seed)
     limit = chess.engine.Limit(time=args.time)
     used: set[str] = set()
@@ -99,7 +99,7 @@ def main() -> None:
         for level, target in enumerate(LEVEL_TARGETS):
             questions = []
             for branch, (sections, count) in BRANCHES.items():
-                # Рейтинги вопросов ветви — равномерно по окну вокруг порога уровня.
+                # Ratings of the branch's questions - evenly over the window around the level threshold.
                 aims = [target - SPREAD + round(i * 2 * SPREAD / max(1, count - 1)) if count > 1 else target
                         for i in range(count)]
                 pool = asyncio.run(_candidates(sections, max(400, target - SPREAD - 150), target + SPREAD + 150, used))
@@ -114,10 +114,10 @@ def main() -> None:
                             questions.append({"branch": branch, "rating": rating, "source_id": source_id, **checked})
                             break
                     else:
-                        raise SystemExit(f"Уровень {level}, ветвь {branch}: нет проверенной позиции около {aim}")
+                        raise SystemExit(f"Level {level}, branch {branch}: no verified position near {aim}")
             questions.sort(key=lambda q: q["rating"])
             levels.append({"level": level, "target": target, "questions": questions})
-            print(f"Уровень {level}: {len(questions)} позиций, рейтинги {questions[0]['rating']}–{questions[-1]['rating']}",
+            print(f"Level {level}: {len(questions)} positions, ratings {questions[0]['rating']}-{questions[-1]['rating']}",
                   flush=True)
     OUT.write_text(json.dumps(levels, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
     print(f"→ {OUT}")

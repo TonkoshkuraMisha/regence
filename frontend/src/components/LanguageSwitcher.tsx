@@ -1,19 +1,19 @@
 // --- FILE: frontend/src/components/LanguageSwitcher.tsx ---
-// Переключатель языка интерфейса. Обычный <select>: доступен с клавиатуры и читалкам экрана, на телефоне
-// открывает системный список. Языки подписаны самоназваниями — свой язык узнают при любом текущем.
-// Язык и список языков — из i18n (useI18n, LANGUAGES); выбор запоминает сам контекст i18n. Используется в шапке
-// приложения (App.tsx, compact) и на странице настроек (Settings.tsx).
+// Interface language switcher. An ordinary <select>: available from the keyboard and to screen readers, on a phone
+// it opens the system list. Languages are labelled with their own names, so one recognises one's own language whatever the current one is.
+// The language and the language list are from i18n (useI18n, LANGUAGES); the choice is remembered by the i18n context itself. Used in the app
+// header (App.tsx, compact) and on the settings page (Settings.tsx).
 
 import {Languages} from 'lucide-react';
 import {LANGUAGES, LANGUAGE_NATIVE_NAMES, LANGUAGE_SHORT_LABELS, isLanguage, useI18n} from '../i18n';
 
 export interface LanguageSwitcherProps {
-    /** compact — в шапке: только иконка и код языка; иначе — полные названия (страница настроек). */
+    /** compact is for the header: only an icon and a language code; otherwise full names (the settings page). */
     compact?: boolean;
     className?: string;
 }
 
-/** Выпадающий список языков; compact — вариант для шапки. */
+/** Language dropdown; compact is the header variant. */
 export default function LanguageSwitcher({compact = false, className = ''}: LanguageSwitcherProps) {
     const {t, language, setLanguage} = useI18n();
     return (

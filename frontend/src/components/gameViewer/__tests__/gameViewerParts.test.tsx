@@ -1,4 +1,4 @@
-// Части просмотра партии, вынесенные из GameViewer.tsx (таск 17.6): модель, навигация, оформление, запись ходов.
+// Game viewer parts extracted from GameViewer.tsx (task 17.6): model, navigation, styling, move list.
 
 import {createRef} from 'react';
 import {fireEvent, render, screen} from '@testing-library/react';
@@ -24,8 +24,8 @@ const REPORT = {
     summary: {turning_point_ply: 3, white: {worst_ply: 3}, black: {worst_ply: null}, missed: [{ply: 4}, {ply: 99}]},
 } as unknown as FullGameAnalysisReport;
 
-describe('модель просмотра', () => {
-    it('оценка по материалу, мат и ничья', () => {
+describe('viewer model', () => {
+    it('evaluation by material, mate and draw', () => {
         expect(computeStaticWhiteEvalCp(new Chess())).toEqual({cp: 0, display: '0.0'});
         expect(computeStaticWhiteEvalCp(new Chess('4k3/8/8/8/8/8/8/3QK3 w - - 0 1')).display).toBe('+9.0');
         const mate = new Chess();
@@ -33,7 +33,7 @@ describe('модель просмотра', () => {
         expect(computeStaticWhiteEvalCp(mate)).toEqual({cp: -1000, display: '-M1'});
     });
 
-    it('шкала оценки — 4–96%, середина 50%', () => {
+    it('the evaluation bar — 4–96%, the middle is 50%', () => {
         expect(evalCpToWhitePercentage(0)).toBe(50);
         expect(evalCpToWhitePercentage(5000)).toBe(96);
         expect(evalCpToWhitePercentage(-5000)).toBe(4);
@@ -41,19 +41,19 @@ describe('модель просмотра', () => {
         expect(classificationBadgeClass(undefined)).toContain('boxwood');
     });
 
-    it('критические моменты: по одному на ход, только существующие, по порядку', () => {
+    it('critical moments: one per move, only existing ones, in order', () => {
         expect(criticalMoments(REPORT)).toEqual([{ply: 3, key: 'turning'}, {ply: 4, key: 'missed'}]);
         expect(criticalMoments({...REPORT, summary: null})).toEqual([]);
     });
 
-    it('точки графика: пешки, обрезка ±10', () => {
+    it('graph points: pawns, clipped at ±10', () => {
         const points = chartPoints(REPORT);
         expect(points.map((p) => p.evalPawns)).toEqual([0.3, 0.25, -1.5, 10]);
         expect(points[2].label).toBe('2. Qh5');
         expect(chartPoints(null)).toEqual([]);
     });
 
-    it('ходы для PGN с разбором: оценка, мат, текст наставника, без «!»', () => {
+    it('moves for PGN with analysis: evaluation, mate, mentor text, without "!"', () => {
         const report = {...REPORT, moves: [move(1, 'e4', 30, {symbol: '!'}), move(2, 'e5', 0, {mate: -3, symbol: '?'})]};
         const result = annotatedMoves([{san: 'e4'}, {san: 'e5'}, {san: 'Nf3'}], report, (coach) => (coach ? 'x' : null));
         expect(result).toEqual([
@@ -64,44 +64,44 @@ describe('модель просмотра', () => {
     });
 });
 
-describe('навигация по партии', () => {
-    it('кнопки ходят по партии и не дёргают при той же позиции', () => {
+describe('game navigation', () => {
+    it('the buttons walk through the game and do not fire on the same position', () => {
         const onGo = vi.fn();
         const onFlip = vi.fn();
         render(<NavigationControls viewIndex={1} total={4} onGo={onGo} onFlip={onFlip}/>);
-        fireEvent.click(screen.getByLabelText('Начало партии'));
-        fireEvent.click(screen.getByLabelText('Ход назад'));
-        fireEvent.click(screen.getByLabelText('Ход вперёд'));
-        fireEvent.click(screen.getByLabelText('Конец партии'));
+        fireEvent.click(screen.getByLabelText('Start of the game'));
+        fireEvent.click(screen.getByLabelText('Move back'));
+        fireEvent.click(screen.getByLabelText('Move forward'));
+        fireEvent.click(screen.getByLabelText('End of the game'));
         expect(onGo.mock.calls.map((c) => c[0])).toEqual([-1, 0, 2, 3]);
-        fireEvent.click(screen.getByLabelText('Перевернуть доску'));
+        fireEvent.click(screen.getByLabelText('Flip the board'));
         expect(onFlip).toHaveBeenCalled();
     });
 
-    it('в конце партии «вперёд» ничего не делает', () => {
+    it('at the end of the game "forward" does nothing', () => {
         const onGo = vi.fn();
         render(<NavigationControls viewIndex={3} total={4} onGo={onGo} onFlip={vi.fn()}/>);
-        fireEvent.click(screen.getByLabelText('Ход вперёд'));
-        fireEvent.click(screen.getByLabelText('Конец партии'));
+        fireEvent.click(screen.getByLabelText('Move forward'));
+        fireEvent.click(screen.getByLabelText('End of the game'));
         expect(onGo).not.toHaveBeenCalled();
     });
 });
 
-describe('оформление в просмотре', () => {
-    it('выбор фигур, доски и закрытие', () => {
+describe('styling in the viewer', () => {
+    it('piece and board choice, and closing', () => {
         const h = {onPieceSetChange: vi.fn(), onThemeChange: vi.fn(), onClose: vi.fn()};
         render(<ViewerAppearancePanel pieceSetKey="merida" themeKey="walnut" {...h}/>);
-        fireEvent.click(screen.getByRole('button', {name: 'Кельтский'}));
-        fireEvent.click(screen.getByRole('button', {name: 'Дуб'}));
-        fireEvent.click(screen.getByLabelText('Закрыть'));
+        fireEvent.click(screen.getByRole('button', {name: 'Celtic'}));
+        fireEvent.click(screen.getByRole('button', {name: 'Oak'}));
+        fireEvent.click(screen.getByLabelText('Close'));
         expect(h.onPieceSetChange).toHaveBeenCalledWith('celtic');
         expect(h.onThemeChange).toHaveBeenCalledWith('oak');
         expect(h.onClose).toHaveBeenCalled();
     });
 });
 
-describe('запись ходов', () => {
-    it('символ разбора, оценка, значок личной задачи, выбор хода', () => {
+describe('move list', () => {
+    it('analysis symbol, evaluation, personal puzzle badge, move choice', () => {
         const onSelect = vi.fn();
         render(<MoveList pairs={[{moveNumber: 1, white: 'e4', black: 'e5', whiteIndex: 0, blackIndex: 1},
             {moveNumber: 2, white: 'Qh5', black: '', whiteIndex: 2, blackIndex: -1}]}

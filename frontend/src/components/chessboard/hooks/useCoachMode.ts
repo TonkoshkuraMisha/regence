@@ -1,16 +1,16 @@
 // --- FILE: frontend/src/components/chessboard/hooks/useCoachMode.ts ---
-// Игра с наставником (таск 11.3) — только в партии с ботом и на свободной доске. После хода игрока сервер в фоне
-// оценивает ход (POST /analysis/check-move); партия при этом не останавливается (решение владельца 18.11: наставник
-// предлагает, но не блокирует). Если ход плохой для уровня игрока, рядом с доской появляется совет: «Почему?»,
-// «Переходить» (по желанию — вместе с уже сделанным ответом бота), «Понятно» и «Не согласен». Предупреждений —
-// не больше MAX_WARNINGS_PER_GAME за партию и не чаще чем раз в MIN_MOVES_BETWEEN_WARNINGS своих ходов. Подсказка по ступеням (таск 11.4,
-// POST /analysis/hint): намёк словами → какой фигурой ходить → ход со стрелкой; счётчик ступеней. Любое обращение к
-// наставнику делает партию учебной (правило 2): отметка assisted уходит на сервер при сохранении партии с ботом.
-// «Не согласен» — POST /analysis/dispute: позиция попадает в очередь спорных оценок. Проверку хода и подсказку
-// сервер отклоняет, пока у игрока идёт партия с человеком, и ограничивает квотой наставника. Включён ли наставник
-// и выбранный уровень помнит localStorage (ключи regence_coach_enabled, regence_coach_level); уровень, пока игрок
-// его не выбрал, определяется по рейтингу. В партии лестницы и турнира Chessboard проверку ходов не вызывает, а
-// панель наставника заблокирована.
+// Playing with the coach (task 11.3), only in a bot game and on the free board. After the player's move the server evaluates the
+// move in the background (POST /analysis/check-move); the game does not stop meanwhile (owner's decision 18.11: the coach
+// suggests but does not block). If the move is bad for the player's level, advice appears next to the board: "Why?",
+// "Switch" (optionally together with the bot's reply already made), "Got it" and "Disagree". Warnings are
+// limited to MAX_WARNINGS_PER_GAME per game and no more often than once per MIN_MOVES_BETWEEN_WARNINGS of one's own moves. A stepped hint (task 11.4,
+// POST /analysis/hint): a hint in words -> which piece to move -> the move with an arrow; a step counter. Any use of the
+// coach makes the game a training one (rule 2): the assisted mark goes to the server when a bot game is saved.
+// "Disagree" is POST /analysis/dispute: the position goes into the queue of disputed evaluations. The server rejects the move check and the hint
+// while the player has a game against a human in progress, and limits them by the coach quota. Whether the coach is on
+// and the chosen level are remembered in localStorage (keys regence_coach_enabled, regence_coach_level); until the player
+// chooses a level, it is determined by rating. In a ladder or tournament game Chessboard does not call the move check, and
+// the coach panel is locked.
 
 import {useCallback, useRef, useState} from 'react';
 import type {Chess} from 'chess.js';
@@ -27,8 +27,8 @@ export const COACH_ENABLED_KEY = 'regence_coach_enabled';
 export const COACH_LEVEL_KEY = 'regence_coach_level';
 
 /**
- * Ответ POST /analysis/check-move (src/services/move_check.py). Оценки — в сотых пешки с точки зрения сходившего;
- * available=false — движок оценить ход не смог, предупреждения не будет.
+ * Response of POST /analysis/check-move (src/services/move_check.py). Evaluations are in hundredths of a pawn from the mover's point of view;
+ * available=false means the engine could not evaluate the move, so there will be no warning.
  */
 export interface MoveCheck {
     available: boolean;
@@ -44,35 +44,35 @@ export interface MoveCheck {
 }
 
 /**
- * Сколько раз за партию наставник предупреждает о ходе и через сколько своих ходов после предыдущего предупреждения
- * снова может (решение владельца 18.11: «несколько раз за партию, а не на каждом шагу»). Когда предупреждать нельзя,
- * ход и на проверку не отправляется — не тратится квота наставника.
+ * How many times per game the coach warns about a move and after how many of one's own moves since the previous warning it
+ * may warn again (owner's decision 18.11: "several times per game, not at every step"). When a warning is not allowed,
+ * the move is not even sent for checking, so the coach quota is not spent.
  */
 export const MAX_WARNINGS_PER_GAME = 3;
 export const MIN_MOVES_BETWEEN_WARNINGS = 4;
 
-/** Можно ли сейчас предупреждать: ещё есть запас на партию и с прошлого предупреждения прошло достаточно ходов. */
+/** Whether a warning is allowed now: there is still allowance for the game and enough moves have passed since the previous warning. */
 export function warningAllowed(shown: number, movesSinceLast: number | null): boolean {
     return shown < MAX_WARNINGS_PER_GAME && (movesSinceLast === null || movesSinceLast >= MIN_MOVES_BETWEEN_WARNINGS);
 }
 
-/** Позиция, после которой перевес настолько велик, что «потеря» не меняет результата — без предупреждения. */
+/** Position after which the advantage is so large that a "loss" does not change the result: no warning. */
 const STILL_WINNING_CP = 600;
-/** Потеря, с которой о пропущенном ударе говорится и при решающем перевесе. */
+/** Loss at which a missed capture is mentioned even with a decisive advantage. */
 const MISSED_WHILE_WINNING_CP = 200;
 
 /**
- * Предупреждать ли игрока: новичку — только о грубых зевках (потеря от 300 сотых пешки), любителю — об ошибках
- * (от 150) и пропущенных ударах (от 50), сильному — и о неточностях (от 100; с пропущенным ударом — от 30). Пока
- * перевес решающий (после хода не меньше 600 и потеря меньше 500), мелкие потери не тревожат. Пороги — только
- * здесь, на клиенте: сервер присылает числа, а решение о предупреждении принимает эта функция.
+ * Whether to warn the player: a beginner only about gross blunders (a loss of 300 hundredths of a pawn or more), an amateur about mistakes
+ * (from 150) and missed captures (from 50), a strong player also about inaccuracies (from 100; with a missed capture, from 30). While
+ * the advantage is decisive (not less than 600 after the move and a loss under 500), small losses do not disturb. The thresholds are only
+ * here, on the client: the server sends numbers and this function makes the decision about warning.
  */
 export function shouldWarn(check: MoveCheck, level: CoachLevel): boolean {
     if (!check.available) return false;
     const loss = check.cp_loss ?? 0;
     const missed = Boolean(check.missed_tactic);
-    // Пока перевес решающий, мелочи не тревожат — но о пропущенном дорогом ударе (от 200 сп) сказать стоит:
-    // так учатся реализовывать выигранное, а не только не зевать.
+    // While the advantage is decisive, trifles do not disturb, but a missed costly capture (200 cp or more) is worth mentioning:
+    // that is how one learns to convert a won position, not only to avoid blunders.
     const stillWinning = (check.eval_after ?? 0) >= STILL_WINNING_CP && loss < 500;
     if (stillWinning && !(missed && loss >= MISSED_WHILE_WINNING_CP)) return false;
     if (level === 'novice') return loss >= 300;
@@ -80,14 +80,14 @@ export function shouldWarn(check: MoveCheck, level: CoachLevel): boolean {
     return loss >= 100 || (missed && loss >= 30);
 }
 
-/** Уровень по рейтингу игрока, пока он не выбрал сам. */
+/** Level by the player's rating, until they have chosen one themselves. */
 export function levelForRating(rating: number): CoachLevel {
     if (rating < 1200) return 'novice';
     if (rating < 1900) return 'amateur';
     return 'strong';
 }
 
-// Чтение и запись настройки в localStorage; недоступное хранилище (приватный режим) — не ошибка.
+// Reading and writing the setting in localStorage; unavailable storage (private mode) is not an error.
 function readStored<T extends string>(key: string, allowed: readonly T[]): T | null {
     try {
         const value = localStorage.getItem(key);
@@ -101,20 +101,20 @@ function store(key: string, value: string): void {
     try {
         localStorage.setItem(key, value);
     } catch {
-        // приватный режим — настройка просто не запомнится
+        // private mode: the setting is simply not remembered
     }
 }
 
-/** Ход игрока, который проверяется или по которому игрок решает, что делать. */
+/** The player's move that is being checked or about which the player decides what to do. */
 export interface PendingCheck {
-    /** checking — ждём ответ сервера; warning — ход плохой, игрок решает. */
+    /** checking: waiting for the server response; warning: the move is bad, the player decides. */
     status: 'checking' | 'warning';
-    /** Позиция до хода — для «Переходить». */
+    /** Position before the move, for "Switch". */
     previousGame: Chess;
-    /** Позиция до хода и сам ход — для «Не согласен». */
+    /** Position before the move and the move itself, for "Disagree". */
     fenBefore: string;
     uci: string;
-    /** FEN после хода: ответ сервера к другой позиции (игрок успел походить дальше) отбрасывается. */
+    /** FEN after the move: a server response for another position (the player has moved on) is dropped. */
     fenAfter: string;
     check?: MoveCheck;
 }
@@ -125,49 +125,49 @@ export interface UseCoachModeResult {
     level: CoachLevel;
     setLevel: (level: CoachLevel) => void;
     pending: PendingCheck | null;
-    /** Показать объяснение («Почему?») — текст и стрелки наставника. */
+    /** Show the explanation ("Why?"): the coach's text and arrows. */
     explanation: CoachComment | null;
     showWhy: () => void;
-    /** Ход оставлен — партия продолжается. */
+    /** Move kept: the game continues. */
     keepMove: () => void;
-    /** «Переходить»: возвращает позицию до хода (вызывающий восстанавливает доску и часы). */
+    /** "Switch": returns the position before the move (the caller restores the board and clocks). */
     takeBack: () => Chess | null;
-    /** Последняя показанная ступень подсказки (её текст, стрелки и подсветка). */
+    /** Last shown hint step (its text, arrows and highlight). */
     advice: CoachComment | null;
     adviceLoading: boolean;
-    /** Следующая ступень подсказки для позиции (новая позиция — снова с первой). */
+    /** Next hint step for the position (a new position starts from the first again). */
     requestHint: (fen: string) => Promise<void>;
-    /** 0 — подсказок к этой позиции не было, 1–3 — показанная ступень. */
+    /** 0 means no hints for this position yet, 1-3 is the shown step. */
     hintStep: number;
-    /** Ход уже показан: дальше подсказывать нечего. */
+    /** The move is already shown: nothing more to hint. */
     hintFinal: boolean;
-    /** Использовано ступеней подсказки за партию. */
+    /** Hint steps used in the game. */
     hintsUsed: number;
-    /** «Не согласен»: позиция уходит на проверку, ход остаётся. */
+    /** "Disagree": the position goes for review, the move stays. */
     dispute: () => void;
-    /** Спор отправлен — показать благодарность до следующего хода. */
+    /** The dispute is sent: show thanks until the next move. */
     disputeSent: boolean;
-    /** Обращались ли к наставнику в этой партии: партия учебная. */
+    /** Whether the coach was used in this game: the game is a training one. */
     assisted: boolean;
     error: UiMessage | null;
-    /** Вызывается после каждого хода игрока: при включённом наставнике отправляет ход на проверку. */
+    /** Called after every player move: with the coach on, sends the move for checking. */
     onPlayerMove: (previousGame: Chess, fenBefore: string, uci: string, fenAfter: string) => void;
-    /** Новая партия: счётчики и отметка учебной партии — с нуля. */
+    /** New game: counters and the training-game mark start from zero. */
     reset: () => void;
-    /** Ход сделан, а предыдущие стрелки и объяснение больше не к месту. */
+    /** A move was made, and the previous arrows and explanation no longer apply. */
     clearOverlay: () => void;
 }
 
-// Токен передаётся, если игрок вошёл: по нему сервер считает лимиты на игрока и проверяет правило честной игры.
+// The token is passed if the player is signed in: the server uses it to count per-player limits and to check the fair play rule.
 function authHeaders(): Record<string, string> {
     const token = getToken();
     return token ? {'Content-Type': 'application/json', Authorization: `Bearer ${token}`} : {'Content-Type': 'application/json'};
 }
 
 /**
- * Состояние игры с наставником для главной доски. playerRating — рейтинг игрока (блиц из GET /profile/me), по
- * нему выбирается уровень, пока игрок не выбрал сам. Доской хук не управляет: вызывающий сообщает о ходе
- * (onPlayerMove) и сам возвращает позицию по takeBack. Партию наставник не останавливает никогда.
+ * State of playing with the coach for the main board. playerRating is the player's rating (blitz from GET /profile/me), from which
+ * the level is chosen until the player chooses one. The hook does not control the board: the caller reports the move
+ * (onPlayerMove) and itself restores the position via takeBack. The coach never stops the game.
  */
 export function useCoachMode(playerRating: number): UseCoachModeResult {
     const [enabled, setEnabledState] = useState<boolean>(() => readStored(COACH_ENABLED_KEY, ['1', '0']) === '1');
@@ -180,14 +180,14 @@ export function useCoachMode(playerRating: number): UseCoachModeResult {
     const [hintStep, setHintStep] = useState(0);
     const [hintFinal, setHintFinal] = useState(false);
     const [disputeSent, setDisputeSent] = useState(false);
-    // Позиция и ступень последней подсказки: повторный запрос к той же позиции даёт следующую ступень.
+    // Position and step of the last hint: a repeated request for the same position gives the next step.
     const hintRef = useRef<{ fen: string; step: number } | null>(null);
     const [assisted, setAssisted] = useState(false);
     const [error, setError] = useState<UiMessage | null>(null);
-    // Копия pending для асинхронного кода: ответ сервера сверяется с ходом, который ждёт проверки сейчас.
+    // A copy of pending for asynchronous code: a server response is matched against the move that awaits checking right now.
     const pendingRef = useRef<PendingCheck | null>(null);
-    // Частота предупреждений (MAX_WARNINGS_PER_GAME, MIN_MOVES_BETWEEN_WARNINGS): сколько показано за партию и номер
-    // своего хода последнего; moves — счётчик своих ходов в партии.
+    // Warning frequency (MAX_WARNINGS_PER_GAME, MIN_MOVES_BETWEEN_WARNINGS): how many were shown in the game and the number
+    // of one's own move of the last one; moves is the counter of one's own moves in the game.
     const warnRef = useRef<{ shown: number; lastMove: number | null; moves: number }>({shown: 0, lastMove: null, moves: 0});
     const level = chosenLevel ?? levelForRating(playerRating);
 
@@ -216,10 +216,10 @@ export function useCoachMode(playerRating: number): UseCoachModeResult {
         hintRef.current = null;
     }, []);
 
-    // Проверка хода — в фоне: партия не ждёт (бот отвечает, часы идут). Плохой ход даёт совет рядом с доской, а не
-    // остановку; «Переходить» — по желанию игрока. Ход отправляется на проверку, только если предупредить сейчас
-    // можно (warningAllowed). Партия помечается учебной при отправке хода на проверку. Ошибка сети или отказ сервера
-    // (лимит, движок занят) показываются сообщением, ход остаётся.
+    // Move check runs in the background: the game does not wait (the bot replies, the clocks run). A bad move produces advice next to the board, not
+    // a stop; "Switch" is at the player's discretion. A move is sent for checking only if a warning is allowed
+    // now (warningAllowed). The game is marked as training when a move is sent for checking. A network error or server refusal
+    // (limit, engine busy) is shown as a message, the move stays.
     const onPlayerMove = useCallback((previousGame: Chess, fenBefore: string, uci: string, fenAfter: string) => {
         clearOverlay();
         updatePending(null);
@@ -241,7 +241,7 @@ export function useCoachMode(playerRating: number): UseCoachModeResult {
             } catch {
                 setError({key: 'coachMode.unavailable'});
             }
-            // Игрок успел сыграть дальше (свободная доска) — ответ к старой позиции не нужен.
+            // The player has played on (free board): a response for the old position is not needed.
             if (pendingRef.current?.fenAfter !== fenAfter) return;
             if (check && shouldWarn(check, level)) {
                 warnRef.current.shown += 1;
@@ -278,14 +278,14 @@ export function useCoachMode(playerRating: number): UseCoachModeResult {
         updatePending(null);
         setExplanation(null);
         setDisputeSent(true);
-        // Отправка — без ожидания: игрок продолжает партию, а сбой очереди его не касается.
+        // Sent without waiting: the player continues the game, and a queue failure does not concern them.
         void fetch(`${API_BASE_URL}/api/v1/analysis/dispute`, {
             method: 'POST', headers: authHeaders(), body: JSON.stringify(body),
         }).catch(() => undefined);
     }, [updatePending]);
 
-    // Ступень выбирает клиент (1–3), но какая ступень показана и последняя ли она — берётся из ответа сервера
-    // (step, final). Каждая полученная ступень считается в hintsUsed и делает партию учебной.
+    // The client picks the step (1-3), but which step is shown and whether it is the last one comes from the server response
+    // (step, final). Every received step counts in hintsUsed and makes the game a training one.
     const requestHint = useCallback(async (fen: string) => {
         const previous = hintRef.current;
         const step = previous && previous.fen === fen ? Math.min(3, previous.step + 1) : 1;

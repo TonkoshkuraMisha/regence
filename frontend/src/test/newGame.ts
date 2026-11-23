@@ -1,7 +1,7 @@
 // --- FILE: frontend/src/test/newGame.ts ---
-// Помощники тестов игрового зала: окно «Новая партия» (схема владельца 18.11) на шаге «Начать». Выбор соперника
-// запоминается в localStorage (regence_new_game_who), поэтому окно открывается сразу на старте — как у игрока, который
-// уже начинал такую партию. Первый проход по шагам проверяет отдельный тест в Chessboard.test.tsx.
+// Test helpers for the game hall: the "New game" window (owner scheme 18.11) at the "Start" step. The choice of an opponent
+// is remembered in localStorage (regence_new_game_who), so the window opens straight at the start — like for a player who
+// has already started such a game. The first walk through the steps is checked by a separate test in Chessboard.test.tsx.
 
 import {fireEvent, screen} from '@testing-library/react';
 
@@ -10,8 +10,8 @@ async function openNewGame(who: 'human' | 'bot') {
     fireEvent.click(await screen.findByTestId('new-game-open'));
 }
 
-/** Окно на шаге с ботами: исторические мастера, мастерская, лестница. */
+/** A window at the step with bots: historical masters, the workshop, the ladder. */
 export const openBots = () => openNewGame('bot');
 
-/** Окно на шаге с человеком: тип партии, поиск соперника, вызов друга. */
+/** A window at the step with a person: the game type, searching for an opponent, challenging a friend. */
 export const openHuman = () => openNewGame('human');

@@ -1,11 +1,11 @@
 # --- FILE: scripts/dev/review_disputes.py ---
 """
-Разбор очереди «Не согласен» (таск 11.4): игроки оспаривают предупреждения наставника, позиции копятся в Redis
-(`coach:disputes`, последние 2000). Скрипт перепроверяет каждую глубоким анализом и печатает, где наставник,
-вероятно, ошибся: глубокая потеря заметно меньше той, по которой он предупредил (ложная тревога — порог или
-недосчёт на малой глубине).
+Review of the "Disagree" queue (task 11.4): players dispute mentor warnings, the positions accumulate in Redis
+(`coach:disputes`, the last 2000). The script re-checks each one with deep analysis and prints where the mentor
+probably erred: the deep loss is noticeably smaller than the one it warned about (a false alarm - a threshold or
+a miscount at low depth).
 
-Нужны Redis (REDIS_URL, как у сервера) и Stockfish. В CI не запускается.
+Needs Redis (REDIS_URL, as on the server) and Stockfish. Not run in CI.
 
     python -m scripts.dev.review_disputes --depth 20 --limit 100
 """
@@ -25,12 +25,12 @@ FALSE_ALARM_RATIO = 0.5
 
 
 def deep_loss(engine: chess.engine.SimpleEngine, fen: str, move_uci: str, depth: int) -> int:
-    """Считает потерю сантипешек спорного хода на большой глубине Stockfish."""
+    """Computes the centipawn loss of a disputed move at a large Stockfish depth."""
     board = chess.Board(fen)
     sign = 1 if board.turn == chess.WHITE else -1
 
     def score(b: chess.Board) -> int:
-        """Возвращает оценку позиции движком, ограниченную предельным коридором."""
+        """Returns the engine evaluation of a position, clamped to the limit corridor."""
         info = engine.analyse(b, chess.engine.Limit(depth=depth))
         cp = info["score"].white().score(mate_score=MATE_CP) or 0
         return max(-EVAL_CLAMP_CP, min(EVAL_CLAMP_CP, cp))
@@ -41,7 +41,7 @@ def deep_loss(engine: chess.engine.SimpleEngine, fen: str, move_uci: str, depth:
 
 
 async def main() -> None:
-    """Перепроверяет очередь спорных предупреждений наставника глубоким анализом."""
+    """Re-checks the queue of disputed mentor warnings with deep analysis."""
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--depth", type=int, default=20)
     parser.add_argument("--limit", type=int, default=100)
@@ -50,11 +50,11 @@ async def main() -> None:
     raw = await redis_module.redis_client.lrange(DISPUTES_KEY, 0, args.limit - 1)
     entries = [json.loads(item) for item in raw]
     if not entries:
-        print("Очередь пуста.")
+        print("The queue is empty.")
         return
     path = resolve_stockfish_path()
     if not path:
-        raise SystemExit("Нужен Stockfish (bin/stockfish.exe или STOCKFISH_PATH).")
+        raise SystemExit("Stockfish is required (bin/stockfish.exe or STOCKFISH_PATH).")
     engine = chess.engine.SimpleEngine.popen_uci(path)
     false_alarms = 0
     try:
@@ -63,11 +63,11 @@ async def main() -> None:
             claimed = entry.get("cp_loss")
             suspicious = claimed is not None and loss < claimed * FALSE_ALARM_RATIO
             false_alarms += suspicious
-            mark = "ЛОЖНАЯ ТРЕВОГА?" if suspicious else "подтверждено"
-            print(f"{mark:16} было {claimed} сп, глубоко {loss} сп  {entry['move']}  {entry['fen']}")
+            mark = "FALSE ALARM?" if suspicious else "confirmed"
+            print(f"{mark:16} was {claimed} cp, deep {loss} cp  {entry['move']}  {entry['fen']}")
     finally:
         engine.quit()
-    print(f"\nВсего {len(entries)}, похоже на ложную тревогу: {false_alarms}")
+    print(f"\nTotal {len(entries)}, look like a false alarm: {false_alarms}")
 
 
 if __name__ == "__main__":

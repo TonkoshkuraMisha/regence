@@ -1,12 +1,12 @@
 // --- FILE: frontend/src/services/teams.ts ---
-// Команды и сезонная лига (таск 17.2).
-// Все запросы — к /api/v1/teams (маршруты src/api/teams.py, правила очков — src/services/league.py). Сезон —
-// календарный месяц (UTC). Очки нигде не хранятся: сервер считает их при запросе по законченным рейтинговым
-// партиям сезона между игроками разных команд. Игрок состоит не больше чем в одной команде.
+// Teams and the seasonal league (task 17.2).
+// All requests go to /api/v1/teams (routes in src/api/teams.py, scoring rules — src/services/league.py). A season is
+// a calendar month (UTC). Points are stored nowhere: the server computes them on request from the season's finished rated
+// games between players of different teams. A player belongs to at most one team.
 
 import {apiRequest} from './http';
 
-/** Строка таблицы лиги: команда, число участников, очки за сезон и место. */
+/** League table row: team, member count, season points and rank. */
 export interface LeagueRow {
     id: number;
     name: string;
@@ -15,13 +15,13 @@ export interface LeagueRow {
     place: number;
 }
 
-/** Таблица лиги за сезон («ГГГГ-ММ»). */
+/** League table for a season ("YYYY-MM"). */
 export interface LeagueTable {
     season: string;
     teams: LeagueRow[];
 }
 
-/** Команда: очки за сезон и вклад каждого участника; owner — создатель команды. */
+/** Team: season points and each member's contribution; owner — the team's creator. */
 export interface TeamView {
     id: number;
     name: string;
@@ -30,14 +30,14 @@ export interface TeamView {
     members: { username: string; points: number; owner: boolean }[];
 }
 
-/** Запрос к /api/v1/teams через общую обёртку http.ts (токен, JSON, ошибки). */
+/** Request to /api/v1/teams through the shared http.ts wrapper (token, JSON, errors). */
 const call = <T>(path: string, init: RequestInit = {}) => apiRequest<T>(`/teams${path}`, init);
 
-/** Эндпоинты команд. Таблица лиги открыта без входа; своя команда, создание, вступление и выход — с входом. */
+/** Team endpoints. The league table is open without sign-in; own team, creation, joining and leaving — with sign-in. */
 export const teamsApi = {
-    /** Таблица текущего сезона (сервер умеет и прошлые — параметром season, клиент его не передаёт). */
+    /** Current season table (the server also knows past ones via the season parameter, the client does not pass it). */
     league: () => call<LeagueTable>('/league'),
-    /** Команда игрока; team = null — он ни в одной не состоит. */
+    /** The player's team; team = null — they belong to none. */
     mine: () => call<{ team: TeamView | null }>('/mine'),
     create: (name: string) => call<TeamView>('', {method: 'POST', body: JSON.stringify({name})}),
     join: (id: number) => call<TeamView>(`/${id}/join`, {method: 'POST'}),

@@ -1,7 +1,7 @@
 # --- FILE: tests/test_matchmaker_paths.py ---
 """
-Матчмейкер (src/services/matchmaker.py): редкие ветки — резервы игроков, устаревшие записи лобби, отказы старта,
-приглашения с нестандартными значениями. Дополняет test_matchmaking_rules.py.
+Matchmaker (src/services/matchmaker.py): rare branches: player reservations, stale lobby entries, start failures,
+invitations with non-standard values. Complements test_matchmaking_rules.py.
 """
 
 import pytest
@@ -45,7 +45,7 @@ async def test_ensure_not_in_game_distinguishes_self_and_opponent(db_session):
 async def test_reserve_conflict_rolls_back_taken_reserves():
     token = await matchmaker._reserve_players(1, 2)
     with pytest.raises(MatchmakingError) as err:
-        await matchmaker._reserve_players(0, 1, 3)  # 0 взят, 1 занят -> откат 0
+        await matchmaker._reserve_players(0, 1, 3)  # 0 taken, 1 busy -> roll back 0
     assert err.value.code == "players_busy"
     assert await matchmaker.redis.get("matchmaking:reserve:0") is None
     await matchmaker._release_players(token, 1, 2)
@@ -64,7 +64,7 @@ async def test_start_pvp_game_with_unknown_player_is_player_not_found(db_session
     with pytest.raises(MatchmakingError) as err:
         await matchmaker.start_pvp_game(a.id, 777_777, 180000, 0, db=db_session)
     assert err.value.code == "player_not_found"
-    # резерв снят: можно сразу повторить
+    # reservation released: can retry immediately
     assert await matchmaker.redis.get(f"matchmaking:reserve:{a.id}") is None
 
 
@@ -87,7 +87,7 @@ async def test_accept_challenge_lost_race_for_capture(db_session, monkeypatch):
     await matchmaker.join_queue(a.id, "a", 1500, 180000, 0, db=db_session)
 
     async def lost(*names):
-        return 0  # ключ вызова забрал другой принимающий
+        return 0  # another accepter took the challenge key
 
     monkeypatch.setattr(matchmaker.redis, "delete", lost)
     with pytest.raises(MatchmakingError) as err:
@@ -111,7 +111,7 @@ async def test_accept_challenge_start_failure_is_player_not_found(db_session, mo
 async def test_join_queue_skips_candidates_without_prefs(db_session):
     a, ghost, b = await _users(db_session, 1500, 1500, 1500)
     queue = mm_module._queue_name(180000, 0, True)
-    # в очереди запись без параметров (рассогласование) — пропускается
+    # the queue has an entry without parameters (inconsistency): it is skipped
     await matchmaker.redis.zadd(queue, {str(ghost.id): 1})
     await matchmaker.redis.sadd("active_queues", queue)
     assert await matchmaker.join_queue(a.id, "a", 1500, 180000, 0, db=db_session) is None
@@ -130,7 +130,7 @@ async def test_join_queue_continues_after_challenge_taken(db_session, monkeypatc
         raise MatchmakingError("challenge_gone")
 
     monkeypatch.setattr(matchmaker, "accept_challenge", gone)
-    assert await matchmaker.join_queue(b.id, "b", 1500, 180000, 0, db=db_session) is None  # свой вызов опубликован
+    assert await matchmaker.join_queue(b.id, "b", 1500, 180000, 0, db=db_session) is None  # own challenge published
 
 
 async def test_join_queue_propagates_self_in_game_from_accept(db_session, monkeypatch):
@@ -167,7 +167,7 @@ async def test_invite_acceptance_colors_and_failure_paths(db_session, monkeypatc
     assert await matchmaker.accept_private_invite("NOPE", b.id) is None
 
     inv = await matchmaker.create_private_invite(a.id, "a", 1500, 180000, 0, color_pref="black")
-    assert await matchmaker.accept_private_invite(inv["code"], a.id) is None  # автор сам
+    assert await matchmaker.accept_private_invite(inv["code"], a.id) is None  # the author themself
     got = await matchmaker.accept_private_invite(inv["code"], b.id)
     assert got["white_id"] == b.id and got["black_id"] == a.id
 
@@ -175,14 +175,14 @@ async def test_invite_acceptance_colors_and_failure_paths(db_session, monkeypatc
     got = await matchmaker.accept_private_invite(inv["code"], b.id)
     assert got["white_id"] == a.id
 
-    # жребий: random.random() подменён для обеих сторон
+    # coin toss: random.random() is patched for both sides
     for roll, white in ((0.1, a.id), (0.9, b.id)):
         monkeypatch.setattr(mm_module.random, "random", lambda roll=roll: roll)
         inv = await matchmaker.create_private_invite(a.id, "a", 1500, 180000, 0)
         got = await matchmaker.accept_private_invite(inv["code"], b.id)
         assert got["white_id"] == white
 
-    # приглашение погасил другой принимающий между чтением и удалением
+    # another accepter consumed the invite between the read and the delete
     inv = await matchmaker.create_private_invite(a.id, "a", 1500, 180000, 0)
 
     async def lost(*names):

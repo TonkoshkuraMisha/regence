@@ -1,7 +1,7 @@
 # --- FILE: tests/test_themes.py ---
 """
-Реестр тактических приёмов (таск 13.0): целостность реестра, тексты на трёх языках, согласие с каталогом в docs,
-соответствие тегов lichess и мотивов детектора, API.
+Registry of tactical motifs (task 13.0): registry integrity, texts in three languages, agreement with the catalogue in docs,
+correspondence of lichess tags and detector motifs, API.
 """
 
 import pathlib
@@ -28,7 +28,7 @@ CODE = re.compile(r"^[a-z][a-z0-9_]*$")
 
 
 def _theme_texts(lang: str) -> dict[str, dict[str, str]]:
-    """Тексты themes.<код>.{name,short,explain} из каталога языка."""
+    """Texts themes.<code>.{name,short,explain} from the language catalogue."""
     text = (CATALOGS / f"{lang}.ts").read_text(encoding="utf-8")
     block = text[text.index("\n    themes: {\n"):]
     block = block[:block.index("\n    },\n")]
@@ -54,7 +54,7 @@ def test_registry_is_consistent():
         assert theme.parent != theme.code
         assert len(theme.minimums) == 4 and all(n >= 0 for n in theme.minimums) and theme.minimums[-1] > 0
         if "L" in theme.sources and not theme.code.startswith("combination"):
-            assert theme.lichess, f"{theme.code}: размечается тегом lichess, но тег не указан"
+            assert theme.lichess, f"{theme.code}: is labelled by a lichess tag, but no tag is given"
         if theme.detector:
             assert "D" in theme.sources, theme.code
     assert {t.section for t in THEMES} == set(SECTIONS)
@@ -66,28 +66,28 @@ def test_detector_codes_exist():
         assert set(theme.detector) <= known, theme.code
 
 
-@pytest.mark.parametrize("lang", ["en", "uk", "ru"])
+@pytest.mark.parametrize("lang", ["en", "uk"])
 def test_every_theme_has_texts(lang):
     texts = _theme_texts(lang)
     assert set(texts) == set(THEMES_BY_CODE), set(texts) ^ set(THEMES_BY_CODE)
     for code, entry in texts.items():
         assert set(entry) == {"name", "short", "explain"}, code
         assert all(value.strip() for value in entry.values()), code
-        # Объяснение — как тренер ученику: 2–4 предложения.
+        # The explanation is like a coach to a student: 2-4 sentences.
         sentences = [s for s in re.split(r"(?<=[.!?])\s+", entry["explain"]) if s]
         assert 2 <= len(sentences) <= 4, (lang, code, len(sentences))
 
 
 def test_texts_differ_between_languages():
-    en, uk, ru = (_theme_texts(lang) for lang in ("en", "uk", "ru"))
+    en, uk = (_theme_texts(lang) for lang in ("en", "uk"))
     for code in THEMES_BY_CODE:
-        assert en[code]["explain"] != ru[code]["explain"] != uk[code]["explain"], code
+        assert en[code]["explain"] != uk[code]["explain"], code
 
 
 def test_doc_lists_every_theme():
     doc = DOC.read_text(encoding="utf-8")
     documented = set(re.findall(r"`([a-z][a-z0-9_]*)`", doc))
-    # «mate_in_1 … mate_in_5» и «kingside_attack / queenside_attack» в документе даны одной строкой.
+    # "mate_in_1 ... mate_in_5" and "kingside_attack / queenside_attack" are given on one line in the document.
     documented |= {f"mate_in_{n}" for n in range(1, 6)}
     assert set(THEMES_BY_CODE) <= documented, set(THEMES_BY_CODE) - documented
 

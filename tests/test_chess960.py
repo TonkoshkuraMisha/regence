@@ -1,4 +1,4 @@
-"""Шахматы Фишера (таск 21.3): расстановки, рокировка 960, итоги, ход бота через пул движка (движок подменён)."""
+"""Fischer random chess (task 21.3): setups, 960 castling, results, a bot move via the engine pool (stubbed)."""
 
 from contextlib import contextmanager
 from types import SimpleNamespace
@@ -18,8 +18,8 @@ def test_start_positions_and_castling_rules():
     assert board.chess960 and board.board_fen() == "bbqnnrkr/pppppppp/8/8/8/8/PPPPPPPP/BBQNNRKR"
     with pytest.raises(DomainValueError):
         c960.start_board(960)
-    # Рокировка в 960 — «король берёт свою ладью». Расстановка 709 (RKBBQNNR): король b1 и ладья a1 → король c1,
-    # ладья d1 (длинная рокировка — король идёт вправо).
+    # Castling in 960 is "the king takes its own rook". Setup 709 (RKBBQNNR): king b1 and rook a1 -> king c1,
+    # rook d1 (long castling: the king moves right).
     game = c960.replay(709, ["e2e3", "e7e6", "d1e2", "d8e7", "d2d3", "d7d6", "c1d2", "c8d7", "b1a1"])
     assert game.sans[-1] == "O-O-O"
     assert game.board.piece_at(chess.C1).piece_type == chess.KING and game.board.piece_at(chess.D1).piece_type == chess.ROOK

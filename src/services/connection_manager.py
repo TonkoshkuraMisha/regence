@@ -1,16 +1,16 @@
 # --- FILE: src/services/connection_manager.py ---
 """
-Менеджер WebSocket-соединений, корректный при нескольких воркерах (процессах) и вкладках.
+WebSocket connection manager, correct with several workers (processes) and tabs.
 
-Состояние, которое должно быть общим для всех воркеров, хранится в Redis:
-- присутствие: каждое соединение — элемент sorted set `presence:user:{uid}` с отметкой
-  последнего пульса. Игрок считается офлайн, только когда живых соединений нет ни на одном
-  воркере; записи упавшего воркера устаревают через PRESENCE_STALE_MS;
-- зрители партий: `game:{gid}:spectators` и обратный индекс `user:{uid}:spectating`.
+State that must be shared by all workers is kept in Redis:
+- presence: each connection is an element of the sorted set `presence:user:{uid}` with the mark of the
+  last heartbeat. A player is considered offline only when there are no live connections on any
+  worker; entries of a crashed worker go stale after PRESENCE_STALE_MS;
+- game spectators: `game:{gid}:spectators` and the reverse index `user:{uid}:spectating`.
 
-Доставка: сообщение сразу отправляется в локальные сокеты пользователя и всегда публикуется
-в канал `user:{uid}` с id воркера-отправителя. Остальные воркеры доставляют его в свои
-вкладки этого пользователя, отправитель своё сообщение пропускает (без дублей).
+Delivery: a message is sent at once to the user's local sockets and is always published
+to the channel `user:{uid}` with the id of the sending worker. The other workers deliver it to their
+tabs of this user, the sender skips its own message (no duplicates).
 """
 
 import asyncio
@@ -26,20 +26,20 @@ from src.db.redis import redis_client
 
 logger = logging.getLogger(__name__)
 
-# Как часто процесс обновляет отметки присутствия своих соединений в Redis.
+# How often the process refreshes the presence marks of its connections in Redis.
 PRESENCE_HEARTBEAT_S = 10
-# Отметка старше этого срока (три пропущенных пульса с запасом) — соединение считается мёртвым; сам ключ
-# presence:user:{uid} живёт вдвое дольше и продлевается каждым пульсом.
+# A mark older than this (three missed heartbeats with a margin) means the connection is considered dead; the key itself
+# presence:user:{uid} lives twice as long and is extended by every heartbeat.
 PRESENCE_STALE_MS = 35_000
 
-# Событие «токены отозваны» и код закрытия WebSocket, по которому клиент понимает, что нужно войти заново.
+# The "tokens revoked" event and the WebSocket close code by which the client understands it must sign in again.
 SESSION_REVOKED_EVENT = "session_revoked"
 WS_CLOSE_SESSION_REVOKED = 1008
 
 
 def _is_session_revoked(raw: str) -> bool:
-    """Является ли текст сообщения событием session_revoked (пришедшим с другого воркера)."""
-    if SESSION_REVOKED_EVENT not in raw:  # дешёвый фильтр до разбора JSON
+    """Whether the message text is a session_revoked event (coming from another worker)."""
+    if SESSION_REVOKED_EVENT not in raw:  # cheap filter before JSON parsing
         return False
     try:
         return json.loads(raw).get("event") == SESSION_REVOKED_EVENT
@@ -47,7 +47,7 @@ def _is_session_revoked(raw: str) -> bool:
         return False
 
 
-# Срок жизни записей о зрителях (6 часов): страховка от зависших записей, если зритель исчез без отключения.
+# Lifetime of spectator records (6 hours): insurance against stuck records if a spectator vanished without disconnecting.
 SPECTATING_TTL_S = 6 * 60 * 60
 
 
@@ -69,27 +69,27 @@ def _now_ms() -> int:
 
 class ConnectionManager:
     """
-    Соединения WebSocket этого процесса и общее для всех процессов состояние в Redis: присутствие игроков, зрители,
-    доставка сообщений (подробно — в описании модуля).
+    WebSocket connections of this process and the state shared by all processes in Redis: player presence, spectators,
+    message delivery (details in the module description).
     """
     def __init__(self):
         self.worker_id = WORKER_ID
-        # Одно (любое открытое) соединение игрока на этом воркере; все его вкладки — в _user_sockets.
+        # One (any open) connection of the player on this worker; all their tabs are in _user_sockets.
         self.active_connections: dict[int, WebSocket] = {}
         self._user_sockets: dict[int, set[WebSocket]] = {}
-        # websocket -> (user_id, connection_id в Redis-присутствии)
+        # websocket -> (user_id, connection_id in the Redis presence)
         self._connections: dict[WebSocket, tuple[int, str]] = {}
         self.redis = redis_client
         self.pubsub = self.redis.pubsub()
         self._listener_task: asyncio.Task | None = None
         self._heartbeat_task: asyncio.Task | None = None
 
-    # ------------------------------------------------------------------ фоновые задачи
+    # ------------------------------------------------------------------ background tasks
 
     def _ensure_background_tasks(self) -> None:
         """
-        Запускает (или перезапускает, если они завершились) слушателя pub/sub и пульс присутствия. Вызывается при
-        каждом новом соединении: задачи создаются лениво, когда уже есть работающий цикл событий.
+        Starts (or restarts, if they finished) the pub/sub listener and the presence heartbeat. Called on
+        every new connection: the tasks are created lazily, when a running event loop already exists.
         """
         try:
             if self._listener_task is None or self._listener_task.done():
@@ -100,7 +100,7 @@ class ConnectionManager:
             pass
 
     async def _heartbeat_loop(self):
-        """Обновляет отметки присутствия всех локальных соединений, пока они открыты."""
+        """Refreshes the presence marks of all local connections while they are open."""
         while True:
             try:
                 await asyncio.sleep(PRESENCE_HEARTBEAT_S)
@@ -114,7 +114,7 @@ class ConnectionManager:
                 logger.warning("Presence heartbeat failed: %s", exc)
 
     async def _listen_pubsub(self):
-        """Доставляет в локальные сокеты сообщения, опубликованные другими воркерами."""
+        """Delivers to local sockets messages published by other workers."""
         while True:
             try:
                 if not getattr(self.pubsub, "subscribed", False):
@@ -137,14 +137,14 @@ class ConnectionManager:
                 await asyncio.sleep(0.5)
 
     async def _on_remote_message(self, uid: int, raw: str) -> None:
-        """Сообщение для пользователя, опубликованное другим воркером."""
+        """A message for a user, published by another worker."""
         await self._deliver_local(uid, raw)
         if _is_session_revoked(raw):
-            # Токены отозваны на другом воркере — закрываем и здешние вкладки.
+            # Tokens revoked on another worker -- close the local tabs too.
             await self._close_local_sockets(uid)
 
     def _unwrap_envelope(self, data: str) -> str | None:
-        """Возвращает полезную нагрузку или None, если сообщение опубликовал этот же воркер."""
+        """Returns the payload, or None if the message was published by this same worker."""
         try:
             envelope = json.loads(data)
         except ValueError:
@@ -155,7 +155,7 @@ class ConnectionManager:
             return str(envelope["data"])
         return data
 
-    # ------------------------------------------------------------------ присутствие
+    # ------------------------------------------------------------------ presence
 
     def _has_open_sockets(self, uid: int) -> bool:
         return bool(self._user_sockets.get(uid))
@@ -175,8 +175,8 @@ class ConnectionManager:
 
     async def is_user_online(self, user_id: int) -> bool:
         """
-        Есть ли у пользователя живое соединение на любом воркере: локальные сокеты или свежая отметка в Redis
-        (устаревшие отметки заодно удаляются). При сбое Redis и без локальных сокетов — False.
+        Whether the user has a live connection on any worker: local sockets or a fresh mark in Redis
+        (stale marks are removed along the way). On a Redis failure and with no local sockets -- False.
         """
         uid = int(user_id)
         if self._has_open_sockets(uid):
@@ -189,12 +189,12 @@ class ConnectionManager:
             logger.warning("Presence check failed for user %s: %s", uid, exc)
             return False
 
-    # ------------------------------------------------------------------ соединения
+    # ------------------------------------------------------------------ connections
 
     async def connect(self, websocket: WebSocket, user_id: int):
         """
-        Новое соединение игрока: принять, отметить присутствие в Redis, подписаться на канал его сообщений и сообщить
-        идущей партии, что игрок вернулся.
+        A new player connection: accept, mark presence in Redis, subscribe to the channel of their messages and tell
+        the ongoing game that the player is back.
         """
         uid = int(user_id)
         await websocket.accept()
@@ -217,14 +217,14 @@ class ConnectionManager:
 
     async def disconnect(self, user_id: int, websocket: WebSocket | None = None):
         """
-        Закрывает одно соединение пользователя. Пока у него открыта хотя бы одна вкладка на
-        любом воркере, он считается онлайн: очередь, зрительство и партия не затрагиваются.
-        websocket=None закрывает все локальные соединения пользователя.
+        Closes one connection of the user. While at least one tab remains open on
+        any worker, they are considered online: the queue, spectating and the game are not affected.
+        websocket=None closes all the user's local connections.
 
-        Между await-ами пользователь может переподключиться (перезагрузка страницы, в том числе
-        на другой воркер), поэтому присутствие перепроверяется. Новое соединение сначала
-        регистрируется в Redis и только потом вызывает handle_player_reconnect, поэтому при
-        любом порядке событий флаг отключения либо не ставится, либо снимается.
+        Between awaits the user may reconnect (page reload, including
+        to another worker), so presence is re-checked. A new connection is first
+        registered in Redis and only then calls handle_player_reconnect, so with
+        any order of events the disconnect flag is either not set or is cleared.
         """
         uid = int(user_id)
 
@@ -250,7 +250,7 @@ class ConnectionManager:
             pass
 
         if self._has_open_sockets(uid):
-            # Переподключился на этом воркере во время отписки — восстанавливаем подписку.
+            # Reconnected on this worker during the unsubscribe -- restore the subscription.
             try:
                 await self.pubsub.subscribe(f"user:{uid}")
             except Exception as exc:
@@ -258,7 +258,7 @@ class ConnectionManager:
             return
 
         if await self.is_user_online(uid):
-            return  # открыта вкладка на другом воркере
+            return  # a tab is open on another worker
 
         await self.remove_user_from_all_spectating(uid)
 
@@ -277,12 +277,12 @@ class ConnectionManager:
 
         logger.info("User %s disconnected.", uid)
 
-    # ------------------------------------------------------------------ доставка
+    # ------------------------------------------------------------------ delivery
 
     async def _deliver_local(self, user_id: int, raw_text: str) -> bool:
         """
-        Мгновенно отправляет JSON во все открытые на этом воркере вкладки пользователя. Возвращает, дошло ли хотя бы
-        до одной; сокеты, в которые отправить не удалось, убираются из учёта.
+        Instantly sends JSON to all of the user's tabs open on this worker. Returns whether at least one
+        got it; sockets that could not be sent to are dropped from the registry.
         """
         uid = int(user_id)
         sockets = list(self._user_sockets.get(uid, set()))
@@ -307,10 +307,10 @@ class ConnectionManager:
 
     async def revoke_sessions(self, user_id: int) -> None:
         """
-        Токены пользователя отозваны (смена пароля, «выйти на всех устройствах», удаление аккаунта): сообщаем всем
-        его вкладкам и закрываем их WebSocket — на этом воркере сразу, на остальных при получении
-        события через pub/sub. Иначе уже открытое соединение продолжало бы работать со старым
-        токеном. Код 1008 клиент понимает как «сессия недействительна, войдите заново».
+        The user's tokens are revoked (password change, "sign out everywhere", account deletion): we tell all
+        of their tabs and close their WebSocket -- at once on this worker, on the others when the
+        event arrives via pub/sub. Otherwise an already open connection would keep working with the old
+        token. The client understands code 1008 as "session invalid, sign in again".
         """
         await self.send_personal_message({"event": SESSION_REVOKED_EVENT}, user_id)
         await self._close_local_sockets(int(user_id))
@@ -320,12 +320,12 @@ class ConnectionManager:
             try:
                 await ws.close(code=WS_CLOSE_SESSION_REVOKED)
             except Exception:
-                pass  # сокет уже закрыт; его уберёт disconnect из обработчика соединения
+                pass  # the socket is already closed; disconnect in the connection handler will remove it
 
     async def send_personal_message(self, message: dict, user_id: int):
         """
-        Доставляет сообщение во вкладки пользователя на этом воркере и публикует его для
-        остальных воркеров (у пользователя могут быть вкладки на нескольких процессах).
+        Delivers a message to the user's tabs on this worker and publishes it for
+        the other workers (a user may have tabs on several processes).
         """
         uid = int(user_id)
         payload_str = json.dumps(message)
@@ -337,12 +337,12 @@ class ConnectionManager:
         except Exception as exc:
             logger.error("Failed to publish message for user %s: %s", uid, exc)
 
-    # ------------------------------------------------------------------ зрители
+    # ------------------------------------------------------------------ spectators
 
     async def add_spectator(self, game_id: int, user_id: int) -> None:
         """
-        Записывает игрока зрителем партии. Смотреть можно одну партию за раз: прежняя запись снимается. Обе записи
-        (множество зрителей партии и обратная ссылка игрока) живут SPECTATING_TTL_S.
+        Records the player as a game spectator. One game can be watched at a time: the previous record is removed. Both records
+        (the game's spectator set and the player's back reference) live SPECTATING_TTL_S.
         """
         gid, uid = int(game_id), int(user_id)
         await self.remove_user_from_all_spectating(uid)
@@ -357,7 +357,9 @@ class ConnectionManager:
             await self.redis.delete(_spectating_key(uid))
 
     async def remove_user_from_all_spectating(self, user_id: int) -> None:
-        """Снимает игрока со зрителей той партии, которую он смотрит (по обратной ссылке user:{uid}:spectating)."""
+        """
+        Removes the player from the spectators of the game they are watching (by the back reference user:{uid}:spectating).
+        """
         uid = int(user_id)
         gid = await self.redis.get(_spectating_key(uid))
         if gid:
@@ -369,7 +371,7 @@ class ConnectionManager:
         return {int(m) for m in members}
 
     async def broadcast_to_spectators(self, game_id: int, message: dict) -> None:
-        """Рассылает сообщение всем зрителям партии — каждому как личное, во все его вкладки на всех воркерах."""
+        """Broadcasts a message to all game spectators -- to each as a personal one, to all their tabs on all workers."""
         for uid in await self.get_spectator_ids(game_id):
             await self.send_personal_message(message, uid)
 

@@ -1,12 +1,12 @@
 """
-Импорт PGN в библиотеку партий (таск 27.2). Папка читается рекурсивно: дерево папок → дерево коллекций под
-`--collection`, партии файла — в коллекцию его папки. Берутся только заголовки и главная линия; одинаковые партии
-сливаются, повторный запуск не создаёт дублей.
+Import of PGN into the game library (task 27.2). The folder is read recursively: the folder tree -> a tree of collections under
+`--collection`, a file's games go into its folder's collection. Only headers and the main line are taken; identical games
+are merged, a re-run creates no duplicates.
 
-    python scripts/import_library.py <папка> --collection "Пешечные структуры" [--visibility public|owner|staff]
-                                     [--owner <имя>] [--source <код>] [--dry-run]
+    python scripts/import_library.py <folder> --collection "Pawn structures" [--visibility public|owner|staff]
+                                     [--owner <name>] [--source <code>] [--dry-run]
 
-Что и как импортировать из папки владельца — ToDo, таск 27.2. Данные в репозиторий не кладутся.
+What and how to import from the owner's folder - ToDo, task 27.2. The data is not put into the repository.
 """
 
 import argparse
@@ -22,7 +22,7 @@ from src.services import library  # noqa: E402
 
 
 def pgn_files(root: Path) -> list[tuple[str, Path]]:
-    """(относительный путь папки через «/», файл) — по алфавиту, папки по порядку обхода."""
+    """(folder relative path with "/", file) - alphabetically, folders in traversal order."""
     found = []
     for directory, subdirs, files in os.walk(root):
         subdirs.sort()
@@ -34,7 +34,7 @@ def pgn_files(root: Path) -> list[tuple[str, Path]]:
 
 
 def dry_run(root: Path) -> None:
-    """Проверяет чтение и валидацию PGN-файлов папки без записи в БД."""
+    """Checks reading and validation of the folder's PGN files without writing to the DB."""
     total = library.ImportStats()
     for _, path in pgn_files(root):
         stats = library.ImportStats()
@@ -48,7 +48,7 @@ def dry_run(root: Path) -> None:
 
 
 async def run(root: Path, collection: str, visibility: str, owner: str | None, source: str) -> None:
-    """Импортирует PGN-файлы папки в коллекции библиотеки с дедупликацией."""
+    """Imports the folder's PGN files into library collections with deduplication."""
     from sqlalchemy import select
     from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
     from sqlalchemy.pool import NullPool
@@ -79,14 +79,14 @@ async def run(root: Path, collection: str, visibility: str, owner: str | None, s
 
 
 def main() -> None:
-    """Точка входа CLI для импорта партий в библиотеку."""
+    """CLI entry point for importing games into the library."""
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("folder", type=Path)
-    parser.add_argument("--collection", required=True, help="путь корневой коллекции, например «Партии/Капабланка»")
+    parser.add_argument("--collection", required=True, help="path of the root collection, for example \"Games/Capablanca\"")
     parser.add_argument("--visibility", choices=library_visibilities(), default="public")
-    parser.add_argument("--owner", help="владелец коллекции (обязателен для --visibility owner)")
-    parser.add_argument("--source", default="owner", help="код источника, например owner, structures")
-    parser.add_argument("--dry-run", action="store_true", help="только разобрать файлы и посчитать партии")
+    parser.add_argument("--owner", help="collection owner (required for --visibility owner)")
+    parser.add_argument("--source", default="owner", help="source code, for example owner, structures")
+    parser.add_argument("--dry-run", action="store_true", help="only parse the files and count the games")
     args = parser.parse_args()
     if not args.folder.is_dir():
         raise SystemExit(f"not a folder: {args.folder}")
@@ -99,7 +99,7 @@ def main() -> None:
 
 
 def library_visibilities() -> tuple[str, ...]:
-    """Возвращает кортеж допустимых уровней видимости коллекций библиотеки."""
+    """Returns the tuple of allowed visibility levels of library collections."""
     from src.models.library import VISIBILITIES
 
     return VISIBILITIES

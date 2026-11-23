@@ -1,7 +1,7 @@
-// Хук useGameSocket (партия с человеком по WebSocket, лобби, просмотр, чат) на подменённом gameSocket и заглушке fetch:
-// события сервера (match_found, move_made, game_over, берсерк, ничья, реванш, приглашение, просмотр, чат, ошибки), опрос
-// my-active и списков лобби, добор итога пропущенной партии, поиск соперника и принятие вызова (WebSocket + HTTP),
-// действия игрока (ничья, реванш, чат, берсерк, ссылка-приглашение) и приглашение по адресу /challenge/{код}.
+// The useGameSocket hook (a game with a person over WebSocket, the lobby, spectating, chat) on a replaced gameSocket and a fetch stub:
+// server events (match_found, move_made, game_over, berserk, draw, rematch, invitation, spectating, chat, errors), polling
+// of my-active and the lobby lists, catching up the result of a missed game, searching for an opponent and accepting a challenge (WebSocket + HTTP),
+// player actions (draw, rematch, chat, berserk, an invitation link) and an invitation by the address /challenge/{code}.
 
 import {act, renderHook} from '@testing-library/react';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
@@ -94,8 +94,8 @@ afterEach(() => {
     vi.useRealTimers();
 });
 
-describe('useGameSocket: подключение', () => {
-    it('с токеном подключается и подписывается, без токена — нет', async () => {
+describe('useGameSocket: connection', () => {
+    it('with a token it connects and subscribes, without a token — no', async () => {
         const {unmount} = mount();
         await flush();
         expect(socket.connect).toHaveBeenCalledWith('jwt');
@@ -108,8 +108,8 @@ describe('useGameSocket: подключение', () => {
     });
 });
 
-describe('useGameSocket: события партии', () => {
-    it('match_found ставит партию на доску: цвет, часы, игроки, позиция, предложение ничьей', async () => {
+describe('useGameSocket: game events', () => {
+    it('match_found puts the game on the board: colour, clocks, players, position, draw offer', async () => {
         const {opts, result} = mount();
         await flush();
         await emit('match_found', MATCH);
@@ -125,7 +125,7 @@ describe('useGameSocket: события партии', () => {
         expect(result.current.berserk.allowed).toBe(true);
     });
 
-    it('match_found: партия Фишера уходит на свою страницу, снимок без game_id игнорируется', async () => {
+    it('match_found: a Fischer game goes to its own page, a snapshot without game_id is ignored', async () => {
         const {opts} = mount();
         await flush();
         await emit('match_found', {game_id: 6, variant: 'chess960'});
@@ -134,7 +134,7 @@ describe('useGameSocket: события партии', () => {
         expect(opts.setGameId).not.toHaveBeenCalled();
     });
 
-    it('match_found: восстановление по PGN, при битом PGN — по FEN; та же партия без новой отметки старта', async () => {
+    it('match_found: restoring by PGN, with a broken PGN — by FEN; the same game without a new start mark', async () => {
         const {opts} = mount();
         await flush();
         await emit('match_found', {game_id: 5, pgn: '1. e4 e5', fen: START_FEN});
@@ -149,14 +149,14 @@ describe('useGameSocket: события партии', () => {
         await emit('match_found', {game_id: 5, color: 'white'});
     });
 
-    it('match_found во время просмотра выходит из просмотра', async () => {
+    it('match_found while spectating leaves the spectating', async () => {
         mount({spectatingGameId: 8});
         await flush();
         await emit('match_found', MATCH);
         expect(socket.send).toHaveBeenCalledWith('leave_spectate', {game_id: 8});
     });
 
-    it('move_made: позиция, часы и версия; чужая партия игнорируется; ход с игрой окончен — итог', async () => {
+    it('move_made: position, clocks and version; another game is ignored; a move with the game over — the result', async () => {
         const {opts} = mount();
         await flush();
         opts.gameIdRef.current = 5;
@@ -170,12 +170,12 @@ describe('useGameSocket: события партии', () => {
         expect(opts.setGameOverResult).toHaveBeenCalledWith('1-0');
         expect(opts.playOutcomeSound).toHaveBeenCalledWith('1-0');
         expect(opts.updateSessionStats).toHaveBeenCalledWith('1-0');
-        // Повторный итог не озвучивается второй раз.
+        // A repeated result is not sounded a second time.
         await emit('game_over', {game_id: 5, result: '1-0', reason: 'checkmate', white_time_ms: 3, black_time_ms: 4});
         expect(opts.playOutcomeSound).toHaveBeenCalledTimes(1);
     });
 
-    it('move_made: битые PGN и FEN не ломают доску', async () => {
+    it('move_made: broken PGN and FEN do not break the board', async () => {
         const {opts} = mount();
         await flush();
         await emit('move_made', {pgn: '1. zz9', fen: 'not a fen'});
@@ -184,7 +184,7 @@ describe('useGameSocket: события партии', () => {
         expect(opts.setGame).toHaveBeenCalled();
     });
 
-    it('ход снимает предложение ничьей: свой ход отвечает на входящее, ход соперника — на исходящее', async () => {
+    it('a move clears the draw offer: one\'s own move answers an incoming one, the opponent\'s move an outgoing one', async () => {
         const {opts} = mount();
         await flush();
         opts.myColorRef.current = 'white';
@@ -195,7 +195,7 @@ describe('useGameSocket: события партии', () => {
         expect(updater(null)).toBeNull();
     });
 
-    it('зритель: итог чужой партии звучит как ничья и не идёт в статистику', async () => {
+    it('spectator: the result of another game sounds like a draw and does not go to the statistics', async () => {
         const {opts} = mount({spectatingGameId: 8});
         await flush();
         await emit('game_over', {game_id: 8, result: '0-1', reason: 'resignation'});
@@ -203,7 +203,7 @@ describe('useGameSocket: события партии', () => {
         expect(opts.updateSessionStats).not.toHaveBeenCalled();
     });
 
-    it('берсерк: часы и отметка; после окончания партии игнорируется', async () => {
+    it('berserk: clocks and a mark; ignored after the game ends', async () => {
         const {opts, result} = mount();
         await flush();
         await emit('berserk', {white_time_ms: 5, black_time_ms: 6, berserk_allowed: false, white_berserk: true});
@@ -215,11 +215,11 @@ describe('useGameSocket: события партии', () => {
         expect(opts.setWhiteTimeMs).not.toHaveBeenCalled();
     });
 
-    it('ничья и реванш: события своей партии меняют статус и звучат; чужие и после итога — нет', async () => {
+    it('draw and rematch: events of one\'s own game change the status and sound; foreign ones and those after the result — no', async () => {
         const {opts} = mount();
         await flush();
         await emit('draw_offered', {game_id: 5});
-        expect(opts.setDrawOfferStatus).not.toHaveBeenCalled();  // партии на доске ещё нет
+        expect(opts.setDrawOfferStatus).not.toHaveBeenCalled();  // there is no game on the board yet
         opts.gameIdRef.current = 5;
         await emit('draw_offered', {game_id: 5});
         expect(opts.playAudio).toHaveBeenCalledWith('offer');
@@ -236,7 +236,7 @@ describe('useGameSocket: события партии', () => {
         expect(opts.setDrawOfferStatus).not.toHaveBeenCalled();
     });
 
-    it('connected возвращает вызов в лобби, если идёт поиск', async () => {
+    it('connected returns the challenge to the lobby if a search is on', async () => {
         const {opts, result} = mount();
         await flush();
         await emit('connected');
@@ -248,7 +248,7 @@ describe('useGameSocket: события партии', () => {
         expect(socket.send).toHaveBeenCalledWith('join_queue', {base_time_ms: 180000, increment_ms: 2000, rated: true});
     });
 
-    it('invite_created: код, копирование в буфер обмена и пометка «скопировано»', async () => {
+    it('invite_created: the code, copying to the clipboard and a "copied" mark', async () => {
         const writeText = vi.fn(async () => undefined);
         Object.defineProperty(navigator, 'clipboard', {value: {writeText}, configurable: true});
         const {result} = mount();
@@ -263,7 +263,7 @@ describe('useGameSocket: события партии', () => {
         expect(writeText).toHaveBeenCalledTimes(2);
     });
 
-    it('spectate_started: доска переключается на чужую партию; во время своей — отказ', async () => {
+    it('spectate_started: the board switches to another game; during one\'s own — a refusal', async () => {
         const {opts} = mount();
         await flush();
         opts.gameIdRef.current = 5;
@@ -281,20 +281,20 @@ describe('useGameSocket: события партии', () => {
         expect(opts.playAudio).toHaveBeenCalledWith('start');
     });
 
-    it('чат: сообщение попадает в ленту, чужое звучит, своё — нет, пустое и чужой партии игнорируются', async () => {
+    it('chat: a message goes to the feed, a foreign one sounds, one\'s own — no, empty and another game\'s are ignored', async () => {
         const {opts, result} = mount();
         await flush();
         opts.gameIdRef.current = 5;
-        await emit('chat_message', {game_id: 5, sender: 'other', text: 'привет'});
-        await emit('chat_message', {game_id: 5, sender: 'me', text: 'ответ'});
+        await emit('chat_message', {game_id: 5, sender: 'other', text: 'hello'});
+        await emit('chat_message', {game_id: 5, sender: 'me', text: 'reply'});
         await emit('chat_message', {game_id: 5, sender: '', text: ''});
-        await emit('chat_message', {game_id: 77, sender: 'other', text: 'мимо'});
-        expect(result.current.chatMessages.map((m) => m.text)).toEqual(['привет', 'ответ']);
+        await emit('chat_message', {game_id: 77, sender: 'other', text: 'miss'});
+        expect(result.current.chatMessages.map((m) => m.text)).toEqual(['hello', 'reply']);
         expect(opts.playAudio).toHaveBeenCalledTimes(1);
         expect(opts.playAudio).toHaveBeenCalledWith('chat');
     });
 
-    it('ошибки сервера: код выводит из поиска, «вы уже играете» во время партии не ошибка, ход с позицией возвращает доску', async () => {
+    it('server errors: a code leaves the search, "you are already playing" during a game is not an error, a move with a position returns the board', async () => {
         const {opts} = mount();
         await flush();
         await emit('error', {code: 'self_in_game'});
@@ -317,8 +317,8 @@ describe('useGameSocket: события партии', () => {
     });
 });
 
-describe('useGameSocket: опрос сервера', () => {
-    it('своя идущая партия с сервера ставится на доску; более свежая версия догоняется', async () => {
+describe('useGameSocket: server polling', () => {
+    it('one\'s own game in progress from the server is put on the board; a fresher version is caught up', async () => {
         const active = {...MATCH, active: true, state_version: 7};
         stubFetch((url) => (url.includes('/my-active') ? active : undefined));
         const {opts} = mount();
@@ -336,7 +336,7 @@ describe('useGameSocket: опрос сервера', () => {
         expect(opts2.setStateVersion).toHaveBeenCalledWith(7);
     });
 
-    it('активная партия пропала: после двух опросов итог берётся по summary; незавершённая — ждёт', async () => {
+    it('the active game disappeared: after two polls the result is taken by summary; an unfinished one — waits', async () => {
         vi.useFakeTimers();
         let summary: any = {status: 'IN_PROGRESS'};
         stubFetch((url) => (url.includes('/summary') ? summary : undefined));
@@ -353,7 +353,7 @@ describe('useGameSocket: опрос сервера', () => {
         expect(opts.setDrawOfferStatus).toHaveBeenCalled();
     });
 
-    it('отменённая партия завершается итогом «*»; ошибка summary игнорируется', async () => {
+    it('a cancelled game ends with the result "*"; a summary error is ignored', async () => {
         vi.useFakeTimers();
         let summaryReply: any = 'fail';
         stubFetch((url) => (url.includes('/summary') ? summaryReply : undefined));
@@ -369,7 +369,7 @@ describe('useGameSocket: опрос сервера', () => {
         expect(opts.setGameOverResult).toHaveBeenCalledWith('*');
     });
 
-    it('списки лобби и Live читаются, когда своей партии нет; во время партии вызовы очищаются', async () => {
+    it('the lobby and Live lists are read when there is no own game; during a game the challenges are cleared', async () => {
         stubFetch((url) => {
             if (url.includes('matchmaking/queue')) return [{user_id: 1, username: 'X', rating: 1, base_time_ms: 1, increment_ms: 0}];
             if (url.endsWith('/live')) return [{game_id: 3}];
@@ -385,7 +385,7 @@ describe('useGameSocket: опрос сервера', () => {
         expect(during.result.current.queuePlayers).toEqual([]);
     });
 
-    it('сбой сети при опросе пишется в консоль', async () => {
+    it('a network failure during polling is written to the console', async () => {
         vi.stubGlobal('fetch', vi.fn(async () => {
             throw new TypeError('offline');
         }));
@@ -395,7 +395,7 @@ describe('useGameSocket: опрос сервера', () => {
         expect(console.error).toHaveBeenCalled();
     });
 
-    it('во время партии с ботом my-active не опрашивается', async () => {
+    it('during a game with a bot my-active is not polled', async () => {
         const fetchMock = stubFetch();
         mount({activeBot: 'morphy' as any});
         await flush();
@@ -404,8 +404,8 @@ describe('useGameSocket: опрос сервера', () => {
     });
 });
 
-describe('useGameSocket: действия игрока', () => {
-    it('поиск соперника: очередь по WebSocket и по HTTP; снимок активной партии из ответа применяется', async () => {
+describe('useGameSocket: player actions', () => {
+    it('opponent search: a queue over WebSocket and over HTTP; a snapshot of the active game from the answer is applied', async () => {
         const fetchMock = stubFetch((url, init) => (url.endsWith('/matchmaking/join') && init?.method === 'POST' ? {...MATCH, active: true} : undefined));
         const {opts, result} = mount({spectatingGameId: 8});
         await flush();
@@ -417,7 +417,7 @@ describe('useGameSocket: действия игрока', () => {
         expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith('/matchmaking/join'))).toBe(true);
     });
 
-    it('поиск без минут добавки и товарищеский; сбой HTTP игнорируется', async () => {
+    it('a search without minutes of increment and a casual one; an HTTP failure is ignored', async () => {
         const {opts, result} = mount({effectiveIncSeconds: 0, ratedChoice: false});
         await flush();
         vi.stubGlobal('fetch', vi.fn(async () => {
@@ -428,7 +428,7 @@ describe('useGameSocket: действия игрока', () => {
         expect(opts.setIsSearching).toHaveBeenCalledWith(true);
     });
 
-    it('отмена поиска: WebSocket и HTTP leave', async () => {
+    it('cancelling the search: WebSocket and HTTP leave', async () => {
         const fetchMock = stubFetch();
         const {opts, result} = mount();
         await flush();
@@ -438,7 +438,7 @@ describe('useGameSocket: действия игрока', () => {
         expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith('/matchmaking/leave'))).toBe(true);
     });
 
-    it('принятие вызова: WebSocket и HTTP; ответ со снимком ставит партию, сбой HTTP пишется в консоль', async () => {
+    it('accepting a challenge: WebSocket and HTTP; an answer with a snapshot puts the game, an HTTP failure is written to the console', async () => {
         stubFetch((url) => (url.includes('/matchmaking/accept/') ? {...MATCH} : undefined));
         const {opts, result} = mount();
         await flush();
@@ -453,7 +453,7 @@ describe('useGameSocket: действия игрока', () => {
         expect(console.error).toHaveBeenCalled();
     });
 
-    it('принятие вызова без входа отправляет только сообщение WebSocket', async () => {
+    it('accepting a challenge without a login sends only the WebSocket message', async () => {
         const fetchMock = stubFetch();
         const {result} = mount();
         await flush();
@@ -463,7 +463,7 @@ describe('useGameSocket: действия игрока', () => {
         expect(fetchMock).not.toHaveBeenCalled();
     });
 
-    it('предложение ничьей, принятие и отказ, реванш, берсерк, просмотр', async () => {
+    it('a draw offer, accepting and declining, a rematch, berserk, spectating', async () => {
         const {opts, result} = mount({gameId: 5});
         await flush();
         act(() => result.current.handleOfferDraw());
@@ -482,7 +482,7 @@ describe('useGameSocket: действия игрока', () => {
         expect(opts.setRematchStatus).toHaveBeenCalledWith('none');
     });
 
-    it('без партии или после итога действия ничего не отправляют', async () => {
+    it('without a game or after the result the actions send nothing', async () => {
         const {result} = mount({gameId: null});
         await flush();
         act(() => {
@@ -503,7 +503,7 @@ describe('useGameSocket: действия игрока', () => {
         expect(socket.send).not.toHaveBeenCalled();
     });
 
-    it('ссылка-приглашение: обычная, Фишера и с форой', async () => {
+    it('an invitation link: ordinary, Fischer and with a handicap', async () => {
         const {result} = mount();
         await flush();
         act(() => result.current.handleCreatePrivateInvite());
@@ -518,14 +518,14 @@ describe('useGameSocket: действия игрока', () => {
         expect(socket.send).toHaveBeenCalledTimes(3);
     });
 
-    it('чат: текст и быстрая фраза уходят в активную партию; пустой текст не отправляется', async () => {
+    it('chat: text and a quick phrase go to the active game; empty text is not sent', async () => {
         const {result} = mount({gameId: null, spectatingGameId: 8});
         await flush();
         act(() => result.current.handleSendChatMessage());
         expect(socket.send).not.toHaveBeenCalled();
-        act(() => result.current.setChatInput('  привет '));
+        act(() => result.current.setChatInput('  hello '));
         act(() => result.current.handleSendChatMessage());
-        expect(socket.send).toHaveBeenCalledWith('chat_message', {game_id: 8, text: 'привет'});
+        expect(socket.send).toHaveBeenCalledWith('chat_message', {game_id: 8, text: 'hello'});
         expect(result.current.chatInput).toBe('');
         act(() => result.current.handleSendChatPreset('gg' as any));
         expect(socket.send).toHaveBeenLastCalledWith('chat_message', {game_id: 8, preset: 'gg'});
@@ -535,8 +535,8 @@ describe('useGameSocket: действия игрока', () => {
     });
 });
 
-describe('useGameSocket: приглашение по адресу', () => {
-    it('через 450 мс принимает приглашение и убирает код из адреса; без входа — нет', async () => {
+describe('useGameSocket: invitation by address', () => {
+    it('after 450 ms it accepts the invitation and removes the code from the address; without a login — no', async () => {
         vi.useFakeTimers();
         const {opts} = mount({inviteCode: 'xyz'});
         await act(async () => {

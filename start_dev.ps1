@@ -6,26 +6,26 @@ $pythonExe = Join-Path $root ".venv\Scripts\python.exe"
 $frontendDir = Join-Path $root "frontend"
 $stockfishBin = Join-Path $root "bin\stockfish.exe"
 
-Write-Host "=== Запуск среды разработки Regence ===" -ForegroundColor Cyan
+Write-Host "=== Starting the Regence development environment ===" -ForegroundColor Cyan
 
-# 1. Автосоздание .env файлов из шаблонов, если их ещё нет на этой машине
+# 1. Auto-create .env files from templates if they are not on this machine yet
 if (-not (Test-Path (Join-Path $root ".env")) -and (Test-Path (Join-Path $root ".env.example")))
 {
     Copy-Item (Join-Path $root ".env.example") (Join-Path $root ".env")
-    Write-Host "[+] Создан корневой .env из .env.example" -ForegroundColor Green
+    Write-Host "[+] Created the root .env from .env.example" -ForegroundColor Green
 }
 if (-not (Test-Path (Join-Path $frontendDir ".env")) -and (Test-Path (Join-Path $frontendDir ".env.example")))
 {
     Copy-Item (Join-Path $frontendDir ".env.example") (Join-Path $frontendDir ".env")
-    Write-Host "[+] Создан frontend/.env из шаблона" -ForegroundColor Green
+    Write-Host "[+] Created frontend/.env from the template" -ForegroundColor Green
 }
 
-# 2. Остановка старых фоновых задач, процессов node и освобождение портов 8000 и 3000
+# 2. Stop old background jobs and node processes and free ports 8000 and 3000
 Get-Job -Name "RegenceBackend", "RegenceWorker", "RegenceFrontend" -ErrorAction SilentlyContinue | Stop-Job -PassThru | Remove-Job -Force -ErrorAction SilentlyContinue
 
-# Процессы, оставшиеся от прошлых запусков из ДРУГИХ окон (Get-Job видит задания только своей сессии):
-# Celery-воркер этого проекта (порта у него нет) и Vite из папки frontend. Чужие процессы node
-# (например, сам Claude Code или другие проекты) не трогаем — только те, чья командная строка указывает сюда.
+# Processes left over from previous runs from OTHER windows (Get-Job sees only the jobs of its own session):
+# this project's Celery worker (it has no port) and Vite from the frontend folder. Other people's node processes
+# (for example, Claude Code itself or other projects) are not touched - only those whose command line points here.
 $stale = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object {
     $_.CommandLine -and (
         ($_.Name -like "python*" -and $_.CommandLine -like "*celery*src.worker.celery_app*") -or
@@ -34,12 +34,12 @@ $stale = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Obj
 }
 foreach ($p in $stale)
 {
-    Write-Host "[*] Останавливаем старый процесс $( $p.Name ) (PID: $( $p.ProcessId ))..." -ForegroundColor DarkYellow
+    Write-Host "[*] Stopping the old process $( $p.Name ) (PID: $( $p.ProcessId ))..." -ForegroundColor DarkYellow
     Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue
 }
 
-# Сервер этого проекта (uvicorn src.main:app, в т.ч. запущенный вручную) и его дочерние процессы: при --reload порт
-# держит не тот процесс, что виден в командной строке, поэтому убиваем и потомков, иначе порт 8000 остаётся занятым.
+# This project's server (uvicorn src.main:app, including one started by hand) and its child processes: with --reload the port
+# is held not by the process visible in the command line, so descendants are killed too, otherwise port 8000 stays busy.
 $uv = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object {
     $_.CommandLine -and $_.CommandLine -like "*uvicorn*src.main:app*"
 }
@@ -49,13 +49,13 @@ foreach ($p in @($uv) + @($kids))
 {
     if ($p)
     {
-        Write-Host "[*] Останавливаем старый сервер $( $p.Name ) (PID: $( $p.ProcessId ))..." -ForegroundColor DarkYellow
+        Write-Host "[*] Stopping the old server $( $p.Name ) (PID: $( $p.ProcessId ))..." -ForegroundColor DarkYellow
         Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue
     }
 }
 
-# Освобождаем порты и ЖДЁМ, пока они реально освободятся (до 10 с): иначе новый сервер падает с «порт занят»,
-# а скрипт видит только «порт 8000 не открылся» без причины.
+# Free the ports and WAIT until they are really free (up to 10 s): otherwise the new server fails with "port in use",
+# and the script sees only "port 8000 did not open" with no reason.
 foreach ($port in @(8000, 3000))
 {
     for ($try = 0; $try -lt 10; $try++)
@@ -66,7 +66,7 @@ foreach ($port in @(8000, 3000))
         {
             if ($procId -gt 0)
             {
-                Write-Host "[*] Освобождаем порт $port (PID: $procId)..." -ForegroundColor DarkYellow
+                Write-Host "[*] Freeing port $port (PID: $procId)..." -ForegroundColor DarkYellow
                 Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue
             }
         }
@@ -74,18 +74,18 @@ foreach ($port in @(8000, 3000))
     }
     if (Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue)
     {
-        Write-Host "[!] Порт $port занят процессом, который не удалось остановить. Закройте его и повторите (netstat -ano | findstr :$port)." -ForegroundColor Red
+        Write-Host "[!] Port $port is held by a process that could not be stopped. Close it and retry (netstat -ano | findstr :$port)." -ForegroundColor Red
         exit 1
     }
 }
 
-# 3. Автопроверка и создание виртуального окружения Python на любой машине
+# 3. Auto-check and creation of the Python virtual environment on any machine
 if (-not (Test-Path $pythonExe))
 {
-    Write-Host "[*] Создаем окружение Python (.venv) через uv..." -ForegroundColor Yellow
+    Write-Host "[*] Creating the Python environment (.venv) via uv..." -ForegroundColor Yellow
     if (-not (Get-Command uv -ErrorAction SilentlyContinue))
     {
-        Write-Host "[!] uv не найден. Установка: powershell -ExecutionPolicy ByPass -c ""irm https://astral.sh/uv/install.ps1 | iex""" -ForegroundColor Red
+        Write-Host "[!] uv not found. Install: powershell -ExecutionPolicy ByPass -c ""irm https://astral.sh/uv/install.ps1 | iex""" -ForegroundColor Red
         exit 1
     }
     Push-Location $root
@@ -93,15 +93,15 @@ if (-not (Test-Path $pythonExe))
     Pop-Location
 }
 
-# 4. Автопроверка и скачивание движка Stockfish 19
+# 4. Auto-check and download of the Stockfish 19 engine
 if (-not (Test-Path $stockfishBin))
 {
-    Write-Host "[*] Бинарник Stockfish не найден в bin/. Скачиваем..." -ForegroundColor Yellow
+    Write-Host "[*] Stockfish binary not found in bin/. Downloading..." -ForegroundColor Yellow
     & $pythonExe (Join-Path $root "scripts\setup_stockfish.py")
 }
 
-# 4.1. Поиск Node.js. Терминал PyCharm может унаследовать PATH без папки Node.js (IDE запущена до установки Node
-# или со старым окружением) — тогда ищем в стандартных местах и добавляем папку в PATH этого процесса и дочерних окон.
+# 4.1. Finding Node.js. The PyCharm terminal may inherit a PATH without the Node.js folder (the IDE was started before Node was installed
+# or with an old environment) - then we look in standard places and add the folder to the PATH of this process and child windows.
 $npmCmd = (Get-Command npm.cmd -ErrorAction SilentlyContinue).Source
 if (-not $npmCmd)
 {
@@ -114,7 +114,7 @@ if (-not $npmCmd)
 }
 if (-not $npmCmd)
 {
-    Write-Host "[!] Node.js (npm.cmd) не найден. Установите Node.js LTS и перезапустите PyCharm." -ForegroundColor Red
+    Write-Host "[!] Node.js (npm.cmd) not found. Install Node.js LTS and restart PyCharm." -ForegroundColor Red
     exit 1
 }
 $nodeDir = Split-Path $npmCmd -Parent
@@ -123,21 +123,21 @@ if (($env:Path -split ";") -notcontains $nodeDir)
     $env:Path = "$nodeDir;$env:Path"
 }
 
-# 5. Автопроверка node_modules во фронтенде
+# 5. Auto-check of node_modules in the frontend
 if (-not (Test-Path (Join-Path $frontendDir "node_modules")))
 {
-    Write-Host "[*] Устанавливаем npm-зависимости фронтенда..." -ForegroundColor Yellow
+    Write-Host "[*] Installing the frontend npm dependencies..." -ForegroundColor Yellow
     Set-Location $frontendDir
-    # npm.cmd, а не npm: обёртка npm.ps1 не запускается при запрете скриптов (политика выполнения по умолчанию).
+    # npm.cmd, not npm: the npm.ps1 wrapper does not run when scripts are prohibited (the default execution policy).
     & $npmCmd install
     Set-Location $root
 }
 
-# 6. Поднятие базы данных и Redis через Docker
-Write-Host "[*] Проверяем Docker и контейнеры (PostgreSQL: 15432, Redis: 6379)..." -ForegroundColor Cyan
+# 6. Bringing up the database and Redis through Docker
+Write-Host "[*] Checking Docker and containers (PostgreSQL: 15432, Redis: 6379)..." -ForegroundColor Cyan
 if (-not (Get-Command docker -ErrorAction SilentlyContinue))
 {
-    Write-Host "[!] Команда docker не найдена. Установите Docker Desktop и запустите скрипт снова." -ForegroundColor Red
+    Write-Host "[!] The docker command was not found. Install Docker Desktop and run the script again." -ForegroundColor Red
     exit 1
 }
 docker info *> $null
@@ -146,7 +146,7 @@ if ($LASTEXITCODE -ne 0)
     $dockerDesktop = Join-Path $env:ProgramFiles "Docker\Docker\Docker Desktop.exe"
     if (Test-Path $dockerDesktop)
     {
-        Write-Host "[*] Docker Desktop не запущен — запускаем и ждём (до 120 с)..." -ForegroundColor Yellow
+        Write-Host "[*] Docker Desktop is not running - starting it and waiting (up to 120 s)..." -ForegroundColor Yellow
         Start-Process $dockerDesktop
         for ($i = 0; $i -lt 60; $i++)
         {
@@ -157,18 +157,18 @@ if ($LASTEXITCODE -ne 0)
     }
     if ($LASTEXITCODE -ne 0)
     {
-        Write-Host "[!] Docker недоступен. Запустите Docker Desktop, дождитесь статуса 'Engine running' и повторите." -ForegroundColor Red
+        Write-Host "[!] Docker is unavailable. Start Docker Desktop, wait for the 'Engine running' status and retry." -ForegroundColor Red
         exit 1
     }
 }
 docker compose up -d db redis
 if ($LASTEXITCODE -ne 0)
 {
-    Write-Host "[!] Не удалось поднять контейнеры db и redis (docker compose up). Запуск прерван." -ForegroundColor Red
+    Write-Host "[!] Failed to bring up the db and redis containers (docker compose up). Startup aborted." -ForegroundColor Red
     exit 1
 }
 
-# 6.1. Ожидание готовности PostgreSQL: порт контейнера открывается раньше, чем база принимает подключения
+# 6.1. Waiting for PostgreSQL to be ready: the container port opens earlier than the database accepts connections
 $dbReady = $false
 for ($i = 0; $i -lt 30; $i++)
 {
@@ -182,40 +182,40 @@ for ($i = 0; $i -lt 30; $i++)
 }
 if (-not $dbReady)
 {
-    Write-Host "[!] PostgreSQL не стал принимать подключения за 30 секунд. Смотрите: docker compose logs db" -ForegroundColor Red
+    Write-Host "[!] PostgreSQL did not start accepting connections within 30 seconds. See: docker compose logs db" -ForegroundColor Red
     exit 1
 }
 
-# 7. Применение миграций БД
-Write-Host "[*] Применяем миграции базы данных (Alembic)..." -ForegroundColor Cyan
+# 7. Applying DB migrations
+Write-Host "[*] Applying database migrations (Alembic)..." -ForegroundColor Cyan
 & $pythonExe -m alembic upgrade head
 if ($LASTEXITCODE -ne 0)
 {
-    Write-Host "[!] Миграции Alembic завершились с ошибкой (см. вывод выше). Запуск прерван." -ForegroundColor Red
+    Write-Host "[!] Alembic migrations finished with an error (see the output above). Startup aborted." -ForegroundColor Red
     exit 1
 }
 
-# 7.0. База задач (выборка из открытой базы lichess, data/puzzles); уже загруженные задачи пропускаются
-Write-Host "[*] Загружаем базу задач..." -ForegroundColor Cyan
+# 7.0. Puzzle database (a selection from the open lichess database, data/puzzles); puzzles already loaded are skipped
+Write-Host "[*] Loading the puzzle database..." -ForegroundColor Cyan
 & $pythonExe -m scripts.import_puzzles
 if ($LASTEXITCODE -ne 0)
 {
-    Write-Host "[!] Загрузка базы задач завершилась с ошибкой (см. вывод выше). Запуск прерван." -ForegroundColor Red
+    Write-Host "[!] Loading the puzzle database finished with an error (see the output above). Startup aborted." -ForegroundColor Red
     exit 1
 }
 
-# 7.1. Автопроверка и докачка архивов партий 21 чемпиона мира
+# 7.1. Auto-check and top-up of the game archives of 21 world champions
 $steinitzPgn = Join-Path $root "src\db\data\pgns\Steinitz.pgn"
 if (-not (Test-Path $steinitzPgn))
 {
-    Write-Host "[*] PGN-архивы чемпионов мира не найдены на этом ПК. Скачиваем и импортируем в БД..." -ForegroundColor Yellow
+    Write-Host "[*] The world champions' PGN archives were not found on this PC. Downloading and importing into the DB..." -ForegroundColor Yellow
     & $pythonExe -m src.db.seed
 }
 
-# 8. Запуск FastAPI Backend в фоне
-Write-Host "[+] Запуск FastAPI Backend (порт 8000)..." -ForegroundColor Green
-# Журнал сервера: консоль задания не видна, поэтому json-файл с ротацией logs/api.jsonl (src/core/logging_setup.py);
-# разбор — python scripts/trace_logs.py game_id=<id> logs/api.jsonl logs/worker.jsonl.
+# 8. Start the FastAPI backend in the background
+Write-Host "[+] Starting the FastAPI backend (port 8000)..." -ForegroundColor Green
+# Server log: the job console is not visible, so a rotating json file logs/api.jsonl (src/core/logging_setup.py);
+# analysis - python scripts/trace_logs.py game_id=<id> logs/api.jsonl logs/worker.jsonl.
 New-Item -ItemType Directory -Force -Path (Join-Path $root "logs") | Out-Null
 Start-Job -Name "RegenceBackend" -ScriptBlock {
     param($py, $r)
@@ -224,34 +224,34 @@ Start-Job -Name "RegenceBackend" -ScriptBlock {
     & $py -m uvicorn src.main:app --host 127.0.0.1 --port 8000 --reload
 } -ArgumentList $pythonExe, $root | Out-Null
 
-# 8.0. Запуск Celery-воркера (фоновый анализ завершённых партий) в фоне.
-# На Windows пул prefork у Celery не работает — используем solo (одна задача за раз).
-Write-Host "[+] Запуск Celery-воркера (фоновый анализ партий)..." -ForegroundColor Green
+# 8.0. Start the Celery worker (background analysis of finished games) in the background.
+# On Windows the Celery prefork pool does not work - we use solo (one task at a time).
+Write-Host "[+] Starting the Celery worker (background game analysis)..." -ForegroundColor Green
 Start-Job -Name "RegenceWorker" -ScriptBlock {
     param($py, $r)
     Set-Location $r
     $env:LOG_FILE = Join-Path $r "logs\worker.jsonl"
-    # Обе очереди (analysis — разбор партий, simulation — партии ботов в турнирах) слушает один воркер.
+    # One worker listens to both queues (analysis - game analysis, simulation - bot games in tournaments).
     & $py -m celery -A src.worker.celery_app worker --loglevel=INFO --pool=solo -Q analysis,simulation
 } -ArgumentList $pythonExe, $root | Out-Null
 
-# 8.1. Запуск Vite Frontend в отдельном видимом окне терминала
-Write-Host "[+] Запуск Vite Frontend (порт 3000 в новом окне)..." -ForegroundColor Green
-# Окно — PowerShell 7 (pwsh), если он есть; иначе Windows PowerShell 5.1 (powershell — всегда 5.1). В 5.1 скрипты, а с
-# ними обёртка npm.ps1, по умолчанию запрещены: поэтому npm.cmd и -ExecutionPolicy Bypass только для этого процесса
-# (системные настройки не меняются).
+# 8.1. Start the Vite frontend in a separate visible terminal window
+Write-Host "[+] Starting the Vite frontend (port 3000 in a new window)..." -ForegroundColor Green
+# The window is PowerShell 7 (pwsh) if present; otherwise Windows PowerShell 5.1 (powershell is always 5.1). In 5.1 scripts, and
+# with them the npm.ps1 wrapper, are prohibited by default: hence npm.cmd and -ExecutionPolicy Bypass for this process only
+# (system settings are not changed).
 $frontendShell = if (Get-Command pwsh -ErrorAction SilentlyContinue) { "pwsh" } else { "powershell" }
-# Вывод Vite дублируется в frontend/vite-dev.log (*.log в .gitignore): если окно не поднимет сервер, скрипт покажет
-# хвост лога здесь, а не только в отдельном окне, которое легко потерять за другими.
+# Vite output is duplicated into frontend/vite-dev.log (*.log is in .gitignore): if the window fails to bring the server up, the script shows
+# the log tail here, and not only in a separate window that is easy to lose behind others.
 $viteLog = Join-Path $frontendDir "vite-dev.log"
 Remove-Item $viteLog -Force -ErrorAction SilentlyContinue
-# Папку задаём через -WorkingDirectory, а не через cd внутри -Command: из терминала PyCharm окно открывалось в корне
-# проекта, и npm падал с ENOENT на package.json. Путь к package.json передаём ещё и явно (--prefix) — на случай, если
-# оболочка всё же сменит каталог при старте.
+# The folder is set through -WorkingDirectory, not through cd inside -Command: from the PyCharm terminal the window opened at the project
+# root, and npm failed with ENOENT on package.json. The path to package.json is also passed explicitly (--prefix) - in case
+# the shell still changes the directory at startup.
 Start-Process $frontendShell -WorkingDirectory $frontendDir -ArgumentList "-NoExit", "-ExecutionPolicy", "Bypass", "-Command", "`$env:Path = '$nodeDir;' + `$env:Path; Set-Location -LiteralPath '$frontendDir'; & '$npmCmd' --prefix '$frontendDir' run dev 2>&1 | Tee-Object -FilePath '$viteLog'"
 
-# 9. Ожидание фактического открытия портов 3000 (Vite) и 8000 (backend) перед запуском браузера.
-# Первый старт Vite (оптимизация зависимостей) и uvicorn --reload может занять заметно больше 15 секунд.
+# 9. Wait for ports 3000 (Vite) and 8000 (backend) to actually open before launching the browser.
+# The first Vite start (dependency optimisation) and uvicorn --reload can take noticeably more than 15 seconds.
 $waitSeconds = 60
 $frontendReady = $false
 $backendReady = $false
@@ -260,7 +260,7 @@ for ($i = 0; $i -lt $waitSeconds * 2; $i++)
     if (-not $frontendReady -and (Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue)) { $frontendReady = $true }
     if (-not $backendReady -and (Get-NetTCPConnection -LocalPort 8000 -State Listen -ErrorAction SilentlyContinue)) { $backendReady = $true }
     if ($frontendReady -and $backendReady) { break }
-    # Задание бэкенда упало сразу (ошибка импорта и т.п.) — ждать порт дальше бессмысленно
+    # The backend job crashed at once (an import error, etc.) - there is no point waiting for the port
     if (-not $backendReady -and (Get-Job -Name "RegenceBackend" -ErrorAction SilentlyContinue).State -in @("Failed", "Completed", "Stopped")) { break }
     Start-Sleep -Milliseconds 500
 }
@@ -269,29 +269,29 @@ $workerAlive = $workerJob -and $workerJob.State -eq "Running"
 
 if ($frontendReady)
 {
-    Write-Host "[+] Открываем браузер на http://127.0.0.1:3000 ..." -ForegroundColor Magenta
+    Write-Host "[+] Opening the browser at http://127.0.0.1:3000 ..." -ForegroundColor Magenta
     Start-Process "http://127.0.0.1:3000"
 }
 else
 {
-    Write-Host "[!] Порт 3000 не ответил за $waitSeconds секунд. Проверьте открывшееся окно терминала Vite." -ForegroundColor Red
+    Write-Host "[!] Port 3000 did not respond within $waitSeconds seconds. Check the opened Vite terminal window." -ForegroundColor Red
     if (Test-Path $viteLog)
     {
-        Write-Host "    Последние строки frontend/vite-dev.log:" -ForegroundColor Red
+        Write-Host "    Last lines of frontend/vite-dev.log:" -ForegroundColor Red
         Get-Content $viteLog -Tail 20 | ForEach-Object { Write-Host "    $_" -ForegroundColor DarkGray }
     }
     else
     {
-        Write-Host "    Лог Vite пуст: окно не запустило npm (нет npm.cmd в PATH или окно закрылось сразу)." -ForegroundColor Red
+        Write-Host "    The Vite log is empty: the window did not start npm (no npm.cmd in PATH or the window closed at once)." -ForegroundColor Red
     }
 }
 if (-not $backendReady)
 {
-    Write-Host "[!] Backend не открыл порт 8000. Логи: Receive-Job -Name RegenceBackend -Keep" -ForegroundColor Red
+    Write-Host "[!] The backend did not open port 8000. Logs: Receive-Job -Name RegenceBackend -Keep" -ForegroundColor Red
 }
 if (-not $workerAlive)
 {
-    Write-Host "[!] Celery-воркер остановился. Логи: Receive-Job -Name RegenceWorker -Keep" -ForegroundColor Red
+    Write-Host "[!] The Celery worker stopped. Logs: Receive-Job -Name RegenceWorker -Keep" -ForegroundColor Red
 }
 
 $allOk = $frontendReady -and $backendReady -and $workerAlive
@@ -299,15 +299,15 @@ $statusColor = if ($allOk) { "Green" } else { "Yellow" }
 Write-Host "========================================================" -ForegroundColor $statusColor
 if ($allOk)
 {
-    Write-Host " Все сервисы запущены! Локальный сервер работает." -ForegroundColor Green
+    Write-Host " All services started! The local server is running." -ForegroundColor Green
 }
 else
 {
-    Write-Host " Запуск завершён с проблемами — см. сообщения [!] выше." -ForegroundColor Yellow
+    Write-Host " Startup finished with problems - see the [!] messages above." -ForegroundColor Yellow
 }
-Write-Host " Фронтенд: http://127.0.0.1:3000" -ForegroundColor Cyan
+Write-Host " Frontend: http://127.0.0.1:3000" -ForegroundColor Cyan
 Write-Host " API Docs: http://127.0.0.1:8000/docs" -ForegroundColor Cyan
-Write-Host " Просмотр логов бэкенда: Receive-Job -Name RegenceBackend -Keep" -ForegroundColor Gray
-Write-Host " Логи Celery-воркера:   Receive-Job -Name RegenceWorker -Keep" -ForegroundColor Gray
-Write-Host " Для остановки бэкенда: Get-Job | Stop-Job; Get-Job | Remove-Job" -ForegroundColor Yellow
+Write-Host " Backend log view: Receive-Job -Name RegenceBackend -Keep" -ForegroundColor Gray
+Write-Host " Celery worker logs:   Receive-Job -Name RegenceWorker -Keep" -ForegroundColor Gray
+Write-Host " To stop the backend: Get-Job | Stop-Job; Get-Job | Remove-Job" -ForegroundColor Yellow
 Write-Host "========================================================" -ForegroundColor Green

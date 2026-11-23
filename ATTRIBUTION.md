@@ -1,22 +1,22 @@
-# Чужие работы в проекте: авторы и лицензии
+# Third-party works in the project: authors and licences
 
-Правило проекта: ассет (набор фигур, портрет, звук, текстура, шрифт, база данных) добавляется только вместе с
-записью в этом файле — источник, автор, лицензия. Нет понятной лицензии, разрешающей использование в любом
-проекте, — ассет не добавляется. Соответствие этого файла содержимому репозитория проверяет
-`tests/test_assets_licensing.py`; тот же список показывается пользователям на странице `/about`.
+Project rule: an asset (piece set, portrait, sound, texture, font, database) is added only together with an
+entry in this file — source, author, licence. If there is no clear licence that allows use in any project, the
+asset is not added. `tests/test_assets_licensing.py` checks that this file matches the repository contents; the
+same list is shown to users on the `/about` page.
 
-## Шахматный движок
+## Chess engine
 
-| Что | Автор | Лицензия | Как используется |
+| What | Author | Licence | How it is used |
 |---|---|---|---|
-| [Stockfish](https://github.com/official-stockfish/Stockfish) | The Stockfish developers | GPL-3.0 | Отдельная программа, запускается через `EnginePool`; не изменён. В Docker-образ ставится пакетом Debian `stockfish`; локально — `scripts/setup_stockfish.py` (папка `bin/` в git не входит). |
+| [Stockfish](https://github.com/official-stockfish/Stockfish) | The Stockfish developers | GPL-3.0 | A separate program, launched through `EnginePool`; unmodified. In the Docker image it is installed with the Debian package `stockfish`; locally — `scripts/setup_stockfish.py` (the `bin/` folder is not in git). |
 
-## Наборы фигур — `frontend/public/assets/pieces/`
+## Piece sets — `frontend/public/assets/pieces/`
 
-Скачиваются `scripts/setup_piece_sets.py` из репозитория [lichess-org/lila](https://github.com/lichess-org/lila);
-авторы и лицензии — по его [COPYING.md](https://github.com/lichess-org/lila/blob/master/COPYING.md).
+Downloaded by `scripts/setup_piece_sets.py` from the repository [lichess-org/lila](https://github.com/lichess-org/lila);
+authors and licences are as in its [COPYING.md](https://github.com/lichess-org/lila/blob/master/COPYING.md).
 
-| Папка | Автор | Лицензия |
+| Folder | Author | Licence |
 |---|---|---|
 | `merida` | Armando Hernandez Marroquin | GPL-2.0-or-later |
 | `cburnett` | Colin M.L. Burnett | GPL-2.0-or-later |
@@ -33,25 +33,25 @@
 | `firi` | James Faure | CC-BY-4.0 |
 | `shapes` | flugsio | CC-BY-SA-4.0 |
 | `letter` | usolando | AGPL-3.0-or-later |
-| `outline` | regence, производная от `merida` (добавлена окантовка) | GPL-2.0-or-later |
-| `lewis` | regence, собственный рисунок по мотивам льюисских шахмат XII века (общественное достояние); `scripts/build_lewis_pieces.py` | CC0-1.0 |
+| `outline` | regence, derived from `merida` (an outline added) | GPL-2.0-or-later |
+| `lewis` | regence, own drawing inspired by the 12th-century Lewis chessmen (public domain); `scripts/build_lewis_pieces.py` | CC0-1.0 |
 
-Аватары игроков (таск 18.4) — фигуры набора `lewis` на цветном фоне (`frontend/src/components/PlayerAvatar.tsx`);
-внешний сервис аватаров (DiceBear) больше не используется.
+Player avatars (task 18.4) are pieces of the `lewis` set on a coloured background (`frontend/src/components/PlayerAvatar.tsx`);
+the external avatar service (DiceBear) is no longer used.
 
-Иконки приложения (таск 24.2, `frontend/public/icons/`: `icon.svg`, PNG 192/512, maskable, `apple-touch-icon.png`) —
-конь набора `rhosgfx` (CC0-1.0) на собственном фоне и рамке regence; собираются `scripts/dev/build_pwa_icons.mjs`.
+App icons (task 24.2, `frontend/public/icons/`: `icon.svg`, PNG 192/512, maskable, `apple-touch-icon.png`) — the
+knight of the `rhosgfx` set (CC0-1.0) on regence's own background and frame; built by `scripts/dev/build_pwa_icons.mjs`.
 
-Убраны как несвободные: `alpha` (Eric Bentzen, «free for personal non commercial use»), `maestro` (sadsnake1,
-CC BY-NC-SA 4.0), а также набор без известного происхождения, лежавший в корне папки и в `classic/`.
+Removed as non-free: `alpha` (Eric Bentzen, "free for personal non commercial use"), `maestro` (sadsnake1,
+CC BY-NC-SA 4.0), and a set of unknown origin that lay in the folder root and in `classic/`.
 
-## Портреты шахматистов — `frontend/public/assets/champions/`
+## Chess player portraits — `frontend/public/assets/champions/`
 
-Скачиваются `scripts/download_champions.py` с Викисклада (уменьшенная копия шириной 500 пикселей) и только под
-свободной лицензией; манифест — `frontend/src/config/portraitCredits.json`. Работы под CC BY-SA распространяются
-на тех же условиях. Копии семи портретов в `frontend/src/assets/champions/` — те же файлы.
+Downloaded by `scripts/download_champions.py` from Wikimedia Commons (a reduced copy 500 pixels wide) and only
+under a free licence; manifest — `frontend/src/config/portraitCredits.json`. Works under CC BY-SA are distributed
+on the same terms. The copies of seven portraits in `frontend/src/assets/champions/` are the same files.
 
-| Файл | Исходный файл на Викискладе | Автор | Лицензия |
+| File | Source file on Wikimedia Commons | Author | Licence |
 |---|---|---|---|
 | `philidor.jpg` | [Francois-Andre Danican Philidor.jpg](https://commons.wikimedia.org/wiki/File:Francois-Andre_Danican_Philidor.jpg) | Augustin de Saint-Aubin | Public domain |
 | `labourdonnais.jpg` | [Louisdelabourdonnais.jpg](https://commons.wikimedia.org/wiki/File:Louisdelabourdonnais.jpg) | The original uploader was Jaapvanderkooij at Dutch Wikipedia. | Public domain |
@@ -75,13 +75,13 @@ CC BY-NC-SA 4.0), а также набор без известного прои�
 | `Petrosian.jpg` | [Tigran Petrosian 1962.jpg](https://commons.wikimedia.org/wiki/File:Tigran_Petrosian_1962.jpg) | Harry Pot / Anefo | CC0 |
 | `Spassky.jpg` | [Dhr. Boris Spassky, Bestanddeelnr 932-7320.jpg](https://commons.wikimedia.org/wiki/File:Dhr._Boris_Spassky,_Bestanddeelnr_932-7320.jpg) | Rob Bogaerts for Anefo | CC0 |
 | `Fischer.jpg` | [Bobby Fischer 1972.jpg](https://commons.wikimedia.org/wiki/File:Bobby_Fischer_1972.jpg) | Bert Verhoeff for Anefo | CC0 |
-| `Karpov.jpg` | [Anatoly Karpov 2017 april.jpg](https://commons.wikimedia.org/wiki/File:Anatoly_Karpov_2017_april.jpg) | Veni Markovski / Вени Марковски | CC BY-SA 4.0 |
+| `Karpov.jpg` | [Anatoly Karpov 2017 april.jpg](https://commons.wikimedia.org/wiki/File:Anatoly_Karpov_2017_april.jpg) | Veni Markovski | CC BY-SA 4.0 |
 | `Kasparov.jpg` | [Garry Kasparov European Union 2023 (cropped).jpg](https://commons.wikimedia.org/wiki/File:Garry_Kasparov_European_Union_2023_(cropped).jpg) | Lukasz Kobus | CC BY 4.0 |
 | `Kramnik.jpg` | [Candidates Tournament 2018, Vladimir Kramnik.jpg](https://commons.wikimedia.org/wiki/File:Candidates_Tournament_2018,_Vladimir_Kramnik.jpg) | Vladimir Barskij | CC BY-SA 3.0 |
 | `Anand.jpg` | [Viswanathan Anand (2016).jpeg](https://commons.wikimedia.org/wiki/File:Viswanathan_Anand_(2016).jpeg) | Wolfgang Jekel | CC BY 2.0 |
 | `Carlsen.jpg` | [Magnus Carlsen in 2025.jpg](https://commons.wikimedia.org/wiki/File:Magnus_Carlsen_in_2025.jpg) | Miroslav.vajdic | CC BY 4.0 |
 | `Ding.jpg` | [DingLiren24a.jpg](https://commons.wikimedia.org/wiki/File:DingLiren24a.jpg) | Stefan64 | CC BY-SA 3.0 |
-| `Chigorin.jpg` | [Михаил Иванович Чигорин.jpg](https://commons.wikimedia.org/wiki/File:%D0%9C%D0%B8%D1%85%D0%B0%D0%B8%D0%BB_%D0%98%D0%B2%D0%B0%D0%BD%D0%BE%D0%B2%D0%B8%D1%87_%D0%A7%D0%B8%D0%B3%D0%BE%D1%80%D0%B8%D0%BD.jpg) | Unknown author | Public domain |
+| `Chigorin.jpg` | [Mikhail Ivanovich Chigorin.jpg](https://commons.wikimedia.org/wiki/File:%D0%9C%D0%B8%D1%85%D0%B0%D0%B8%D0%BB_%D0%98%D0%B2%D0%B0%D0%BD%D0%BE%D0%B2%D0%B8%D1%87_%D0%A7%D0%B8%D0%B3%D0%BE%D1%80%D0%B8%D0%BD.jpg) | Unknown author | Public domain |
 | `Tarrasch.jpg` | [Tarrasch, Siegbert-2 - DPLA - 224f35dc323734bf355cc7c94d0ded68 (cropped).jpg](https://commons.wikimedia.org/wiki/File:Tarrasch,_Siegbert-2_-_DPLA_-_224f35dc323734bf355cc7c94d0ded68_(cropped).jpg) | Unknown author | Public domain |
 | `Pillsbury.jpg` | [Pillsbury, Harry Nelson, as a Young Man - DPLA - bcd01a18c987fea609e21f290ce181be (cropped).jpg](https://commons.wikimedia.org/wiki/File:Pillsbury,_Harry_Nelson,_as_a_Young_Man_-_DPLA_-_bcd01a18c987fea609e21f290ce181be_(cropped).jpg) | Unknown author | Public domain |
 | `Marshall.jpg` | [Frank Marshall (chess player).jpg](https://commons.wikimedia.org/wiki/File:Frank_Marshall_(chess_player).jpg) | Oxford and Dilhoff | Public domain |
@@ -89,79 +89,80 @@ CC BY-NC-SA 4.0), а также набор без известного прои�
 | `Reti.jpg` | [RichardReti.jpg](https://commons.wikimedia.org/wiki/File:RichardReti.jpg) | Unknown author | Public domain |
 | `Tartakower.jpg` | [Ksawery Tartakower.jpg](https://commons.wikimedia.org/wiki/File:Ksawery_Tartakower.jpg) | Unknown author | Public domain |
 
-Те же портреты (только общественное достояние и CC0 из таблицы выше: Philidor, Staunton, Zukertort, Marshall, Keres,
-Rubinstein, Paulsen, Labourdonnais; Morphy, Capablanca, Alekhine, Steinitz, Tal, Tarrasch, Pillsbury, Anderssen) в виде
-маленьких сепия-снимков служат фоном страниц «Технические работы» (`frontend/public/maintenance.html`) и ожидания
-(`ops/landing`); сборка — `scripts/dev/build_error_pages.py`. Работы CC BY-SA и CC BY на этих страницах не используются.
+The same portraits (only public domain and CC0 from the table above: Philidor, Staunton, Zukertort, Marshall, Keres,
+Rubinstein, Paulsen, Labourdonnais; Morphy, Capablanca, Alekhine, Steinitz, Tal, Tarrasch, Pillsbury, Anderssen), as
+small sepia images, serve as the background of the "Maintenance" page (`frontend/public/maintenance.html`) and the
+waiting page (`ops/landing`); built by `scripts/dev/build_error_pages.py`. CC BY-SA and CC BY works are not used on
+these pages.
 
-## Звуки и текстуры
+## Sounds and textures
 
-| Что | Источник | Лицензия |
+| What | Source | Licence |
 |---|---|---|
-| Звуки ходов и сигналов | Синтезируются в браузере (`frontend/src/services/soundEngine.ts`), записей нет | собственная работа |
-| `frontend/public/assets/textures/wood-grain.svg` | Процедурная графика проекта (SVG-фильтр) | собственная работа, CC0-1.0 |
-| `frontend/public/assets/textures/wood-fine.svg` | Процедурная графика проекта (SVG), мелкие древесные волокна (дуб, вишня, эбен) — доски таска 18.1 | собственная работа, CC0-1.0 |
-| `frontend/public/assets/textures/marble.svg` | Процедурная графика проекта (SVG), прожилки мрамора (белый и зелёный) — доски таска 18.1 | собственная работа, CC0-1.0 |
-| `frontend/public/assets/textures/stone.svg` | Процедурная графика проекта (SVG), зерно камня — доски таска 18.1 | собственная работа, CC0-1.0 |
-| `frontend/public/assets/textures/brushed-metal.svg` | Процедурная графика проекта (SVG), шлифованный металл — доски таска 18.1 | собственная работа, CC0-1.0 |
-| `frontend/public/assets/textures/leather.svg` | Процедурная графика проекта (SVG), фактура кожи — доски таска 18.1 | собственная работа, CC0-1.0 |
-| `frontend/public/assets/textures/paper.svg` | Процедурная графика проекта (SVG), старая бумага — доски таска 18.1 | собственная работа, CC0-1.0 |
-| `frontend/public/assets/textures/chalk.svg` | Процедурная графика проекта (SVG), меловая пыль (школьная доска) — доски таска 18.1 | собственная работа, CC0-1.0 |
-| `frontend/public/assets/textures/stained-glass.svg` | Процедурная графика проекта (SVG), перемычки витража — доски таска 18.1 | собственная работа, CC0-1.0 |
-| `frontend/public/assets/textures/glass.svg` | Процедурная графика проекта (SVG), блик стекла — доски таска 18.1 | собственная работа, CC0-1.0 |
-| `frontend/public/assets/textures/hatch.svg` | Процедурная графика проекта (SVG), штриховка газетной диаграммы — доски таска 18.1 | собственная работа, CC0-1.0 |
-| `frontend/public/assets/patterns/celtic.svg` | Тиснёный тайл фона страницы (SVG), кельтский узел — таск 18.1 | собственная работа, CC0-1.0 |
-| `frontend/public/assets/patterns/map.svg` | Тиснёный тайл фона страницы (SVG), старинная карта — таск 18.1 | собственная работа, CC0-1.0 |
-| `frontend/public/assets/patterns/manuscript.svg` | Тиснёный тайл фона страницы (SVG), рукопись — таск 18.1 | собственная работа, CC0-1.0 |
-| `frontend/public/assets/patterns/circuit.svg` | Тиснёный тайл фона страницы (SVG), печатная плата — таск 18.1 | собственная работа, CC0-1.0 |
-| `frontend/public/assets/patterns/bauhaus.svg` | Тиснёный тайл фона страницы (SVG), геометрия Баухауса — таск 18.1 | собственная работа, CC0-1.0 |
-| `frontend/public/assets/patterns/marble.svg` | Тиснёный тайл фона страницы (SVG), мраморные прожилки — таск 18.1 | собственная работа, CC0-1.0 |
-| `frontend/public/assets/patterns/leaves.svg` | Тиснёный тайл фона страницы (SVG), осенние листья и каштаны — таск 31.1 | собственная работа, CC0-1.0 |
-| `frontend/public/assets/patterns/parquet.svg` | Тиснёный тайл фона страницы (SVG), паркет «ёлочкой» — таск 31.1 | собственная работа, CC0-1.0 |
-| `frontend/public/assets/patterns/notebook.svg` | Тиснёный тайл фона страницы (SVG), тетрадь в клетку — таск 31.1 | собственная работа, CC0-1.0 |
+| Move and alert sounds | Synthesised in the browser (`frontend/src/services/soundEngine.ts`), no recordings | own work |
+| `frontend/public/assets/textures/wood-grain.svg` | Project procedural graphics (SVG filter) | own work, CC0-1.0 |
+| `frontend/public/assets/textures/wood-fine.svg` | Project procedural graphics (SVG), fine wood fibres (oak, cherry, ebony) — task 18.1 boards | own work, CC0-1.0 |
+| `frontend/public/assets/textures/marble.svg` | Project procedural graphics (SVG), marble veining (white and green) — task 18.1 boards | own work, CC0-1.0 |
+| `frontend/public/assets/textures/stone.svg` | Project procedural graphics (SVG), stone grain — task 18.1 boards | own work, CC0-1.0 |
+| `frontend/public/assets/textures/brushed-metal.svg` | Project procedural graphics (SVG), brushed metal — task 18.1 boards | own work, CC0-1.0 |
+| `frontend/public/assets/textures/leather.svg` | Project procedural graphics (SVG), leather texture — task 18.1 boards | own work, CC0-1.0 |
+| `frontend/public/assets/textures/paper.svg` | Project procedural graphics (SVG), old paper — task 18.1 boards | own work, CC0-1.0 |
+| `frontend/public/assets/textures/chalk.svg` | Project procedural graphics (SVG), chalk dust (school blackboard) — task 18.1 boards | own work, CC0-1.0 |
+| `frontend/public/assets/textures/stained-glass.svg` | Project procedural graphics (SVG), stained-glass leading — task 18.1 boards | own work, CC0-1.0 |
+| `frontend/public/assets/textures/glass.svg` | Project procedural graphics (SVG), glass glare — task 18.1 boards | own work, CC0-1.0 |
+| `frontend/public/assets/textures/hatch.svg` | Project procedural graphics (SVG), newspaper diagram hatching — task 18.1 boards | own work, CC0-1.0 |
+| `frontend/public/assets/patterns/celtic.svg` | Embossed page-background tile (SVG), Celtic knot — task 18.1 | own work, CC0-1.0 |
+| `frontend/public/assets/patterns/map.svg` | Embossed page-background tile (SVG), antique map — task 18.1 | own work, CC0-1.0 |
+| `frontend/public/assets/patterns/manuscript.svg` | Embossed page-background tile (SVG), manuscript — task 18.1 | own work, CC0-1.0 |
+| `frontend/public/assets/patterns/circuit.svg` | Embossed page-background tile (SVG), circuit board — task 18.1 | own work, CC0-1.0 |
+| `frontend/public/assets/patterns/bauhaus.svg` | Embossed page-background tile (SVG), Bauhaus geometry — task 18.1 | own work, CC0-1.0 |
+| `frontend/public/assets/patterns/marble.svg` | Embossed page-background tile (SVG), marble veining — task 18.1 | own work, CC0-1.0 |
+| `frontend/public/assets/patterns/leaves.svg` | Embossed page-background tile (SVG), autumn leaves and chestnuts — task 31.1 | own work, CC0-1.0 |
+| `frontend/public/assets/patterns/parquet.svg` | Embossed page-background tile (SVG), herringbone parquet — task 31.1 | own work, CC0-1.0 |
+| `frontend/public/assets/patterns/notebook.svg` | Embossed page-background tile (SVG), squared notebook — task 31.1 | own work, CC0-1.0 |
 
-Убраны: `Move.mp3`, `Capture.mp3`, `GenericNotify.mp3` (звуки lichess, отнесённые в его COPYING.md к несвободным) и
-`wood-grain.png` (происхождение неизвестно).
+Removed: `Move.mp3`, `Capture.mp3`, `GenericNotify.mp3` (lichess sounds that its COPYING.md classes as non-free) and
+`wood-grain.png` (origin unknown).
 
-## Внешние сервисы
+## External services
 
-| Что | Автор | Условия | Примечание |
+| What | Author | Terms | Note |
 |---|---|---|---|
-| Эндшпильные таблицы — открытый API [lichess](https://tablebase.lichess.ovh) (`TABLEBASE_URL`) | lichess.org (сервер lila-tablebase; таблицы Syzygy и др.) | Открытый сервис | Только в разработке: на сервер уходит одна позиция (FEN), без данных игрока. В продакшене — свой сервер таблиц (решение владельца, DEPLOY). |
-| Импорт партий игрока (таск 24.1): открытый API [lichess](https://lichess.org/api) (`GAME_IMPORT_LICHESS_URL`, `/api/games/user/{ник}`) и Published-Data API [chess.com](https://www.chess.com/news/view/published-data-api) (`GAME_IMPORT_CHESSCOM_URL`, `/pub/player/{ник}/games/…`) | lichess.org; Chess.com | Открытые API без ключа; запрос делает игрок за свои партии | На сайт уходит только ник, введённый игроком; клиент представляется общим именем `regence-game-import`, без входа и токенов. Один запрос к сайту за раз, ответ 429 ставит сайт на паузу 60 с. Хранятся ходы и заголовки партии без комментариев и чужих оценок (`imported_games`). |
+| Endgame tablebases — open API of [lichess](https://tablebase.lichess.ovh) (`TABLEBASE_URL`) | lichess.org (lila-tablebase server; Syzygy and other tables) | Open service | Development only: a single position (FEN) is sent to the server, with no player data. In production — our own tablebase server (owner decision, DEPLOY). |
+| Import of a player's games (task 24.1): open API of [lichess](https://lichess.org/api) (`GAME_IMPORT_LICHESS_URL`, `/api/games/user/{username}`) and Published-Data API of [chess.com](https://www.chess.com/news/view/published-data-api) (`GAME_IMPORT_CHESSCOM_URL`, `/pub/player/{username}/games/…`) | lichess.org; Chess.com | Open APIs without a key; the player makes the request for their own games | Only the username entered by the player is sent to the site; the client identifies itself with the generic name `regence-game-import`, with no login or tokens. One request to a site at a time; a 429 response pauses that site for 60 s. Moves and game headers are stored without comments or third-party evaluations (`imported_games`). |
 
-## Данные
+## Data
 
-| Что | Источник | Статус |
+| What | Source | Status |
 |---|---|---|
-| Архив исторических партий | PGN-коллекции pgnmentor.com (`src/db/seed.py`), загрузчик `scripts/chessgames_downloader.py` | Запись ходов партии — факт, авторским правом не охраняется. Условия сайтов-источников и права на подборку как базу данных не проверялись — см. «Открытые вопросы». |
-| Задачи на эндшпильную технику (`data/puzzles/endgame_generated.csv.gz`) | Собственные позиции, построенные `scripts/dev/build_endgame_puzzles.py`; верность единственного хода проверена по открытому API эндшпильных таблиц lichess (таблицы Syzygy) | Позиция и результат по таблицам — факты; отбор и разметка свои. На сервер таблиц уходили только позиции (FEN). |
-| Таблица дебютов (`src/services/data/openings.tsv`) | [lichess-org/chess-openings](https://github.com/lichess-org/chess-openings) — коды ECO и названия; преобразована `scripts/build_openings.py` (позиция вместо ходов) | CC0-1.0 (лицензия репозитория проверена 15.11.2026). |
-| Дебютные книги ботов (`src/services/bots/books/*.json`) | Построены `scripts/build_opening_books.py` из тех же партий | Статистика ходов, собственная обработка. |
-| Этюды эндшпильного тренажёра (`frontend/src/content/endgames.json`: `study_saavedra`, `study_reti`, таск 27.9) | Позиция Ф. Сааведры (1895, по партии Барбье) и этюд Р. Рети (1921); составители умерли в 1922 и 1929 годах | Позиция — факт; тексты объяснений свои, проверка — эндшпильными таблицами. |
-| Коллекция библиотеки «Партии мастеров» и дебютные книги мастеров 21.5 (`src/services/bots/books/*.json`) | Файлы игроков pgnmentor.com (Чигорин, Тарраш, Пильсбери, Маршалл, Нимцович, Рети, Тартаковер, Ботвинник, Таль, Петросян), загрузка `scripts/import_library.py` | Ходы партий — факт; условия сайта-источника — см. «Открытые вопросы», как для архива исторических партий. |
-| Библиотека партий (`library_*`, таски 27.1–27.3) | Подборки и базы владельца проекта: собранные им PGN и учебные базы из его библиотеки; загружаются `scripts/import_library.py` (и `scripts/cbh_to_pgn.py`), в репозиторий не входят | Только заголовки и главная линия — факты; комментарии, варианты и упражнения из изданий не берутся. Подборки «Красивые партии» и дебютного репертуара составлены владельцем. |
+| Archive of historical games | PGN collections of pgnmentor.com (`src/db/seed.py`), downloader `scripts/chessgames_downloader.py` | A record of a game's moves is a fact and is not protected by copyright. The terms of the source sites and the rights to the selection as a database have not been checked — see "Open questions". |
+| Endgame technique puzzles (`data/puzzles/endgame_generated.csv.gz`) | Own positions built by `scripts/dev/build_endgame_puzzles.py`; the correctness of the only move was verified against the open lichess endgame tablebase API (Syzygy tables) | A position and its tablebase result are facts; the selection and tagging are our own. Only positions (FEN) were sent to the tablebase server. |
+| Openings table (`src/services/data/openings.tsv`) | [lichess-org/chess-openings](https://github.com/lichess-org/chess-openings) — ECO codes and names; converted by `scripts/build_openings.py` (position instead of moves) | CC0-1.0 (the repository licence was checked on 15.11.2026). |
+| Bot opening books (`src/services/bots/books/*.json`) | Built by `scripts/build_opening_books.py` from the same games | Move statistics, own processing. |
+| Studies of the endgame trainer (`frontend/src/content/endgames.json`: `study_saavedra`, `study_reti`, task 27.9) | F. Saavedra's position (1895, from the Barbier game) and R. Reti's study (1921); the composers died in 1922 and 1929 | A position is a fact; the explanation texts are our own, verification is by endgame tablebases. |
+| Library collection "Masters' games" and the masters' opening books 21.5 (`src/services/bots/books/*.json`) | Player files from pgnmentor.com (Chigorin, Tarrasch, Pillsbury, Marshall, Nimzowitsch, Reti, Tartakower, Botvinnik, Tal, Petrosian), loaded by `scripts/import_library.py` | Game moves are facts; the source site's terms — see "Open questions", as for the archive of historical games. |
+| Game library (`library_*`, tasks 27.1–27.3) | Collections and databases of the project owner: PGN files he gathered and teaching databases from his library; loaded by `scripts/import_library.py` (and `scripts/cbh_to_pgn.py`), not included in the repository | Only headers and the main line are facts; comments, variations and exercises from published editions are not taken. The "Beautiful games" and opening repertoire collections were compiled by the owner. |
 
-## Программные библиотеки
+## Software libraries
 
-Полные списки — `uv.lock` и `frontend/package.json`. Основные: FastAPI, SQLAlchemy, Pydantic, Celery,
+Full lists — `uv.lock` and `frontend/package.json`. Main ones: FastAPI, SQLAlchemy, Pydantic, Celery,
 redis-py (MIT / BSD); React, React Router, Tailwind CSS, Recharts, date-fns (MIT); lucide (ISC); chess.js
 (BSD-2-Clause); **python-chess (GPL-3.0)**.
 
-Сведения о двоичном формате учебных баз (таблицы кодирования ходов) для `src/services/cbh_reader.py` взяты из
-открытого конвертера [cbh2pgn](https://github.com/asdfjkl/cbh2pgn) — © 2022 Dominik Klein, лицензия MIT. Код модуля
-свой; это инструмент разработки, в продукте он не используется.
+Information on the binary format of teaching databases (move encoding tables) for `src/services/cbh_reader.py` was
+taken from the open converter [cbh2pgn](https://github.com/asdfjkl/cbh2pgn) — © 2022 Dominik Klein, MIT licence. The
+module code is our own; it is a development tool and is not used in the product.
 
-## Открытые вопросы
+## Open questions
 
-* **python-chess — GPL-3.0.** Пока сервер работает как сетевой сервис и его код никому не передаётся, GPL-3.0
-  обязательств не создаёт. Если серверный код будет распространяться (в том числе как закрытый продукт), он должен
-  распространяться на условиях GPL-3.0.
-* **Файл `LICENSE`** — черновик проприетарной лицензии добавлен 23.11.2026 (`THIRD_PARTY_NOTICES.md` — сторонние
-  компоненты); решение владельца (проприетарная или AGPL-3.0, приватный репозиторий) — `docs/owner-decisions/02-legal-and-licenses.md`.
-* **Источники PGN** (проверка условий 23.11.2026 — `docs/owner-decisions/pgn-sources.md`: у pgnmentor.com лицензии нет,
-  у chessgames.com — закрыты). Перед публичным запуском стоит перейти на коллекцию с явным разрешением на использование или
-  проверить условия pgnmentor.com и chessgames.com.
+* **python-chess — GPL-3.0.** As long as the server runs as a network service and its code is not handed to
+  anyone, GPL-3.0 creates no obligations. If the server code is distributed (including as a closed product), it must
+  be distributed under GPL-3.0.
+* **The `LICENSE` file** — a draft proprietary licence was added on 23.11.2026 (`THIRD_PARTY_NOTICES.md` — third-party
+  components); the owner's decision (proprietary or AGPL-3.0, private repository) — `docs/owner-decisions/02-legal-and-licenses.md`.
+* **PGN sources** (terms checked on 23.11.2026 — `docs/owner-decisions/pgn-sources.md`: pgnmentor.com has no licence,
+  chessgames.com is closed). Before a public launch it is worth switching to a collection with explicit permission to
+  use it, or checking the terms of pgnmentor.com and chessgames.com.
 
-Закрыто: внешний сервис аватаров (DiceBear) убран в таске 18.4 — аватары теперь из собственного набора, имя
-игрока стороннему сервису не передаётся.
+Closed: the external avatar service (DiceBear) was removed in task 18.4 — avatars now come from our own set, and
+the player's name is not sent to a third-party service.

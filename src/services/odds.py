@@ -1,32 +1,32 @@
 """
-Фора в партии с человеком (таск 21.1, сеть — 16.11): те же форы, что у партии с ботом
+Odds in a game with a person (task 21.1, network - 16.11): the same odds as in a game with a bot
 (frontend/src/components/chessboard/odds.ts).
-Материальная — начальная позиция без фигуры у дающего фору (ферзевый конь, ферзевая ладья — без длинной рокировки,
-ферзь, f-пешка); по времени — у дающего треть времени (не меньше минуты); «песочные часы» — время, потраченное
-ходящим, прибавляется сопернику (общая для обоих фора, дающего нет; часы считает src/services/game_state.py по флагу
-games.hourglass); «два хода подряд» (tempo) — позиция, где получающий уже сыграл e4+d4 (e5+d5) и ход у дающего.
-Партия с форой рейтинга не меняет.
+Material - the starting position without a piece of the odds giver (queen's knight, queen's rook - without long castling,
+queen, f-pawn); by time - the giver has a third of the time (at least a minute); "hourglass" - the time spent
+by the mover is added to the opponent (common to both, there is no giver; the clock is counted by
+src/services/game_state.py by the flag games.hourglass); "two moves in a row" (tempo) - a position where the receiver has
+already played e4+d4 (e5+d5) and the giver is to move. A game with odds does not change the rating.
 
-Фора задаётся в приглашении по ссылке; применяет её src/services/matchmaker.py (``_odds_start``) в момент старта,
-когда цвета уже известны, — он же делает партию товарищеской. Здесь только расчёт позиции и времени.
+The odds are set in the invitation link; they are applied by src/services/matchmaker.py (``_odds_start``) at the start,
+when the colours are already known - it also makes the game casual. Here is only the calculation of position and time.
 """
 
 import chess
 
-# Позиции «двух ходов подряд» (ход — у дающего фору). Пропуска хода в правилах нет, поэтому два хода получающего
-# уже сделаны в позиции; пешки e и d — самые простые и безопасные ходы, шаха и «взятия на проходе» в позиции нет.
+# "Two moves in a row" positions (the giver is to move). The rules have no pass, so the receiver's two moves
+# are already made in the position; the e and d pawns are the simplest and safest moves, there is no check or en passant.
 TEMPO_FEN = {chess.WHITE: "rnbqkbnr/ppp2ppp/8/3pp3/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-             chess.BLACK: "rnbqkbnr/pppppppp/8/8/3PP3/8/PPP2PPP/RNBQKBNR b KQkq - 0 1"}  # ключ — цвет дающего
-# Вид материальной форы → поле снимаемой фигуры, если фору дают белые и если чёрные.
+             chess.BLACK: "rnbqkbnr/pppppppp/8/8/3PP3/8/PPP2PPP/RNBQKBNR b KQkq - 0 1"}  # the key is the giver's colour
+# Kind of material odds -> the square of the removed piece if white gives the odds and if black does.
 MATERIAL = {"knight": ("b1", "b8"), "rook": ("a1", "a8"), "queen": ("d1", "d8"), "pawn": ("f2", "f7")}
-TEMPO = "tempo"  # «два хода подряд»: получающий фору уже сыграл e4+d4 (белые) или e5+d5 (чёрные), ход — у дающего
-HOURGLASS = "hourglass"  # «песочные часы»: позиция и стартовое время обычные, меняется только ход часов
-KINDS = (*MATERIAL, "time", TEMPO, HOURGLASS)  # все виды форы; пустая строка в приглашении — партия без форы
-GIVERS = ("creator", "acceptor")  # кто даёт фору: автор приглашения или тот, кто его принял
+TEMPO = "tempo"  # "two moves in a row": the receiver has already played e4+d4 (white) or e5+d5 (black), the giver is to move
+HOURGLASS = "hourglass"  # "hourglass": the position and starting time are ordinary, only the clock running changes
+KINDS = (*MATERIAL, "time", TEMPO, HOURGLASS)  # all odds kinds; an empty string in the invitation - a game without odds
+GIVERS = ("creator", "acceptor")  # who gives the odds: the invitation author or the one who accepted it
 
 
 def odds_fen(kind: str, giver: chess.Color) -> str | None:
-    """Начальная позиция с материальной форой; None — фора не материальная."""
+    """Starting position with material odds; None - the odds are not material."""
     if kind == TEMPO:
         return TEMPO_FEN[giver]
     squares = MATERIAL.get(kind)
@@ -41,9 +41,9 @@ def odds_fen(kind: str, giver: chess.Color) -> str | None:
 
 def odds_times(kind: str, giver: chess.Color, base_ms: int) -> tuple[int, int]:
     """
-    Стартовое время белых и чёрных. Фора по времени: у дающего — треть базового времени, но не меньше минуты;
-    у соперника — полное. Нижняя граница не сравнивается с базовым временем: при контроле короче минуты дающий
-    получил бы больше соперника.
+    Starting time of white and black. Time odds: the giver has a third of the base time, but at least a minute;
+    the opponent has the full time. The lower bound is not compared with the base time: with a control shorter than
+    a minute the giver would get more than the opponent.
     """
     if kind != "time":
         return base_ms, base_ms
@@ -53,8 +53,8 @@ def odds_times(kind: str, giver: chess.Color, base_ms: int) -> tuple[int, int]:
 
 def pgn_header(start_fen: str) -> str:
     """
-    Начало PGN партии с позиции: заголовки SetUp/FEN — их понимают проверка ходов на сервере и клиент. Партия Фишера
-    (позиция в Shredder-FEN, game_engine.is_chess960_fen) получает и заголовок Variant.
+    The start of a game's PGN from a position: SetUp/FEN headers - the server move check and the client understand
+    them. A Fischer game (position in Shredder-FEN, game_engine.is_chess960_fen) also gets the Variant header.
     """
     from src.services.game_engine import CHESS960_HEADER, is_chess960_fen
 

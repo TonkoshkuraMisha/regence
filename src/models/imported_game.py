@@ -1,9 +1,9 @@
 # --- FILE: src/models/imported_game.py ---
 """
-Партии игрока с других сайтов (таск 24.1): lichess, chess.com или вставленный PGN.
+A player's games from other sites (task 24.1): lichess, chess.com or pasted PGN.
 
-Отдельная таблица, а не games: чужая партия не участвует в рейтинге, архиве, статистике профиля, дереве дебютов и
-лиге — она нужна только для разбора с наставником и личных задач (13.5). Соперник — просто имя из PGN.
+A separate table, not games: a foreign game does not take part in the rating, archive, profile statistics, opening tree or
+league - it is needed only for review with the mentor and personal puzzles (13.5). The opponent is just a name from the PGN.
 """
 
 from datetime import datetime
@@ -13,18 +13,18 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from src.models.base import Base, one_of
 
-# Откуда партия: сайты (src/services/game_import.py, SOURCES) и вставленный PGN.
+# Where the game is from: sites (src/services/game_import.py, SOURCES) and pasted PGN.
 IMPORT_SOURCES = ("lichess", "chesscom", "pgn")
-# Каким цветом играл владелец партии.
+# The colour the game's owner played.
 IMPORT_COLORS = ("white", "black")
-# Итог партии — приводится при импорте (game_engine.normalize_result).
+# The game result - normalised on import (game_engine.normalize_result).
 IMPORT_RESULTS = ("1-0", "0-1", "1/2-1/2", "*")
 
 
 class ImportedGame(Base):
     """
-    Партия игрока, принесённая с другого сайта или вставленная как PGN: принадлежит одному игроку, хранит запись
-    ходов, сведения из заголовков и разбор движком.
+    A player's game brought from another site or pasted as PGN: belongs to one player, stores the move record,
+    information from the headers and the engine review.
     """
     __tablename__ = "imported_games"
     __table_args__ = (
@@ -36,17 +36,18 @@ class ImportedGame(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    # lichess | chesscom | pgn; external_id — id партии на сайте, для PGN — хеш ходов (повторная вставка не дублирует).
+    # lichess | chesscom | pgn; external_id - the game id on the site, for PGN - a hash of moves (a repeated paste does not
+    # duplicate).
     source: Mapped[str] = mapped_column(String(10), nullable=False)
     external_id: Mapped[str] = mapped_column(String(64), nullable=False)
-    # Сторона игрока и имена из заголовков PGN.
+    # The player's side and the names from the PGN headers.
     color: Mapped[str] = mapped_column(String(5), nullable=False)
     white_name: Mapped[str] = mapped_column(String(60), nullable=False, default="")
     black_name: Mapped[str] = mapped_column(String(60), nullable=False, default="")
     white_rating: Mapped[int | None] = mapped_column(Integer, nullable=True)
     black_rating: Mapped[int | None] = mapped_column(Integer, nullable=True)
     result: Mapped[str] = mapped_column(String(10), nullable=False, default="*")
-    # bullet | blitz | rapid | classical | daily; None — неизвестно (вставленный PGN).
+    # bullet | blitz | rapid | classical | daily; None - unknown (pasted PGN).
     speed: Mapped[str | None] = mapped_column(String(12), nullable=True)
     played_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
     pgn: Mapped[str] = mapped_column(Text, nullable=False)

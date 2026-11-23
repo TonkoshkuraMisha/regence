@@ -1,13 +1,13 @@
 // --- FILE: frontend/src/components/chessboard/BoardNavigationControls.tsx ---
-// Кнопки перемотки партии на главной доске: в начало, ход назад, ход вперёд, к живой позиции. Только разметка:
-// какую позицию показывать (viewIndex), решает Chessboard; те же действия — на клавишах-стрелках.
+// Game rewind buttons on the main board: to the start, one move back, one move forward, to the live position. Markup only:
+// which position to show (viewIndex) is decided by Chessboard; the same actions are on the arrow keys.
 
 import {ChevronFirst, ChevronLeft, ChevronRight, ChevronLast} from 'lucide-react';
 import {useI18n} from '../../i18n';
 
 export interface BoardNavigationControlsProps {
     historyLength: number;
-    /** -1 — живая позиция, -2 — самое начало партии (до первого хода). */
+    /** -1 is the live position, -2 is the very start of the game (before the first move). */
     viewIndex: number;
     onFirst: () => void;
     onBack: () => void;
@@ -16,8 +16,8 @@ export interface BoardNavigationControlsProps {
 }
 
 /**
- * Кнопки перемотки журнала ходов — дублируют клавиши со стрелками (влево и вправо — на ход, вверх — в начало,
- * вниз — к живой позиции). «Назад» отключены в начале партии, «вперёд» — на живой позиции.
+ * Move-log rewind buttons: they duplicate the arrow keys (left and right step a move, up goes to the start,
+ * down goes to the live position). "Back" is disabled at the start of the game, "forward" on the live position.
  */
 export function BoardNavigationControls({
     historyLength, viewIndex, onFirst, onBack, onForward, onLast,

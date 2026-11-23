@@ -1,9 +1,9 @@
 // --- FILE: frontend/src/i18n/core.ts ---
-// Механизм каталогов сообщений: языки, множественное число, подстановка параметров, типизированные ключи.
-// Тексты — в messages/*.ts; три каталога обязаны иметь одни и те же ключи (это проверяет TypeScript через тип
-// Messages) и одни и те же параметры и формы числа (это проверяет тест i18n.test.ts).
+// Message catalog engine: languages, plurals, parameter substitution, typed keys.
+// Texts are in messages/*.ts; all catalogs must have the same keys (checked by TypeScript through the
+// Messages type) and the same parameters and plural forms (checked by the i18n.test.ts test).
 
-export const LANGUAGES = ['en', 'uk', 'ru'] as const;
+export const LANGUAGES = ['en', 'uk'] as const;
 export type Language = (typeof LANGUAGES)[number];
 
 export const DEFAULT_LANGUAGE: Language = 'en';
@@ -11,13 +11,13 @@ export const DEFAULT_LANGUAGE: Language = 'en';
 
 export type PluralCategory = 'zero' | 'one' | 'two' | 'few' | 'many' | 'other';
 
-/** Формы одного сообщения для разных чисел. Какие нужны — решает Intl.PluralRules языка. */
+/** Forms of one message for different numbers. Which are needed is decided by the language's Intl.PluralRules. */
 export interface Plural {
     readonly kind: 'plural';
     readonly forms: Partial<Record<PluralCategory, string>> & { other: string };
 }
 
-/** Сообщение с формами числа: plural({one: '{count} game', other: '{count} games'}). */
+/** Message with plural forms: plural({one: '{count} game', other: '{count} games'}). */
 export function plural(forms: Plural['forms']): Plural {
     return {kind: 'plural', forms};
 }
@@ -26,11 +26,11 @@ export function isPlural(value: unknown): value is Plural {
     return typeof value === 'object' && value !== null && (value as Plural).kind === 'plural';
 }
 
-// --- типы ключей -----------------------------------------------------------------------------------------
+// --- key types -------------------------------------------------------------------------------------------
 
 type Join<P extends string, K extends string> = P extends '' ? K : `${P}.${K}`;
 
-/** Ключи обычных сообщений: «settings.title», «auth.login.submit»... */
+/** Keys of ordinary messages: "settings.title", "auth.login.submit"... */
 export type TextKey<T, P extends string = ''> = {
     [K in keyof T & string]: T[K] extends string
         ? Join<P, K>
@@ -39,7 +39,7 @@ export type TextKey<T, P extends string = ''> = {
             : TextKey<T[K], Join<P, K>>;
 }[keyof T & string];
 
-/** Ключи сообщений с формами числа. */
+/** Keys of messages with plural forms. */
 export type PluralKey<T, P extends string = ''> = {
     [K in keyof T & string]: T[K] extends string
         ? never
@@ -50,18 +50,18 @@ export type PluralKey<T, P extends string = ''> = {
 
 export type Params = Record<string, string | number>;
 
-// --- подстановка -------------------------------------------------------------------------------------------
+// --- substitution -------------------------------------------------------------------------------------------
 
 const PLACEHOLDER = /\{(\w+)\}/g;
 
-/** Имена параметров шаблона в порядке появления (для проверки каталогов). */
+/** Template parameter names in order of appearance (for catalog checks). */
 export function placeholders(template: string): string[] {
     return Array.from(template.matchAll(PLACEHOLDER), (match) => match[1]);
 }
 
 /**
- * Подставляет параметры в шаблон. Отсутствующий параметр остаётся видимым как {имя} — так ошибку видно на
- * экране и в тестах, а не получается тихо «undefined».
+ * Substitutes parameters into a template. A missing parameter stays visible as {name} - so the error is seen on
+ * screen and in tests, instead of a silent "undefined".
  */
 export function interpolate(template: string, params?: Params): string {
     if (!params) return template;
@@ -70,8 +70,8 @@ export function interpolate(template: string, params?: Params): string {
 }
 
 /**
- * Разбивает шаблон на куски: строки и подставленные значения любого типа (например, React-элементы — ссылки
- * внутри предложения). Предложение остаётся целым в каталоге, в код уходит только «куда вставить».
+ * Splits a template into pieces: strings and substituted values of any type (for example, React elements - links
+ * inside a sentence). The sentence stays whole in the catalog, only "where to insert" goes into code.
  */
 export function interpolateParts<T>(template: string, params: Record<string, T | string | number>): Array<T | string> {
     const parts: Array<T | string> = [];
@@ -99,7 +99,7 @@ export function pluralCategory(language: Language, count: number): PluralCategor
     return rules.select(count) as PluralCategory;
 }
 
-/** Нужные языку формы числа (для проверки каталогов): en — one/other, uk и ru — one/few/many/other. */
+/** Plural forms required by a language (for catalog checks): en - one/other, uk - one/few/many/other. */
 export function requiredPluralCategories(language: Language): PluralCategory[] {
     return new Intl.PluralRules(language).resolvedOptions().pluralCategories as PluralCategory[];
 }
@@ -109,7 +109,7 @@ export function selectPlural(language: Language, value: Plural, count: number): 
     return value.forms[category] ?? value.forms.other;
 }
 
-/** Значение по пути «a.b.c» в каталоге или undefined. */
+/** Value at the path "a.b.c" in the catalog, or undefined. */
 export function lookup(catalog: unknown, key: string): unknown {
     let node: unknown = catalog;
     for (const part of key.split('.')) {
@@ -119,7 +119,7 @@ export function lookup(catalog: unknown, key: string): unknown {
     return node;
 }
 
-/** Выбор языка по списку языков браузера: украинский и русский — свои, всё остальное — английский. */
+/** Language choice from the browser's language list: Ukrainian is its own, everything else is English. */
 export function detectLanguage(preferred: readonly string[]): Language {
     for (const tag of preferred) {
         const base = tag.toLowerCase().split('-')[0];

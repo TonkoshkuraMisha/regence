@@ -4,9 +4,9 @@ Revision ID: c9a4e7d2f5b8
 Revises: 59c61fc287c2
 Create Date: 2026-11-18 13:00:00.000000
 
-position_stats: ключ (position_hash, move_uci), position_games: ключ (position_hash, game_id). Раньше у обеих был
-суррогатный id (им никто не пользовался) плюс уникальный индекс по тем же парам — теперь эта пара и есть первичный
-ключ, лишние колонка и индекс уходят. Поведение не меняется: вставка индекса идёт ON CONFLICT по тем же колонкам.
+position_stats: key (position_hash, move_uci), position_games: key (position_hash, game_id). Both used to have
+a surrogate id (nobody used it) plus a unique index on the same pairs - now the pair itself is the primary
+key, the extra column and index go away. Behaviour does not change: index inserts use ON CONFLICT on the same columns.
 """
 from collections.abc import Sequence
 
@@ -18,7 +18,7 @@ down_revision: str | Sequence[str] | None = '59c61fc287c2'
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
-# (таблица, колонки ключа, имя прежнего уникального ограничения)
+# (table, key columns, name of the former unique constraint)
 TABLES = (
     ('position_stats', ('position_hash', 'move_uci'), 'uq_position_stats_move'),
     ('position_games', ('position_hash', 'game_id'), 'uq_position_games_game'),
@@ -29,7 +29,7 @@ def upgrade() -> None:
     """Upgrade schema."""
     for table, columns, unique in TABLES:
         op.drop_constraint(unique, table, type_='unique')
-        op.drop_column(table, 'id')  # вместе с ней уходит прежний первичный ключ
+        op.drop_column(table, 'id')  # the former primary key goes away together with it
         op.create_primary_key(f'{table}_pkey', table, list(columns))
 
 

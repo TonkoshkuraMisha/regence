@@ -1,9 +1,9 @@
 // --- FILE: frontend/src/components/puzzles/TrainingPanel.tsx ---
-// Тренировка по приёмам (таск 13.4): темы по разделам каталога с прогрессом, карточка темы (объяснение тренера и
-// показ на доске), «Тренировать», смешанные подборки по разделу и режим «без названия темы».
-// Данные — services/puzzles.ts (puzzlesApi.training и demo, /api/v1/puzzles/training, /demo; ступени тем считает сервер,
-// src/services/puzzles.py) и реестр тем services/themes.ts. Подключается из PuzzlesPage (режим «themes») и из
-// learn/MateCourse; саму задачу запускает родитель через onTrain.
+// Technique training (task 13.4): themes by catalog section with progress, a theme card (the trainer's explanation and
+// a demonstration on the board), "Train", mixed sets by section and the "without theme name" mode.
+// Data is services/puzzles.ts (puzzlesApi.training and demo, /api/v1/puzzles/training, /demo; theme steps are computed by the server,
+// src/services/puzzles.py) and the theme registry services/themes.ts. Connected from PuzzlesPage ("themes" mode) and from
+// learn/MateCourse; the puzzle itself is started by the parent via onTrain.
 
 import {useEffect, useMemo, useState} from 'react';
 import {Chess} from 'chess.js';
@@ -18,21 +18,21 @@ import {themeText} from '../../services/themes';
 import type {ThemeSection} from '../../services/themes';
 import {PuzzleBoard} from './PuzzleBoard';
 
-/** Параметры панели: запуск тренировки, переход к генератору и ключ обновления прогресса. */
+/** Panel parameters: starting a training, a jump to the generator and the progress refresh key. */
 interface Props {
     onTrain: (target: TrainingTarget) => void;
-    /** Упражнение-генератор по теме (таск 13.7): вилка, связка, незащищённая фигура, мат. */
+    /** Generator exercise by theme (task 13.7): fork, pin, undefended piece, mate. */
     onDrill?: (kind: DrillKind) => void;
-    /** Новые данные прогресса после решённой задачи — список обновляется. */
+    /** New progress data after a solved puzzle: the list refreshes. */
     refreshKey: number;
 }
 
-/** Число чистых решений в строке последних попыток («1» — решена без ошибок). */
+/** Number of clean solutions in the recent attempts line ("1" means solved without mistakes). */
 function cleanCount(recent: string): number {
     return recent.split('').filter((c) => c === '1').length;
 }
 
-/** Показ приёма: задачи темы с решением, ход за ходом. */
+/** Showing a technique: theme puzzles with the solution, move by move. */
 export function DemoViewer({examples}: { examples: DemoExample[] }) {
     const {t} = useI18n();
     const [index, setIndex] = useState(0);
@@ -84,7 +84,7 @@ export function DemoViewer({examples}: { examples: DemoExample[] }) {
     );
 }
 
-/** Значок темы: «освоена» или ступень, число чистых решений и номер прохода. */
+/** Theme icon: "mastered" or a step, the number of clean solutions and the pass number. */
 function StageBadge({theme, overview}: { theme: ThemeOverview; overview: TrainingOverview }) {
     const {t} = useI18n();
     if (theme.mastered) {
@@ -97,7 +97,7 @@ function StageBadge({theme, overview}: { theme: ThemeOverview; overview: Trainin
     );
 }
 
-/** Панель тренировки по приёмам: разделы реестра тем, прогресс, карточка темы и смешанные подборки. */
+/** Technique training panel: registry theme sections, progress, a theme card and mixed sets. */
 export function TrainingPanel({onTrain, onDrill, refreshKey}: Props) {
     const {t} = useI18n();
     const [overview, setOverview] = useState<TrainingOverview | null>(null);

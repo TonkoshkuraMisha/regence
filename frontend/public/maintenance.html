@@ -1,10 +1,10 @@
 <!doctype html>
 <!--
-  Страница «Технические работы» (502 / 503 / 504). Самодостаточный файл: без скриптов и внешних ресурсов — картинки
-  (сепия-снимки мастеров из общественного достояния и CC0, ATTRIBUTION.md), силуэты и стили внутри, поэтому годится и для
-  nginx, и для «Пользовательской ошибки» Cloudflare (Custom Error Rules, платные тарифы: HTML вставляется как есть).
-  Скриптов нет намеренно: CSP сайта запрещает встроенные скрипты. Текст только английский (решение владельца 22.11).
-  ФАЙЛ СОБИРАЕТСЯ: python -m scripts.dev.build_error_pages — правьте шаблон там, а не этот файл.
+  "Maintenance" page (502 / 503 / 504). A self-contained file: no scripts or external resources; the images
+  (sepia photos of masters from the public domain and CC0, ATTRIBUTION.md), silhouettes and styles are inline, so it suits both
+  nginx and a Cloudflare "Custom Error" (Custom Error Rules, paid plans: the HTML is inserted as is).
+  There are no scripts on purpose: the site CSP forbids inline scripts. The text is English only (owner's decision 22.11).
+  THE FILE IS GENERATED: python -m scripts.dev.build_error_pages - edit the template there, not this file.
 -->
 <html lang="en">
 <head>
@@ -25,12 +25,12 @@ body {
         repeating-conic-gradient(rgba(245, 222, 179, .06) 0 25%, transparent 0 50%) 0 0 / 200px 200px,
         var(--bg);
 }
-/* Вуаль: затемняет коллаж под текстом, по краям отпускает — снимки видны, читать не мешают. */
+/* Veil: darkens the collage under the text, lets go at the edges so the photos are visible without hindering reading. */
 body::before {
     content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none;
     background: radial-gradient(ellipse 46% 52% at 50% 50%, rgba(26, 18, 11, .94) 0 55%, rgba(26, 18, 11, .55) 100%);
 }
-/* Плёночное зерно и виньетка — общий «документальный» вид. */
+/* Film grain and vignette: a shared "documentary" look. */
 body::after {
     content: ''; position: absolute; inset: 0; z-index: 3; pointer-events: none; opacity: .5; mix-blend-mode: overlay;
     background:

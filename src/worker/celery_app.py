@@ -1,16 +1,20 @@
 """
-Приложение Celery: очереди и расписание фоновых задач. Брокер и хранилище результатов — Redis (базы 0 и 1).
+The Celery application: queues and the schedule of background tasks. The broker and the result store are Redis (databases 0 and
+1).
 
-Очередей две, чтобы долгие партии ботов не задерживали разбор партий игроков: analysis (по умолчанию — разбор
-партий, индекс позиций, напоминания) и simulation (партии ботов между собой, самоигра). В продакшене их слушают разные воркеры
-(docker-compose.prod.yml), в разработке — один. Расписание (beat_schedule) исполняет отдельный процесс celery beat —
-он должен быть один на всю установку. Сами задачи — src/worker/tasks.py; список с расписанием — DEPLOY.md, 8в.
+There are two queues so that long bot games do not delay the review of players' games: analysis (the default - game review,
+the position index, reminders) and simulation (bot-vs-bot games, self-play). In production they are listened to by different
+workers
+(docker-compose.prod.yml), in development by one. The schedule (beat_schedule) is run by a separate celery beat process -
+there must be only one for the whole installation. The tasks themselves are in src/worker/tasks.py; the list with the schedule
+is DEPLOY.md, 8c.
 
-Публикация задач из API не должна задерживать игру, поэтому таймауты соединения с брокером короткие, а повторов
-публикации нет (см. src/services/task_dispatch.py).
+Publishing tasks from the API must not delay a game, so the broker connection timeouts are short and there are no publish
+retries (see src/services/task_dispatch.py).
 
-Метрики Prometheus воркера (время движка в разборе и симуляциях) отдаёт главный процесс на WORKER_METRICS_PORT —
-сигналы ниже, правила — src/core/observability.start_worker_metrics_server.
+The worker's Prometheus metrics (engine time in reviews and simulations) are served by the main process on WORKER_METRICS_PORT
+-
+the signals below, the rules - src/core/observability.start_worker_metrics_server.
 """
 
 import logging
@@ -27,20 +31,20 @@ from src.core.observability import forget_worker_process, init_sentry, start_wor
 init_sentry("worker")
 
 
-# Токены контекстов журнала по id задач: prerun открывает контекст, postrun закрывает (src/core/logging_setup.py).
+# Tokens of log contexts by task ids: prerun opens a context, postrun closes it (src/core/logging_setup.py).
 _task_log_tokens: dict[str, object] = {}
 _task_logger = logging.getLogger("regence.task")
 
 
 @setup_logging.connect
 def _configure_worker_logging(**_) -> None:
-    """Единый формат журнала воркера (json/text, файл) вместо собственной настройки Celery."""
+    """A single worker log format (json/text, file) instead of Celery's own configuration."""
     configure_logging("worker")
 
 
 @task_prerun.connect
 def _bind_task_context(task_id=None, task=None, args=None, **_) -> None:
-    """Каждая строка журнала внутри задачи несёт её имя и id; первый числовой аргумент — id партии (game_id)."""
+    """Every log line inside a task carries its name and id; the first numeric argument is the game id (game_id)."""
     game_id = args[0] if args and isinstance(args[0], int) else None
     _task_log_tokens[task_id] = start_log_context(task=getattr(task, "name", None), task_id=task_id, game_id=game_id)
     _task_logger.info("task_started")
@@ -48,7 +52,7 @@ def _bind_task_context(task_id=None, task=None, args=None, **_) -> None:
 
 @task_postrun.connect
 def _release_task_context(task_id=None, state=None, **_) -> None:
-    """Закрывает контекст задачи; итог (state) пишется строкой task_finished."""
+    """Closes the task context; the outcome (state) is written as a task_finished line."""
     _task_logger.info("task_finished", extra={"state": state})
     token = _task_log_tokens.pop(task_id, None)
     if token is not None:
@@ -57,19 +61,19 @@ def _release_task_context(task_id=None, state=None, **_) -> None:
 
 @task_failure.connect
 def _log_task_failure(task_id=None, exception=None, einfo=None, **_) -> None:
-    """Сбой задачи — со стеком: без него воркер писал бы только строку Celery без контекста."""
+    """A task failure - with a stack: without it the worker would write only a Celery line without context."""
     _task_logger.error("task_failed", exc_info=(type(exception), exception, getattr(einfo, "tb", None)) if exception else None)
 
 
 @worker_init.connect
 def _serve_worker_metrics(**_) -> None:
-    """Главный процесс воркера (до запуска дочерних): /metrics на WORKER_METRICS_PORT, если он задан."""
+    """The worker main process (before the children are started): /metrics on WORKER_METRICS_PORT, if it is set."""
     start_worker_metrics_server(settings.WORKER_METRICS_PORT)
 
 
 @worker_process_shutdown.connect
 def _forget_worker_process(pid: int | None = None, **_) -> None:
-    """Дочерний процесс завершается — его «живые» показатели больше не суммируются."""
+    """A child process ends - its "live" indicators are no longer summed."""
     if pid:
         forget_worker_process(pid)
 
@@ -89,19 +93,19 @@ celery_app.conf.update(
     result_serializer="json",
     timezone="UTC",
     enable_utc=True,
-    # Публикация из API-процесса не должна долго висеть на недоступном брокере
-    # (по умолчанию kombu ждёт подключения ~4 с и повторяет попытки).
+    # Publishing from the API process must not hang long on an unavailable broker
+    # (by default kombu waits for the connection for ~4 s and retries).
     broker_connection_timeout=settings.CELERY_BROKER_CONNECT_TIMEOUT_S,
     broker_transport_options={
         "socket_connect_timeout": settings.CELERY_BROKER_CONNECT_TIMEOUT_S,
         "socket_timeout": settings.CELERY_PUBLISH_TIMEOUT_S,
     },
     task_publish_retry=False,
-    # Воркер при старте по-прежнему ждёт брокер (это отдельная настройка).
+    # The worker at start still waits for the broker (that is a separate setting).
     broker_connection_retry_on_startup=True,
-    # Две очереди (таск A.4): разбор только что сыгранной партии игрока не ждёт, пока досчитаются партии ботов
-    # в турнире (в круговом на 8 участников — 28 партий, из них 21 боты играют между собой).
-    # В продакшене их слушают разные воркеры (docker-compose.prod.yml), в разработке — один
+    # Two queues (task A.4): the review of a just-played player game does not wait until the bot games are finished
+    # in a tournament (in an 8-participant round-robin - 28 games, 21 of them bots play among themselves).
+    # In production they are listened to by different workers (docker-compose.prod.yml), in development by one
     # (start_dev.ps1, -Q analysis,simulation).
     task_default_queue=ANALYSIS_QUEUE,
     task_routes={
@@ -114,22 +118,23 @@ celery_app.conf.update(
         "arena_awards": {"queue": ANALYSIS_QUEUE},
         "bot_selfplay": {"queue": SIMULATION_QUEUE},
     },
-    # Плановые задачи (процесс celery beat, сервис beat в docker-compose.prod.yml; список — DEPLOY.md, раздел 8в).
-    # Напоминание о разминке 22.2 — раз в день, в 16:00 UTC: вечер в Европе.
+    # Scheduled tasks (the celery beat process, the beat service in docker-compose.prod.yml; the list - DEPLOY.md, section 8c).
+    # The warm-up reminder 22.2 - once a day, at 16:00 UTC: evening in Europe.
     beat_schedule={
         "workout-reminders": {"task": "workout_reminders", "schedule": crontab(hour=16, minute=0)},
-        # Самоигра архетипов (таск 32.3): каждые 6 часов, в минуту 17 — не вместе с другими плановыми задачами.
+        # Archetype self-play (task 32.3): every 6 hours, at minute 17 - not together with other scheduled tasks.
         "bot-selfplay": {"task": "bot_selfplay", "schedule": crontab(hour="*/6", minute=17)},
-        # Напоминания о начале арен (таск 33.4): каждую минуту — уведомление уходит за пять минут до старта
+        # Arena start reminders (task 33.4): every minute - the notification goes out five minutes before the start
         # (arena.REMIND_BEFORE).
         "arena-reminders": {"task": "arena_reminders", "schedule": crontab()},
-        # Хранение телеметрии ходов (задача 9 плана 18.11): раз в сутки ночью по UTC, в минуту 41 — не вместе с другими.
+        # Move telemetry retention (task 9 of the 18.11 plan): once a day at night UTC, at minute 41 - not together with
+        # others.
         "archive-move-telemetry": {"task": "archive_move_telemetry", "schedule": crontab(hour=3, minute=41)},
-        # Награды арен (таск 33.5): каждые 5 минут — призёры получают места вскоре после окончательных итогов.
+        # Arena awards (task 33.5): every 5 minutes - winners get their places soon after the results are final.
         "arena-awards": {"task": "arena_awards", "schedule": crontab(minute="*/5")},
-        # Пересмотр старых флагов нечестной игры (таск 26.4): по понедельникам утром по UTC.
+        # Review of old unfair-play flags (task 26.4): on Monday mornings UTC.
         "review-cheater-flags": {"task": "review_cheater_flags", "schedule": crontab(day_of_week=1, hour=6, minute=7)},
     },
-    # Не брать впрок длинные партии симуляции: иначе один воркер набирает очередь и держит её.
+    # Do not prefetch long simulation games: otherwise one worker takes a queue and holds it.
     worker_prefetch_multiplier=1,
 )

@@ -1,8 +1,8 @@
 # --- FILE: tests/test_game_moves_server.py ---
 """
-Ходы партии на сервере (process_atomic_move — путь каждого хода по WebSocket): очередь игроков, особые ходы внутри
-партии (рокировка, взятие на проходе, превращение), запись PGN, версия позиции, повтор команды, запрещённые ходы,
-мат и пат завершают партию, после конца ходы не принимаются.
+Game moves on the server (process_atomic_move, the path of every WebSocket move): turn order, special moves within
+a game (castling, en passant, promotion), PGN recording, position version, command replay, illegal moves,
+checkmate and stalemate end the game, and no moves are accepted after the end.
 """
 
 import chess
@@ -113,7 +113,7 @@ async def test_illegal_moves_leave_the_state_untouched(game, bad):
 
 async def test_stale_version_is_rejected_with_the_current_position(game):
     await _move(game, WHITE, "e2e4", expected_version=0)
-    result = await _move(game, BLACK, "e7e5", expected_version=0)  # клиент не видел хода белых
+    result = await _move(game, BLACK, "e7e5", expected_version=0)  # the client has not seen White's move
     assert result["reason"] == "version_mismatch" and result["state_version"] == 1
     assert "4P3" in result["fen"]
     assert (await _move(game, BLACK, "e7e5", expected_version=1))["status"] == "success"

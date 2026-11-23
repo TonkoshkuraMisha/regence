@@ -1,5 +1,5 @@
 # --- FILE: tests/test_mate_course.py ---
-"""Курс матовых конструкций (таск 14.6): порядок, 10 задач по нарастанию сложности, задачи без рейтинга, проверка."""
+"""Mating-pattern course (task 14.6): order, 10 problems of rising difficulty, unrated problems, checking."""
 
 import random
 
@@ -20,7 +20,7 @@ def _row(puzzle_id: str, rating: int, tags: str = "mateIn2 backRankMate") -> dic
 
 @pytest.fixture
 async def back_rank(db_session):
-    # 19 задач одной конструкции: рейтинги 1000, 1100, …, 2800 — вперемешку.
+    # 19 problems of one pattern: ratings 1000, 1100, ..., 2800, in mixed order.
     rows = [_row(f"BR{i}", 1000 + 100 * i) for i in range(19)]
     random.Random(1).shuffle(rows)
     await import_rows(db_session, rows)

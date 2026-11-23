@@ -713,12 +713,10 @@
   }
  ],
  "intro": {
-  "ru": "Лондонская шахматная классика 2019 года. Индийское начало с фианкетто: белые выбирают спокойную систему 3.Nbd2 и 4.b3 со слоном на b2, чёрные отвечают 3...d5 и 4...Bg7.",
   "uk": "Лондонська шахова класика 2019 року. Індійський початок із фіанкетто: білі обирають спокійну систему 3.Nbd2 і 4.b3 зі слоном на b2, чорні відповідають 3...d5 і 4...Bg7.",
   "en": "The 2019 London Chess Classic. An Indian opening with fianchettoes: White chooses the quiet set-up 3.Nbd2 and 4.b3 with the bishop on b2, Black answers 3...d5 and 4...Bg7."
  },
  "summary": {
-  "ru": "В ладейном эндшпиле чёрный король идёт вперёд — 43...Kc6, 44...Kc5 и дальше к своей пешке «b». Шахи белой ладьи (51.Rc6+, 52.Rd6+, 53.Rc6+) не помогают: 53...Rc2 закрывает короля, и пешка b2 становится ферзём. Урок: активный король, сопровождающий проходную, сильнее ладейных шахов.",
   "uk": "У туровому ендшпілі чорний король іде вперед — 43...Kc6, 44...Kc5 і далі до свого пішака «b». Шахи білої тури (51.Rc6+, 52.Rd6+, 53.Rc6+) не допомагають: 53...Rc2 закриває короля, і пішак b2 стає ферзем. Урок: активний король, що супроводжує прохідного, сильніший за турові шахи.",
   "en": "In the rook endgame the black king marches forward — 43...Kc6, 44...Kc5 and on towards its b-pawn. The white rook's checks (51.Rc6+, 52.Rd6+, 53.Rc6+) do not help: 53...Rc2 shields the king, and the b2 pawn queens. Lesson: an active king escorting a passed pawn is stronger than rook checks."
  }

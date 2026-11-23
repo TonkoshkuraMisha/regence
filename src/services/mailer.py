@@ -1,14 +1,16 @@
 # --- FILE: src/services/mailer.py ---
 """
-Отправка писем (таск 17.5) по стандартному SMTP: подходит любой провайдер транзакционной почты (Brevo, Amazon SES,
-Postmark, Mailgun…) или свой сервер — меняются только переменные SMTP_* в .env. Без SMTP_HOST письмо не уходит,
-а пишется в лог вместе со ссылкой: так работает разработка и тесты.
+Sending e-mails (task 17.5) via standard SMTP: any transactional mail provider (Brevo, Amazon SES,
+Postmark, Mailgun...) or your own server fits -- only the SMTP_* variables in .env change. Without SMTP_HOST the e-mail is
+not sent
+but written to the log together with the link: this is how development and tests work.
 
-Тексты писем — здесь, на трёх языках интерфейса: письмо читают вне клиента, каталоги фронтенда ему недоступны.
-Это осознанное исключение из правила «ни одной строки для игрока на сервере».
+The e-mail texts are here, in the three interface languages: an e-mail is read outside the client, the frontend catalogues
+are unavailable to it.
+This is a deliberate exception to the rule "not a single player-facing string on the server".
 
-Кто вызывает: src/services/email_links.py — подтверждение адреса и сброс пароля; он же выпускает одноразовую ссылку
-и передаёт её в шаблон. Настройки (src/core/config.py): SMTP_HOST, SMTP_PORT, SMTP_STARTTLS, SMTP_USER,
+Who calls it: src/services/email_links.py -- address confirmation and password reset; it also issues the one-time link
+and passes it to the template. Settings (src/core/config.py): SMTP_HOST, SMTP_PORT, SMTP_STARTTLS, SMTP_USER,
 SMTP_PASSWORD, MAIL_FROM.
 """
 
@@ -24,12 +26,13 @@ from src.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-Language = Literal["en", "uk", "ru"]
-LANGUAGES: tuple[Language, ...] = ("en", "uk", "ru")
+Language = Literal["en", "uk"]
+LANGUAGES: tuple[Language, ...] = ("en", "uk")
 Kind = Literal["verify", "reset"]
 
-# Вид письма → язык → (тема, текст). Параметры шаблона: {username} — имя игрока, {link} — одноразовая ссылка,
-# {hours} — срок её действия в часах (из EMAIL_VERIFY_TTL_S и PASSWORD_RESET_TTL_S, считает email_links.py).
+# E-mail kind -> language -> (subject, body). Template parameters: {username} -- the player's name, {link} -- the one-time
+# link,
+# {hours} -- its validity period in hours (from EMAIL_VERIFY_TTL_S and PASSWORD_RESET_TTL_S, computed by email_links.py).
 TEMPLATES: dict[Kind, dict[Language, tuple[str, str]]] = {
     "verify": {
         "en": ("Confirm your e-mail for regence",
@@ -38,9 +41,6 @@ TEMPLATES: dict[Kind, dict[Language, tuple[str, str]]] = {
         "uk": ("Підтвердіть e-mail для regence",
                "Вітаємо, {username}!\n\nЩоб підтвердити цю адресу для акаунта regence, відкрийте посилання:\n{link}\n\n"
                "Посилання діє {hours} год. Якщо ви цього не просили, просто проігноруйте лист."),
-        "ru": ("Подтвердите e-mail для regence",
-               "Здравствуйте, {username}!\n\nЧтобы подтвердить этот адрес для аккаунта regence, откройте ссылку:\n{link}\n\n"
-               "Ссылка действует {hours} ч. Если вы этого не просили, просто проигнорируйте письмо."),
     },
     "reset": {
         "en": ("Reset your regence password",
@@ -51,23 +51,19 @@ TEMPLATES: dict[Kind, dict[Language, tuple[str, str]]] = {
                "Вітаємо, {username}!\n\nЩоб задати новий пароль, відкрийте посилання:\n{link}\n\n"
                "Посилання діє {hours} год і лише один раз. Якщо ви не просили скинути пароль, проігноруйте лист: "
                "пароль не зміниться."),
-        "ru": ("Сброс пароля regence",
-               "Здравствуйте, {username}!\n\nЧтобы задать новый пароль, откройте ссылку:\n{link}\n\n"
-               "Ссылка действует {hours} ч и только один раз. Если вы не просили сбросить пароль, проигнорируйте "
-               "письмо: пароль не изменится."),
     },
 }
 
 
 def render(kind: Kind, language: str, **params: str | int) -> tuple[str, str]:
-    """Тема и текст письма на языке игрока; язык не из LANGUAGES — английский."""
+    """The e-mail subject and body in the player's language; a language not in LANGUAGES -- English."""
     lang: Language = next((code for code in LANGUAGES if code == language), "en")
     subject, body = TEMPLATES[kind][lang]
     return subject, body.format(**params)
 
 
 def _send_smtp(message: EmailMessage) -> None:
-    """Блокирующая отправка (ждём сервер не дольше 20 с): вызывается из ``send`` в отдельном потоке."""
+    """Blocking send (we wait for the server no more than 20 s): called from ``send`` in a separate thread."""
     with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=20) as smtp:
         if settings.SMTP_STARTTLS:
             smtp.starttls()
@@ -77,7 +73,7 @@ def _send_smtp(message: EmailMessage) -> None:
 
 
 async def send(to: str, subject: str, body: str) -> None:
-    """Письмо по SMTP; без SMTP_HOST — в лог. Ошибку отправки пишем в лог и не показываем запросившему."""
+    """An e-mail via SMTP; without SMTP_HOST -- to the log. A send error is logged and not shown to the requester."""
     if not settings.SMTP_HOST:
         logger.info("mail (SMTP_HOST is empty, not sent) to=%s subject=%s\n%s", to, subject, body)
         return

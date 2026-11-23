@@ -1,22 +1,30 @@
 # --- FILE: src/services/guess.py ---
 """
-«Угадай ход мастера» (таск 14.3): выдача отобранных позиций и оценка ответа.
+"Guess the master's move" (task 14.3): serving selected positions and scoring the answer.
 
-Баллы: ход мастера — 100; другой ход не хуже лучшего на NEAR_CP — 80; хуже — по потере: 80 − (потеря − NEAR_CP) / 5,
-не меньше нуля. Оценка — по сохранённым строкам движка (до трёх лучших ходов), без запуска движка: ход вне этих строк
-не лучше второй строки (отбор гарантирует её отставание), поэтому его потеря — отрыв лучшего хода плюс запас.
+Points: the master's move -- 100; another move no worse than the best by NEAR_CP -- 80; worse -- by loss: 80 - (loss -
+NEAR_CP) / 5,
+no less than zero. Scoring uses the saved engine lines (up to three best moves), without running the engine: a move outside
+these lines is
+no better than the second line (selection guarantees its lag), so its loss is the gap of the best move plus a margin.
 
-Режим «выбор из кандидатов» (для начинающих): игрок выбирает ход из CANDIDATES вариантов — ход мастера и другие ходы
-из сохранённых строк движка. По правилу отбора каждый из них заметно хуже хода мастера (отрыв gap_cp), так что
-задание остаётся решаемым расчётом; порядок вариантов перемешан, но у одной позиции всегда один и тот же.
+The "choice from candidates" mode (for beginners): the player picks a move from CANDIDATES options -- the master's move and
+other moves
+from the saved engine lines. By the selection rule each of them is noticeably worse than the master's move (the gap gap_cp),
+so the
+task stays solvable by calculation; the order of options is shuffled but is always the same for one position.
 
-Сложность позиции — её рейтинг: ответ вошедшего игрока меняет его, как партия задачи с решающим (Эло против рейтинга
-задач игрока): нашёл ход мастера — позиция «проиграла», нет — «выиграла». Рейтинг игрока при этом не меняется.
+A position's difficulty is its rating: a signed-in player's answer changes it, like a puzzle game against a solver (Elo
+against the
+player's puzzle rating): found the master's move -- the position "lost", not -- "won". The player's rating does not change.
 
-Откуда данные: позиции — таблица guess_positions (ход мастера, строки движка lines, отрыв gap_cp, темы, серия,
-счётчики plays и solved); её заполняет офлайн scripts/build_guess_positions.py по партиям архива (таблица games) по
-правилам src/services/guess_selection.py. Сервер движок для этого раздела не запускает. Объяснение к ходу мастера —
-src/services/coach.py. Легальность хода игрока проверяет маршрут (src/api/guess.py).
+Where the data comes from: positions -- the guess_positions table (the master's move, the engine lines, the gap gap_cp,
+themes, series,
+the plays and solved counters); it is filled offline by scripts/build_guess_positions.py from the archive games (the games
+table) by the
+rules of src/services/guess_selection.py. The server does not run the engine for this section. The explanation of the
+master's move is
+src/services/coach.py. The legality of the player's move is checked by the route (src/api/guess.py).
 """
 
 import io
@@ -34,25 +42,25 @@ from src.services.coach import advice_for_position, hint_for_position
 from src.services.guess_quiz import build_quiz, plies_and_mate
 from src.services.guess_selection import book_plies, in_opening, is_technical_endgame, position_themes
 
-# Баллы за ход мастера и за другой ход, который хуже лучшего не больше чем на NEAR_CP сантипешек.
+# Points for the master's move and for another move that is worse than the best by no more than NEAR_CP centipawns.
 MASTER_SCORE = 100
 NEAR_SCORE = 80
 NEAR_CP = 30
-# Запас к потере хода, которого нет в сохранённых строках движка: потеря = отрыв лучшего хода + этот запас.
+# A margin on the loss of a move that is not in the saved engine lines: loss = the best move's gap + this margin.
 UNKNOWN_EXTRA_CP = 50
-# Попытки с подсказками: на позицию даётся MAX_ATTEMPTS попыток (ошибочный ход до последней — «попробуй ещё», без
-# итога); за каждую использованную подсказку и каждую попытку сверх первой из баллов вычитается свой штраф.
+# Attempts with hints: MAX_ATTEMPTS attempts are given per position (a wrong move before the last one -- "try again", without
+# a result); for each hint used and each attempt beyond the first a separate penalty is subtracted from the points.
 MAX_ATTEMPTS = 3
 HINT_PENALTY = 10
 ATTEMPT_PENALTY = 10
-# Сколько последних полуходов партии показывается перед позицией.
+# How many last plies of the game are shown before the position.
 CONTEXT_MOVES = 8
-# Сколько вариантов показывает режим «выбор из кандидатов»: ход мастера и до двух ходов из строк движка.
+# How many options the "choice from candidates" mode shows: the master's move and up to two moves from the engine lines.
 CANDIDATES = 3
-# Позиция подбирается в пределах ±DIFFICULTY_BAND от запрошенной сложности.
+# A position is picked within +-DIFFICULTY_BAND of the requested difficulty.
 DIFFICULTY_BAND = 300
-# Рейтинг позиции: первые PROVISIONAL_PLAYS ответов он меняется с коэффициентом K_PROVISIONAL, дальше — K_STABLE;
-# из границ MIN_DIFFICULTY…MAX_DIFFICULTY не выходит.
+# The position rating: for the first PROVISIONAL_PLAYS answers it changes with the coefficient K_PROVISIONAL, then K_STABLE;
+# it does not leave the bounds MIN_DIFFICULTY...MAX_DIFFICULTY.
 PROVISIONAL_PLAYS = 20
 K_PROVISIONAL, K_STABLE = 32, 12
 MIN_DIFFICULTY, MAX_DIFFICULTY = 600, 3000
@@ -60,8 +68,9 @@ MIN_DIFFICULTY, MAX_DIFFICULTY = 600, 3000
 
 def score_answer(position: GuessPosition, move_uci: str) -> tuple[int, int]:
     """
-    (баллы, потеря в сп) за ответ игрока. Потеря хода из сохранённых строк движка — разница с лучшей оценкой; хода
-    вне строк — gap_cp + UNKNOWN_EXTRA_CP. Баллы за потерю больше NEAR_CP: минус балл за каждые 5 сантипешек.
+    (points, loss in cp) for a player's answer. The loss of a move from the saved engine lines is the difference from the
+    best evaluation; of a move
+    outside the lines -- gap_cp + UNKNOWN_EXTRA_CP. Points for a loss above NEAR_CP: minus a point for every 5 centipawns.
     """
     if move_uci == position.move_uci:
         return MASTER_SCORE, 0
@@ -74,12 +83,12 @@ def score_answer(position: GuessPosition, move_uci: str) -> tuple[int, int]:
 
 
 def hint(position: GuessPosition, step: int) -> dict:
-    """Подсказка к позиции по ступеням наставника (намёк, фигура, полный совет со стрелкой хода мастера)."""
+    """A hint for the position by the mentor's levels (a nudge, a piece, full advice with an arrow of the master's move)."""
     return hint_for_position(chess.Board(position.fen), position.move_uci, step)
 
 
 def _game_context(game: Game, ply: int) -> dict:
-    """Игроки, событие и ходы партии перед позицией (для подписи и ленты ходов)."""
+    """The players, the event and the game's moves before the position (for the caption and the move strip)."""
     parsed = chess.pgn.read_game(io.StringIO(game.pgn or ""))
     if parsed is None:
         return {"white": "?", "black": "?", "event": None, "date": None, "previous": [], "last_move": None}
@@ -104,8 +113,9 @@ def _game_context(game: Game, ply: int) -> dict:
 
 def candidate_moves(position: GuessPosition) -> list[dict]:
     """
-    Варианты режима «выбор из кандидатов»: ход мастера и ходы из строк движка (без повторов), не больше CANDIDATES,
-    в перемешанном порядке — одном и том же для позиции (зерно — её id). Ход — UCI и запись SAN.
+    Options of the "choice from candidates" mode: the master's move and moves from the engine lines (without repeats), no
+    more than CANDIDATES,
+    in a shuffled order that is always the same for a position (the seed is its id). A move is UCI plus the SAN notation.
     """
     moves = [position.move_uci] + [uci for uci, _cp in position.lines if uci != position.move_uci]
     chosen = list(dict.fromkeys(moves))[:CANDIDATES]
@@ -116,8 +126,9 @@ def candidate_moves(position: GuessPosition) -> list[dict]:
 
 async def payload(db: AsyncSession, position: GuessPosition, with_candidates: bool = False) -> dict:
     """
-    Позиция «Угадай ход мастера» для клиента: доска, чей ход, сложность, место в серии и сведения о партии. Ход
-    мастера не отдаётся; with_candidates — добавить варианты на выбор (candidate_moves), только по просьбе клиента.
+    A "Guess the master's move" position for the client: board, whose move, difficulty, place in the series and game details.
+    The master's
+    move is not given; with_candidates -- add options to choose from (candidate_moves), only at the client's request.
     """
     game = await db.get(Game, position.game_id)
     series_length = 0
@@ -136,7 +147,7 @@ async def payload(db: AsyncSession, position: GuessPosition, with_candidates: bo
 
 
 async def pick_position(db: AsyncSession, target: int, series: bool) -> GuessPosition | None:
-    """Случайная позиция (или начало серии) около сложности target; если рядом нет — любая."""
+    """A random position (or a series start) near the difficulty target; if none is near -- any."""
     query = select(GuessPosition)
     if series:
         query = query.where(GuessPosition.series_id.is_not(None), GuessPosition.series_index == 0)
@@ -149,7 +160,7 @@ async def pick_position(db: AsyncSession, target: int, series: bool) -> GuessPos
 
 
 async def series_next(db: AsyncSession, position: GuessPosition) -> GuessPosition | None:
-    """Следующая позиция той же серии (серия — несколько ходов мастера подряд в одной партии) или None."""
+    """The next position of the same series (a series is several master moves in a row in one game) or None."""
     if position.series_id is None:
         return None
     return (await db.execute(select(GuessPosition).where(
@@ -158,14 +169,14 @@ async def series_next(db: AsyncSession, position: GuessPosition) -> GuessPositio
 
 
 async def game_positions(db: AsyncSession, game_id: int) -> list[GuessPosition]:
-    """Все отобранные позиции партии по порядку ходов."""
+    """All selected positions of a game in move order."""
     return list((await db.execute(
         select(GuessPosition).where(GuessPosition.game_id == game_id).order_by(GuessPosition.ply)
     )).scalars())
 
 
 async def game_quiz(db: AsyncSession, game_id: int) -> tuple[list[dict], dict[str, str]] | None:
-    """Вопросы после партии и верные ответы (guess_quiz.build_quiz) или None, если у партии нет отобранных моментов."""
+    """Questions after the game and the correct answers (guess_quiz.build_quiz) or None if the game has no selected moments."""
     positions = await game_positions(db, game_id)
     game = await db.get(Game, game_id)
     if game is None or not positions:
@@ -176,17 +187,18 @@ async def game_quiz(db: AsyncSession, game_id: int) -> tuple[list[dict], dict[st
 
 def rating_after(position_rating: int, solver_rating: int, plays: int, solved: bool) -> int:
     """
-    Новый рейтинг позиции после ответа игрока с рейтингом solver_rating (Эло, позиция — «соперник»). plays — сколько
-    раз позицию уже решали (от этого зависит коэффициент), solved — найден ли ход мастера.
+    The new position rating after a player's answer with the rating solver_rating (Elo, the position is the "opponent").
+    plays -- how many
+    times the position has already been solved (the coefficient depends on it), solved -- whether the master's move was found.
     """
     k = K_PROVISIONAL if plays < PROVISIONAL_PLAYS else K_STABLE
-    expected = 1 / (1 + 10 ** ((solver_rating - position_rating) / 400))  # ожидание «победы» позиции
+    expected = 1 / (1 + 10 ** ((solver_rating - position_rating) / 400))  # the expected "win" of the position
     value = position_rating + round(k * ((0 if solved else 1) - expected))
     return max(MIN_DIFFICULTY, min(MAX_DIFFICULTY, value))
 
 
 async def first_positions(db: AsyncSession, game_ids: list[int]) -> dict[int, int]:
-    """Партия → первая отобранная позиция (по полуходу): кнопки «Угадай ход» в списке партий мастера."""
+    """A game -> the first selected position (by ply): the "Guess the move" buttons in the master games list."""
     if not game_ids:
         return {}
     rows = await db.execute(
@@ -204,14 +216,17 @@ async def answer(
         attempt: int | None = None, hints: int = 0,
 ) -> dict:
     """
-    Баллы, ход мастера, строки движка, темы и объяснение наставника к ходу мастера. Заодно обновляет счётчики
-    позиции (plays, solved) и, если отвечает вошедший игрок, её рейтинг — по его рейтингу задач (с commit). Ответ
-    гостя рейтинг позиции не меняет.
+    Points, the master's move, engine lines, themes and the mentor's explanation of the master's move. It also updates the
+    position's
+    counters (plays, solved) and, if a signed-in player answers, its rating -- by their puzzle rating (with commit). A guest's
+    answer does not change the position rating.
 
-    attempt — номер попытки (1…MAX_ATTEMPTS) в режиме «три попытки»; без него ответ всегда итоговый. Ход хуже
-    «почти равноценного» до последней попытки не разбирается: ответ {retry, attempts_left, loss_cp}, счётчики не
-    меняются. Итоговые баллы уменьшаются на штрафы за подсказки (hints) и лишние попытки; позиция считается решённой
-    (для её рейтинга), только если ход мастера найден с первой попытки и без подсказок.
+    attempt -- the attempt number (1...MAX_ATTEMPTS) in the "three attempts" mode; without it the answer is always final. A
+    move worse than
+    "almost equivalent" is not analysed until the last attempt: the answer is {retry, attempts_left, loss_cp}, the counters
+    do not
+    change. The final points are reduced by the penalties for hints (hints) and extra attempts; the position counts as solved
+    (for its rating) only if the master's move is found on the first attempt and without hints.
     """
     board = chess.Board(position.fen)
     score, loss = score_answer(position, move_uci)
@@ -237,7 +252,7 @@ async def answer(
 
 
 def _boards(pgn: str) -> tuple[list[chess.Board], int]:
-    """Позиции партии со стеком ходов (индекс — полуход) и длина книжного дебюта."""
+    """Game positions with a move stack (the index is the ply) and the length of the book opening."""
     parsed = chess.pgn.read_game(io.StringIO(pgn))
     if parsed is None:
         return [], 0
@@ -251,7 +266,7 @@ def _boards(pgn: str) -> tuple[list[chess.Board], int]:
 
 
 def _renumber_series(positions: list[GuessPosition]) -> None:
-    """После удаления части позиций: серии короче двух ходов распускаются, номера внутри серии — подряд."""
+    """After removing some positions: series shorter than two moves are dissolved, numbers inside a series are consecutive."""
     groups: dict[int, list[GuessPosition]] = {}
     for position in positions:
         if position.series_id is not None:
@@ -265,8 +280,8 @@ def _renumber_series(positions: list[GuessPosition]) -> None:
 
 async def refilter(db: AsyncSession) -> tuple[int, int]:
     """
-    Отобранные по прежним правилам позиции → нынешние: убрать книжный дебют (таблица 16.1) и технический эндшпиль,
-    проставить темы там, где их нет (по ходу мастера, без движка). Возвращает (удалено, получили темы).
+    Positions selected by the old rules -> current ones: remove the book opening (table 16.1) and the technical endgame,
+    assign themes where there are none (by the master's move, without an engine). Returns (removed, got themes).
     """
     removed = tagged = 0
     game_ids = (await db.execute(select(GuessPosition.game_id).distinct())).scalars().all()

@@ -1,5 +1,5 @@
-// Вход и регистрация: формат запросов, сохранение токена, тексты ошибок (неверный пароль,
-// лимит попыток, ошибки валидации имени) и переключение режимов.
+// Login and registration: the request format, saving the token, error texts (a wrong password,
+// the attempt limit, name validation errors) and switching modes.
 
 import {fireEvent, render, screen} from '@testing-library/react';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
@@ -17,9 +17,9 @@ function stubFetch(reply: Response) {
 }
 
 function fillAndSubmit(username: string, password: string, submitLabel: RegExp) {
-    fireEvent.change(screen.getByPlaceholderText('например, string1'), {target: {value: username}});
+    fireEvent.change(screen.getByPlaceholderText('e.g. string1'), {target: {value: username}});
     fireEvent.change(screen.getByPlaceholderText('••••••••'), {target: {value: password}});
-    // Согласие с правилами и конфиденциальностью (таск 23.1) есть только в режиме регистрации.
+    // Consent to the rules and privacy (task 23.1) exists only in the registration mode.
     const terms = screen.queryByTestId('auth-terms');
     if (terms) fireEvent.click(terms);
     fireEvent.click(screen.getByRole('button', {name: submitLabel}));
@@ -29,16 +29,16 @@ beforeEach(() => {
     localStorage.clear();
 });
 
-describe('AuthModal: согласие с условиями (таск 23.1)', () => {
-    it('в регистрации есть обязательный флажок со ссылками на правила и конфиденциальность; во входе его нет', () => {
+describe('AuthModal: consent to the terms (task 23.1)', () => {
+    it('registration has a required checkbox with links to the rules and privacy; login does not', () => {
         render(<AuthModal onSuccess={vi.fn()}/>);
         expect(screen.queryByTestId('auth-terms')).toBeNull();
-        fireEvent.click(screen.getByRole('button', {name: 'Нет аккаунта? Зарегистрируйтесь'}));
+        fireEvent.click(screen.getByRole('button', {name: 'No account? Sign up'}));
         const terms = screen.getByTestId('auth-terms');
         expect(terms).toBeRequired();
         expect(terms).not.toBeChecked();
-        expect(screen.getByRole('link', {name: 'правила сообщества'})).toHaveAttribute('href', '/rules');
-        expect(screen.getByRole('link', {name: 'сводку о конфиденциальности'})).toHaveAttribute('href', '/privacy');
+        expect(screen.getByRole('link', {name: 'community rules'})).toHaveAttribute('href', '/rules');
+        expect(screen.getByRole('link', {name: 'privacy summary'})).toHaveAttribute('href', '/privacy');
     });
 });
 
@@ -46,13 +46,13 @@ afterEach(() => {
     vi.unstubAllGlobals();
 });
 
-describe('AuthModal: вход', () => {
-    it('отправляет форму OAuth2 и сохраняет токен', async () => {
+describe('AuthModal: login', () => {
+    it('sends the OAuth2 form and saves the token', async () => {
         const fetchMock = stubFetch(response(200, {access_token: 'jwt-123'}));
         const onSuccess = vi.fn();
         render(<AuthModal onSuccess={onSuccess}/>);
 
-        fillAndSubmit('alice', 'secret-pass', /Войти/);
+        fillAndSubmit('alice', 'secret-pass', /Log in/);
 
         await vi.waitFor(() => expect(onSuccess).toHaveBeenCalledWith('jwt-123'));
         expect(getToken()).toBe('jwt-123');
@@ -63,43 +63,43 @@ describe('AuthModal: вход', () => {
         expect(String(init.body)).toBe('username=alice&password=secret-pass');
     });
 
-    it('неверный пароль — понятная ошибка, токен не сохраняется', async () => {
+    it('a wrong password — a clear error, the token is not saved', async () => {
         stubFetch(response(401, {detail: {code: 'login_failed', params: {}, message: 'Incorrect username or password'}}));
         const onSuccess = vi.fn();
         render(<AuthModal onSuccess={onSuccess}/>);
 
-        fillAndSubmit('alice', 'wrong', /Войти/);
+        fillAndSubmit('alice', 'wrong', /Log in/);
 
-        expect(await screen.findByText('Неверное имя пользователя или пароль')).toBeInTheDocument();
+        expect(await screen.findByText('Wrong username or password')).toBeInTheDocument();
         expect(onSuccess).not.toHaveBeenCalled();
         expect(getToken()).toBeNull();
-        expect(screen.getByRole('button', {name: /Войти/})).not.toBeDisabled();
+        expect(screen.getByRole('button', {name: /Log in/})).not.toBeDisabled();
     });
 
-    it('лимит попыток — сколько ждать, а не «неверный пароль»', async () => {
+    it('the attempt limit — how long to wait, not "wrong password"', async () => {
         stubFetch(response(429, {detail: {code: 'too_many_login_attempts', params: {retry_after: 60}, message: '…'}}));
         render(<AuthModal onSuccess={vi.fn()}/>);
 
-        fillAndSubmit('alice', 'secret-pass', /Войти/);
+        fillAndSubmit('alice', 'secret-pass', /Log in/);
 
-        expect(await screen.findByText('Слишком много попыток входа — попробуйте через 60 с')).toBeInTheDocument();
+        expect(await screen.findByText('Too many login attempts — please try again in 60 s')).toBeInTheDocument();
     });
 
-    it('сбой сети показывается пользователю', async () => {
+    it('a network failure is shown to the user', async () => {
         vi.stubGlobal('fetch', vi.fn(async () => {
             throw new Error('Failed to fetch');
         }));
         render(<AuthModal onSuccess={vi.fn()}/>);
 
-        fillAndSubmit('alice', 'secret-pass', /Войти/);
+        fillAndSubmit('alice', 'secret-pass', /Log in/);
 
-        // Текст исключения браузера («Failed to fetch») не показываем — он не на языке игрока.
-        expect(await screen.findByText('Нет связи с сервером, попробуйте ещё раз')).toBeInTheDocument();
+        // The browser exception text ("Failed to fetch") is not shown — it is not in the player's language.
+        expect(await screen.findByText('No connection to the server, please try again')).toBeInTheDocument();
     });
 });
 
-describe('AuthModal: перенос гостевых соперников', () => {
-    it('причина отказа приходит кодом и показывается на языке игрока', async () => {
+describe('AuthModal: transferring guest opponents', () => {
+    it('the refusal reason comes as a code and is shown in the player\'s language', async () => {
         localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify([
             {id: 'local-1', name: 'Overflow', config: DEFAULT_CONFIG, created_at: '', updated_at: ''},
         ]));
@@ -111,18 +111,18 @@ describe('AuthModal: перенос гостевых соперников', () =
             : response(200, {created: [], skipped: [{name: 'Overflow', reason: 'personality_limit', params: {max: 20}}]}))));
         render(<AuthModal onSuccess={vi.fn()}/>);
 
-        fillAndSubmit('alice', 'secret-pass', /Войти/);
+        fillAndSubmit('alice', 'secret-pass', /Log in/);
 
         await vi.waitFor(() => expect(alertMock).toHaveBeenCalledWith(
-            'Не перенесены: Overflow — Не больше 20 соперников в мастерской — удалите лишних',
+            'Not transferred: Overflow — No more than 20 opponents in the workshop — delete some',
         ));
     });
 });
 
-describe('AuthModal: регистрация', () => {
+describe('AuthModal: registration', () => {
     function switchToRegistration() {
-        fireEvent.click(screen.getByRole('button', {name: 'Нет аккаунта? Зарегистрируйтесь'}));
-        expect(screen.getByText('Регистрация аккаунта')).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', {name: 'No account? Sign up'}));
+        expect(screen.getByText('Create an account')).toBeInTheDocument();
     }
 
     function stubAuth(login: Response, created: Record<string, unknown> = {id: 1, username: 'alice', blitz_rating: 1200}) {
@@ -132,20 +132,20 @@ describe('AuthModal: регистрация', () => {
         return fetchMock;
     }
 
-    it('после регистрации сразу входит и предлагает первую партию (таск 17.8)', async () => {
+    it('after registration it logs in at once and offers the first game (task 17.8)', async () => {
         const fetchMock = stubAuth(response(200, {access_token: 'jwt-new'}), {id: 1, username: 'alice', blitz_rating: 600});
         const onSuccess = vi.fn();
         const onFirstGame = vi.fn();
         render(<AuthModal onSuccess={onSuccess} onFirstGame={onFirstGame}/>);
         switchToRegistration();
-        fireEvent.change(screen.getByLabelText('Как давно вы играете? (необязательно)'), {target: {value: 'new'}});
-        // «Только начинаю» — сила не спрашивается.
-        expect(screen.queryByLabelText('Примерная сила? (необязательно)')).toBeNull();
+        fireEvent.change(screen.getByLabelText('How long have you been playing? (optional)'), {target: {value: 'new'}});
+        // "Just starting" — the strength is not asked.
+        expect(screen.queryByLabelText('Roughly how strong are you? (optional)')).toBeNull();
 
-        fillAndSubmit('alice', 'secret-pass', /Зарегистрироваться/);
+        fillAndSubmit('alice', 'secret-pass', /Sign up/);
 
-        expect(await screen.findByText('Добро пожаловать, alice!')).toBeInTheDocument();
-        expect(screen.getByTestId('auth-welcome')).toHaveTextContent('Ваш стартовый рейтинг — 600. Первые 30 партий он временный');
+        expect(await screen.findByText('Welcome, alice!')).toBeInTheDocument();
+        expect(screen.getByTestId('auth-welcome')).toHaveTextContent('Your starting rating is 600. It is provisional for the first 30 games');
         expect(getToken()).toBe('jwt-new');
         const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
         expect(url).toMatch(/\/api\/v1\/auth\/register$/);
@@ -156,61 +156,61 @@ describe('AuthModal: регистрация', () => {
         expect(onFirstGame).toHaveBeenCalledWith(600);
     });
 
-    it('новичку («только начинаю») — сначала азбука (17.8 → 14.5)', async () => {
+    it('for a beginner ("just starting") — the basics first (17.8 → 14.5)', async () => {
         stubAuth(response(200, {access_token: 'jwt-new'}), {id: 1, username: 'alice', blitz_rating: 600});
         const onSuccess = vi.fn();
         const onBasics = vi.fn();
         render(<AuthModal onSuccess={onSuccess} onFirstGame={vi.fn()} onBasics={onBasics}/>);
         switchToRegistration();
-        fireEvent.change(screen.getByLabelText('Как давно вы играете? (необязательно)'), {target: {value: 'new'}});
-        fillAndSubmit('alice', 'secret-pass', /Зарегистрироваться/);
+        fireEvent.change(screen.getByLabelText('How long have you been playing? (optional)'), {target: {value: 'new'}});
+        fillAndSubmit('alice', 'secret-pass', /Sign up/);
         fireEvent.click(await screen.findByTestId('auth-start-basics'));
         expect(onSuccess).toHaveBeenCalledWith('jwt-new');
         expect(onBasics).toHaveBeenCalled();
-        expect(screen.getByTestId('auth-first-game')).toBeInTheDocument();  // партия — по желанию
+        expect(screen.getByTestId('auth-first-game')).toBeInTheDocument();  // a game — optional
     });
 
-    it('опытному игроку кнопки азбуки нет', async () => {
+    it('an experienced player has no basics button', async () => {
         stubAuth(response(200, {access_token: 'jwt-new'}));
         render(<AuthModal onSuccess={vi.fn()} onFirstGame={vi.fn()} onBasics={vi.fn()}/>);
         switchToRegistration();
-        fireEvent.change(screen.getByLabelText('Как давно вы играете? (необязательно)'), {target: {value: 'regular'}});
-        fillAndSubmit('alice', 'secret-pass', /Зарегистрироваться/);
+        fireEvent.change(screen.getByLabelText('How long have you been playing? (optional)'), {target: {value: 'regular'}});
+        fillAndSubmit('alice', 'secret-pass', /Sign up/);
         expect(await screen.findByTestId('auth-welcome')).toBeInTheDocument();
         expect(screen.queryByTestId('auth-start-basics')).toBeNull();
     });
 
-    it('без ответов на вопросы — регистрация как раньше; «Позже» просто входит', async () => {
+    it('without answers to the questions — registration as before; "Later" just logs in', async () => {
         const fetchMock = stubAuth(response(200, {access_token: 'jwt-new'}));
         const onSuccess = vi.fn();
         const onFirstGame = vi.fn();
         render(<AuthModal onSuccess={onSuccess} onFirstGame={onFirstGame}/>);
         switchToRegistration();
 
-        fillAndSubmit('alice', 'secret-pass', /Зарегистрироваться/);
+        fillAndSubmit('alice', 'secret-pass', /Sign up/);
 
         await screen.findByTestId('auth-welcome');
         const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
         expect(JSON.parse(String(init.body))).toEqual({username: 'alice', password: 'secret-pass', accept_terms: true});
-        fireEvent.click(screen.getByRole('button', {name: 'Позже'}));
+        fireEvent.click(screen.getByRole('button', {name: 'Later'}));
         expect(onSuccess).toHaveBeenCalledWith('jwt-new');
         expect(onFirstGame).not.toHaveBeenCalled();
     });
 
-    it('если автоматический вход не удался — предлагает войти вручную', async () => {
+    it('if the automatic login failed — it offers to log in manually', async () => {
         stubAuth(response(500));
         const onSuccess = vi.fn();
         render(<AuthModal onSuccess={onSuccess}/>);
         switchToRegistration();
 
-        fillAndSubmit('alice', 'secret-pass', /Зарегистрироваться/);
+        fillAndSubmit('alice', 'secret-pass', /Sign up/);
 
-        expect(await screen.findByText('Регистрация успешна! Теперь войдите в систему.')).toBeInTheDocument();
-        expect(screen.getByText('Вход в regence')).toBeInTheDocument();
+        expect(await screen.findByText('You are registered! Now log in.')).toBeInTheDocument();
+        expect(screen.getByText('Log in to regence')).toBeInTheDocument();
         expect(onSuccess).not.toHaveBeenCalled();
     });
 
-    it('ошибки проверки полей показываются по типу проверки, с названием поля', async () => {
+    it('field validation errors are shown by the check type, with the field name', async () => {
         stubFetch(response(422, {
             detail: [
                 {loc: ['body', 'username'], msg: 'String should have at least 3 characters', type: 'string_too_short', params: {min_length: 3}},
@@ -220,66 +220,66 @@ describe('AuthModal: регистрация', () => {
         render(<AuthModal onSuccess={vi.fn()}/>);
         switchToRegistration();
 
-        fillAndSubmit('me', '123', /Зарегистрироваться/);
+        fillAndSubmit('me', '123', /Sign up/);
 
-        // Показывается первая ошибка — на языке игрока и с названием поля.
-        expect(await screen.findByText('Имя пользователя: не короче 3 символов')).toBeInTheDocument();
+        // The first error is shown — in the player's language and with the field name.
+        expect(await screen.findByText('Username: at least 3 characters')).toBeInTheDocument();
     });
 
-    it('переключение режима сбрасывает ошибку', async () => {
-        stubFetch(response(409, {detail: 'Имя уже занято'}));
+    it('switching the mode clears the error', async () => {
+        stubFetch(response(409, {detail: 'The name is already taken'}));
         render(<AuthModal onSuccess={vi.fn()}/>);
         switchToRegistration();
-        fillAndSubmit('alice', 'secret-pass', /Зарегистрироваться/);
-        expect(await screen.findByText('Имя уже занято')).toBeInTheDocument();
+        fillAndSubmit('alice', 'secret-pass', /Sign up/);
+        expect(await screen.findByText('The name is already taken')).toBeInTheDocument();
 
-        fireEvent.click(screen.getByRole('button', {name: 'Уже есть аккаунт? Войдите'}));
+        fireEvent.click(screen.getByRole('button', {name: 'Already have an account? Log in'}));
 
-        expect(screen.queryByText('Имя уже занято')).not.toBeInTheDocument();
-        expect(screen.getByText('Вход в regence')).toBeInTheDocument();
+        expect(screen.queryByText('The name is already taken')).not.toBeInTheDocument();
+        expect(screen.getByText('Log in to regence')).toBeInTheDocument();
     });
 });
 
-describe('AuthModal: закрытие', () => {
-    it('закрывается по Esc, крестику и клику по затемнению, но не по клику внутри окна', () => {
+describe('AuthModal: closing', () => {
+    it('closes by Esc, the cross and a click on the backdrop, but not by a click inside the window', () => {
         const onClose = vi.fn();
         const {container} = render(<AuthModal onSuccess={vi.fn()} onClose={onClose}/>);
 
-        fireEvent.mouseDown(screen.getByPlaceholderText('например, string1'));
+        fireEvent.mouseDown(screen.getByPlaceholderText('e.g. string1'));
         expect(onClose).not.toHaveBeenCalled();
 
         fireEvent.keyDown(window, {key: 'Escape'});
-        fireEvent.click(screen.getByRole('button', {name: 'Закрыть'}));
+        fireEvent.click(screen.getByRole('button', {name: 'Close'}));
         fireEvent.mouseDown(container.firstChild as Element);
         expect(onClose).toHaveBeenCalledTimes(3);
     });
 });
 
-describe('AuthModal: доступность', () => {
-    it('окно — модальный диалог с заголовком, меняющимся по режиму', () => {
+describe('AuthModal: accessibility', () => {
+    it('the window is a modal dialog with a title that changes by mode', () => {
         render(<AuthModal onSuccess={vi.fn()}/>);
-        const dialog = screen.getByRole('dialog', {name: 'Вход в regence'});
+        const dialog = screen.getByRole('dialog', {name: 'Log in to regence'});
         expect(dialog).toHaveAttribute('aria-modal', 'true');
 
-        fireEvent.click(screen.getByRole('button', {name: 'Нет аккаунта? Зарегистрируйтесь'}));
-        expect(screen.getByRole('dialog', {name: 'Регистрация аккаунта'})).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', {name: 'No account? Sign up'}));
+        expect(screen.getByRole('dialog', {name: 'Create an account'})).toBeInTheDocument();
     });
 });
 
-describe('AuthModal: забыли пароль (таск 17.5)', () => {
-    it('ссылка сброса уходит на адрес с языком интерфейса, ответ одинаковый', async () => {
+describe('AuthModal: forgot password (task 17.5)', () => {
+    it('the reset link goes to the address with the interface language, the answer is the same', async () => {
         const fetchMock = vi.fn(async () => ({ok: true, status: 202, json: async () => ({})}) as Response);
         vi.stubGlobal('fetch', fetchMock);
         render(<AuthModal onSuccess={vi.fn()}/>);
         fireEvent.click(screen.getByTestId('auth-forgot'));
-        expect(screen.getByRole('heading', {name: 'Сброс пароля'})).toBeInTheDocument();
+        expect(screen.getByRole('heading', {name: 'Reset password'})).toBeInTheDocument();
         fireEvent.change(screen.getByLabelText('E-mail'), {target: {value: 'alice@example.com'}});
-        fireEvent.click(screen.getByRole('button', {name: 'Прислать ссылку'}));
-        expect(await screen.findByRole('status')).toHaveTextContent('Если этот адрес привязан к аккаунту');
+        fireEvent.click(screen.getByRole('button', {name: 'Send the link'}));
+        expect(await screen.findByRole('status')).toHaveTextContent('If this address is linked to an account');
         const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
         expect(url).toContain('/api/v1/account/password-reset');
-        expect(JSON.parse(String(init.body))).toEqual({email: 'alice@example.com', language: 'ru'});
+        expect(JSON.parse(String(init.body))).toEqual({email: 'alice@example.com', language: 'en'});
         fireEvent.click(screen.getByTestId('auth-forgot'));
-        expect(screen.getByRole('heading', {name: /Вход/})).toBeInTheDocument();
+        expect(screen.getByRole('heading', {name: /Log in/})).toBeInTheDocument();
     });
 });

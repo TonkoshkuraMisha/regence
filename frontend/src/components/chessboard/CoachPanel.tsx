@@ -1,9 +1,9 @@
 // --- FILE: frontend/src/components/chessboard/CoachPanel.tsx ---
-// Панель игры с наставником (таски 11.3, 11.4): включение, уровень, подсказка по ступеням, предупреждение о плохом
-// ходе («Почему?», «Переходить», «Оставить», «Не согласен»), объяснение текстом и вспомогательная доска. Только
-// разметка: состояние и запросы к серверу — в хуке useCoachMode (он передаётся целиком пропсом coach), текст
-// объяснения собирается из ключей каталога coach.* (services/coach.ts). Chessboard показывает панель на свободной
-// доске и в партии с ботом; в партии с человеком и у зрителя её нет.
+// Panel for playing with the coach (tasks 11.3, 11.4): enabling, level, a stepped hint, a bad-move warning
+// ("Why?", "Switch", "Keep", "Disagree"), a text explanation and the auxiliary board. Markup
+// only: state and server requests are in the useCoachMode hook (passed whole as the coach prop), the explanation
+// text is assembled from the coach.* catalog keys (services/coach.ts). Chessboard shows the panel on the free
+// board and in a game against a bot; in a game against a human and for a spectator it is absent.
 
 import type {ReactNode} from 'react';
 import {GraduationCap} from 'lucide-react';
@@ -14,38 +14,38 @@ import type {CoachLevel, UseCoachModeResult} from './hooks/useCoachMode';
 
 interface Props {
     coach: UseCoachModeResult;
-    /** Идёт партия лестницы или турнира: наставник недоступен (партия не была бы засчитана). */
+    /** A ladder or tournament game is in progress: the coach is unavailable (the game would not be counted). */
     locked: boolean;
-    /** Партия с ботом идёт (не завершена) — показываем отметку «учебная». */
+    /** A bot game is in progress (not finished): show the "training" mark. */
     inBotGame: boolean;
-    /** Подсказку можно просить: живая позиция, ход игрока, партия не окончена и не идёт проверка хода. */
+    /** A hint can be requested: live position, the player's turn, game not over and no move check running. */
     canAdvise: boolean;
     onAdvice: () => void;
     onTakeBack: () => void;
-    /** Вспомогательная доска открыта — показывается под панелью (children). */
+    /** The auxiliary board is open: shown under the panel (children). */
     auxOpen?: boolean;
     onToggleAux?: () => void;
     children?: ReactNode;
 }
 
-// Подпись кнопки подсказки называет следующую ступень: индекс — число уже показанных ступеней (hintStep).
+// The hint button label names the next step: the index is the number of steps already shown (hintStep).
 const HINT_BUTTON_KEYS = ['coachMode.advice', 'coachMode.hintPiece', 'coachMode.hintMove'] as const;
 
-// Классификация хода с сервера (поле classification ответа /analysis/check-move) → заголовок предупреждения;
-// для другой классификации — общий заголовок coachMode.verdictMissed.
+// Move classification from the server (the classification field of the /analysis/check-move response) -> warning heading;
+// for another classification, the generic coachMode.verdictMissed heading.
 const VERDICT_KEYS: Record<string, 'coachMode.verdictBlunder' | 'coachMode.verdictMistake' | 'coachMode.verdictInaccuracy'> = {
     Blunder: 'coachMode.verdictBlunder',
     Mistake: 'coachMode.verdictMistake',
     Inaccuracy: 'coachMode.verdictInaccuracy',
 };
 
-/** Панель наставника под списком ходов; children — вспомогательная доска, видна при auxOpen. */
+/** Coach panel under the move list; children is the auxiliary board, visible when auxOpen. */
 export function CoachPanel({
     coach, locked, inBotGame, canAdvise, onAdvice, onTakeBack, auxOpen = false, onToggleAux, children,
 }: Props) {
     const {t} = useI18n();
     const warning = coach.pending?.status === 'warning' ? coach.pending.check : undefined;
-    // Объяснение плохого хода («Почему?») важнее подсказки: показывается оно, пока есть.
+    // The explanation of a bad move ("Why?") outranks the hint: it is shown while it exists.
     const shownText = coachText(coach.explanation ?? coach.advice, t);
 
     return (

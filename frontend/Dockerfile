@@ -1,28 +1,28 @@
 # --- FILE: frontend/Dockerfile ---
-# Сборка фронтенда и раздача статики через nginx, который же проксирует API и WebSocket
-# на бэкенд — фронтенд и API на одном домене, CORS не нужен.
+# Frontend build and static file serving through nginx, which also proxies the API and WebSocket
+# to the backend: the frontend and the API are on one domain, so CORS is not needed.
 
 FROM node:24-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
-# DSN проекта Sentry для страницы (необязательно): подставляется в сборку, без него Sentry на странице выключен.
+# Sentry project DSN for the page (optional): substituted into the build; without it Sentry is off on the page.
 ARG VITE_SENTRY_DSN=
 ENV VITE_SENTRY_DSN=$VITE_SENTRY_DSN
-# VITE_API_URL / VITE_WS_URL не задаём: в продакшен-сборке API берётся с того же домена.
-# Токен Sentry для загрузки source maps — секрет сборки (BuildKit), а не ARG: так он не остаётся в истории слоёв образа.
-# Секрет не передан (CI, разработка) — файл пуст, карты не создаются и не загружаются (frontend/vite.config.ts).
+# VITE_API_URL / VITE_WS_URL are not set: in the production build the API is taken from the same domain.
+# The Sentry token for uploading source maps is a build secret (BuildKit), not an ARG: that way it does not remain in the image layer history.
+# If the secret is not passed (CI, development), the file is empty, maps are not created and not uploaded (frontend/vite.config.ts).
 RUN --mount=type=secret,id=sentry_auth_token \
     SENTRY_AUTH_TOKEN="$(cat /run/secrets/sentry_auth_token 2>/dev/null || true)" npm run build
 
 FROM nginx:1.27-alpine
 COPY nginx.conf /etc/nginx/conf.d/default.conf
-# .inc, а не .conf: штатный nginx.conf подключает только conf.d/*.conf, а этот файл
-# включается вручную внутри server и location.
+# .inc, not .conf: the stock nginx.conf includes only conf.d/*.conf, and this file
+# is included manually inside server and location.
 COPY security_headers.inc /etc/nginx/conf.d/security_headers.inc
 COPY nginx_locations.inc /etc/nginx/conf.d/nginx_locations.inc
-# Server на 443 лежит в образе под именем, которое nginx не загружает; включает его docker-compose.tls.yml (нужны сертификат и ключ).
+# The server on 443 sits in the image under a name nginx does not load; docker-compose.tls.yml enables it (a certificate and key are needed).
 COPY nginx-tls.conf /etc/nginx/nginx-tls.conf.example
 COPY --from=build /app/dist /usr/share/nginx/html
 EXPOSE 80

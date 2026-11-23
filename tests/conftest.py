@@ -3,8 +3,8 @@
 import asyncio
 import os
 
-# Тесты не шлют события в настоящий Sentry, даже если в .env разработчика задан SENTRY_DSN: переменная окружения
-# сильнее .env и должна быть выставлена до импорта src.main (init_sentry вызывается при импорте).
+# Tests never send events to the real Sentry, even if the developer's .env sets SENTRY_DSN: the environment variable
+# takes precedence over .env and must be set before src.main is imported (init_sentry runs on import).
 os.environ["SENTRY_DSN"] = ""
 
 import pytest  # noqa: E402
@@ -40,7 +40,7 @@ async def setup_database():
 
 
 class MockPubSub:
-    """Заглушка для Redis Pub/Sub, чтобы фоновый таск не падал."""
+    """Stub for Redis Pub/Sub so the background task does not crash."""
 
     async def subscribe(self, *args, **kwargs):
         pass
@@ -49,7 +49,7 @@ class MockPubSub:
         pass
 
     async def listen(self):
-        while True:  # noqa: ASYNC110 — заглушка «вечной» подписки, ждать нечего
+        while True:  # noqa: ASYNC110 — stub for an "endless" subscription, nothing to wait for
             await asyncio.sleep(3600)
 
 
@@ -111,7 +111,7 @@ class MockPipeline:
 
 
 class MockAsyncRedis:
-    """Высокопроизводительный асинхронный мок Redis в оперативной памяти для тестов."""
+    """High-performance asynchronous in-memory Redis mock for tests."""
 
     def __init__(self):
         self.store = {}
@@ -162,7 +162,7 @@ class MockAsyncRedis:
                 added += 1
         return added
 
-    # HyperLogLog (активные игроки за день, таск 23.3) — в тестах точный подсчёт множеством.
+    # HyperLogLog (daily active players, task 23.3) — in tests the count is exact, using a set.
     async def pfadd(self, name, *values):
         return 1 if await self.sadd(name, *values) else 0
 
@@ -313,10 +313,10 @@ def override_redis(monkeypatch):
 @pytest.fixture(autouse=True)
 def service_sessions_use_test_db(monkeypatch):
     """
-    Сервисы, которые сами открывают сессию (восстановление состояния партии из БД, цикл таймаутов,
-    матчмейкер без переданной сессии), берут фабрику из своего модуля, а не через зависимости
-    FastAPI. Без подмены они ходили бы в базу из .env — тесты читали бы настоящую базу разработчика
-    и зависели от её содержимого.
+    Services that open their own session (restoring game state from the DB, the timeout loop,
+    the matchmaker without a passed session) take the factory from their own module, not through
+    FastAPI dependencies. Without the patch they would hit the database from .env — tests would read the
+    developer's real database and depend on its contents.
     """
     monkeypatch.setattr("src.services.game_state.AsyncSessionLocal", TestSessionLocal)
     monkeypatch.setattr("src.services.matchmaker.AsyncSessionLocal", TestSessionLocal)
@@ -325,8 +325,8 @@ def service_sessions_use_test_db(monkeypatch):
 @pytest.fixture(autouse=True)
 def no_strength_reference(monkeypatch):
     """
-    Опорный ход силы (таск 10.5) по умолчанию выключен: тесты с подменённым анализом движка остаются
-    детерминированными даже там, где установлен настоящий Stockfish. Тесты силы включают его сами.
+    The strength reference move (task 10.5) is off by default: tests with a patched engine analysis stay
+    deterministic even where a real Stockfish is installed. Strength tests enable it themselves.
     """
     from src.services.bots import base as bots_base
 
@@ -335,7 +335,7 @@ def no_strength_reference(monkeypatch):
 
 @pytest.fixture(autouse=True)
 def terms_consent_not_required(monkeypatch):
-    """Регистрации в тестах не передают согласие с условиями (таск 23.1); его проверяют тесты test_legal_consent.py."""
+    """Registrations in tests do not pass consent to the terms (task 23.1); test_legal_consent.py tests it."""
     from src.core.config import settings
 
     monkeypatch.setattr(settings, "REQUIRE_TERMS_CONSENT", False)
@@ -346,20 +346,20 @@ _PUBLISHED_SIMULATIONS: list[int] = []
 
 @pytest.fixture
 def published_simulations() -> list[int]:
-    """id партий турниров, поставленных на симуляцию в этом тесте."""
+    """IDs of tournament games queued for simulation in this test."""
     return _PUBLISHED_SIMULATIONS
 
 
 @pytest.fixture(autouse=True)
 def no_celery_publish(monkeypatch):
-    """Тесты не публикуют задачи в брокер: список опубликованных id партий — для проверок."""
+    """Tests do not publish tasks to the broker: the list of published game ids is for assertions."""
     from src.services import task_dispatch
 
     published: list[int] = []
     monkeypatch.setattr(task_dispatch, "_publish_analysis", published.append)
-    # Партии турниров (таск 15.2) — отдельный список: published_simulations.
+    # Tournament games (task 15.2) — a separate list: published_simulations.
     monkeypatch.setattr(task_dispatch, "_publish_simulation", _PUBLISHED_SIMULATIONS.append)
-    # Разбор партий с других сайтов (таск 24.1) — тоже в фоне; тесты вызывают его напрямую.
+    # Parsing of games from other sites (task 24.1) is also in the background; tests call it directly.
     monkeypatch.setattr(task_dispatch, "_publish_imported_analysis", lambda imported_id: None)
     _PUBLISHED_SIMULATIONS.clear()
     task_dispatch.reset_broker_cooldown()
@@ -370,9 +370,9 @@ def no_celery_publish(monkeypatch):
 @pytest.fixture
 def freeze_rate_limit_window(monkeypatch):
     """
-    Фиксирует время для расчёта окна в rate_limit.py (кратно RATE_LIMIT_WINDOW_S от начала
-    эпохи): несколько запросов подряд в тесте должны попасть в одно и то же окно независимо от
-    реальной скорости выполнения — иначе тест изредка падает, если окно сменится между запросами.
+    Pins the time for the window calculation in rate_limit.py (a multiple of RATE_LIMIT_WINDOW_S from the start of
+    the epoch): several requests in a row within a test must land in the same window regardless of the
+    actual execution speed — otherwise the test occasionally fails if the window changes between requests.
     """
     from src.api import rate_limit as rate_limit_module
 

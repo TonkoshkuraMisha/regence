@@ -2,9 +2,9 @@
 
 """bot_personalities
 
-Мастерская соперников (таск 10.2): персоналии, собранные игроком, — имя и конфиг ползунков в JSON,
-не больше 20 на игрока, имя уникально у владельца без учёта регистра. У партии — имя персоналии,
-с которой она сыграна: в базе соперник — общий бот-пользователь, в архиве видно имя персоналии.
+Opponent workshop (task 10.2): personalities built by a player - a name and the slider config in JSON,
+at most 20 per player, the name is unique per owner case-insensitively. A game has the name of the personality
+it was played with: in the database the opponent is a shared bot user, the archive shows the personality name.
 
 Revision ID: bd6c0a20889e
 Revises: a4d2e8f1c6b9

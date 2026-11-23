@@ -14,7 +14,7 @@ env/
 # Environment variables and secrets
 .env
 .env.*
-# Шаблоны без секретов — в репозитории
+# Templates without secrets are kept in the repository
 !.env.example
 
 # Logs and databases
@@ -38,33 +38,33 @@ node_modules/
 project_snapshot*.txt
 data/pgns/
 
-# Кэши и отчёты инструментов качества кода
+# Caches and reports of code-quality tools
 .coverage
 coverage.xml
 htmlcov/
 .mypy_cache/
 .ruff_cache/
 
-# Резервные копии БД (docker-compose.prod.yml, сервис backup)
+# Database backups (docker-compose.prod.yml, backup service)
 backups/
 
-# Конфиг MCP, который PyCharm генерирует на каждом хосте (порт свой)
+# MCP config that PyCharm generates on every host (the port differs)
 .mcp.json
 
-# Логи калибровки ботов — данные для пересчёта рейтингов (scripts/calibrate_bots.py --from-log/--reuse-log)
+# Bot calibration logs - data for recomputing ratings (scripts/calibrate_bots.py --from-log/--reuse-log)
 !scripts/calibration_runs/*.log
 
-# Снимок проекта для ИИ-помощника (make_snapshot.py) — генерируется локально, в git не хранится.
-# Сводка состояния — python make_snapshot.py --status (или _project_snapshot/STATUS.md после генерации).
+# Project snapshot for the AI assistant (make_snapshot.py) - generated locally, not stored in git.
+# Status summary - python make_snapshot.py --status (or _project_snapshot/STATUS.md after generation).
 _project_snapshot/
 .venv/
-# Партии калибровки — для метрик стиля (scripts/style_metrics.py), небольшие.
+# Calibration games - for style metrics (scripts/style_metrics.py), small.
 !scripts/calibration_runs/*.pgn
 
-# Claude Code: личные настройки на этом хосте
+# Claude Code: personal settings on this host
 .claude/settings.local.json
-# Журналы разработки (start_dev.ps1 пишет сюда json-журналы api и worker)
+# Development logs (start_dev.ps1 writes json logs of api and worker here)
 logs/
 
-# Сертификат origin и список IP Cloudflare для nginx — только на сервере (DEPLOY.md, раздел 4).
+# Origin certificate and Cloudflare IP list for nginx - on the server only (DEPLOY.md, section 4).
 /deploy/

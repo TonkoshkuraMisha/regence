@@ -1,8 +1,8 @@
 # --- FILE: tests/test_bot_content_keys.py ---
 """
-Контент ботов приходит клиенту ключами (таск 11.0c): у каждого ключа реплики, id архетипа и кода причины
-лестницы, которые может отдать сервер, есть текст в каталоге клиента — и в каталоге нет лишнего. Одинаковость
-трёх каталогов (en/uk/ru) проверяют TypeScript и тесты клиента; здесь достаточно английского.
+Bot content reaches the client as keys (task 11.0c): every line key, archetype id and ladder reason code
+the server can emit has text in the client catalog, and the catalog has nothing extra. The sameness of
+the two catalogs (en/uk) is checked by TypeScript and client tests; English is enough here.
 """
 
 import ast
@@ -22,12 +22,12 @@ COMMENT_KEY = re.compile(rf"^(?:{'|'.join(COMMENT_GROUPS)})\.[A-Za-z][A-Za-z0-9]
 def _section(name: str, indent: int = 4) -> str:
     pad = " " * indent
     match = re.search(rf"^{pad}{name}: \{{\n(.*?)^{pad}\}},$", CATALOG, re.M | re.S)
-    assert match, f"нет раздела {name}"
+    assert match, f"no section {name}"
     return match.group(1)
 
 
 def _leaf_keys(block: str, indent: int) -> set[str]:
-    """Ключи-строки и вложенные разделы block (с отступом indent) как пути «раздел.ключ»."""
+    """String keys and nested sections of block (with the given indent) as "section.key" paths."""
     keys: set[str] = set()
     pad = " " * indent
     for match in re.finditer(rf"^{pad}(\w+): (\{{\n(.*?)^{pad}\}},|'(?:[^'\\]|\\.)*',)$", block, re.M | re.S):
@@ -45,15 +45,15 @@ def _server_comment_keys() -> set[str]:
         for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
             if isinstance(node, ast.Constant) and isinstance(node.value, str) and COMMENT_KEY.match(node.value):
                 keys.add(node.value)
-    keys.update(f"book.{bot_id}" for bot_id in BOT_INSTANCES)  # ходы дебютных книг из JSON
+    keys.update(f"book.{bot_id}" for bot_id in BOT_INSTANCES)  # opening-book moves from JSON
     return keys
 
 
 def test_every_bot_comment_key_has_a_text_and_no_text_is_orphaned():
     catalog = _leaf_keys(_section("botComments"), 8)
     server = _server_comment_keys()
-    assert server - catalog == set(), "ключи без текста в каталоге"
-    assert catalog - server == set(), "тексты, которые сервер никогда не отдаёт"
+    assert server - catalog == set(), "keys without text in the catalog"
+    assert catalog - server == set(), "texts the server never emits"
 
 
 def test_book_texts_take_the_number_of_games():
@@ -73,7 +73,7 @@ def test_ladder_reasons_match_the_catalog():
 
 
 def test_style_notes_are_keys_not_text():
-    """Ни одна заметка стиля не осталась текстом: всё, что оценщик стиля может вернуть, — ключ."""
+    """No style note is left as plain text: everything the style evaluator can return is a key."""
     from src.services.bots.personality import BotPersonalityConfig, PersonalityBot, default_comment_for
 
     for bot in BOT_INSTANCES.values():

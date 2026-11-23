@@ -1,5 +1,5 @@
-// Приложение на телефоне (таск 24.2): регистрация сервис-воркера только в сборке, установка по событию браузера,
-// подсказка для iPhone, «уже установлено».
+// The app on a phone (task 24.2): registering the service worker only in a build, installing on a browser event,
+// a hint for iPhone, "already installed".
 
 import {act, fireEvent, render, screen} from '@testing-library/react';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
@@ -30,7 +30,7 @@ beforeEach(() => resetPwaForTests());
 afterEach(() => resetPwaForTests());
 
 describe('PWA', () => {
-    it('сервис-воркер регистрируется только в сборке', () => {
+    it('the service worker is registered only in a build', () => {
         const dev = fakeWindow();
         initPwa(dev.win, false);
         expect(dev.register).not.toHaveBeenCalled();
@@ -39,12 +39,12 @@ describe('PWA', () => {
         expect(prod.register).toHaveBeenCalledWith('/sw.js');
     });
 
-    it('без поддержки сервис-воркеров ничего не ломается', () => {
+    it('without service worker support nothing breaks', () => {
         const {win} = fakeWindow({sw: false});
         expect(() => initPwa(win, true)).not.toThrow();
     });
 
-    it('событие браузера включает установку; согласие — «установлено»', async () => {
+    it('the browser event enables installation; consent — "installed"', async () => {
         const {win} = fakeWindow();
         initPwa(win, false);
         expect(installState(win)).toBe('unsupported');
@@ -56,7 +56,7 @@ describe('PWA', () => {
         expect(installState(win)).toBe('installed');
     });
 
-    it('отказ — кнопка пропадает до следующего события браузера', async () => {
+    it('refusal — the button disappears until the next browser event', async () => {
         const {win} = fakeWindow();
         initPwa(win, false);
         win.dispatchEvent(installEvent('dismissed'));
@@ -65,7 +65,7 @@ describe('PWA', () => {
         expect(await promptInstall()).toBe(false);
     });
 
-    it('iPhone и iPad (iPadOS выдаёт себя за Mac) — подсказка; открыто с главного экрана — установлено', () => {
+    it('iPhone and iPad (iPadOS poses as a Mac) — a hint; opened from the home screen — installed', () => {
         expect(isIos(fakeWindow({userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)'}).win)).toBe(true);
         expect(isIos(fakeWindow({userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)', touch: 5}).win)).toBe(true);
         expect(isIos(fakeWindow({userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)'}).win)).toBe(false);
@@ -73,17 +73,17 @@ describe('PWA', () => {
         expect(installState(fakeWindow({standalone: true}).win)).toBe('installed');
     });
 
-    it('раздел настроек: кнопка появляется по событию браузера и открывает системный диалог', async () => {
+    it('settings section: the button appears on the browser event and opens the system dialog', async () => {
         initPwa(window, false);
         render(<InstallAppSection sectionClass="" headingClass=""/>);
         expect(screen.queryByTestId('settings-app-install')).toBeNull();
-        expect(screen.getByTestId('settings-app-state')).toHaveTextContent('меню браузера');
+        expect(screen.getByTestId('settings-app-state')).toHaveTextContent('browser menu');
         const event = installEvent('accepted');
         act(() => {
             window.dispatchEvent(event);
         });
         fireEvent.click(await screen.findByTestId('settings-app-install'));
         expect(event.prompt).toHaveBeenCalled();
-        expect(await screen.findByText(/Приложение установлено/)).toBeInTheDocument();
+        expect(await screen.findByText(/The app is installed/)).toBeInTheDocument();
     });
 });

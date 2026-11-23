@@ -1,28 +1,28 @@
-// Большой курс (таск 27.6, docs/research/supercourse.md): уровни 0–5 по разрядам × ветви Т/М/Э/С/Д/Р/П, модули с
-// неизменными кодами и шагами-ячейками. Шаг ведёт в готовый раздел (те же упражнения, что у программ 22.3); модуль
-// без шагов — место в каркасе под будущее наполнение (игроку не показывается, виден в режиме «покрытие»).
-// Статус ячейки (moduleStatus): ready — есть готовые шаги, игрок их видит; draft — есть только шаги в работе (поле
-// draft: автор добавил, но не проверил; игроку не видны, в каркасе — с пометкой); empty — ничего. Покрытие курса для
-// автора — coverage(): сколько модулей каждого статуса по уровням и ветвям.
-// Названия модулей — в каталогах i18n: supercourse.modules.<код, точка заменена на «_»>.
+// Big course (task 27.6, docs/research/supercourse.md): levels 0-5 by rank x branches T/M/E/S/O/C/G, modules with
+// stable codes and step cells. A step leads to a ready section (the same exercises as programs 22.3); a module
+// without steps is a placeholder in the frame for future content (not shown to the player, visible in "coverage" mode).
+// Cell status (moduleStatus): ready - has ready steps, the player sees them; draft - has only work-in-progress steps (field
+// draft: added by the author but not verified; not visible to the player, marked in the frame); empty - nothing. Course coverage for
+// the author - coverage(): how many modules of each status per level and branch.
+// Module names live in the i18n catalogs: supercourse.modules.<code, dot replaced by "_">.
 
 import type {Activity} from './programs';
 import {MUST_KNOW, STUDIES} from './mustKnow';
 
-export const BRANCHES = ['T', 'M', 'E', 'S', 'O', 'C', 'G'] as const;  // тактика, мат, эндшпиль, стратегия, дебют, расчёт, партии
+export const BRANCHES = ['T', 'M', 'E', 'S', 'O', 'C', 'G'] as const;  // tactics, mate, endgame, strategy, opening, calculation, games
 export type Branch = typeof BRANCHES[number];
 
 export interface CourseModule {
     code: string;
     level: number;
     branch: Branch;
-    /** Готовые шаги: их видит игрок. */
+    /** Ready steps: the player sees them. */
     steps: Activity[];
-    /** Шаги в работе: автор добавил, но не проверил — игроку не видны, в каркасе показываются с пометкой. */
+    /** Work-in-progress steps: added by the author but not verified - not visible to the player, shown in the frame with a mark. */
     draft?: Activity[];
 }
 
-/** Статус ячейки курса: готова, в работе, пуста. */
+/** Course cell status: ready, in progress, empty. */
 export type ModuleStatus = 'ready' | 'draft' | 'empty';
 export const MODULE_STATUSES: ModuleStatus[] = ['ready', 'draft', 'empty'];
 
@@ -45,7 +45,7 @@ function mod(code: string, branch: Branch, steps: Activity[] = [], draft: Activi
 }
 
 export const COURSE: CourseModule[] = [
-    // --- Уровень 0. Азбука ---
+    // --- Level 0. Basics ---
     mod('T0.0', 'T', [b('rook'), b('bishop'), b('queen'), b('knight'), b('kingPawn'), b('capture')]),
     mod('T0.1', 'T', [b('checkMate')]),
     mod('M0.1', 'M', [b('checkMate'), m('back_rank_mate')]),
@@ -54,7 +54,7 @@ export const COURSE: CourseModule[] = [
     mod('O0.1', 'O', [b('special'), th('early_queen')]),
     mod('G0.1', 'G', [mini('pawn_war'), mini('king_pawns'), mini('capture_flag')]),
     mod('X0', 'G', [ex('level0')]),
-    // --- Уровень 1. Новичок ---
+    // --- Level 1. Beginner ---
     mod('T1.1', 'T', [l('tactics-double-attack'), th('fork'), th('fork_knight'), th('fork_pawn')]),
     mod('T1.2', 'T', [l('tactics-pin'), th('pin')]),
     mod('T1.3', 'T', [l('tactics-discovered-attack'), th('discovered_attack'), th('discovered_check')]),
@@ -74,7 +74,7 @@ export const COURSE: CourseModule[] = [
     mod('C1.3', 'C', [tr('calc_distance'), tr('knight_route')]),
     mod('G1.1', 'G', [tr('miniatures')]),
     mod('X1', 'G', [ex('level1')]),
-    // --- Уровень 2. IV–III разряд ---
+    // --- Level 2. Class IV-III ---
     mod('T2.1', 'T', [l('tactics-double-check'), th('double_check'), th('windmill')]),
     mod('T2.2', 'T', [l('tactics-intermezzo'), th('intermezzo')]),
     mod('T2.3', 'T', [l('tactics-x-ray'), th('x_ray'), th('battery')]),
@@ -106,7 +106,7 @@ export const COURSE: CourseModule[] = [
     mod('G2.2', 'G', [GUESS]),
     mod('G2.3', 'G', [{kind: 'library'}]),
     mod('X2', 'G', [ex('level2')]),
-    // --- Уровень 3. III–II разряд ---
+    // --- Level 3. Class III-II ---
     mod('T3.1', 'T', [l('tactics-clearance'), th('clearance')]),
     mod('T3.2', 'T', [l('tactics-square-conquest'), th('remove_defender'), th('decoy')]),
     mod('T3.3', 'T', [l('tactics-clearance'), th('clearance')]),
@@ -142,7 +142,7 @@ export const COURSE: CourseModule[] = [
     mod('C3.3', 'C', [tr('blind_move'), tr('memory_game')]),
     mod('G3.1', 'G', [{kind: 'library'}]),
     mod('X3', 'G', [ex('level3')]),
-    // --- Уровень 4. II–I разряд ---
+    // --- Level 4. Class II-I ---
     mod('T4.1', 'T', [th('combination'), th('long_calculation')]),
     mod('T4.2', 'T', [th('promotion'), th('pawn_race')]),
     mod('T4.3', 'T', [th('defensive_move'), th('blunder_check')]),
@@ -171,7 +171,7 @@ export const COURSE: CourseModule[] = [
     mod('G4.1', 'G', [{kind: 'library'}]),
     mod('G4.2', 'G', [{kind: 'workout'}]),
     mod('X4', 'G', [ex('level4')]),
-    // --- Уровень 5. I разряд — КМС ---
+    // --- Level 5. Class I - candidate master ---
     mod('T5.1', 'T', [th('combination')]),
     mod('T5.2', 'T', [th('equality'), th('fortress'), th('save_by_perpetual')]),
     mod('M5.1', 'M', [th('sacrifice')]),
@@ -193,9 +193,9 @@ export const COURSE: CourseModule[] = [
 
 export const LEVEL_COUNT = 6;
 
-// Экзамен уровня (таск 27.12): модуль X<n> — свой фиксированный экзамен level<n> (12 позиций по ветвям курса,
-// src/services/level_exam.py); уровень пройден, когда последняя оценка не ниже порога разряда уровня
-// (азбука — 800, IV разряд — 1000 … КМС — 1800).
+// Level exam (task 27.12): module X<n> has its own fixed exam level<n> (12 positions across the course branches,
+// src/services/level_exam.py); a level is passed when the latest estimate is not below the level's rank threshold
+// (basics - 800, class IV - 1000 ... candidate master - 1800).
 export const LEVEL_EXAM_TARGET = [800, 1000, 1200, 1400, 1600, 1800] as const;
 
 export function examSections(level: number): string[] {
@@ -208,13 +208,13 @@ export function levelExamPassed(level: number, results: Record<string, { estimat
     return sections.length > 0 && sections.every((s) => (results[s]?.estimate ?? 0) >= LEVEL_EXAM_TARGET[level]);
 }
 
-/** Статус модуля: готовые шаги важнее черновиков; модуль без тех и других пуст. */
+/** Module status: ready steps outweigh drafts; a module with neither is empty. */
 export function moduleStatus(module: CourseModule): ModuleStatus {
     if (module.steps.length > 0) return 'ready';
     return module.draft?.length ? 'draft' : 'empty';
 }
 
-/** Покрытие курса для автора: уровень → ветвь → число модулей каждого статуса (ветви без модулей на уровне — нули). */
+/** Course coverage for the author: level -> branch -> number of modules of each status (branches without modules at a level are zeros). */
 export function coverage(course: CourseModule[] = COURSE): Record<ModuleStatus, number>[][] {
     const table = Array.from({length: LEVEL_COUNT}, () =>
         BRANCHES.map(() => ({ready: 0, draft: 0, empty: 0} as Record<ModuleStatus, number>)));

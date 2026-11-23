@@ -1,14 +1,14 @@
 """
-Подключение к PostgreSQL: асинхронный движок SQLAlchemy и фабрика сессий.
+The PostgreSQL connection: the asynchronous SQLAlchemy engine and the session factory.
 
-Адрес базы собирается из настроек POSTGRES_* (settings.async_database_url), размер пула — DB_POOL_SIZE и
-DB_MAX_OVERFLOW на каждый процесс API. Два способа получить сессию:
+The database address is assembled from the POSTGRES_* settings (settings.async_database_url), the pool size - DB_POOL_SIZE and
+DB_MAX_OVERFLOW per API process. Two ways to get a session:
 
-* get_db — зависимость FastAPI для HTTP-запроса: сессия живёт до конца запроса;
-* get_session_factory — фабрика для долгих соединений (WebSocket): обработчик открывает короткую сессию на одно
-  действие, иначе соединение пула было бы занято всё время, пока открыта вкладка игрока.
+* get_db - a FastAPI dependency for an HTTP request: the session lives until the end of the request;
+* get_session_factory - a factory for long-lived connections (WebSocket): the handler opens a short session per
+  action, otherwise a pool connection would be busy all the time the player's tab is open.
 
-Фоновые задачи Celery создают свой движок на каждую задачу (src/worker/tasks.py).
+Celery background tasks create their own engine for each task (src/worker/tasks.py).
 """
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -16,9 +16,9 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from src.core.config import settings
 from src.core.observability import instrument_engine
 
-# Движок — один на процесс API. pool_timeout — сколько запрос ждёт свободное соединение (DB_POOL_TIMEOUT_S);
-# pool_pre_ping проверяет соединение перед выдачей, чтобы после перезапуска PostgreSQL запросы не падали на
-# оборванных соединениях. instrument_engine считает занятые соединения для метрики regence_db_pool_checked_out.
+# The engine - one per API process. pool_timeout - how long a request waits for a free connection (DB_POOL_TIMEOUT_S);
+# pool_pre_ping checks the connection before handing it out so that after a PostgreSQL restart requests do not fail on
+# broken connections. instrument_engine counts busy connections for the regence_db_pool_checked_out metric.
 engine = create_async_engine(
     settings.async_database_url,
     echo=False,
@@ -30,8 +30,8 @@ engine = create_async_engine(
 )
 instrument_engine(engine)
 
-# Фабрика сессий. expire_on_commit=False: объекты остаются читаемыми после commit — обработчики WebSocket
-# освобождают соединение до отправки ответа и продолжают пользоваться уже загруженными данными.
+# The session factory. expire_on_commit=False: objects stay readable after commit - WebSocket handlers
+# release the connection before sending the reply and keep using the already loaded data.
 AsyncSessionLocal = async_sessionmaker(
     bind=engine,
     autoflush=False,
@@ -42,11 +42,11 @@ AsyncSessionLocal = async_sessionmaker(
 
 async def get_db():
     """
-    Зависимость FastAPI: сессия базы на один HTTP-запрос, закрывается после ответа. Сама ничего не коммитит —
-    изменения сохраняет обработчик или сервис.
+    A FastAPI dependency: a database session for one HTTP request, closed after the response. It commits nothing itself -
+    changes are saved by the handler or the service.
 
-    Только для HTTP-запросов: сессия живёт до конца запроса. Долгоживущим обработчикам
-    (WebSocket) нужна фабрика get_session_factory и короткая сессия на каждую операцию.
+    For HTTP requests only: the session lives until the end of the request. Long-lived handlers
+    (WebSocket) need the get_session_factory factory and a short session for each operation.
     """
     async with AsyncSessionLocal() as session:
         yield session
@@ -54,10 +54,10 @@ async def get_db():
 
 def get_session_factory() -> async_sessionmaker[AsyncSession]:
     """
-    Зависимость FastAPI: фабрика сессий для долгоживущих соединений.
+    A FastAPI dependency: a session factory for long-lived connections.
 
-    Сессия из get_db, взятая WebSocket-обработчиком, жила бы всё соединение: первый же запрос
-    открывает транзакцию, и соединение пула остаётся занятым («idle in transaction»), пока
-    игрок подключён. Поэтому WebSocket открывает по короткой сессии на каждое действие.
+    A session from get_db taken by a WebSocket handler would live for the whole connection: the very first query
+    opens a transaction, and the pool connection stays busy ("idle in transaction") while
+    the player is connected. So a WebSocket opens a short session for each action.
     """
     return AsyncSessionLocal

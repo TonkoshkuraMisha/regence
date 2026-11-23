@@ -1,8 +1,8 @@
 // --- FILE: frontend/src/components/beta/BetaAdmin.tsx ---
-// Программа беты для модератора (таск 24.4), на странице /moderation (social/ModerationPage.tsx; панели видны только
-// модератору): приглашения (создать код с лимитом и сроком, скопировать ссылку, отозвать; видно, сколько человек
-// пришло по каждому) и очередь сообщений «Сообщить о проблеме» со статусами. Данные — services/beta.ts
-// (/api/v1/beta/invites и /feedback, src/api/beta.py); права проверяет сервер.
+// Beta programme for a moderator (task 24.4), on the /moderation page (social/ModerationPage.tsx; the panels are visible only to
+// a moderator): invitations (create a code with a limit and an expiry, copy a link, revoke; one sees how many people
+// came through each) and a queue of "Report a problem" messages with statuses. Data is services/beta.ts
+// (/api/v1/beta/invites and /feedback, src/api/beta.py); the server checks the rights.
 
 import {useCallback, useEffect, useState} from 'react';
 import {Bug, Ticket} from 'lucide-react';
@@ -12,17 +12,17 @@ import {errorMessage} from '../../services/apiErrors';
 import {betaApi, FEEDBACK_STATUSES, inviteLink} from '../../services/beta';
 import type {FeedbackItem, FeedbackStatus, Invite} from '../../services/beta';
 
-// Стили поля ввода и кнопки панелей (вынесены, чтобы не повторять длинные строки классов).
+// Styles of the input field and the panels' buttons (extracted so as not to repeat long class strings).
 const inputClass = 'bg-black/40 border border-amber-900/60 rounded px-2 py-1 text-sm text-amber-100 focus:outline-none focus:border-amber-600';
 const buttonClass = 'px-2 py-1 rounded bg-black/40 border border-amber-800/60 hover:border-amber-500 text-sm';
 
-/** Положительное целое из поля формы; пустое или неверное значение — undefined (поле не отправляется, лимита нет). */
+/** Positive integer from a form field; an empty or invalid value gives undefined (the field is not sent, no limit). */
 function positiveInt(raw: string): number | undefined {
     const value = Number.parseInt(raw, 10);
     return Number.isFinite(value) && value > 0 ? value : undefined;
 }
 
-/** Приглашения: режим регистрации (закрыта по приглашениям или открыта), форма нового кода и список кодов. */
+/** Invitations: the registration mode (closed by invitation or open), a new code form and a list of codes. */
 export function InvitesPanel() {
     const {t, dateLocale} = useI18n();
     const [invites, setInvites] = useState<Invite[]>([]);
@@ -117,10 +117,10 @@ export function InvitesPanel() {
     );
 }
 
-/** Очередь сообщений игроков: вкладки по статусам со счётчиками, контекст сообщения и смена статуса. */
+/** Queue of player messages: tabs by status with counters, the message context and a status change. */
 export function FeedbackPanel() {
     const {t, dateLocale} = useI18n();
-    // null — неразобранные (новые и взятые в работу).
+    // null means unprocessed (new and taken into work).
     const [filter, setFilter] = useState<FeedbackStatus | null>(null);
     const [items, setItems] = useState<FeedbackItem[]>([]);
     const [counts, setCounts] = useState<Partial<Record<FeedbackStatus, number>>>({});

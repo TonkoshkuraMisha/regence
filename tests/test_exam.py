@@ -1,4 +1,4 @@
-"""Диагностический экзамен (таск 22.0): вопросы по разделу от лёгкого к трудному, проверка ответа, оценка, уровни."""
+"""Diagnostic exam (task 22.0): questions by section from easy to hard, answer checking, scoring, levels."""
 
 import random
 
@@ -10,7 +10,7 @@ from src.models.puzzle import Puzzle, PuzzleTheme
 from src.services import exam
 
 API = "/api/v1/exam"
-# Мат в 1: после хода чёрных a7a6 белые ставят мат Qd8# по последней горизонтали.
+# Mate in 1: after black's a7a6 white mates with Qd8# on the back rank.
 MATE_FEN = "6k1/p4ppp/8/8/8/8/5PPP/3Q2K1 b - - 0 1"
 
 
@@ -46,7 +46,7 @@ def test_targets_levels_and_estimate():
 
 async def test_questions_and_grading(db_session, mates):
     questions = await exam.build(db_session, "F", random.Random(1))
-    assert [q["id"] for q in questions] == mates["mates"]  # все шесть, по возрастанию рейтинга
+    assert [q["id"] for q in questions] == mates["mates"]  # all six, by ascending rating
     assert questions[0]["color"] == "white" and questions[0]["previous_move"] == "a7a6"
     assert chess.Board(questions[0]["fen"]).turn == chess.WHITE
     with pytest.raises(DomainValueError):
@@ -74,9 +74,9 @@ async def test_api_flow(client, mates, token_user_1):
     assert client.get(f"{API}/X/questions", headers=auth(token_user_1)).status_code == 404
 
 
-# --- решение доигрывается до конца: очко за каждый верный ход -----------------------------------------------------
+# --- the solution is played to the end: a point for each correct move ---------------------------------------------
 
-# Мат в 2 по последней горизонтали: после a7a6 белые 1. R2e8+ Rxe8 2. Rxe8#.
+# Mate in 2 on the back rank: after a7a6 white plays 1. R2e8+ Rxe8 2. Rxe8#.
 MATE2_FEN = "3r2k1/p4ppp/8/8/8/8/4RPPP/4R1K1 b - - 0 1"
 MATE2_MOVES = "a7a6 e2e8 d8e8 e1e8"
 
@@ -99,14 +99,14 @@ def test_play_follows_the_line_move_by_move():
     assert (first.correct, first.total, first.solved, first.failed, first.reply) == (1, 2, False, False, "d8e8")
     done = exam.play(start, line, ["e2e8", "e1e8"])
     assert (done.correct, done.solved, done.failed, done.reply) == (2, True, False, None) and done.share == 1.0
-    # Ошибка на втором ходу: позиция закончена, очко за первый ход остаётся.
+    # Mistake on the second move: the position is over, the point for the first move stays.
     slip = exam.play(start, line, ["e2e8", "g1h1"])
     assert (slip.correct, slip.solved, slip.failed) == (1, False, True) and slip.share == 0.5
     for bad in (["e2d2"], ["0000"], ["zzzz"], ["e1e9"]):
         wrong = exam.play(start, line, bad)
         assert (wrong.correct, wrong.failed, wrong.reply) == (0, True, None)
     assert exam.play(start, line, []).correct == 0 and not exam.play(start, line, []).failed
-    # Лишние ходы после конца решения не считаются.
+    # Extra moves after the end of the solution are not counted.
     assert exam.play(start, line, ["e2e8", "e1e8", "g1h1"]).correct == 2
 
 
@@ -133,7 +133,7 @@ async def test_move_endpoint_plays_the_combination_to_the_end(client, mate_in_tw
     assert last == {"correct": True, "reply": None, "done": True, "solved": True, "points": 2, "max_points": 2}
     wrong = client.post(url, json={"id": mate_in_two.id, "moves": ["e2d2"]}, headers=headers).json()
     assert wrong == {"correct": False, "reply": None, "done": True, "solved": False, "points": 0, "max_points": 2}
-    # Задача не из этого раздела и неизвестный раздел.
+    # A puzzle not from this section and an unknown section.
     assert client.post(f"{API}/A/move", json={"id": mate_in_two.id, "moves": ["e2e8"]}, headers=headers).status_code == 400
     assert client.post(f"{API}/Z/move", json={"id": mate_in_two.id, "moves": ["e2e8"]}, headers=headers).status_code == 404
 
@@ -147,7 +147,7 @@ async def test_submit_scores_every_correct_move(client, mate_in_two, token_user_
     full = client.post(f"{API}/F/submit", headers=headers,
                        json={"answers": [{"id": mate_in_two.id, "moves": ["e2e8", "e1e8"]}]}).json()
     assert (full["correct"], full["points"], full["max_points"]) == (1, 2, 2) and full["estimate"] > half["estimate"]
-    # Прежний формат «один ход» принимается: это первый ход решения.
+    # The old "single move" format is accepted: it is the first move of the solution.
     legacy = client.post(f"{API}/F/submit", headers=headers,
                          json={"answers": [{"id": mate_in_two.id, "move": "e2e8"}]}).json()
     assert (legacy["correct"], legacy["points"]) == (0, 1)

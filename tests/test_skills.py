@@ -1,4 +1,4 @@
-"""Карта навыков (таск 22.1): разделы и слабые темы по попыткам задач, ошибки в партиях, тренажёры, дебюты, курсы."""
+"""Skills map (task 22.1): sections and weak themes from puzzle attempts, mistakes in games, trainers, openings, courses."""
 
 from datetime import UTC, datetime
 
@@ -28,7 +28,7 @@ async def history(db_session, test_user_1, test_user_2):
         await db_session.flush()
         db_session.add(PuzzleTheme(puzzle_id=puzzle.id, theme=theme))
         puzzles[theme] = puzzle.id
-    # fork: 6 из 6, pin: 1 из 5, мат по последней горизонтали: 2 попытки — мало данных.
+    # fork: 6 of 6, pin: 1 of 5, back-rank mate: 2 attempts - too little data.
     for theme, solved, failed in (("fork", 6, 0), ("pin", 1, 4), ("back_rank_mate", 1, 1)):
         for ok in [True] * solved + [False] * failed:
             db_session.add(PuzzleAttempt(user_id=uid, puzzle_id=puzzles[theme], solved=ok, rating_before=1500,
@@ -38,7 +38,7 @@ async def history(db_session, test_user_1, test_user_2):
     game = Game(white_player_id=uid, black_player_id=test_user_2.id, status=GameStatus.COMPLETED, result="0-1")
     db_session.add(game)
     await db_session.flush()
-    # Темы личной задачи хранятся так, как их пишет personal_puzzles.extract_for_game: коды через запятую.
+    # Personal puzzle themes are stored the way personal_puzzles.extract_for_game writes them: comma-separated codes.
     for ply, (themes, done) in enumerate((("fork,pin", False), ("fork", True), ("unknown_theme", False)), start=10):
         db_session.add(PersonalPuzzle(user_id=uid, game_id=game.id, ply=ply, fen="x", solution="a1a2", played="a1b1",
                                       cp_loss=300, themes=themes, done=done))
@@ -68,7 +68,7 @@ async def test_skill_map(client, history, token_user_1):
     sections = {s["section"]: s for s in body["sections"]}
     assert (sections["A"]["attempts"], sections["A"]["score"]) == (6, 100)
     assert (sections["B"]["attempts"], sections["B"]["score"]) == (5, 20)
-    assert (sections["F"]["attempts"], sections["F"]["score"]) == (2, None)  # мало данных
+    assert (sections["F"]["attempts"], sections["F"]["score"]) == (2, None)  # too little data
     assert [t["theme"] for t in body["weakest_themes"]] == ["pin", "fork"]
     assert body["mistakes"] == {"total": 3, "fixed": 1,
                                 "themes": [{"theme": "fork", "count": 2}, {"theme": "pin", "count": 1}]}

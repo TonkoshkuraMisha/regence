@@ -1,14 +1,14 @@
 // --- FILE: frontend/src/components/learn/MateCourse.tsx ---
-// Курс матовых конструкций (таск 14.6): /learn/mates — 20 конструкций по порядку и итоговая проверка;
-// /learn/mates/:theme — объяснение (текст каталога), два показа, 10 задач от лёгкой к трудной;
-// /learn/mates/exam — смешанная проверка на время. Задачи решаются сервером (/puzzles/{id}/move) без рейтинга.
-// После задачи доска свободна — позицию можно разыграть (usePositionExplorer).
-// Прогресс — как у уроков школы: «mates-<конструкция>» и «mates-exam» (результат проверки).
-// В проверке верно решённая задача сменяется сама через SOLVED_PAUSE_MS, а после ошибки остаётся с разбором до
-// кнопки «Следующая задача» (отзыв владельца 18.11).
-// Данные: services/puzzles.ts (puzzlesApi: mateCourse — GET /course/mates, mateTask — /course/mates/{тема}/{номер}, mateExam — /course/mates/exam,
-// demo, move, giveUp); сервер — src/api/puzzles.py и src/services/mate_course.py (там же TASKS, EXAM_SIZE и EXAM_MINUTES).
-// Только для вошедших (NeedLogin). Страницы подключены в App.tsx.
+// Mating patterns course (task 14.6): /learn/mates has 20 patterns in order and a final check;
+// /learn/mates/:theme is an explanation (catalog text), two demonstrations, 10 puzzles from easy to hard;
+// /learn/mates/exam is a mixed timed check. Puzzles are solved by the server (/puzzles/{id}/move) without a rating.
+// After a puzzle the board is free: the position can be played out (usePositionExplorer).
+// Progress is like school lessons: "mates-<pattern>" and "mates-exam" (the check result).
+// In the check, a correctly solved puzzle changes by itself after SOLVED_PAUSE_MS, and after a mistake it stays with a review until
+// the "Next puzzle" button (owner's feedback 18.11).
+// Data: services/puzzles.ts (puzzlesApi: mateCourse is GET /course/mates, mateTask is /course/mates/{theme}/{number}, mateExam is /course/mates/exam,
+// demo, move, giveUp); the server is src/api/puzzles.py and src/services/mate_course.py (also TASKS, EXAM_SIZE and EXAM_MINUTES).
+// For signed-in users only (NeedLogin). The pages are wired in App.tsx.
 
 import {useEffect, useMemo, useRef, useState} from 'react';
 import type {ReactNode} from 'react';
@@ -31,15 +31,15 @@ import {SolutionReplay} from '../puzzles/SolutionReplay';
 import type {ReplayView} from '../puzzles/SolutionReplay';
 import {sanMoves} from '../puzzles/puzzleNotation';
 
-/** Идентификатор урока с результатом итоговой проверки; новая попытка обновляет запись на сервере. */
+/** Lesson identifier with the final check result; a new attempt updates the record on the server. */
 export const EXAM_PROGRESS_ID = 'mates-exam';
 
-/** Идентификатор урока конструкции: «mates-<код>», подчёркивания заменены дефисами; по нему же считает автозачёт services/courseProgress.ts. */
+/** Pattern lesson identifier: "mates-<code>", underscores replaced with hyphens; services/courseProgress.ts also counts auto-credit by it. */
 export function mateProgressId(code: string): string {
     return `mates-${code.replace(/_/g, '-')}`;
 }
 
-/** Прогресс уроков вошедшего по lesson_id (отметки в списке конструкций). */
+/** Lesson progress of a signed-in user by lesson_id (marks in the pattern list). */
 function useLessonProgress(): Record<string, LessonProgress> {
     const [progress, setProgress] = useState<Record<string, LessonProgress>>({});
     useEffect(() => {
@@ -56,35 +56,35 @@ function useLessonProgress(): Record<string, LessonProgress> {
     return progress;
 }
 
-/** Сохраняет прогресс вошедшему; сбой записи терпим — следующее сохранение перезапишет. */
+/** Saves progress for a signed-in user; a write failure is tolerated: the next save will overwrite. */
 function saveProgress(id: string, update: Parameters<typeof saveLessonProgress>[2]) {
     const token = getToken();
     if (token) saveLessonProgress(token, id, update).catch(() => undefined);
 }
 
-/** Подсказка гостю: курс матов доступен только вошедшим (эндпоинты закрыты авторизацией). */
+/** Hint for a guest: the mates course is available only to signed-in users (the endpoints are closed by authorization). */
 function NeedLogin() {
     const {t} = useI18n();
     return <p className="text-amber-300" data-testid="mates-login">{t('mateCourse.loginRequired')}</p>;
 }
 
-/** Пауза перед следующей задачей проверки после верного решения: успеть увидеть мат на доске. */
+/** Pause before the next check puzzle after a correct solution: time to see the mate on the board. */
 const SOLVED_PAUSE_MS = 800;
 
-/** Ссылка «назад» одного вида на всех страницах курса. */
+/** A single kind of "back" link on all course pages. */
 function BackLink({to, label}: { to: string; label: string }) {
     return <Link to={to} className="text-sm text-amber-400 hover:underline flex items-center gap-1"><ArrowLeft size={14}/> {label}</Link>;
 }
 
 /**
- * Задача курса: первый ход соперника уже сделан, ходы проверяет сервер. После ошибки или «Показать решение» —
- * разбор (SolutionReplay): решение целиком и, если ошибка была в начальной позиции, опровержение сыгранного хода —
- * пошагово на доске, чтобы было видно, в чём ошибка (отзыв владельца 18.11).
+ * Course puzzle: the opponent's first move is already made, the server checks moves. After a mistake or "Show solution" there is
+ * a review (SolutionReplay): the whole solution and, if the mistake was in the starting position, the refutation of the played move,
+ * step by step on the board, so that it is clear what the mistake is (owner's feedback 18.11).
  */
 export function CoursePuzzle({puzzle, onDone, children}: {
     puzzle: PuzzleView;
     onDone: (solved: boolean) => void;
-    /** Действия под задачей (кнопка «Следующая задача» в итоговой проверке). */
+    /** Actions under the puzzle (the "Next puzzle" button in the final check). */
     children?: ReactNode;
 }) {
     const {t} = useI18n();
@@ -98,7 +98,7 @@ export function CoursePuzzle({puzzle, onDone, children}: {
     const [outcome, setOutcome] = useState<boolean | null>(null);
     const [mark, setMark] = useState<{ square: string; ok: boolean } | null>(null);
     const [solution, setSolution] = useState<string[] | null>(null);
-    // Неверный ход, сделанный в начальной позиции задачи, — линия «опровержение» в разборе.
+    // A wrong move made in the starting position of the puzzle is the "refutation" line in the review.
     const [played, setPlayed] = useState<string | null>(null);
     const [replay, setReplay] = useState<ReplayView | null>(null);
     const [error, setError] = useState<UiMessage | null>(null);
@@ -117,8 +117,8 @@ export function CoursePuzzle({puzzle, onDone, children}: {
     };
 
     const onMove = async (uci: string) => {
-        // Задача решена или не решена — доска свободна: ход игрока начинает разбор с текущей позиции (стрелку
-        // решения можно сыграть самому).
+        // The puzzle is solved or not solved: the board is free, the player's move starts analysis from the current position (the solution
+        // arrow can be played by oneself).
         if (outcome !== null) {
             if (explorer.active) explorer.play(uci);
             else explorer.start(fen, [uci]);
@@ -198,7 +198,7 @@ export function CoursePuzzle({puzzle, onDone, children}: {
     );
 }
 
-/** Конструкции по порядку: отметка «пройдено», число доступных задач и ссылка на итоговую проверку с лучшим результатом. */
+/** Patterns in order: a "completed" mark, the number of available puzzles and a link to the final check with the best result. */
 export function MateCoursePage() {
     const {t} = useI18n();
     const progress = useLessonProgress();
@@ -255,8 +255,8 @@ export function MateCoursePage() {
 }
 
 /**
- * Конструкция: примеры показа, затем набор задач по порядку. Результат каждой задачи пишется в прогресс; последняя задача
- * набора закрывает конструкцию, число задач берётся из обзора курса (available).
+ * Pattern: demonstration examples, then a set of puzzles in order. The result of each puzzle is written to progress; the last puzzle
+ * of the set closes the pattern, the number of puzzles is taken from the course overview (available).
  */
 export function MateConstructionPage() {
     const {t} = useI18n();
@@ -341,8 +341,8 @@ export function MateConstructionPage() {
 }
 
 /**
- * Итоговая проверка: план задач и минуты даёт сервер, отсчёт времени ведёт клиент (deadline). Проверка кончается по времени или
- * после последней задачи; результат сохраняется один раз (saved).
+ * Final check: the puzzle plan and minutes come from the server, the countdown is kept by the client (deadline). The check ends on time or
+ * after the last puzzle; the result is saved once (saved).
  */
 export function MateExamPage() {
     const {t} = useI18n();
@@ -353,7 +353,7 @@ export function MateExamPage() {
     const [puzzle, setPuzzle] = useState<PuzzleView | null>(null);
     const [results, setResults] = useState<boolean[]>([]);
     const [error, setError] = useState<UiMessage | null>(null);
-    // После ошибки задача остаётся на экране с разбором решения, пока игрок не нажмёт «Следующая задача».
+    // After a mistake the puzzle stays on screen with the solution review until the player presses "Next puzzle".
     const [reviewing, setReviewing] = useState(false);
     const saved = useRef(false);
     const loggedIn = Boolean(getToken());
@@ -387,8 +387,8 @@ export function MateExamPage() {
             setResults([]);
             setReviewing(false);
             setCurrent(0);
-            // Отсчёт и срок — от одного момента: два вызова часов могли попасть в разные миллисекунды, и округление
-            // вверх показывало на старте лишнюю секунду (10:01 вместо 10:00).
+            // The countdown and the deadline are from a single moment: two clock calls could land in different milliseconds, and rounding
+            // up showed an extra second at the start (10:01 instead of 10:00).
             const startedAt = Date.now();
             setNow(startedAt);
             setDeadline(startedAt + exam.minutes * 60_000);

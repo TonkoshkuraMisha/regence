@@ -1,10 +1,10 @@
 // --- FILE: frontend/src/content/basics/levels.ts ---
-// Азбука (таск 14.5): 8 разделов по 6–8 уровней. Тексты разделов — в каталогах i18n (basics.sections.<id>),
-// здесь только позиции. Корректность каждого уровня (решаемость, достижимость цели) проверяет тест levels.test.ts.
+// Basics (task 14.5): 8 sections of 6-8 levels. Section texts are in the i18n catalogs (basics.sections.<id>),
+// only positions are here. The correctness of each level (solvability, reachability of the goal) is checked by the levels.test.ts test.
 
 import type {BasicsSection} from './rules';
 
-const K = '7k/8/8/8/8/8/8/'; // начало позиции «чёрный король в углу h8»
+const K = '7k/8/8/8/8/8/8/'; // start of the position "black king in the h8 corner"
 
 export const BASICS: BasicsSection[] = [
     {
@@ -100,7 +100,7 @@ export function sectionById(id: string): BasicsSection | undefined {
     return BASICS.find((section) => section.id === id);
 }
 
-/** id прогресса раздела на сервере (тот же формат, что у уроков школы). */
+/** Section progress id on the server (the same format as school lessons). */
 export function progressId(sectionId: string): string {
     return `basics-${sectionId.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)}`;
 }

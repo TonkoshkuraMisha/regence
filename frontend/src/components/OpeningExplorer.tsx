@@ -1,8 +1,8 @@
 // --- FILE: frontend/src/components/OpeningExplorer.tsx ---
-// Дерево дебютов (таск 16.2): ходы из текущей позиции со статистикой партий (доли побед белых / ничьих / побед
-// чёрных), название дебюта и партии мастеров из архива и библиотеки (партия библиотеки ведёт в библиотеку и помечена
-// «в библиотеке» или «с объяснениями»). Данные — services/openingExplorer.ts (exploreOpening, ответ сервера по
-// списку ходов). Используется в «Инструментах» (/tools), в просмотре партии (GameViewer) и в разделе репертуара.
+// Opening tree (task 16.2): moves from the current position with game statistics (shares of White wins / draws / Black
+// wins), the opening name and master games from the archive and the library (a library game leads to the library and is marked
+// "in the library" or "with explanations"). Data is services/openingExplorer.ts (exploreOpening, the server response for a
+// list of moves). Used in "Tools" (/tools), in the game viewer (GameViewer) and in the repertoire section.
 
 import {useEffect, useState} from 'react';
 import {Link} from 'react-router-dom';
@@ -14,15 +14,15 @@ import {exploreOpening, shares} from '../services/openingExplorer';
 import type {ExplorerResult} from '../services/openingExplorer';
 
 interface Props {
-    /** Ходы из начальной позиции в UCI. */
+    /** Moves from the starting position in UCI. */
     moves: string[];
-    /** Щелчок по ходу — сыграть его (в «Инструментах»); без обработчика ходы только показываются. */
+    /** A click on a move plays it (in "Tools"); without a handler the moves are only shown. */
     onPlay?: (uci: string) => void;
 }
 
 /**
- * Блок дерева дебютов для позиции после moves. Запрос повторяется при смене ходов; устаревший ответ отбрасывается
- * (флаг alive). Доля сегмента меньше 15 % подписи не получает — не помещается в полосу.
+ * Opening tree block for the position after moves. The request is repeated when the moves change; a stale response is dropped
+ * (the alive flag). A segment share below 15% gets no label: it does not fit in the bar.
  */
 export function OpeningExplorer({moves, onPlay}: Props) {
     const {t} = useI18n();

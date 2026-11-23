@@ -1,24 +1,25 @@
 # --- FILE: src/services/tournament_simulation.py ---
 """
-Партии ботов между собой в турнире (таск 15.2). Считаются в Celery, не в API-процессе: турнир на 8 участников —
-это 28 партий. Глубина и время поиска понижены, длина партии ограничена: незавершённую к SIM_MAX_PLIES партию
-решает оценка движка (статическая — без движка).
+Bot-vs-bot games in a tournament (task 15.2). They are computed in Celery, not in the API process: a tournament of 8
+participants is 28 games. The search depth and time are lowered, the game length is limited: a game unfinished by
+SIM_MAX_PLIES is decided by the engine evaluation (static - without the engine).
 
-Сила в симуляции (таск 28.2). Обычный ход бота ограничивает силу опорным ходом Stockfish с UCI_Elo, но тому нужно
-время: при 0,1 с на ход рейтинг переставал что-либо значить (замер 17.11: 2400 против 1600 — 3,5 из 8, 2200 против
-1700 — 4,5 из 8), а на полном времени партия идёт больше минуты — турнир на 23 участника так не сыграть. Поэтому
-у симуляции своя модель (SimulatedPlayer): лучшие ходы оцениваются на полной силе, а участник выбирает среди них
-случайно, с весом, который падает с потерей в оценке; чем ниже рейтинг, тем медленнее падает (temperature_cp).
-Дебютная книга и стиль участника при этом сохраняются.
+Strength in the simulation (task 28.2). An ordinary bot move limits strength with a reference Stockfish move with UCI_Elo,
+but that needs time: at 0.1 s per move the rating stopped meaning anything (measurement of 17.11: 2400 against 1600 - 3.5
+of 8, 2200 against 1700 - 4.5 of 8), and at full time a game takes over a minute - a tournament of 23 participants cannot
+be played that way. Therefore the simulation has its own model (SimulatedPlayer): the best moves are evaluated at full
+strength, and the participant chooses among them randomly, with a weight that falls with the loss in evaluation; the lower
+the rating, the slower it falls (temperature_cp). The opening book and the participant's style are kept.
 
-Каждая партия сохраняется с настоящим PGN, без рейтинга, с пометкой is_simulation: она не попадает в Live,
-архив и статистику профилей и открывается в GameViewer по ссылке из турнира. Одну партию турнира забирает один
-воркер (tournament_games.started_at); если воркер упал посреди партии, через CLAIM_TIMEOUT её можно забрать снова.
+Each game is saved with a real PGN, without a rating, with the is_simulation mark: it does not enter Live,
+the archive and profile statistics and is opened in GameViewer by a link from the tournament. One tournament game is taken
+by one worker (tournament_games.started_at); if the worker crashed in the middle of a game, after CLAIM_TIMEOUT it can be
+taken again.
 
-Данные: таблицы tournament_games, tournament_players, games; опыт дебютов исторических ботов — bots/memory.py;
-подстройка архетипов — bots/selfplay.py; Stockfish — только через пул движка (engine_work «simulation»).
-Запускает simulate() задача Celery simulate_tournament_game (src/worker/tasks.py); в очередь партии ставит
-tournaments.mark_for_queue. play_game и пределы SIM_* использует и самоигра ботов (bots/selfplay.py).
+Data: the tables tournament_games, tournament_players, games; the historical bots' opening experience - bots/memory.py;
+tuning of archetypes - bots/selfplay.py; Stockfish - only through the engine pool (engine_work "simulation").
+simulate() is run by the Celery task simulate_tournament_game (src/worker/tasks.py); games are queued by
+tournaments.mark_for_queue. play_game and the SIM_* limits are also used by bot self-play (bots/selfplay.py).
 """
 
 import asyncio
@@ -48,27 +49,28 @@ from src.services.engine_pool import engine_work
 
 logger = logging.getLogger(__name__)
 
-# Предел длины партии в полуходах: дольше — партию присуждает adjudicate.
+# Limit of game length in plies: beyond it adjudicate decides the game.
 SIM_MAX_PLIES = 200
-# Потолки глубины и времени поиска (секунды) бота в симуляции: ускоряют партию за счёт качества ходов.
+# Ceilings of search depth and time (seconds) of a bot in the simulation: they speed up the game at the cost of move quality.
 SIM_MAX_DEPTH = 6
 SIM_TIME_LIMIT_S = 0.1
-# Перевес в сотых пешки, начиная с которого незавершённая партия присуждается победой.
+# Advantage in hundredths of a pawn from which an unfinished game is awarded as a win.
 ADJUDICATE_CP = 300
-# Сколько лучших ходов оценивается: участник выбирает только среди них, поэтому в позиции с единственным ходом
-# число плохих вариантов ограничено.
+# How many best moves are evaluated: the participant chooses only among them, so in a position with a single move
+# the number of bad options is limited.
 SIM_CANDIDATES = 8
-# «Температура» выбора хода по рейтингу, сп: ход с потерей T выбирается в e раз реже лучшего, дальше вес падает
-# круче (степень LOSS_POWER) — зевок фигуры редок даже у слабого. Замер 17.11 (16 партий на пару, партия ≈ 1 с):
-# разница 200 пунктов — 69–78 % очков сильному (по Эло 76 %), 400 — 94–97 % (91 %), 800 — 100 % (99 %).
+# "Temperature" of move choice by rating, cp: a move with loss T is chosen e times less often than the best, beyond that
+# the weight falls steeper (power LOSS_POWER) - a piece blunder is rare even for a weak one. Measurement of 17.11 (16 games
+# per pair, a game ~ 1 s): a 200-point difference - 69-78 % of points to the stronger (by Elo 76 %), 400 - 94-97 % (91 %),
+# 800 - 100 % (99 %).
 SIM_TEMPERATURE: tuple[tuple[int, float], ...] = ((800, 260.0), (1200, 170.0), (1600, 110.0), (2000, 65.0),
                                                   (2400, 32.0), (2800, 12.0))
-# Степень в формуле веса хода: больше 1 — малая потеря почти не штрафуется, большая — резко.
+# Power in the move weight formula: above 1 - a small loss is barely penalised, a large one sharply.
 LOSS_POWER = 1.5
 
 
 def temperature_cp(rating: int) -> float:
-    """Температура выбора хода для рейтинга: линейно между опорными точками SIM_TEMPERATURE."""
+    """Move choice temperature for a rating: linear between the SIM_TEMPERATURE anchor points."""
     points = SIM_TEMPERATURE
     if rating <= points[0][0]:
         return points[0][1]
@@ -82,8 +84,8 @@ def move_weights(
         scores: dict[chess.Move, float], style: dict[chess.Move, float], temperature: float,
 ) -> dict[chess.Move, float]:
     """
-    Веса ходов: exp(−(потеря / T)^LOSS_POWER), потеря — отставание оценки от лучшего хода. Стиль сдвигает потерю
-    не больше чем на половину температуры: характер виден, но плохой ход хорошим не делает.
+    Move weights: exp(-(loss / T)^LOSS_POWER), loss is the evaluation's lag behind the best move. Style shifts the loss
+    by no more than half the temperature: character is visible, but a bad move does not become a good one.
     """
     best = max(scores.values())
     weights = {}
@@ -95,10 +97,10 @@ def move_weights(
 
 
 class SimulatedPlayer:
-    """Участник партии ботов: ходит из своей дебютной книги, дальше — по модели силы симуляции (см. модуль)."""
+    """A participant of a bot game: moves from its opening book, then by the simulation's strength model (see the module)."""
 
     def __init__(self, bot: HistoricalBot, rating: int, rng: random.Random | None = None):
-        """rating задаёт температуру выбора хода; rng подменяют в тестах для воспроизводимости."""
+        """rating sets the move choice temperature; rng is replaced in tests for reproducibility."""
         self.bot = bot
         self.rating = rating
         self.temperature = temperature_cp(rating)
@@ -106,8 +108,8 @@ class SimulatedPlayer:
 
     def choose_move(self, fen: str) -> dict:
         """
-        Ход участника симуляции: из дебютной книги, иначе — случайный среди лучших ходов с весом, который падает с
-        потерей в оценке (чем ниже рейтинг, тем слабее падает) и растёт с бонусом стиля.
+        A simulation participant's move: from the opening book, otherwise random among the best moves with a weight that
+        falls with the loss in evaluation (the lower the rating, the weaker it falls) and grows with the style bonus.
         """
         board = chess.Board(fen)
         book = self.bot._book_move(board)
@@ -127,10 +129,11 @@ class SimulatedPlayer:
 
 def simulation_rating(player: TournamentPlayer, historic: bool = False) -> int:
     """
-    Сила участника в партиях ботов. Обычно — сила на старте турнира (у бота — измеренная калибровкой: такой он и в
-    партии с игроком). В турнире «Машины времени» (historic) у исторического бота берётся заявленная сила: она
-    отражает место мастера в истории, а измеренная бывает заметно ниже (Чигорин — 1833 при заявленных 2150), и
-    второй призёр Гастингса занимал бы последнее место. Рейтинг игрока по-прежнему считается от измеренной силы.
+    A participant's strength in bot games. Usually the strength at the start of the tournament (for a bot - measured by
+    calibration: that is also what it is in a game with the player). In a "Time Machine" tournament (historic) a historical
+    bot gets its stated strength: it reflects the master's place in history, while the measured one is sometimes noticeably
+    lower (Chigorin - 1833 against a stated 2150), and the Hastings runner-up would take last place. The player's rating is
+    still computed from the measured strength.
     """
     from src.api.bots import BOT_METADATA
 
@@ -140,12 +143,12 @@ def simulation_rating(player: TournamentPlayer, historic: bool = False) -> int:
 
 
 def player_for(player: TournamentPlayer, historic: bool = False) -> SimulatedPlayer:
-    """Участник симуляции: его бот (книга, стиль) и сила (simulation_rating)."""
+    """A simulation participant: their bot (book, style) and strength (simulation_rating)."""
     return SimulatedPlayer(bot_for(player), simulation_rating(player, historic))
 
 
 def bot_for(player: TournamentPlayer) -> HistoricalBot:
-    """Бот участника с пониженной для симуляции глубиной и временем поиска."""
+    """A participant's bot with search depth and time lowered for the simulation."""
     from src.services.bots import BOT_INSTANCES
     from src.services.bots.archetypes import ARCHETYPES_BY_KEY
     from src.services.bots.personality import BotPersonalityConfig, PersonalityBot
@@ -165,7 +168,7 @@ def bot_for(player: TournamentPlayer) -> HistoricalBot:
 
 
 def adjudicate(board: chess.Board) -> str:
-    """Итог незавершённой партии: перевес больше ADJUDICATE_CP по оценке движка (или статической) — победа."""
+    """Result of an unfinished game: an advantage above ADJUDICATE_CP by the engine (or static) evaluation - a win."""
     scores = analyse_with_stockfish(
         board=board, engine_path=resolve_stockfish_path(), depth=12,
         time_limit=0.2, multipv=1,
@@ -187,8 +190,8 @@ def play_game(
         max_plies: int = SIM_MAX_PLIES, judge: Callable[[chess.Board], str] = adjudicate,
 ) -> tuple[list[str], str, str]:
     """
-    Партия бот против бота: (ходы uci, результат, причина завершения). Не закончившуюся к max_plies партию решает
-    judge, причина тогда — «adjudication».
+    Bot against bot game: (uci moves, result, termination reason). A game unfinished by max_plies is decided by
+    judge, the reason is then "adjudication".
     """
     board = chess.Board()
     moves: list[str] = []
@@ -205,7 +208,7 @@ def play_game(
 
 
 async def claim(db: AsyncSession, game_id: int) -> bool:
-    """Забирает партию турнира для симуляции; False — её уже считает другой воркер или она сыграна."""
+    """Takes a tournament game for simulation; False - another worker is already computing it or it has been played."""
     now = datetime.now(UTC)
     result = await db.execute(
         update(TournamentGame)
@@ -221,7 +224,7 @@ async def claim(db: AsyncSession, game_id: int) -> bool:
 
 
 def _pgn_name(player: TournamentPlayer) -> str:
-    """Имя участника для PGN: исторический бот, архетип или персоналия; без названия — нейтральная запись."""
+    """Participant name for the PGN: a historical bot, an archetype or a personality; without a name - a neutral entry."""
     from src.api.bots import BOT_METADATA
     from src.services.bots.archetypes import ARCHETYPES_BY_KEY
 
@@ -237,8 +240,8 @@ async def save_and_record(
         termination: str,
 ) -> list[int]:
     """
-    Сохраняет партию (PGN, пометка is_simulation), пишет результат в турнир и продвигает его. Возвращает id партий,
-    которые пора поставить в очередь (tournaments.mark_for_queue).
+    Saves the game (PGN, the is_simulation mark), writes the result into the tournament and advances it. Returns the ids of
+    games that should be queued (tournaments.mark_for_queue).
     """
     from src.api.bots import CUSTOM_BOT_ID, _build_pgn_string, _get_or_create_bot_user
     from src.services.openings import eco_code
@@ -270,8 +273,8 @@ async def save_and_record(
 
 async def simulate(db: AsyncSession, tournament_game_id: int, play: Callable = play_game) -> list[int]:
     """
-    Играет партию турнира между ботами и записывает её. Возвращает id следующих партий для симуляции
-    (пусто, если партию уже забрал другой воркер или турнир закрыт).
+    Plays a tournament game between bots and records it. Returns the ids of the next games for simulation
+    (empty if the game was already taken by another worker or the tournament is closed).
     """
     if not await claim(db, tournament_game_id):
         return []
@@ -286,7 +289,7 @@ async def simulate(db: AsyncSession, tournament_game_id: int, play: Callable = p
     for seat in (white_seat, black_seat):
         if _historical_bot_key(seat):
             await bot_memory.refresh(db, seat.bot_key or "")
-    # Партия — работа процессора: в отдельном потоке, чтобы не держать цикл событий.
+    # A game is processor work: in a separate thread, so as not to hold the event loop.
     with engine_work("simulation"):
         moves, result, termination = await asyncio.to_thread(
             play, player_for(white_seat, historic), player_for(black_seat, historic),
@@ -298,7 +301,7 @@ async def simulate(db: AsyncSession, tournament_game_id: int, play: Callable = p
 
 
 def _historical_bot_key(player: TournamentPlayer) -> str | None:
-    """Ключ исторического бота участника (у него есть книга и память дебютов); для остальных None."""
+    """Key of the participant's historical bot (it has a book and an opening memory); None for the others."""
     from src.services.bots import BOT_INSTANCES
 
     return player.bot_key if player.kind == "bot" and player.bot_key in BOT_INSTANCES else None
@@ -306,7 +309,7 @@ def _historical_bot_key(player: TournamentPlayer) -> str | None:
 
 async def _remember_openings(db: AsyncSession, white: TournamentPlayer, black: TournamentPlayer, moves: list[str],
                              result: str) -> None:
-    """Опыт турнира ботов (таск 32.1): итог партии — дебютным ходам исторических ботов; на рейтинг не влияет."""
+    """Bot tournament experience (task 32.1): the result goes to the historical bots' opening moves; no effect on rating."""
     from src.services.bots import BOT_INSTANCES
 
     for player, color in ((white, chess.WHITE), (black, chess.BLACK)):
@@ -315,6 +318,6 @@ async def _remember_openings(db: AsyncSession, white: TournamentPlayer, black: T
             continue
         try:
             await bot_memory.record_book(db, key, BOT_INSTANCES[key].opening_book, moves, color, result)
-        except Exception as exc:  # партия уже записана в турнир — опыт не критичен
+        except Exception as exc:  # the game is already recorded in the tournament - the experience is not critical
             await db.rollback()
             logger.warning("Bot memory update failed for %s: %s", key, exc)

@@ -1,8 +1,8 @@
-# HTTPS на сервере за Cloudflare (режим SSL/TLS «Full (strict)»). Добавляется ко всему остальному:
+# HTTPS on the server behind Cloudflare (SSL/TLS mode "Full (strict)"). Added on top of everything else:
 #   docker compose -f docker-compose.prod.yml -f docker-compose.tls.yml up -d
-# Перед запуском: deploy/certs/origin.pem и origin.key (Cloudflare → SSL/TLS → Origin Server → Create Certificate) и
-# deploy/cloudflare_real_ip.inc (`scripts/deploy/cloudflare_ips.sh nginx`). Подробности — DEPLOY.md, раздел 4.
-# Порт 80 остаётся: внутри сети compose он нужен проверкам здоровья, снаружи его закрывает файрвол (cloudflare_ips.sh ufw).
+# Before starting: deploy/certs/origin.pem and origin.key (Cloudflare -> SSL/TLS -> Origin Server -> Create Certificate) and
+# deploy/cloudflare_real_ip.inc (`scripts/deploy/cloudflare_ips.sh nginx`). Details - DEPLOY.md, section 4.
+# Port 80 stays: inside the compose network it is needed for health checks, from outside the firewall closes it (cloudflare_ips.sh ufw).
 services:
   web:
     ports:

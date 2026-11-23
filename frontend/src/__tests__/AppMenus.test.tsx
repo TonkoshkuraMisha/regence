@@ -1,6 +1,6 @@
-// Дополнительные проверки App: меню профиля (пункты ведут на свои страницы), выход, «выйти везде», меню «Легенды»,
-// закрытие меню щелчком снаружи, замер связи, повтор загрузки профиля, язык из профиля и пункт «Модерация».
-// Сеть — только подменой fetch; вход — токеном в памяти.
+// Additional App checks: the profile menu (items lead to their own pages), logout, "log out everywhere", the "Legends" menu,
+// closing a menu by a click outside, the connection ping, retrying the profile load, the language from the profile and the "Moderation" item.
+// The network is only a fetch stub; login is a token in memory.
 
 import {act, fireEvent, render, screen, waitFor, within} from '@testing-library/react';
 import {MemoryRouter, useLocation} from 'react-router-dom';
@@ -25,7 +25,7 @@ function ok(body: unknown): Reply {
     return {ok: true, status: 200, body};
 }
 
-/** fetch по подстроке адреса; необъявленные адреса отвечают пустым списком. */
+/** fetch by a substring of the address; undeclared addresses answer with an empty list. */
 function stubFetch(routes: Routes) {
     const calls: { url: string; method: string }[] = [];
     const fn = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
@@ -60,15 +60,15 @@ afterEach(() => {
     vi.useRealTimers();
     vi.unstubAllGlobals();
     setToken(null);
-    setLanguage('ru');
+    setLanguage('en');
 });
 
-describe('App: меню профиля', () => {
-    it('кнопки меню закрывают его и ведут на свои страницы', async () => {
+describe('App: profile menu', () => {
+    it('menu buttons close it and lead to their own pages', async () => {
         stubFetch({'/profile/me': ok(PROFILE), '/moderation/me': ok({is_moderator: true, is_cheater: false})});
         await renderApp();
         const header = screen.getByRole('banner');
-        /** Пункты-переходы меню профиля: у них общий класс наведения; «Сообщить о проблеме» открывает окно, а не страницу. */
+        /** Navigation items of the profile menu: they share a hover class; "Report a problem" opens a dialog, not a page. */
         const items = () => within(header).getAllByRole('button')
             .filter((b) => b.className.includes('w-full px-4 py-2 text-left') && b.className.includes('hover:bg-black/30') && b.getAttribute('data-testid') !== 'report-problem-menu');
         fireEvent.click(await within(header).findByText('alice'));
@@ -82,8 +82,8 @@ describe('App: меню профиля', () => {
                 fireEvent.click(items()[i]);
             });
             visited.push(screen.getByTestId('where').textContent ?? '');
-            // Меню закрылось (иначе в сообщении будет виден путь пункта).
-            expect(screen.queryByTestId('report-problem-menu') ? `открыто после ${visited.join()}` : 'закрыто').toBe('закрыто');
+            // The menu closed (otherwise the item path would be visible in the message).
+            expect(screen.queryByTestId('report-problem-menu') ? `open after ${visited.join()}` : 'closed').toBe('closed');
         }
         for (const path of ['/profile/alice', '/puzzles', '/import', '/learn', '/watch', '/tools', '/teams', '/feed',
             '/messages', '/study', '/moderation', '/tournaments', '/leaderboard', '/settings']) {
@@ -91,14 +91,14 @@ describe('App: меню профиля', () => {
         }
     });
 
-    it('замер связи: при ошибке сети в меню показано сообщение об ошибке', async () => {
+    it('ping: on a network error the menu shows an error message', async () => {
         stubFetch({'/profile/me': ok(PROFILE), '/health': 'offline'});
         await renderApp();
         fireEvent.click(await within(screen.getByRole('banner')).findByText('alice'));
-        expect(await screen.findByText('ПИНГ ОШИБКА')).toBeInTheDocument();
+        expect(await screen.findByText('PING ERROR')).toBeInTheDocument();
     });
 
-    it('замер связи повторяется каждые три секунды, пока меню открыто', async () => {
+    it('ping repeats every three seconds while the menu is open', async () => {
         const calls = stubFetch({'/profile/me': ok(PROFILE), '/health': ok({status: 'healthy'})});
         vi.useFakeTimers();
         await renderApp();
@@ -113,7 +113,7 @@ describe('App: меню профиля', () => {
         expect(calls.filter((c) => c.url.includes('/health')).length).toBeGreaterThan(before);
     });
 
-    it('щелчок вне меню закрывает его', async () => {
+    it('a click outside the menu closes it', async () => {
         stubFetch({'/profile/me': ok(PROFILE)});
         await renderApp();
         fireEvent.click(await within(screen.getByRole('banner')).findByText('alice'));
@@ -122,7 +122,7 @@ describe('App: меню профиля', () => {
         expect(screen.queryByTestId('report-problem-menu')).not.toBeInTheDocument();
     });
 
-    it('«Выйти» сбрасывает вход и ведёт на главную', async () => {
+    it('"Log out" resets the login and leads to the home page', async () => {
         stubFetch({'/profile/me': ok(PROFILE)});
         await renderApp('/leaderboard');
         fireEvent.click(await within(screen.getByRole('banner')).findByText('alice'));
@@ -135,7 +135,7 @@ describe('App: меню профиля', () => {
         await waitFor(() => expect(within(screen.getByRole('banner')).queryByText('alice')).not.toBeInTheDocument());
     });
 
-    it.each([['сервер отвечает', false], ['сети нет', true]])('«Выйти везде»: %s — локальный выход выполняется', async (_name, offline) => {
+    it.each([['the server answers', false], ['no network', true]])('"Log out everywhere": %s — the local logout is performed', async (_name, offline) => {
         const calls = stubFetch({
             '/profile/me': ok(PROFILE),
             '/auth/logout-all': offline ? 'offline' : ok({}),
@@ -152,8 +152,8 @@ describe('App: меню профиля', () => {
     });
 });
 
-describe('App: меню «Легенды»', () => {
-    it('открывается, ведёт к чемпиону и закрывается; закрывается и щелчком снаружи', async () => {
+describe('App: "Legends" menu', () => {
+    it('opens, leads to a champion and closes; also closes by a click outside', async () => {
         stubFetch({'/profile/me': ok(PROFILE)});
         await renderApp('/about');
         const legends = within(screen.getByRole('navigation')).getByRole('button');
@@ -177,8 +177,8 @@ describe('App: меню «Легенды»', () => {
     });
 });
 
-describe('App: профиль и сессия', () => {
-    it('сервер ответил 500 — профиль запрашивается повторно через три секунды, выхода нет', async () => {
+describe('App: profile and session', () => {
+    it('the server answered 500 — the profile is requested again after three seconds, no logout', async () => {
         let attempt = 0;
         const calls = stubFetch({'/profile/me': () => (++attempt === 1 ? {ok: false, status: 500} : ok(PROFILE))});
         vi.useFakeTimers();
@@ -193,28 +193,28 @@ describe('App: профиль и сессия', () => {
         expect(calls.filter((c) => c.url.includes('/profile/me')).length).toBeGreaterThanOrEqual(2);
     });
 
-    it('401 на профиль запускает обновление токена по cookie', async () => {
+    it('401 on the profile starts a token refresh by cookie', async () => {
         const calls = stubFetch({'/profile/me': {ok: false, status: 401}, '/auth/refresh': {ok: false, status: 401}});
         await renderApp();
         await waitFor(() => expect(calls.some((c) => c.url.includes('/auth/refresh'))).toBe(true));
     });
 
-    it('язык из профиля применяется при входе', async () => {
-        stubFetch({'/profile/me': ok({...PROFILE, language: 'en'})});
+    it('the language from the profile is applied on login', async () => {
+        stubFetch({'/profile/me': ok({...PROFILE, language: 'uk'})});
         await renderApp('/about');
-        await waitFor(() => expect(document.documentElement.lang).toBe('en'));
+        await waitFor(() => expect(document.documentElement.lang).toBe('uk'));
     });
 
-    it('если языка в профиле нет, текущий записывается на сервер', async () => {
+    it('if the profile has no language, the current one is written to the server', async () => {
         const calls = stubFetch({'/profile/me': ok({...PROFILE, language: null})});
         await renderApp('/about');
         await waitFor(() => expect(calls.some((c) => c.method !== 'GET' && c.url.includes('/profile'))).toBe(true));
     });
 
-    it('игрок с флагом нечестной игры видит пункт «Модерация» (апелляция)', async () => {
+    it('a player with the unfair-play flag sees the "Moderation" item (appeal)', async () => {
         stubFetch({'/profile/me': ok(PROFILE), '/moderation/me': ok({is_moderator: false, is_cheater: true})});
         await renderApp();
         fireEvent.click(await within(screen.getByRole('banner')).findByText('alice'));
-        expect(await within(screen.getByRole('banner')).findByText('Модерация')).toBeInTheDocument();
+        expect(await within(screen.getByRole('banner')).findByText('Moderation')).toBeInTheDocument();
     });
 });

@@ -1,7 +1,7 @@
 // --- FILE: frontend/src/trainers/calculation.ts ---
-// Счёт и внимание (таск 19.7): шахи и взятия за обе стороны, исход размена (SEE — перебор взятий наименее ценной
-// фигурой, с рентгеном), число ходов коня и короля до поля, правило квадрата, оценка позиции по оценкам классики.
-// Вопросы — детерминированные по seed; позиции — из партий классики (естественные).
+// Calculation and attention (task 19.7): checks and captures for both sides, exchange outcome (SEE - enumeration of captures by the least valuable
+// piece, with x-ray), number of knight and king moves to a square, the square rule, position evaluation from classic evaluations.
+// Questions are deterministic by seed; positions are from classic games (natural ones).
 
 import {Chess} from 'chess.js';
 import type {Square} from 'chess.js';
@@ -9,7 +9,7 @@ import {rng} from './vision';
 
 export const VALUES: Record<string, number> = {p: 100, n: 300, b: 300, r: 500, q: 900, k: 20000};
 
-/** Все ходы стороны (даже если сейчас ход соперника): позиция с переданной очередью. */
+/** All moves of a side (even if it is the opponent's turn now): a position with the given side to move. */
 function sideMoves(fen: string, color: 'w' | 'b') {
     const parts = fen.split(' ');
     parts[1] = color;
@@ -17,11 +17,11 @@ function sideMoves(fen: string, color: 'w' | 'b') {
     try {
         return new Chess(parts.join(' ')).moves({verbose: true});
     } catch {
-        return [];   // сторона, которая не ходит, под шахом — ход за неё невозможен
+        return [];   // the side that is not to move is in check - a move for it is impossible
     }
 }
 
-/** Все шахи и взятия обеих сторон (UCI без превращения). */
+/** All checks and captures of both sides (UCI without promotion). */
 export function checksAndCaptures(fen: string): Set<string> {
     const result = new Set<string>();
     for (const color of ['w', 'b'] as const) {
@@ -32,7 +32,7 @@ export function checksAndCaptures(fen: string): Set<string> {
     return result;
 }
 
-/** Позиция для «Шахов и взятий»: случайная (по seed) из пула, где шахов и взятий от 2 до 8. */
+/** Position for "Checks and captures": random (by seed) from a pool where there are 2 to 8 checks and captures. */
 export function checksPosition(pool: string[], seed: number): string | null {
     const next = rng(seed);
     for (let attempt = 0; attempt < 300 && pool.length; attempt++) {
@@ -43,7 +43,7 @@ export function checksPosition(pool: string[], seed: number): string | null {
     return null;
 }
 
-/** Выигрыш стороны, которая ходит, от серии взятий на поле `square` (0 — брать не обязательно). */
+/** Gain of the side to move from a series of captures on square `square` (0 - capturing is not mandatory). */
 function swap(board: Chess, square: Square): number {
     const target = board.get(square);
     if (!target) return 0;
@@ -57,7 +57,7 @@ function swap(board: Chess, square: Square): number {
     return Math.max(0, value);
 }
 
-/** Итог взятия на поле наименее ценной фигурой (сама первая жертва обязательна, дальше — по желанию). */
+/** Outcome of a capture on a square by the least valuable piece (the first victim itself is mandatory, after that - optional). */
 export function captureGain(fen: string, square: string): number {
     const board = new Chess(fen);
     const target = board.get(square as Square);
@@ -80,7 +80,7 @@ export interface ExchangeQuestion {
     answer: ExchangeAnswer;
 }
 
-/** Вопрос о размене: позиция, где у стороны, которая ходит, есть взятие (не короля, не пешкой пешки — скучно). */
+/** Exchange question: a position where the side to move has a capture (not of a king, not pawn takes pawn - boring). */
 export function exchangeQuestion(pool: string[], seed: number): ExchangeQuestion | null {
     const next = rng(seed);
     for (let attempt = 0; attempt < 200; attempt++) {
@@ -95,7 +95,7 @@ export function exchangeQuestion(pool: string[], seed: number): ExchangeQuestion
     return null;
 }
 
-// ---- Расстояния ----
+// ---- Distances ----
 
 const FILES = 'abcdefgh';
 const KNIGHT = [[1, 2], [2, 1], [2, -1], [1, -2], [-1, -2], [-2, -1], [-2, 1], [-1, 2]];
@@ -144,10 +144,10 @@ export function distanceQuestion(seed: number, index: number): DistanceQuestion 
     return {piece, from, to, answer: kingDistance(from, to)};
 }
 
-// ---- Правило квадрата ----
+// ---- The square rule ----
 
 export interface SquareQuestion {
-    /** Белая пешка без поддержки против чёрного короля; кто ходит. */
+    /** White pawn without support against the black king; who moves. */
     pawn: string;
     king: string;
     toMove: 'w' | 'b';
@@ -155,12 +155,12 @@ export interface SquareQuestion {
 }
 
 /**
- * Успевает ли король догнать пешку (правило квадрата; король своего цвета и другие фигуры не мешают). Король ловит
- * пешку, если успевает взять её не позже, чем на поле превращения: пешке нужно pawnMoves ходов (со второй
- * горизонтали — на один меньше, через двойной шаг), а королю — дойти до поля превращения и побить там нового ферзя.
- * При ходе белых у чёрных за это время pawnMoves ходов (последний — взятие), при ходе чёрных — на один больше.
- * Пример: пешка f6, король d6, ход белых — 1.f7 Ke7 2.f8=Ф+ Kxf8: догоняет (до 18.11.2026 правило было на ход строже
- * и здесь отвечало «не успеет»).
+ * Whether the king catches up with the pawn (the square rule; the king of its own color and other pieces do not interfere). The king catches the
+ * pawn if it manages to capture it no later than on the promotion square: the pawn needs pawnMoves moves (from the second
+ * rank - one less, via the double step), and the king - to reach the promotion square and capture the new queen there.
+ * With White to move Black has pawnMoves moves in that time (the last one a capture), with Black to move - one more.
+ * Example: pawn f6, king d6, White to move - 1.f7 Ke7 2.f8=Q+ Kxf8: catches up (until 18.11.2026 the rule was one move stricter
+ * and answered "will not make it" here).
  */
 export function kingCatchesPawn(pawn: string, king: string, toMove: 'w' | 'b'): boolean {
     const rank = Number(pawn[1]);
@@ -181,7 +181,7 @@ export function squareQuestion(seed: number, index: number): SquareQuestion {
 }
 
 export function squareFen(q: SquareQuestion): string {
-    // Белый король — в углу, далеко от пешки и чёрного короля (не мешает и не под шахом).
+    // White king - in the corner, far from the pawn and the black king (does not interfere and is not in check).
     const placement: Record<string, string> = {[q.pawn]: 'P', [q.king]: 'k'};
     const whiteKing = ['a1', 'h1', 'a3', 'h3'].find((s) => !placement[s] && kingDistance(s, q.king) > 1 && kingDistance(s, q.pawn) > 0) ?? 'a1';
     placement[whiteKing] = 'K';
@@ -203,11 +203,11 @@ export function squareFen(q: SquareQuestion): string {
     return `${rows.join('/')} ${q.toMove} - - 0 1`;
 }
 
-// ---- Оценка позиции ----
+// ---- Position evaluation ----
 
 export type EvalAnswer = 'white' | 'equal' | 'black';
 
-/** Однозначная оценка: перевес от 1,5 пешки, равенство — в пределах 0,6; между — вопрос не задаётся. */
+/** Unambiguous evaluation: advantage from 1.5 pawns, equality within 0.6; in between - no question is asked. */
 export function evalVerdict(cp: number): EvalAnswer | null {
     if (cp >= 150) return 'white';
     if (cp <= -150) return 'black';
@@ -221,14 +221,14 @@ export interface EvalQuestion {
     answer: EvalAnswer;
 }
 
-/** «Сравни два хода» (27.9): ход мастера на остановке классики против другой линии движка, слабее ≥ 1 пешки. */
+/** "Compare two moves" (27.9): the master's move at a classic stop against another engine line, weaker by >= 1 pawn. */
 export interface CompareQuestion {
     fen: string;
     best: string;
     other: string;
     bestCp: number;
     otherCp: number;
-    /** Порядок вариантов на экране (UCI). */
+    /** Order of options on screen (UCI). */
     options: [string, string];
 }
 
@@ -252,7 +252,7 @@ export function compareQuestion(
     return null;
 }
 
-/** SAN хода UCI в позиции FEN. */
+/** SAN of UCI move in FEN position. */
 export function sanOf(fen: string, uci: string): string {
     return new Chess(fen).move({from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4]}).san;
 }

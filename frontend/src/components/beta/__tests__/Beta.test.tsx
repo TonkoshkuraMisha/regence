@@ -1,5 +1,5 @@
-// Программа беты (таск 24.4): «Сообщить о проблеме» с контекстом страницы, ссылка на сообщество из настроек сервера,
-// приглашения и очередь сообщений у модератора, регистрация по коду-приглашению.
+// The beta programme (task 24.4): "Report a problem" with the page context, a link to the community from the server settings,
+// invitations and the message queue for the moderator, registration by an invitation code.
 
 import {act, fireEvent, render, screen} from '@testing-library/react';
 import {MemoryRouter} from 'react-router-dom';
@@ -37,65 +37,65 @@ afterEach(() => {
     vi.unstubAllGlobals();
 });
 
-describe('сообщить о проблеме', () => {
-    it('гость отправляет текст; прикладываются путь страницы, язык и размер окна — без параметров адреса', async () => {
+describe('report a problem', () => {
+    it('a guest sends the text; the page path, language and window size are attached — without the address parameters', async () => {
         const fetchMock = stub((url) => (url.endsWith('/beta/config') ? CONFIG : {id: 7}));
         const onClose = vi.fn();
         render(<MemoryRouter initialEntries={['/reset-password?token=secret']}><ReportProblem onClose={onClose}/></MemoryRouter>);
 
-        expect(await screen.findByText(/версию приложения \(1\.2\.2\)/)).toBeInTheDocument();
+        expect(await screen.findByText(/the app version \(1\.2\.2\)/)).toBeInTheDocument();
         expect(screen.getByTestId('report-problem-context')).toHaveTextContent('/reset-password');
         expect(screen.getByTestId('report-problem-context')).not.toHaveTextContent('secret');
-        fireEvent.change(screen.getByTestId('report-problem-text'), {target: {value: '  Часы спешат на минуту  '}});
+        fireEvent.change(screen.getByTestId('report-problem-text'), {target: {value: '  The clock runs a minute fast  '}});
         await act(async () => fireEvent.click(screen.getByTestId('report-problem-send')));
 
         const [[url, init]] = calls(fetchMock, 'POST', '/beta/feedback');
         expect(url).toMatch(/\/api\/v1\/beta\/feedback$/);
         expect(JSON.parse(String(init?.body))).toEqual({
-            message: 'Часы спешат на минуту', page: '/reset-password', language: 'ru',
+            message: 'The clock runs a minute fast', page: '/reset-password', language: 'en',
             screen: `${window.innerWidth}x${window.innerHeight}`,
         });
         expect(headers(init).Authorization).toBeUndefined();
-        expect(screen.getByTestId('report-problem-sent')).toHaveTextContent('Спасибо! Сообщение получено.');
+        expect(screen.getByTestId('report-problem-sent')).toHaveTextContent('Thank you! We have received your message.');
         fireEvent.keyDown(window, {key: 'Escape'});
         expect(onClose).toHaveBeenCalled();
     });
 
-    it('слишком короткий текст не отправляется', async () => {
+    it('a too short text is not sent', async () => {
         const fetchMock = stub(() => ({}));
         render(<MemoryRouter><ReportProblem onClose={vi.fn()}/></MemoryRouter>);
-        fireEvent.change(screen.getByTestId('report-problem-text'), {target: {value: ' ой '}});
+        fireEvent.change(screen.getByTestId('report-problem-text'), {target: {value: ' oops '}});
         fireEvent.click(screen.getByTestId('report-problem-send'));
-        expect(await screen.findByRole('alert')).toHaveTextContent('Напишите хотя бы пару слов');
+        expect(await screen.findByRole('alert')).toHaveTextContent('Please write at least a few words');
         expect(calls(fetchMock, 'POST', '/beta/feedback')).toHaveLength(0);
     });
 
-    it('игрок отправляет с токеном; лимит сообщений — сколько ждать', async () => {
+    it('a player sends with a token; the message limit — how long to wait', async () => {
         setToken('jwt');
         const fetchMock = stub((url) => (url.endsWith('/beta/feedback')
             ? {status: 429, body: {detail: {code: 'too_many_feedback', params: {retry_after: 90}, message: '…'}}} : {}));
         render(<MemoryRouter><ReportProblem onClose={vi.fn()}/></MemoryRouter>);
-        fireEvent.change(screen.getByTestId('report-problem-text'), {target: {value: 'Не работает кнопка'}});
+        fireEvent.change(screen.getByTestId('report-problem-text'), {target: {value: 'The button does not work'}});
         await act(async () => fireEvent.click(screen.getByTestId('report-problem-send')));
-        expect(screen.getByRole('alert')).toHaveTextContent('Слишком много сообщений — попробуйте через 90 с');
+        expect(screen.getByRole('alert')).toHaveTextContent('Too many messages — please try again in 90 s');
         const [[, init]] = calls(fetchMock, 'POST', '/beta/feedback');
         expect(headers(init).Authorization).toBe('Bearer jwt');
     });
 });
 
-describe('канал сообщества', () => {
-    it('ссылка видна, только когда задана в настройках сервера', async () => {
+describe('community channel', () => {
+    it('the link is visible only when set in the server settings', async () => {
         stub(() => CONFIG);
         render(<CommunityLink/>);
         const link = await screen.findByTestId('community-link');
         expect(link).toHaveAttribute('href', 'https://t.me/example');
         expect(link).toHaveAttribute('target', '_blank');
-        expect(link).toHaveTextContent('Канал regence в Telegram');
+        expect(link).toHaveTextContent('regence channel on Telegram');
     });
 
     it.each([
         {community_url: null}, {community_url: ''}, {community_url: 'javascript:alert(1)'}, {}, [], null,
-    ])('без действующей ссылки ничего не показывается: %j', async (config) => {
+    ])('without a valid link nothing is shown: %j', async (config) => {
         const fetchMock = stub(() => config);
         render(<CommunityLink/>);
         await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled());
@@ -103,50 +103,50 @@ describe('канал сообщества', () => {
         expect(screen.queryByTestId('community-link')).toBeNull();
     });
 
-    it('площадка определяется по адресу', () => {
+    it('the platform is determined by the address', () => {
         expect(communityPlatform('https://t.me/example')).toBe('telegram');
         expect(communityPlatform('https://discord.gg/abc')).toBe('discord');
         expect(communityPlatform('https://example.org/t.me')).toBe('generic');
-        expect(communityPlatform('не адрес')).toBe('generic');
+        expect(communityPlatform('not an address')).toBe('generic');
     });
 });
 
-describe('приглашения у модератора', () => {
+describe('invitations for the moderator', () => {
     const invite = (over: object) => ({
         id: 1, code: 'K7QF2MXN9B', note: null, max_uses: null, uses: 0, expires_at: null, revoked_at: null,
         created_at: '2026-11-16T10:00:00+00:00', state: 'active', ...over,
     });
 
-    it('список: сколько пришло по каждому коду, состояние, отзыв', async () => {
+    it('the list: how many came by each code, the state, revocation', async () => {
         const fetchMock = stub(() => ({invite_only: true, invites: [
-            invite({id: 1, uses: 3, max_uses: 10, note: 'клуб'}), invite({id: 2, code: 'ZZZZZZZZZZ', uses: 5, state: 'revoked'}),
+            invite({id: 1, uses: 3, max_uses: 10, note: 'club'}), invite({id: 2, code: 'ZZZZZZZZZZ', uses: 5, state: 'revoked'}),
         ]}));
         render(<InvitesPanel/>);
-        expect(await screen.findByTestId('beta-invite-uses-1')).toHaveTextContent('пришло: 3 из 10');
-        expect(screen.getByTestId('beta-invite-uses-2')).toHaveTextContent('пришло: 5');
-        expect(screen.getByTestId('beta-invite-mode')).toHaveTextContent('Регистрация закрыта: только по приглашениям.');
-        expect(screen.getByTestId('beta-invite-2')).toHaveTextContent('отозван');
-        // У отозванного кода действий нет.
+        expect(await screen.findByTestId('beta-invite-uses-1')).toHaveTextContent('joined: 3 of 10');
+        expect(screen.getByTestId('beta-invite-uses-2')).toHaveTextContent('joined: 5');
+        expect(screen.getByTestId('beta-invite-mode')).toHaveTextContent('Registration is closed: by invitation only.');
+        expect(screen.getByTestId('beta-invite-2')).toHaveTextContent('revoked');
+        // A revoked code has no actions.
         expect(screen.queryByTestId('beta-invite-revoke-2')).toBeNull();
         await act(async () => fireEvent.click(screen.getByTestId('beta-invite-revoke-1')));
         expect(calls(fetchMock, 'POST', '/beta/invites/1/revoke')).toHaveLength(1);
     });
 
-    it('создание кода с лимитом и сроком; пустые поля не отправляются', async () => {
+    it('creating a code with a limit and an expiry; empty fields are not sent', async () => {
         const fetchMock = stub(() => ({invite_only: false, invites: []}));
         render(<InvitesPanel/>);
-        expect(await screen.findByText('Кодов пока нет.')).toBeInTheDocument();
-        fireEvent.change(screen.getByTestId('beta-invite-note'), {target: {value: ' школа '}});
+        expect(await screen.findByText('No codes yet.')).toBeInTheDocument();
+        fireEvent.change(screen.getByTestId('beta-invite-note'), {target: {value: ' school '}});
         fireEvent.change(screen.getByTestId('beta-invite-max'), {target: {value: '25'}});
         await act(async () => fireEvent.submit(screen.getByTestId('beta-invite-form')));
         fireEvent.change(screen.getByTestId('beta-invite-max'), {target: {value: ''}});
         fireEvent.change(screen.getByTestId('beta-invite-days'), {target: {value: '14'}});
         await act(async () => fireEvent.submit(screen.getByTestId('beta-invite-form')));
         const bodies = calls(fetchMock, 'POST', '/beta/invites').map(([, init]) => JSON.parse(String(init?.body)));
-        expect(bodies).toEqual([{note: 'школа', max_uses: 25}, {expires_in_days: 14}]);
+        expect(bodies).toEqual([{note: 'school', max_uses: 25}, {expires_in_days: 14}]);
     });
 
-    it('ссылка-приглашение ведёт на сайт с кодом', async () => {
+    it('an invitation link leads to the site with the code', async () => {
         expect(inviteLink('K7QF2MXN9B')).toBe(`${window.location.origin}/?invite=K7QF2MXN9B`);
         const writeText = vi.fn(async () => undefined);
         Object.defineProperty(navigator, 'clipboard', {value: {writeText}, configurable: true});
@@ -155,27 +155,27 @@ describe('приглашения у модератора', () => {
         const copy = await screen.findByTestId('beta-invite-copy-1');
         await act(async () => fireEvent.click(copy));
         expect(writeText).toHaveBeenCalledWith(`${window.location.origin}/?invite=K7QF2MXN9B`);
-        expect(screen.getByTestId('beta-invite-copy-1')).toHaveTextContent('Скопировано');
+        expect(screen.getByTestId('beta-invite-copy-1')).toHaveTextContent('Copied');
         Reflect.deleteProperty(navigator, 'clipboard');
     });
 });
 
-describe('очередь сообщений у модератора', () => {
+describe('moderator message queue', () => {
     const item = (over: object) => ({
-        id: 1, message: 'Задача зависла\nпосле второго хода', page: '/puzzles/42', app_version: '1.2.2', language: 'uk',
+        id: 1, message: 'The puzzle froze\nafter the second move', page: '/puzzles/42', app_version: '1.2.2', language: 'uk',
         screen: '390x844', status: 'new', author: null, created_at: '2026-11-16T10:00:00+00:00', updated_at: null, ...over,
     });
 
-    it('сообщение с контекстом, смена статуса, фильтр по статусу', async () => {
+    it('a message with context, a status change, a filter by status', async () => {
         const fetchMock = stub((url) => (url.includes('status=done')
             ? {items: [item({id: 5, status: 'done', author: 'alice'})], counts: {new: 1, in_progress: 1, done: 1, rejected: 0}}
             : {items: [item({})], counts: {new: 1, in_progress: 1, done: 1, rejected: 0}}));
         render(<FeedbackPanel/>);
         expect(await screen.findByTestId('beta-feedback-context-1')).toHaveTextContent('/puzzles/42 · v1.2.2 · uk · 390x844');
-        expect(screen.getByTestId('beta-feedback-1')).toHaveTextContent('гость');
-        expect(screen.getByTestId('beta-feedback-tab-open')).toHaveTextContent('К разбору (2)');
-        expect(screen.getByTestId('beta-feedback-tab-done')).toHaveTextContent('Сделано (1)');
-        // Текущий статус кнопкой не предлагается.
+        expect(screen.getByTestId('beta-feedback-1')).toHaveTextContent('guest');
+        expect(screen.getByTestId('beta-feedback-tab-open')).toHaveTextContent('To review (2)');
+        expect(screen.getByTestId('beta-feedback-tab-done')).toHaveTextContent('Done (1)');
+        // The current status is not offered by a button.
         expect(screen.queryByTestId('beta-feedback-1-new')).toBeNull();
 
         await act(async () => fireEvent.click(screen.getByTestId('beta-feedback-1-in_progress')));
@@ -188,64 +188,64 @@ describe('очередь сообщений у модератора', () => {
         expect(screen.queryByTestId('beta-feedback-1')).toBeNull();
     });
 
-    it('чужой ответ сервера не ломает панель', async () => {
+    it('a foreign server answer does not break the panel', async () => {
         stub(() => ({reports: []}));
         render(<FeedbackPanel/>);
-        expect(await screen.findByText('Здесь пусто.')).toBeInTheDocument();
-        expect(screen.getByTestId('beta-feedback-tab-open')).toHaveTextContent('К разбору (0)');
+        expect(await screen.findByText('Nothing here.')).toBeInTheDocument();
+        expect(screen.getByTestId('beta-feedback-tab-open')).toHaveTextContent('To review (0)');
     });
 });
 
-describe('регистрация по приглашению', () => {
+describe('registration by invitation', () => {
     const register = (fetchMock: ReturnType<typeof stub>) => calls(fetchMock, 'POST', '/auth/register')
         .map(([, init]) => JSON.parse(String(init?.body)));
 
     function fill(username: string, password: string) {
-        fireEvent.change(screen.getByPlaceholderText('например, string1'), {target: {value: username}});
+        fireEvent.change(screen.getByPlaceholderText('e.g. string1'), {target: {value: username}});
         fireEvent.change(screen.getByPlaceholderText('••••••••'), {target: {value: password}});
-        fireEvent.click(screen.getByTestId('auth-terms'));  // согласие с условиями (таск 23.1)
+        fireEvent.click(screen.getByTestId('auth-terms'));  // consent to the terms (task 23.1)
     }
 
-    it('открытая регистрация: поля кода нет, код не отправляется', async () => {
+    it('open registration: no code field, the code is not sent', async () => {
         const fetchMock = stub((url) => (url.endsWith('/auth/register') ? {body: {blitz_rating: 1200}} : {access_token: 'jwt'}));
         render(<AuthModal onSuccess={vi.fn()}/>);
-        fireEvent.click(screen.getByRole('button', {name: /Нет аккаунта/}));
+        fireEvent.click(screen.getByRole('button', {name: /No account/}));
         expect(screen.queryByTestId('auth-invite')).toBeNull();
         fill('alice', 'secret-pass');
-        await act(async () => fireEvent.click(screen.getByRole('button', {name: /Зарегистрироваться/})));
+        await act(async () => fireEvent.click(screen.getByRole('button', {name: /Sign up/})));
         expect(register(fetchMock)).toEqual([{username: 'alice', password: 'secret-pass', accept_terms: true}]);
     });
 
-    it('закрытая регистрация: код обязателен; отказ сервера — понятный текст', async () => {
+    it('closed registration: a code is required; a server refusal — a clear text', async () => {
         const fetchMock = stub((url) => (url.endsWith('/auth/register')
             ? {status: 403, body: {detail: {code: 'registration_invite_invalid', params: {}, message: '…'}}} : {}));
         render(<AuthModal onSuccess={vi.fn()} inviteOnly/>);
-        fireEvent.click(screen.getByRole('button', {name: /Нет аккаунта/}));
+        fireEvent.click(screen.getByRole('button', {name: /No account/}));
         expect(screen.getByTestId('auth-invite')).toBeRequired();
-        expect(screen.getByTestId('auth-invite-only')).toHaveTextContent('Регистрация сейчас только по приглашениям.');
+        expect(screen.getByTestId('auth-invite-only')).toHaveTextContent('Registration is currently by invitation only.');
         fill('alice', 'secret-pass');
         fireEvent.change(screen.getByTestId('auth-invite'), {target: {value: ' k7qf2mxn9b '}});
-        await act(async () => fireEvent.click(screen.getByRole('button', {name: /Зарегистрироваться/})));
+        await act(async () => fireEvent.click(screen.getByRole('button', {name: /Sign up/})));
         expect(register(fetchMock)).toEqual([{username: 'alice', password: 'secret-pass', accept_terms: true, invite_code: 'k7qf2mxn9b'}]);
-        expect(screen.getByRole('alert')).toHaveTextContent('Код-приглашение недействителен, истёк или уже исчерпан');
+        expect(screen.getByRole('alert')).toHaveTextContent('This invite code is invalid, expired or already used up');
     });
 
-    it('ссылка-приглашение: сразу регистрация, код вписан и проверен', async () => {
+    it('an invitation link: registration at once, the code is filled in and checked', async () => {
         const fetchMock = stub((url) => (url.includes('/beta/invites/check') ? {valid: true} : {}));
         render(<AuthModal onSuccess={vi.fn()} inviteCode="K7QF2MXN9B"/>);
-        expect(screen.getByRole('heading', {name: 'Регистрация аккаунта'})).toBeInTheDocument();
+        expect(screen.getByRole('heading', {name: 'Create an account'})).toBeInTheDocument();
         expect(screen.getByTestId('auth-invite')).toHaveValue('K7QF2MXN9B');
         expect(screen.getByTestId('auth-invite')).not.toBeRequired();
-        expect(await screen.findByTestId('auth-invite-status')).toHaveTextContent('Приглашение действует');
+        expect(await screen.findByTestId('auth-invite-status')).toHaveTextContent('The invitation is valid');
         expect(calls(fetchMock, 'GET', '/beta/invites/check')[0][0]).toMatch(/check\?code=K7QF2MXN9B$/);
-        // Код изменили — прежний вердикт больше не показывается.
+        // The code was changed — the previous verdict is no longer shown.
         fireEvent.change(screen.getByTestId('auth-invite'), {target: {value: 'OTHER'}});
         expect(screen.queryByTestId('auth-invite-status')).toBeNull();
     });
 
-    it('недействительная ссылка-приглашение — об этом сказано сразу', async () => {
+    it('an invalid invitation link — it is said at once', async () => {
         stub((url) => (url.includes('/beta/invites/check') ? {valid: false} : {}));
         render(<AuthModal onSuccess={vi.fn()} inviteCode="OLDCODE"/>);
-        expect(await screen.findByTestId('auth-invite-status')).toHaveTextContent('Приглашение недействительно, истекло или уже исчерпано');
+        expect(await screen.findByTestId('auth-invite-status')).toHaveTextContent('This invitation is invalid, expired or already used up');
     });
 });

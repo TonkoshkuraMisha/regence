@@ -1,7 +1,7 @@
 # --- FILE: tests/test_task_dispatch.py ---
 """
-Постановка Celery-задач из async-кода не должна блокировать event loop: раньше
-analyze_game_task.delay() шёл прямо в loop и при недоступном брокере подвешивал весь воркер.
+Enqueueing Celery tasks from async code must not block the event loop: previously
+analyze_game_task.delay() went straight into the loop and hung the whole worker when the broker was unavailable.
 """
 
 import asyncio
@@ -13,7 +13,7 @@ from src.worker.tasks import analyze_game_task
 
 
 async def _max_loop_stall(coro) -> tuple[object, float]:
-    """Выполняет coro и меряет самую длинную паузу, на которую останавливался event loop."""
+    """Runs coro and measures the longest pause the event loop stalled for."""
     ticks: list[float] = []
     done = asyncio.Event()
 
@@ -41,7 +41,7 @@ async def test_slow_broker_does_not_block_event_loop(monkeypatch):
     release = threading.Event()
 
     def hanging_publish(game_id):
-        release.wait(5)  # брокер «висит» дольше таймаута публикации
+        release.wait(5)  # the broker "hangs" for longer than the publish timeout
 
     monkeypatch.setattr(task_dispatch, "_publish_analysis", hanging_publish)
     monkeypatch.setattr(task_dispatch.settings, "CELERY_PUBLISH_TIMEOUT_S", 0.3)
@@ -50,7 +50,7 @@ async def test_slow_broker_does_not_block_event_loop(monkeypatch):
     release.set()
 
     assert published is False
-    assert stall < 0.2  # loop продолжал работать, пока поток ждал брокер
+    assert stall < 0.2  # the loop kept working while the thread waited for the broker
 
 
 async def test_broker_failure_starts_cooldown(monkeypatch):
@@ -63,7 +63,7 @@ async def test_broker_failure_starts_cooldown(monkeypatch):
     monkeypatch.setattr(task_dispatch, "_publish_analysis", failing_publish)
 
     assert await task_dispatch.schedule_game_analysis(1) is False
-    # Пока длится пауза, новые публикации не пытаются достучаться до брокера и не плодят потоков.
+    # While the pause lasts, new publications do not try to reach the broker and do not spawn threads.
     assert await task_dispatch.schedule_game_analysis(2) is False
     assert calls == [1]
 
@@ -79,7 +79,7 @@ async def test_background_scheduling_returns_immediately(monkeypatch):
     started = time.monotonic()
     task = task_dispatch.schedule_game_analysis_in_background(9)
     assert time.monotonic() - started < 0.05
-    assert task in task_dispatch._background_tasks  # ссылка держится, задачу не соберёт GC
+    assert task in task_dispatch._background_tasks  # the reference is held, so GC will not collect the task
 
     release.set()
     assert await task is True
@@ -87,7 +87,7 @@ async def test_background_scheduling_returns_immediately(monkeypatch):
 
 
 def test_task_is_bound_to_project_celery_app():
-    """С @shared_task API-процесс публиковал в amqp://localhost вместо брокера Redis."""
+    """With @shared_task the API process published to amqp://localhost instead of the Redis broker."""
     assert analyze_game_task.app.main == "regence_worker"
     assert analyze_game_task.app.conf.broker_url.startswith("redis://")
     assert analyze_game_task.ignore_result is True

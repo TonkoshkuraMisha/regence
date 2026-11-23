@@ -1,20 +1,25 @@
 """
-Диагностический экзамен (таск 22.0). Десять тестов по разделам каталога тем — мат (F), двойной удар (A), линейные
-удары (B), устранение защиты (C), ловля и особые позиции (D), пешки (E), атака на короля (G), дебютные ловушки (H),
-защита (I), эндшпиль (J) — по 10 вопросов от лёгкого к трудному (рейтинг задач 600 → 2400); отдельно — эндшпильный
-экзамен на 30 позиций. Вопрос — позиция задачи базы после хода соперника. Решение доигрывается до конца: после верного
-хода соперник отвечает ходом из решения, и игрок продолжает — до мата или последнего хода комбинации; за каждый верный
-ход — очко. Ошибка заканчивает позицию (очки за уже найденные ходы остаются); любой мат засчитывается как полное
-решение. Подсказок нет. Итог — оценка силы по разделу максимальным правдоподобием по формуле Эло (доля найденных ходов
-решения — как дробный результат «партии» с задачей) и уровень по разрядам. Игровой рейтинг и рейтинг задач не
-меняются.
+Diagnostic exam (task 22.0). Ten tests by theme catalogue section -- mate (F), double attack (A), line
+attacks (B), removing the defender (C), trapping and special positions (D), pawns (E), king attack (G), opening traps (H),
+defence (I), endgame (J) -- 10 questions each from easy to hard (puzzle rating 600 -> 2400); separately -- an endgame
+exam of 30 positions. A question is a database puzzle position after the opponent's move. The solution is played out to the
+end: after a correct
+move the opponent replies with a move from the solution, and the player continues -- until mate or the last move of the
+combination; each correct
+move scores a point. A mistake ends the position (points for moves already found stay); any mate counts as a full
+solution. No hints. The result is a strength estimate per section by maximum likelihood using the Elo formula (the share of
+solution
+moves found is treated as a fractional result of a "game" against the puzzle) and a level by rank. The game rating and puzzle
+rating are not
+changed.
 
-Экзамены уровней Большого курса (level0 … level5, таск 27.12) идут тем же протоколом, но позиции — из фиксированного
-набора src/services/level_exam.py.
+Big Course level exams (level0 ... level5, task 27.12) follow the same protocol, but the positions come from the fixed
+set in src/services/level_exam.py.
 
-Откуда данные: вопросы — таблицы puzzles и puzzle_themes (поле moves задачи: первый ход — соперника, дальше решение);
-разделы и их темы — реестр src/services/themes.py; результаты — таблица exam_results (каждое прохождение — новая
-строка, в итогах берётся последняя по разделу). Движок не используется. Маршруты — src/api/exam.py.
+Where the data comes from: questions -- the puzzles and puzzle_themes tables (the puzzle's moves field: the first move is the
+opponent's, then the solution);
+sections and their themes -- the registry src/services/themes.py; results -- the exam_results table (each attempt is a new
+row, the totals take the latest per section). The engine is not used. Routes are in src/api/exam.py.
 """
 
 import math
@@ -31,35 +36,37 @@ from src.models.trainer import ExamResult
 from src.services import level_exam
 from src.services.themes import THEMES
 
-# Разделы каталога тем (src/services/themes.py), по которым есть диагностический тест.
+# Theme catalogue sections (src/services/themes.py) that have a diagnostic test.
 EXAM_SECTIONS = ("F", "A", "B", "C", "D", "E", "G", "H", "I", "J")
-# Отдельный эндшпильный экзамен: те же темы раздела J, но ENDGAME_QUESTIONS позиций вместо QUESTIONS.
+# The separate endgame exam: the same section J themes, but ENDGAME_QUESTIONS positions instead of QUESTIONS.
 ENDGAME = "endgame"
 QUESTIONS = 10
 ENDGAME_QUESTIONS = 30
-# Рейтинг задач первого и последнего вопроса теста; остальные — равномерно между ними.
+# Puzzle rating of the first and last question of the test; the rest are evenly spaced between them.
 MIN_RATING, MAX_RATING = 600, 2400
-# Вопрос выбирается случайно из стольких ближайших по рейтингу задач раздела — чтобы тесты не повторялись.
+# A question is chosen at random from this many puzzles of the section closest by rating -- so that tests do not repeat.
 NEAREST = 6
-# Уровни по разрядам (ориентир по силе задач): (верхняя граница оценки, код уровня) — берётся первый, чья граница
-# выше оценки.
+# Levels by rank (a guide to puzzle strength): (upper bound of the estimate, level code) -- the first whose bound is
+# above the estimate is taken.
 LEVELS: tuple[tuple[int, str], ...] = ((1000, "novice"), (1200, "fourth"), (1400, "third"), (1600, "second"),
                                        (1800, "first"), (2000, "candidate"), (10_000, "master"))
 
 
 def themes_of(section: str) -> list[str]:
-    """Коды тем раздела каталога; у эндшпильного экзамена — темы раздела J."""
+    """Theme codes of a catalogue section; for the endgame exam -- the section J themes."""
     code = "J" if section == ENDGAME else section
     return [theme.code for theme in THEMES if theme.section == code]
 
 
 def targets(count: int) -> list[int]:
-    """Целевые рейтинги вопросов: count значений равномерно от MIN_RATING до MAX_RATING."""
+    """Target question ratings: count values evenly from MIN_RATING to MAX_RATING."""
     return [round(MIN_RATING + i * (MAX_RATING - MIN_RATING) / (count - 1)) for i in range(count)]
 
 
 def question_position(puzzle: Puzzle) -> chess.Board:
-    """Позиция вопроса: позиция задачи после первого хода из moves (хода соперника); ходит решающий."""
+    """
+    The question position: the puzzle position after the first move from moves (the opponent's move); the solver is to move.
+    """
     board = chess.Board(puzzle.fen)
     board.push_uci(puzzle.moves.split()[0])
     return board
@@ -67,10 +74,12 @@ def question_position(puzzle: Puzzle) -> chess.Board:
 
 async def build(db: AsyncSession, section: str, rng: random.Random | None = None) -> list[dict]:
     """
-    Вопросы теста: на каждую целевую силу — одна из ближайших по рейтингу задач раздела, без повторов. Вопросы идут
-    по возрастанию рейтинга; клиенту отдаются номер задачи, позиция, цвет решающего и предыдущий ход соперника —
-    без решения. Экзамен уровня курса отдаёт фиксированный набор (level_exam.questions). Неизвестный раздел —
-    exam_section_unknown, в разделе нет задач — exam_section_empty.
+    Test questions: for each target strength -- one of the puzzles of the section closest by rating, without repeats.
+    Questions go
+    in ascending rating order; the client gets the puzzle number, position, the solver's colour and the opponent's previous
+    move --
+    without the solution. A course level exam serves a fixed set (level_exam.questions). An unknown section --
+    exam_section_unknown, no puzzles in the section -- exam_section_empty.
     """
     if level_exam.is_level_section(section):
         return level_exam.questions(section)
@@ -96,7 +105,10 @@ async def build(db: AsyncSession, section: str, rng: random.Random | None = None
 
 @dataclass(frozen=True)
 class Progress:
-    """Как далеко игрок прошёл решение: верных ходов из скольких, доиграно ли, ошибся ли, чем ответит соперник."""
+    """
+    How far the player got in the solution: correct moves out of how many, whether finished, whether they erred, how the
+    opponent will reply.
+    """
     correct: int
     total: int
     solved: bool
@@ -110,8 +122,9 @@ class Progress:
 
 def play(start: chess.Board, line: list[str], played: list[str]) -> Progress:
     """
-    Сверяет ходы игрока с решением. line — решение от позиции вопроса: ход игрока, ответ соперника, ход игрока…
-    Ход, дающий мат, — полное решение, даже если в базе другой. Первый неверный ход заканчивает позицию.
+    Checks the player's moves against the solution. line -- the solution from the question position: the player's move, the
+    opponent's reply, the player's move...
+    A move that gives mate is a full solution even if the database has another. The first wrong move ends the position.
     """
     board = start.copy(stack=False)
     total = (len(line) + 1) // 2
@@ -137,21 +150,24 @@ def play(start: chess.Board, line: list[str], played: list[str]) -> Progress:
 
 
 def puzzle_progress(puzzle: Puzzle, played: list[str]) -> Progress:
-    """Сверка ходов игрока с решением задачи базы (moves без первого хода — он сделан соперником до вопроса)."""
+    """
+    Checking the player's moves against a database puzzle solution (moves without the first move -- the opponent made it
+    before the question).
+    """
     return play(question_position(puzzle), puzzle.moves.split()[1:], played)
 
 
 def is_correct(puzzle: Puzzle, uci: str) -> bool:
-    """Первый ход решения (или любой мат) — для обратной совместимости с ответом «один ход»."""
+    """The first move of the solution (or any mate) -- for backward compatibility with the "single move" answer."""
     return puzzle_progress(puzzle, [uci]).correct > 0
 
 
 def estimate(answers: list[tuple[int, float]]) -> int:
     """
-    Сила по ответам: максимум правдоподобия P(верно) = 1 / (1 + 10^((r_задачи − r)/400)) с «ничьей» против 1500.
-    Результат по задаче — доля найденных ходов решения (0…1; True/False — частные случаи). «Ничья» против 1500 —
-    добавленные победа и поражение от задачи с рейтингом 1500: они удерживают оценку от ухода в край при всех верных
-    или всех неверных ответах. Перебираются значения от 300 до 3000 с шагом 10.
+    Strength from answers: maximum likelihood of P(correct) = 1 / (1 + 10^((r_puzzle - r)/400)) with a "draw" against 1500.
+    The result per puzzle is the share of solution moves found (0...1; True/False are special cases). A "draw" against 1500 --
+    an added win and loss against a puzzle rated 1500: they keep the estimate from running to an extreme when all answers
+    are correct or all are wrong. Values from 300 to 3000 in steps of 10 are tried.
     """
     def log_likelihood(r: float) -> float:
         total = 0.0
@@ -164,14 +180,15 @@ def estimate(answers: list[tuple[int, float]]) -> int:
 
 
 def level(rating: int) -> str:
-    """Код уровня по оценке силы (таблица LEVELS): до 1000 — novice, …, от 2000 — master."""
+    """Level code by strength estimate (the LEVELS table): below 1000 -- novice, ..., from 2000 -- master."""
     return next(code for limit, code in LEVELS if rating < limit)
 
 
 @dataclass
 class Graded:
     """
-    Итог экзамена: сколько позиций решено, оценка силы, разбор по позициям, профиль по ветвям и очки за верные ходы.
+    Exam result: how many positions solved, the strength estimate, a per-position breakdown, a profile by branch and points
+    for correct moves.
     """
     section: str
     correct: int
@@ -179,7 +196,7 @@ class Graded:
     estimate: int
     review: list[dict]
     branches: dict[str, dict] | None = None
-    # Очки: верные ходы по всем позициям из возможных (таск B.4 — решение доигрывается до конца).
+    # Points: correct moves across all positions out of the possible (task B.4 -- the solution is played out to the end).
     points: int = 0
     max_points: int = 0
 
@@ -197,7 +214,7 @@ def _graded(section: str, review: list[dict], scored: list[tuple[int, float]],
 
 
 def _grade_level(user_id: int, section: str, answers: list[tuple[int, list[str]]]) -> tuple[Graded, ExamResult]:
-    """Проверка экзамена уровня курса по фиксированному набору: итог с профилем по ветвям и строка результата."""
+    """Check of a course level exam against the fixed set: the result with a profile by branch and a result row."""
     review: list[dict] = []
     scored: list[tuple[int, float]] = []
     for qid, played in answers:
@@ -215,8 +232,9 @@ def _grade_level(user_id: int, section: str, answers: list[tuple[int, list[str]]
 
 async def _section_puzzle(db: AsyncSession, section: str, puzzle_id: int) -> Puzzle:
     """
-    Задача вопроса, если она относится к темам раздела; иначе exam_question_unknown — так нельзя проверить ходом
-    экзамена произвольную задачу базы.
+    The question's puzzle if it belongs to the section's themes; otherwise exam_question_unknown -- an arbitrary database
+    puzzle
+    cannot be checked this way by the exam's move.
     """
     if section != ENDGAME and section not in EXAM_SECTIONS:
         raise DomainValueError("exam_section_unknown")
@@ -228,7 +246,10 @@ async def _section_puzzle(db: AsyncSession, section: str, puzzle_id: int) -> Puz
 
 
 async def check_moves(db: AsyncSession, section: str, question_id: int, played: list[str]) -> Progress:
-    """Ход игрока во время теста: верен ли и чем отвечает соперник (решение целиком клиенту не отдаётся)."""
+    """
+    The player's move during the test: whether correct and how the opponent replies (the whole solution is not given to the
+    client).
+    """
     if level_exam.is_level_section(section):
         item = level_exam.question(section, question_id)
         if item is None:
@@ -239,9 +260,11 @@ async def check_moves(db: AsyncSession, section: str, question_id: int, played: 
 
 async def grade(db: AsyncSession, user_id: int, section: str, answers: list[tuple[int, list[str]]]) -> Graded:
     """
-    Проверка ответов экзамена раздела: решение каждой позиции доигрывается до конца, считаются очки за верные ходы и
-    оценка силы. Возвращает итог (Graded). answers — пары (номер вопроса, ходы игрока). Результат добавляется в
-    exam_results без commit — его делает маршрут. Вопрос не из этого раздела — exam_question_unknown.
+    Checking exam answers for a section: the solution of each position is played out to the end, points for correct moves and
+    the
+    strength estimate are counted. Returns the result (Graded). answers -- pairs (question number, player's moves). The
+    result is added to
+    exam_results without commit -- the route does that. A question not from this section -- exam_question_unknown.
     """
     if level_exam.is_level_section(section):
         graded, row = _grade_level(user_id, section, answers)
@@ -273,7 +296,10 @@ async def grade(db: AsyncSession, user_id: int, section: str, answers: list[tupl
 
 
 async def latest(db: AsyncSession, user_id: int) -> dict:
-    """Последний результат по каждому тесту и общий уровень — среднее оценок пройденных разделов (без эндшпильного)."""
+    """
+    The latest result per test and the overall level -- the mean of the estimates of completed sections (without the endgame
+    one).
+    """
     rows = (await db.execute(
         select(ExamResult).where(ExamResult.user_id == user_id).order_by(ExamResult.created_at, ExamResult.id)
     )).scalars().all()

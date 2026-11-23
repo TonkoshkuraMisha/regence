@@ -1,4 +1,4 @@
-// Карта навыков (таск 22.1): показывается только самому игроку, разделы, слабые темы, ошибки, дебюты и курсы.
+// The skill map (task 22.1): shown only to the player themselves, sections, weak themes, mistakes, openings and courses.
 
 import {act, render, screen} from '@testing-library/react';
 import {MemoryRouter} from 'react-router-dom';
@@ -37,18 +37,18 @@ afterEach(() => {
 
 const view = (username: string) => render(<MemoryRouter><SkillMap username={username}/></MemoryRouter>);
 
-describe('карта навыков', () => {
-    it('свой профиль — разделы, слабые темы, ошибки, дебюты, курсы', async () => {
+describe('skill map', () => {
+    it('own profile — sections, weak themes, mistakes, openings, courses', async () => {
         vi.stubGlobal('fetch', vi.fn(async () => ({ok: true, json: async () => DATA}) as Response));
         await act(async () => view('player1'));
-        expect(screen.getByTestId('skill-sections')).toHaveTextContent('A. Двойной удар100%');
-        expect(screen.getByTestId('skill-weakest')).toHaveTextContent('Связка20% · 5');
-        expect(screen.getByTestId('skill-mistakes')).toHaveTextContent('Позиций из ваших партий: 3, исправлено: 1.');
-        expect(screen.getByTestId('skill-openings')).toHaveTextContent('Выучено 1 · в работе 1 · новых 1');
-        expect(screen.getByTestId('skill-courses')).toHaveTextContent('Эндшпиль: 1 из 25');
+        expect(screen.getByTestId('skill-sections')).toHaveTextContent('A. Double attack100%');
+        expect(screen.getByTestId('skill-weakest')).toHaveTextContent('Pin20% · 5');
+        expect(screen.getByTestId('skill-mistakes')).toHaveTextContent('Positions from your games: 3, fixed: 1.');
+        expect(screen.getByTestId('skill-openings')).toHaveTextContent('Learned 1 · in progress 1 · new 1');
+        expect(screen.getByTestId('skill-courses')).toHaveTextContent('Endgames: 1 of 25');
     });
 
-    it('чужой профиль и гость — блока нет', async () => {
+    it('someone else\'s profile and a guest — no block', async () => {
         vi.stubGlobal('fetch', vi.fn(async () => ({ok: true, json: async () => DATA}) as Response));
         const {container} = await act(async () => view('someone_else'));
         expect(container).toBeEmptyDOMElement();

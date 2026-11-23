@@ -1,7 +1,7 @@
 # --- FILE: tests/test_worker_tasks.py ---
 """
-Celery-задача анализа: каждая задача идёт в собственном asyncio.run, поэтому глобальный
-пул соединений использовать нельзя — со второй задачи он ломался («different loop»).
+Celery-analysis task: each task runs in its own asyncio.run, so the global
+connection pool cannot be used - from the second task on it broke ("different loop").
 """
 
 import asyncio
@@ -62,7 +62,7 @@ def test_consecutive_tasks_each_in_own_event_loop(tmp_path, monkeypatch):
     game_ids = asyncio.run(_prepare_db(url))
     monkeypatch.setattr(tasks, "_task_database_url", lambda: url)
 
-    for game_id in game_ids:  # две задачи подряд — как в живом воркере
+    for game_id in game_ids:  # two tasks in a row, as in a live worker
         report = tasks.analyze_game_task(game_id)
         assert report.get("status") != "error"
         assert len(report["moves"]) == 7

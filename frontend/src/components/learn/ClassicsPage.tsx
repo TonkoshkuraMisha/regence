@@ -1,10 +1,10 @@
 // --- FILE: frontend/src/components/learn/ClassicsPage.tsx ---
-// Партии мастеров с объяснениями (таск 14.7): /learn/classics — подборка, /learn/classics/:id — просмотр партии:
-// вводный текст, ходы с комментариями наставника, режим «с остановками» (перед ключевым ходом — «что бы вы сыграли?»,
-// баллы как в «Угадай ход мастера»), итоговый текст в конце.
-// Данные: партии и разборы — content/classics (loadAllClassics, loadClassic, scoreStop); текст комментариев и стрелки — services/coach.ts
-// (coachText, coachArrows); прогресс — lessonProgress: урок «classics-<id>» отмечается, когда игрок дошёл до конца партии.
-// Страницы подключены в App.tsx.
+// Annotated master games (task 14.7): /learn/classics is a collection, /learn/classics/:id is a game viewer:
+// an intro text, moves with coach comments, a "with stops" mode (before a key move, "what would you play?",
+// points as in "Guess the master's move"), a final text at the end.
+// Data: games and reviews are content/classics (loadAllClassics, loadClassic, scoreStop); comment text and arrows are services/coach.ts
+// (coachText, coachArrows); progress is lessonProgress: the lesson "classics-<id>" is marked when the player reaches the end of the game.
+// The pages are wired in App.tsx.
 
 import {useEffect, useMemo, useState} from 'react';
 import {Link, useParams} from 'react-router-dom';
@@ -20,21 +20,21 @@ import type {ClassicGame} from '../../content/classics';
 import {PuzzleBoard} from '../puzzles/PuzzleBoard';
 import type {BoardArrow} from '../puzzles/PuzzleBoard';
 
-/** Цвет стрелки наставника по её виду: лучший ход, угроза, идея. */
+/** Coach arrow colour by its kind: best move, threat, idea. */
 const ARROW_COLORS: Record<string, BoardArrow['color']> = {best: 'green', threat: 'red', idea: 'blue'};
 
-/** Подпись партии «белые — чёрные» для списка и заголовка. */
+/** Game label "White - Black" for the list and the heading. */
 function title(game: ClassicGame): string {
     return `${game.white} — ${game.black}`;
 }
 
-/** Оценка в пешках со знаком; значение от 50000 по модулю — условный мат («+#» / «-#»). */
+/** Evaluation in pawns with a sign; an absolute value from 50000 is a nominal mate ("+#" / "-#"). */
 function evalText(cp: number): string {
     if (Math.abs(cp) >= 50000) return cp > 0 ? '+#' : '-#';
     return `${cp >= 0 ? '+' : ''}${(cp / 100).toFixed(1)}`;
 }
 
-/** Подборка партий мастеров; у пройденных (по прогрессу вошедшего) стоит галочка. */
+/** Collection of master games; completed ones (by a signed-in player's progress) have a checkmark. */
 export function ClassicsPage() {
     const {t} = useI18n();
     const [games, setGames] = useState<ClassicGame[]>([]);
@@ -71,12 +71,12 @@ export function ClassicsPage() {
     );
 }
 
-/** Открытая остановка: ply — полуход, перед которым задан вопрос; answer — ход игрока (uci) после ответа; score — баллы за него. */
+/** An open stop: ply is the ply before which the question is asked; answer is the player's move (uci) after answering; score is the points for it. */
 type StopState = { ply: number; answer: string | null; score: number | null };
 
 /**
- * Просмотр партии. В режиме «с остановками» шаг через ключевой ход сначала спрашивает ход игрока и оценивает его по оценкам
- * альтернатив (scoreStop); повторный проход той же остановки вопроса не задаёт. Прогресс пишется на последнем ходу.
+ * Game viewer. In the "with stops" mode, a step through a key move first asks for the player's move and rates it by the evaluations
+ * of the alternatives (scoreStop); a repeat pass of the same stop does not ask the question. Progress is written on the last move.
  */
 export function ClassicGamePage() {
     const {t, language} = useI18n();
@@ -115,7 +115,7 @@ export function ClassicGamePage() {
 
     const goTo = (target: number) => {
         const next = Math.max(0, Math.min(total, target));
-        // Шаг вперёд через ключевой ход: сначала вопрос «что бы вы сыграли?».
+        // A step forward through a key move: first the question "what would you play?".
         if (withStops && next === ply + 1 && stopsByPly.has(ply) && scores[ply] === undefined) {
             setStop({ply, answer: null, score: null});
             return;

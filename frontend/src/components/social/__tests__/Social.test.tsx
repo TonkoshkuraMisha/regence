@@ -1,4 +1,4 @@
-// Игроки и уведомления (таск 17.1): колокольчик, поиск игрока, подписка и вызов в профиле.
+// Players and notifications (task 17.1): the bell, player search, following and a challenge in the profile.
 
 import {act, fireEvent, render, screen} from '@testing-library/react';
 import {MemoryRouter, Route, Routes, useLocation} from 'react-router-dom';
@@ -42,8 +42,8 @@ afterEach(() => {
     vi.unstubAllGlobals();
 });
 
-describe('колокольчик', () => {
-    it('счётчик непрочитанных, тексты, отметка прочитанным и переход по уведомлению', async () => {
+describe('bell', () => {
+    it('the unread counter, texts, marking as read and following a notification', async () => {
         const fetchMock = vi.fn(async (url: string, init?: RequestInit) => ({
             ok: true, status: 200,
             json: async () => (String(url).endsWith('/messages/unread') ? {unread: 0}
@@ -53,15 +53,15 @@ describe('колокольчик', () => {
         render(routes(<NotificationBell/>));
         expect(await screen.findByTestId('notification-badge')).toHaveTextContent('2');
         await act(async () => fireEvent.click(screen.getByTestId('notification-bell')));
-        expect(screen.getByTestId('notification-list')).toHaveTextContent('magnus вызывает вас на партию (5+2)');
-        expect(screen.getByTestId('notification-list')).toHaveTextContent('Тур 2: ваша партия готова');
+        expect(screen.getByTestId('notification-list')).toHaveTextContent('magnus challenges you to a game (5+2)');
+        expect(screen.getByTestId('notification-list')).toHaveTextContent('Round 2: your game is ready');
         expect(fetchMock.mock.calls.some(([u, init]) => String(u).endsWith('/notifications/read') && init?.method === 'POST')).toBe(true);
         expect(screen.queryByTestId('notification-badge')).toBeNull();
-        fireEvent.click(screen.getByText(/magnus вызывает/));
+        fireEvent.click(screen.getByText(/magnus challenges/));
         expect(screen.getByTestId('probe')).toHaveTextContent('/challenge/abc123');
     });
 
-    it('опрос сервера по таймеру', async () => {
+    it('polling the server on a timer', async () => {
         const fetchMock = vi.fn(async () => ({ok: true, status: 200, json: async () => ({unread: 0, items: []})} as Response));
         vi.stubGlobal('fetch', fetchMock);
         render(routes(<NotificationBell/>));
@@ -74,8 +74,8 @@ describe('колокольчик', () => {
     });
 });
 
-describe('поиск игрока', () => {
-    it('ищет с двух букв, показывает «в сети» и ведёт в профиль', async () => {
+describe('player search', () => {
+    it('searches from two letters, shows "online" and leads to the profile', async () => {
         const fetchMock = vi.fn(async () => ({ok: true, status: 200,
             json: async () => ({players: [{username: 'magnus', online: true, blitz_rating: 2800, rapid_rating: 2800}]})} as Response));
         vi.stubGlobal('fetch', fetchMock);
@@ -96,20 +96,20 @@ describe('поиск игрока', () => {
     });
 });
 
-describe('профиль чужого игрока', () => {
-    it('подписка переключается, «Вызвать» отправляет на главную доску с именем', async () => {
+describe('another player\'s profile', () => {
+    it('following toggles, "Challenge" sends to the main board with the name', async () => {
         const relation = {username: 'magnus', self: false, following: false, followed_by: true, friends: false, online: true};
         vi.stubGlobal('fetch', vi.fn(async (_u: string, init?: RequestInit) => ({ok: true, status: 200,
             json: async () => (init?.method === 'POST' ? {...relation, following: true, friends: true} : relation)} as Response)));
         render(routes(<ProfileSocial username="magnus"/>));
-        expect(await screen.findByTestId('profile-social')).toHaveTextContent('в сети');
+        expect(await screen.findByTestId('profile-social')).toHaveTextContent('online');
         await act(async () => fireEvent.click(screen.getByTestId('profile-follow')));
-        expect(screen.getByTestId('profile-friends')).toHaveTextContent('Вы друзья');
+        expect(screen.getByTestId('profile-friends')).toHaveTextContent('You are friends');
         fireEvent.click(screen.getByTestId('profile-challenge'));
         expect(screen.getByTestId('probe')).toHaveTextContent('/{"challenge":"magnus"}');
     });
 
-    it('свой профиль — блока нет', async () => {
+    it('your own profile — there is no block', async () => {
         vi.stubGlobal('fetch', vi.fn(async () => ({ok: true, status: 200,
             json: async () => ({username: 'me', self: true, following: false, followed_by: false, friends: false, online: true})} as Response)));
         render(routes(<ProfileSocial username="me"/>));

@@ -1,4 +1,4 @@
-// Каталог мастеров прошлого (таск 28.5): список, поиск и порядок, старт отдельной партии с мастером.
+// Catalog of masters of the past (task 28.5): the list, search and order, starting a single game with a master.
 
 import {act, fireEvent, render, screen, within} from '@testing-library/react';
 import {MemoryRouter, Route, Routes, useLocation} from 'react-router-dom';
@@ -31,7 +31,7 @@ function stub(handler: Handler) {
     return fetchMock;
 }
 
-/** Доска-заглушка: показывает, с каким состоянием маршрута на неё пришли. */
+/** A stub board: shows what route state it was opened with. */
 function Home() {
     const location = useLocation();
     return <pre data-testid="home-state">{JSON.stringify(location.state)}</pre>;
@@ -54,52 +54,52 @@ const order = () => screen.getAllByRole('listitem').map((item) => item.getAttrib
 beforeEach(() => setToken('jwt'));
 afterEach(() => {
     setToken(null);
-    setLanguage('ru', {persist: false});
+    setLanguage('en', {persist: false});
     vi.unstubAllGlobals();
 });
 
-describe('порядок и поиск', () => {
+describe('order and search', () => {
     const nameOf = (master: Master) => guestName(master.id, t);
 
-    it('год рождения — из годов жизни; без дат — null', () => {
+    it('the birth year — from the years of life; without dates — null', () => {
         expect(MASTERS.map(birthYear)).toEqual([1806, 1916, null]);
     });
 
-    it('по силе, по годам жизни (без дат — в конце) и по имени', () => {
-        expect(sortMasters(MASTERS, 'strength', nameOf, 'ru').map((m) => m.id)).toEqual(['keres', 'kieseritzky', 'mucklow']);
-        expect(sortMasters(MASTERS, 'years', nameOf, 'ru').map((m) => m.id)).toEqual(['kieseritzky', 'keres', 'mucklow']);
-        expect(sortMasters(MASTERS, 'name', nameOf, 'ru').map((m) => nameOf(m)))
-            .toEqual([...MASTERS.map(nameOf)].sort((a, b) => a.localeCompare(b, 'ru')));
-        // Исходный список не меняется.
+    it('by strength, by years of life (without dates — at the end) and by name', () => {
+        expect(sortMasters(MASTERS, 'strength', nameOf, 'en').map((m) => m.id)).toEqual(['keres', 'kieseritzky', 'mucklow']);
+        expect(sortMasters(MASTERS, 'years', nameOf, 'en').map((m) => m.id)).toEqual(['kieseritzky', 'keres', 'mucklow']);
+        expect(sortMasters(MASTERS, 'name', nameOf, 'en').map((m) => nameOf(m)))
+            .toEqual([...MASTERS.map(nameOf)].sort((a, b) => a.localeCompare(b, 'en')));
+        // The original list does not change.
         expect(MASTERS[0].id).toBe('kieseritzky');
     });
 
-    it('ищет по имени на языке игрока и по латинскому имени из PGN', () => {
-        expect(matchesQuery(MASTERS[1], 'Пауль Керес', 'керес')).toBe(true);
-        expect(matchesQuery(MASTERS[1], 'Пауль Керес', 'KERES')).toBe(true);
-        expect(matchesQuery(MASTERS[1], 'Пауль Керес', '  ')).toBe(true);
-        expect(matchesQuery(MASTERS[1], 'Пауль Керес', 'морфи')).toBe(false);
+    it('searches by the name in the player\'s language and by the Latin name from the PGN', () => {
+        expect(matchesQuery(MASTERS[1], 'Paul Keres', 'keres')).toBe(true);
+        expect(matchesQuery(MASTERS[1], 'Paul Keres', 'KERES')).toBe(true);
+        expect(matchesQuery(MASTERS[1], 'Paul Keres', '  ')).toBe(true);
+        expect(matchesQuery(MASTERS[1], 'Paul Keres', 'morphy')).toBe(false);
     });
 });
 
-describe('страница мастеров', () => {
-    it('показывает всех: имя, годы, силу, турниры и фирменный дебют', async () => {
+describe('masters page', () => {
+    it('shows everyone: the name, years, strength, tournaments and the signature opening', async () => {
         stub(() => ({guests: MASTERS}));
         renderPage();
         const keres = await screen.findByTestId('master-keres');
-        expect(within(keres).getByRole('heading')).toHaveTextContent('Пауль Керес');
+        expect(within(keres).getByRole('heading')).toHaveTextContent('Paul Keres');
         expect(keres).toHaveTextContent('1916–1975');
-        expect(keres).toHaveTextContent('сила 2400');
-        expect(keres).toHaveTextContent('АВРО 1938');
+        expect(keres).toHaveTextContent('strength 2400');
+        expect(keres).toHaveTextContent('AVRO 1938');
         expect(screen.queryByTestId('master-opening-keres')).toBeNull();
         expect(screen.getByTestId('master-opening-kieseritzky')).toHaveTextContent('Kieseritzky Gambit');
-        expect(screen.getByTestId('master-mucklow')).toHaveTextContent('годы жизни неизвестны');
-        expect(screen.getByTestId('masters-count')).toHaveTextContent('3 мастера');
-        // По умолчанию — по силе.
+        expect(screen.getByTestId('master-mucklow')).toHaveTextContent('years of life unknown');
+        expect(screen.getByTestId('masters-count')).toHaveTextContent('3 masters');
+        // By default — by strength.
         expect(order()).toEqual(['master-keres', 'master-kieseritzky', 'master-mucklow']);
     });
 
-    it('поиск, порядок и «только с фирменным дебютом» меняют список', async () => {
+    it('search, order and "only with a signature opening" change the list', async () => {
         stub(() => ({guests: MASTERS}));
         renderPage();
         await screen.findByTestId('master-keres');
@@ -109,16 +109,16 @@ describe('страница мастеров', () => {
 
         fireEvent.change(screen.getByTestId('masters-search'), {target: {value: 'mucklow'}});
         expect(order()).toEqual(['master-mucklow']);
-        fireEvent.change(screen.getByTestId('masters-search'), {target: {value: 'никто'}});
+        fireEvent.change(screen.getByTestId('masters-search'), {target: {value: 'nobody'}});
         expect(screen.getByTestId('masters-empty')).toBeInTheDocument();
         fireEvent.change(screen.getByTestId('masters-search'), {target: {value: ''}});
 
         fireEvent.click(screen.getByTestId('masters-only-opening'));
         expect(order()).toEqual(['master-kieseritzky']);
-        expect(screen.getByTestId('masters-count')).toHaveTextContent('1 мастер');
+        expect(screen.getByTestId('masters-count')).toHaveTextContent('1 master');
     });
 
-    it('«Сыграть чёрными» берёт характер мастера и открывает доску с партией', async () => {
+    it('"Play as Black" takes the master\'s character and opens the board with the game', async () => {
         const fetchMock = stub((url) => url.endsWith('/guests/keres')
             ? {id: 'keres', pgn_name: 'Keres, Paul', rating: 2400, config: CONFIG} : {guests: MASTERS});
         renderPage();
@@ -127,25 +127,25 @@ describe('страница мастеров', () => {
             fireEvent.click(button);
         });
         const state = JSON.parse((await screen.findByTestId('home-state')).textContent ?? 'null');
-        // На доске — имя на языке игрока, в архив — латинское имя из PGN.
-        expect(state).toEqual({guestGame: {name: 'Пауль Керес', savedName: 'Keres, Paul', config: CONFIG, color: 'black'}});
+        // On the board — the name in the player's language, in the archive — the Latin name from the PGN.
+        expect(state).toEqual({guestGame: {name: 'Paul Keres', savedName: 'Keres, Paul', config: CONFIG, color: 'black'}});
         expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith('/api/v1/bots/guests/keres'))).toBe(true);
     });
 
-    it('гостю предлагает войти и партию не начинает', async () => {
+    it('a guest is offered to log in and the game does not start', async () => {
         setToken(null);
         const fetchMock = stub(() => ({guests: MASTERS}));
         renderPage();
         fireEvent.click(await screen.findByTestId('play-keres-white'));
-        expect(screen.getByRole('alert')).toHaveTextContent('Войдите');
+        expect(screen.getByRole('alert')).toHaveTextContent('Sign in');
         expect(screen.queryByTestId('home-state')).toBeNull();
         expect(fetchMock).toHaveBeenCalledTimes(1);
     });
 
-    it('ошибки сервера показаны: список не загрузился, характер не пришёл', async () => {
+    it('server errors are shown: the list did not load, the character did not arrive', async () => {
         stub(() => ({status: 500, body: {}}));
         const {unmount} = renderPage();
-        expect(await screen.findByRole('alert')).toHaveTextContent('Не удалось загрузить мастеров');
+        expect(await screen.findByRole('alert')).toHaveTextContent('Could not load the masters');
         unmount();
 
         stub((url) => url.endsWith('/guests/keres')
@@ -155,11 +155,11 @@ describe('страница мастеров', () => {
         await act(async () => {
             fireEvent.click(button);
         });
-        expect(await screen.findByRole('alert')).toHaveTextContent('Такого мастера прошлого нет');
+        expect(await screen.findByRole('alert')).toHaveTextContent('There is no such master of the past');
         expect(screen.queryByTestId('home-state')).toBeNull();
     });
 
-    it('на английском и украинском — свои имена и подписи', async () => {
+    it('in English and Ukrainian — their own names and labels', async () => {
         setLanguage('en', {persist: false});
         stub(() => ({guests: MASTERS}));
         const {unmount} = renderPage();
@@ -173,8 +173,8 @@ describe('страница мастеров', () => {
     });
 });
 
-describe('карточка одного мастера (переход «к сопернику» из турнира)', () => {
-    it('/masters?master=<id> показывает только его и ссылку на всех', async () => {
+describe('a single master card (the "to the opponent" jump from a tournament)', () => {
+    it('/masters?master=<id> shows only him and a link to everyone', async () => {
         stub(() => ({guests: MASTERS}));
         render(<MemoryRouter initialEntries={['/masters?master=keres']}>
             <Routes><Route path="/masters" element={<MastersPage/>}/></Routes>

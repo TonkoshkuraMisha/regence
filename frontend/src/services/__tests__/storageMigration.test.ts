@@ -1,4 +1,4 @@
-// Перенос настроек при переименовании платформы michess → Regence: старые ключи переезжают, новые не затираются.
+// Migrating settings on renaming the platform michess → Regence: old keys move over, new ones are not overwritten.
 
 import {afterEach, describe, expect, it} from 'vitest';
 import {migrateLegacyStorage, migrateStorage} from '../storageMigration';
@@ -8,8 +8,8 @@ afterEach(() => {
     sessionStorage.clear();
 });
 
-describe('перенос настроек michess_ → regence_', () => {
-    it('старые ключи переезжают и удаляются; уже заданный новый не затирается; чужие не трогаются', () => {
+describe('migrating michess_ → regence_ settings', () => {
+    it('old keys move over and are deleted; an already set new one is not overwritten; foreign ones are untouched', () => {
         localStorage.setItem('michess_board_theme', 'walnut');
         localStorage.setItem('michess_language', 'uk');
         localStorage.setItem('regence_language', 'en');
@@ -20,10 +20,10 @@ describe('перенос настроек michess_ → regence_', () => {
         expect(localStorage.getItem('michess_board_theme')).toBeNull();
         expect(localStorage.getItem('michess_language')).toBeNull();
         expect(localStorage.getItem('other_key')).toBe('x');
-        expect(migrateStorage(localStorage)).toBe(0);  // повторный запуск ничего не делает
+        expect(migrateStorage(localStorage)).toBe(0);  // a second run does nothing
     });
 
-    it('оба хранилища при запуске', () => {
+    it('both storages at startup', () => {
         sessionStorage.setItem('michess_xray_modes', '[]');
         migrateLegacyStorage();
         expect(sessionStorage.getItem('regence_xray_modes')).toBe('[]');

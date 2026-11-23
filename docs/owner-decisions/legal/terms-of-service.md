@@ -1,7 +1,7 @@
 # Terms of Use — regence
 
 > **DRAFT for legal review. Not in force until the `{{…}}` placeholders are filled in and a lawyer has reviewed it.**
-> Language of the original: English (the site's default language). Ukrainian and Russian versions are translations;
+> Language of the original: English (the site's default language). The Ukrainian version is a translation;
 > if they differ, the English text prevails (adjust after legal review if the law of your country requires otherwise).
 > Version date (must match `TERMS_VERSION` in `src/services/legal.py` when published): `{{YYYY-MM-DD}}`.
 

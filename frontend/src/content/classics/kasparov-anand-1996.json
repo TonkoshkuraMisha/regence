@@ -572,12 +572,10 @@
   }
  ],
  "intro": {
-  "ru": "Староиндийская защита: белые — Каспаров, чёрные — Ананд. До 35-го хода позиция в равновесии.",
   "uk": "Староіндійський захист: білі — Каспаров, чорні — Ананд. До 35-го ходу позиція в рівновазі.",
   "en": "A King's Indian Defence with Kasparov as White and Anand as Black. Until move 35 the position is balanced."
  },
  "summary": {
-  "ru": "Ход 35.Nd7+ оказался ошибкой: после 35...Bxd7 чёрные выигрывают материал, а ладья врывается на вторую горизонталь — 36...Rxa2, 37...Rd2. Урок: ошибиться в равной позиции может даже чемпион мира — и тогда побеждает тот, кто сразу находит опровержение.",
   "uk": "Хід 35.Nd7+ виявився помилкою: після 35...Bxd7 чорні виграють матеріал, а тура вривається на другу горизонталь — 36...Rxa2, 37...Rd2. Урок: помилитися в рівній позиції може навіть чемпіон світу — і тоді перемагає той, хто одразу знаходить спростування.",
   "en": "35.Nd7+ turned out to be a mistake: after 35...Bxd7 Black wins material and the rook invades the second rank — 36...Rxa2, 37...Rd2. Lesson: even a world champion can go wrong in a level position — and then the player who finds the refutation at once wins."
  }

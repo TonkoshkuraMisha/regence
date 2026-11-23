@@ -1,5 +1,5 @@
-// Пометки игрока правой кнопкой (таск B.1): стрелки и поля, цвета модификаторами, повтор снимает, левый щелчок и
-// новая позиция убирают всё; на живой доске при выбранной фигуре правая кнопка остаётся за отменой.
+// Player marks with the right button (task B.1): arrows and squares, colours by modifiers, a repeat removes, a left click and
+// a new position remove everything; on the live board with a piece selected the right button stays for cancelling.
 
 import {fireEvent, render, screen} from '@testing-library/react';
 import {describe, expect, it, vi} from 'vitest';
@@ -8,15 +8,15 @@ import {annotationColor, toggleArrow, toggleSquare} from '../annotations';
 
 const START = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
-/** jsdom не умеет elementsFromPoint: поле под указателем — то, на котором событие. */
+/** jsdom cannot do elementsFromPoint: the square under the pointer is the one the event is on. */
 function pointer(type: 'pointerDown' | 'pointerUp', square: string, init: Record<string, unknown> = {}) {
     const cell = document.querySelector(`[data-square="${square}"]`) as HTMLElement;
     document.elementsFromPoint = () => [cell];
     fireEvent[type](cell, {pointerType: 'mouse', button: 2, ...init});
 }
 
-describe('пометки доски', () => {
-    it('цвет по модификатору', () => {
+describe('board marks', () => {
+    it('colour by modifier', () => {
         const none = {shiftKey: false, altKey: false, ctrlKey: false, metaKey: false};
         expect(annotationColor(none)).toBe('green');
         expect(annotationColor({...none, shiftKey: true})).toBe('red');
@@ -25,14 +25,14 @@ describe('пометки доски', () => {
         expect(annotationColor({...none, shiftKey: true, altKey: true})).toBe('yellow');
     });
 
-    it('повтор снимает, другой цвет перекрашивает', () => {
+    it('a repeat removes, a different colour recolours', () => {
         const one = toggleArrow([], {from: 'e2', to: 'e4', color: 'green'});
         expect(toggleArrow(one, {from: 'e2', to: 'e4', color: 'red'})).toEqual([{from: 'e2', to: 'e4', color: 'red'}]);
         expect(toggleArrow(one, {from: 'e2', to: 'e4', color: 'green'})).toEqual([]);
         expect(toggleSquare(toggleSquare({}, 'd5', 'blue'), 'd5', 'blue')).toEqual({});
     });
 
-    it('доска задач: стрелка, поле, левый щелчок и новая позиция убирают', () => {
+    it('puzzle board: an arrow, a square, a left click and a new position remove', () => {
         const {rerender} = render(<PuzzleBoard fen={START} orientation="white" interactive onMove={vi.fn()}/>);
         pointer('pointerDown', 'g1');
         pointer('pointerUp', 'f3', {shiftKey: true});
@@ -50,7 +50,7 @@ describe('пометки доски', () => {
         expect(screen.queryByTestId('board-annotations')).toBeNull();
     });
 
-    it('касание пальцем пометок не рисует', () => {
+    it('a finger touch draws no marks', () => {
         render(<PuzzleBoard fen={START} orientation="white" interactive onMove={vi.fn()}/>);
         pointer('pointerDown', 'g1', {pointerType: 'touch'});
         pointer('pointerUp', 'f3', {pointerType: 'touch'});

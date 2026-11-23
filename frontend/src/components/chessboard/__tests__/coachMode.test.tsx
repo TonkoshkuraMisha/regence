@@ -1,4 +1,4 @@
-// Игра с наставником (таск 11.3): когда предупреждать, проверка хода, «Переходить», совет и панель.
+// Playing with the mentor (task 11.3): when to warn, the move check, "Take the move back", the advice and the panel.
 
 import {act, fireEvent, render, renderHook, screen, waitFor, within} from '@testing-library/react';
 import {Chess} from 'chess.js';
@@ -40,34 +40,34 @@ describe('shouldWarn', () => {
     const check = (loss: number, extra: Partial<MoveCheck> = {}): MoveCheck =>
         ({available: true, cp_loss: loss, eval_after: 0, missed_tactic: false, ...extra});
 
-    it('новичку — только о грубых ошибках', () => {
+    it('for a beginner — only about blunders', () => {
         expect(shouldWarn(check(320), 'novice')).toBe(true);
         expect(shouldWarn(check(180), 'novice')).toBe(false);
         expect(shouldWarn(check(80, {missed_tactic: true}), 'novice')).toBe(false);
     });
 
-    it('любителю — об ошибках и пропущенных ударах', () => {
+    it('for an amateur — about mistakes and missed captures', () => {
         expect(shouldWarn(check(150), 'amateur')).toBe(true);
         expect(shouldWarn(check(90), 'amateur')).toBe(false);
         expect(shouldWarn(check(60, {missed_tactic: true}), 'amateur')).toBe(true);
     });
 
-    it('сильному — и о неточностях', () => {
+    it('for a strong player — also about inaccuracies', () => {
         expect(shouldWarn(check(100), 'strong')).toBe(true);
         expect(shouldWarn(check(35, {missed_tactic: true}), 'strong')).toBe(true);
         expect(shouldWarn(check(60), 'strong')).toBe(false);
     });
 
-    it('при решающем перевесе мелкие потери не тревожат, без движка — молчит', () => {
+    it('with a decisive advantage small losses are not alarming, without an engine — silent', () => {
         expect(shouldWarn(check(300, {eval_after: 900}), 'strong')).toBe(false);
         expect(shouldWarn(check(600, {eval_after: 900}), 'strong')).toBe(true);
-        // Пропущенный дорогой удар — сказать и в выигранной позиции; мелкий — нет.
+        // A missed expensive capture — say so even in a won position; a small one — no.
         expect(shouldWarn(check(250, {eval_after: 900, missed_tactic: true}), 'amateur')).toBe(true);
         expect(shouldWarn(check(120, {eval_after: 900, missed_tactic: true}), 'strong')).toBe(false);
         expect(shouldWarn({available: false}, 'strong')).toBe(false);
     });
 
-    it('уровень по рейтингу', () => {
+    it('the level by rating', () => {
         expect(levelForRating(900)).toBe('novice');
         expect(levelForRating(1500)).toBe('amateur');
         expect(levelForRating(2100)).toBe('strong');
@@ -79,14 +79,14 @@ describe('useCoachMode', () => {
     const after = new Chess();
     after.move('f3');
 
-    it('выключен — ход не проверяется', () => {
+    it('switched off — the move is not checked', () => {
         const fetchMock = stubFetch(BLUNDER);
         const {result} = renderHook(() => useCoachMode(1500));
         act(() => result.current.onPlayerMove(before, before.fen(), 'f2f3', after.fen()));
         expect(fetchMock).not.toHaveBeenCalled();
     });
 
-    it('плохой ход: совет без остановки партии, «Почему?» даёт объяснение, «Переходить» возвращает позицию', async () => {
+    it('a bad move: advice without stopping the game, "Why?" gives an explanation, "Take the move back" returns the position', async () => {
         localStorage.setItem(COACH_ENABLED_KEY, '1');
         const fetchMock = stubFetch(BLUNDER);
         const {result} = renderHook(() => useCoachMode(1500));
@@ -107,7 +107,7 @@ describe('useCoachMode', () => {
         expect(result.current.explanation).toBeNull();
     });
 
-    it('хороший ход — партия продолжается без предупреждения', async () => {
+    it('a good move — the game continues without a warning', async () => {
         localStorage.setItem(COACH_ENABLED_KEY, '1');
         stubFetch(GOOD);
         const {result} = renderHook(() => useCoachMode(1500));
@@ -115,7 +115,7 @@ describe('useCoachMode', () => {
         await waitFor(() => expect(result.current.pending).toBeNull());
     });
 
-    it('ответ к позиции, которой уже нет, отбрасывается', async () => {
+    it('an answer for a position that is gone is discarded', async () => {
         localStorage.setItem(COACH_ENABLED_KEY, '1');
         let release: (v: Response) => void = () => {};
         vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>((resolve) => {
@@ -128,7 +128,7 @@ describe('useCoachMode', () => {
         expect(result.current.pending).toBeNull();
     });
 
-    it('сервер недоступен — ошибка, бот не зависает', async () => {
+    it('the server is unavailable — an error, the bot does not hang', async () => {
         localStorage.setItem(COACH_ENABLED_KEY, '1');
         vi.stubGlobal('fetch', vi.fn(async () => {
             throw new Error('offline');
@@ -139,7 +139,7 @@ describe('useCoachMode', () => {
         expect(result.current.error).toEqual({key: 'coachMode.unavailable'});
     });
 
-    it('подсказка идёт по ступеням для одной позиции, новая позиция — снова с первой', async () => {
+    it('the hint goes by stages for one position, a new position — again from the first', async () => {
         const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
             const {step} = JSON.parse(String(init?.body));
             return {ok: true, status: 200, json: async () => ({
@@ -167,7 +167,7 @@ describe('useCoachMode', () => {
         expect(result.current.advice).toBeNull();
     });
 
-    it('«Не согласен»: позиция и ход уходят на проверку, ход остаётся', async () => {
+    it('"I disagree": the position and the move go for checking, the move stays', async () => {
         localStorage.setItem(COACH_ENABLED_KEY, '1');
         const fetchMock = stubFetch(BLUNDER);
         const {result} = renderHook(() => useCoachMode(1500));
@@ -181,7 +181,7 @@ describe('useCoachMode', () => {
         expect(JSON.parse(String(init.body))).toEqual({fen: before.fen(), move: 'f2f3', cp_loss: 280});
     });
 
-    it('предупреждает несколько раз за партию, а не на каждом шагу; новая партия — снова', async () => {
+    it('warns several times per game, not at every step; a new game — again', async () => {
         localStorage.setItem(COACH_ENABLED_KEY, '1');
         const fetchMock = stubFetch(BLUNDER);
         const {result} = renderHook(() => useCoachMode(1500));
@@ -191,23 +191,23 @@ describe('useCoachMode', () => {
             await waitFor(() => expect(result.current.pending?.status).not.toBe('checking'));
             if (result.current.pending?.status === 'warning') warnings.push(move);
         }
-        // Каждый ход здесь — зевок, но совет — на 1-м, 5-м и 9-м ходу, дальше лимит партии исчерпан.
+        // Every move here is a blunder, but the advice comes on the 1st, 5th and 9th move, then the game limit is used up.
         expect(warnings).toEqual([1, 1 + MIN_MOVES_BETWEEN_WARNINGS, 1 + 2 * MIN_MOVES_BETWEEN_WARNINGS]);
         expect(warnings).toHaveLength(MAX_WARNINGS_PER_GAME);
-        expect(fetchMock).toHaveBeenCalledTimes(MAX_WARNINGS_PER_GAME);  // между советами ходы не проверяются
+        expect(fetchMock).toHaveBeenCalledTimes(MAX_WARNINGS_PER_GAME);  // moves are not checked between advices
         act(() => result.current.reset());
         act(() => result.current.onPlayerMove(before, before.fen(), 'f2f3', after.fen()));
         await waitFor(() => expect(result.current.pending?.status).toBe('warning'));
     });
 
-    it('правило частоты', () => {
+    it('the frequency rule', () => {
         expect(warningAllowed(0, null)).toBe(true);
         expect(warningAllowed(1, MIN_MOVES_BETWEEN_WARNINGS - 1)).toBe(false);
         expect(warningAllowed(1, MIN_MOVES_BETWEEN_WARNINGS)).toBe(true);
         expect(warningAllowed(MAX_WARNINGS_PER_GAME, 99)).toBe(false);
     });
 
-    it('настройки запоминаются', () => {
+    it('the settings are remembered', () => {
         const {result} = renderHook(() => useCoachMode(900));
         expect(result.current.level).toBe('novice');
         act(() => {
@@ -234,7 +234,7 @@ function fakeCoach(overrides: Partial<UseCoachModeResult> = {}): UseCoachModeRes
 describe('CoachPanel', () => {
     const props = {locked: false, inBotGame: true, canAdvise: true, onAdvice: vi.fn(), onTakeBack: vi.fn()};
 
-    it('выключенный наставник — подсказка и переключатель', () => {
+    it('a switched-off mentor — a hint and a switch', () => {
         const coach = fakeCoach({enabled: false});
         render(<CoachPanel coach={coach} {...props}/>);
         expect(screen.queryByTestId('coach-advice')).toBeNull();
@@ -242,7 +242,7 @@ describe('CoachPanel', () => {
         expect(coach.setEnabled).toHaveBeenCalledWith(true);
     });
 
-    it('совет, счётчик и отметка учебной партии', () => {
+    it('advice, counter and a mark of a training game', () => {
         const onAdvice = vi.fn();
         render(<CoachPanel coach={fakeCoach()} {...props} onAdvice={onAdvice}/>);
         expect(screen.getByTestId('coach-hints-used').textContent).toContain('2');
@@ -251,11 +251,11 @@ describe('CoachPanel', () => {
         expect(onAdvice).toHaveBeenCalled();
     });
 
-    it('предупреждение: вердикт и три решения', () => {
+    it('warning: a verdict and three decisions', () => {
         const coach = fakeCoach({pending: {status: 'warning', previousGame: new Chess(), fenBefore: 'x', uci: 'f2f3', fenAfter: 'y', check: BLUNDER}});
         const onTakeBack = vi.fn();
         render(<CoachPanel coach={coach} {...props} onTakeBack={onTakeBack}/>);
-        expect(screen.getByRole('alert').textContent).toContain('грубая ошибка');
+        expect(screen.getByRole('alert').textContent).toContain('serious blunder');
         fireEvent.click(screen.getByTestId('coach-why'));
         fireEvent.click(screen.getByTestId('coach-keep'));
         fireEvent.click(screen.getByTestId('coach-takeback'));
@@ -266,12 +266,12 @@ describe('CoachPanel', () => {
         expect(onTakeBack).toHaveBeenCalled();
     });
 
-    it('объяснение — текстом с фигурной нотацией', () => {
+    it('an explanation — text with figurine notation', () => {
         render(<CoachPanel coach={fakeCoach({explanation: BLUNDER.coach!})} {...props}/>);
         expect(screen.getByTestId('coach-text').textContent).toContain('♗xf7+');
     });
 
-    it('в партии лестницы наставник заблокирован', () => {
+    it('in a ladder game the mentor is blocked', () => {
         render(<CoachPanel coach={fakeCoach()} {...props} locked/>);
         expect((screen.getByTestId('coach-toggle') as HTMLInputElement).disabled).toBe(true);
         expect(screen.queryByTestId('coach-advice')).toBeNull();
@@ -279,13 +279,13 @@ describe('CoachPanel', () => {
 });
 
 describe('CoachArrowsOverlay', () => {
-    it('центры полей с учётом переворота', () => {
+    it('square centres taking the flip into account', () => {
         expect(squareCenter('a1', false)).toEqual({x: 6.25, y: 93.75});
         expect(squareCenter('a1', true)).toEqual({x: 93.75, y: 6.25});
         expect(squareCenter('z9', false)).toBeNull();
     });
 
-    it('рисует стрелки по видам, без стрелок — ничего', () => {
+    it('draws arrows by kind, without arrows — nothing', () => {
         const {container, rerender} = render(<CoachArrowsOverlay arrows={BLUNDER.coach!.arrows} flipped={false}/>);
         expect(screen.getByTestId('coach-arrow-threat')).toBeTruthy();
         expect(screen.getByTestId('coach-arrow-best')).toBeTruthy();
@@ -294,21 +294,21 @@ describe('CoachArrowsOverlay', () => {
     });
 });
 
-describe('CoachPanel: ступени подсказки', () => {
+describe('CoachPanel: hint stages', () => {
     const props = {locked: false, inBotGame: true, canAdvise: true, onAdvice: vi.fn(), onTakeBack: vi.fn()};
 
-    it('надпись кнопки следует за ступенью, после хода — кнопка неактивна', () => {
+    it('the button label follows the stage, after a move the button is inactive', () => {
         const {rerender} = render(<CoachPanel coach={fakeCoach()} {...props}/>);
-        expect(screen.getByTestId('coach-advice').textContent).toBe('Подсказка');
+        expect(screen.getByTestId('coach-advice').textContent).toBe('Hint');
         rerender(<CoachPanel coach={fakeCoach({hintStep: 1})} {...props}/>);
-        expect(screen.getByTestId('coach-advice').textContent).toBe('Какой фигурой?');
+        expect(screen.getByTestId('coach-advice').textContent).toBe('Which piece?');
         rerender(<CoachPanel coach={fakeCoach({hintStep: 2})} {...props}/>);
-        expect(screen.getByTestId('coach-advice').textContent).toBe('Показать ход');
+        expect(screen.getByTestId('coach-advice').textContent).toBe('Show the move');
         rerender(<CoachPanel coach={fakeCoach({hintStep: 3, hintFinal: true})} {...props}/>);
         expect((screen.getByTestId('coach-advice') as HTMLButtonElement).disabled).toBe(true);
     });
 
-    it('спор отправлен — благодарность; вспомогательная доска — по кнопке', () => {
+    it('the dispute is sent — thanks; the auxiliary board — by the button', () => {
         const onToggleAux = vi.fn();
         render(
             <CoachPanel coach={fakeCoach({disputeSent: true})} {...props} auxOpen onToggleAux={onToggleAux}>
@@ -322,8 +322,8 @@ describe('CoachPanel: ступени подсказки', () => {
     });
 });
 
-describe('CoachArrowsOverlay: подсветка', () => {
-    it('рисует подсвеченное поле и без стрелок', () => {
+describe('CoachArrowsOverlay: highlighting', () => {
+    it('draws a highlighted square and without arrows', () => {
         render(<CoachArrowsOverlay arrows={[]} highlights={['e5']} flipped={false}/>);
         expect(screen.getByTestId('coach-highlight-e5')).toBeTruthy();
     });
@@ -333,7 +333,7 @@ describe('AuxBoard', () => {
     const renderPiece = (piece: { type: string; color: string }) => <span>{`${piece.color}${piece.type}`}</span>;
     const auxSquare = (square: string) => document.querySelector(`[data-aux-square="${square}"]`) as HTMLElement;
 
-    it('ходы за обе стороны, назад и возврат к позиции партии', () => {
+    it('moves for both sides, back and return to the game position', () => {
         const onClose = vi.fn();
         render(<AuxBoard fen={new Chess().fen()} flipped={false} lightColor="#eee" darkColor="#555"
                          renderPiece={renderPiece} onClose={onClose}/>);
@@ -354,7 +354,7 @@ describe('AuxBoard', () => {
         expect(onClose).toHaveBeenCalled();
     });
 
-    it('чужой ход не выбирается, a1 — тёмное поле, переворот', () => {
+    it('a foreign move is not selected, a1 is a dark square, flip', () => {
         render(<AuxBoard fen={new Chess().fen()} flipped lightColor="#eee" darkColor="#555"
                          renderPiece={renderPiece} onClose={vi.fn()}/>);
         fireEvent.click(auxSquare('e7'));
@@ -365,7 +365,7 @@ describe('AuxBoard', () => {
         expect(squares[0]).toBe('h1');
     });
 
-    it('перетаскивание фигуры делает ход; без режимов рентгена слоя нет, с режимами — есть', () => {
+    it('a drag of a piece makes a move; without x-ray modes there is no layer, with modes there is', () => {
         const {rerender} = render(<AuxBoard fen={new Chess().fen()} flipped={false} lightColor="#eee" darkColor="#555"
                                             renderPiece={renderPiece} onClose={vi.fn()}/>);
         expect(screen.queryByTestId('xray-overlay')).toBeNull();
@@ -381,13 +381,13 @@ describe('AuxBoard', () => {
         expect(screen.getByTestId('xray-overlay')).toBeTruthy();
     });
 
-    it('превращение: игрок выбирает фигуру, отмена оставляет пешку', () => {
+    it('a promotion: the player chooses a piece, cancelling leaves the pawn', () => {
         render(<AuxBoard fen="8/4P2k/8/8/8/8/8/4K3 w - - 0 1" flipped={false} lightColor="#eee" darkColor="#555"
                          renderPiece={renderPiece} onClose={vi.fn()}/>);
         fireEvent.click(auxSquare('e7'));
         fireEvent.click(auxSquare('e8'));
         expect(screen.queryByTestId('aux-moves')).toBeNull();
-        fireEvent.click(document.querySelector('.z-50') as HTMLElement);  // щелчок мимо выбора — отмена
+        fireEvent.click(document.querySelector('.z-50') as HTMLElement);  // a click beside the choice — cancel
         expect(auxSquare('e7').textContent).toBe('wp');
 
         fireEvent.click(auxSquare('e7'));

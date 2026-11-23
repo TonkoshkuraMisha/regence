@@ -1,18 +1,18 @@
 // --- FILE: frontend/src/components/ui/Modal.tsx ---
-// Модальное окно (общие компоненты дизайна, план владельца 18.11; docs/design-system.md): затемнение, заголовок с
-// иконкой, крестик, закрытие по Esc и щелчку мимо окна. Тот же вид раньше повторяли окна входа и «Сообщить о
-// проблеме»; на общем Modal сейчас построены «Сообщить о проблеме» (beta/ReportProblem.tsx) и «Новая партия»
-// (chessboard/NewGameDialog.tsx), окно входа (AuthModal.tsx) пока со своей разметкой. Тексты — у вызывающего (три языка).
+// Modal window (shared design components, owner plan of 18.11; docs/design-system.md): backdrop, title with
+// icon, close cross, closing on Esc and on a click outside the window. The same look used to be repeated by the sign-in and "Report a
+// problem" windows; currently "Report a problem" (beta/ReportProblem.tsx) and "New game"
+// (chessboard/NewGameDialog.tsx) are built on the shared Modal, the sign-in window (AuthModal.tsx) still has its own markup. Texts come from the caller (three languages).
 
 import {useEffect} from 'react';
 import type {ReactNode} from 'react';
 import {X} from 'lucide-react';
 import {useI18n} from '../../i18n';
 
-/** Ширина окна: md — форма, lg — выбор из каталога (карточки в две-три колонки). */
+/** Window width: md - a form, lg - a catalog pick (cards in two or three columns). */
 const SIZES = {md: 'max-w-md', lg: 'max-w-3xl'} as const;
 
-// open — показано ли окно (закрытое не рисуется и не слушает Esc); testId даёт окну и крестику (testId-close) метки для тестов.
+// open - whether the window is shown (a closed one is not rendered and does not listen to Esc); testId gives the window and the cross (testId-close) test labels.
 interface ModalProps {
     open: boolean;
     onClose: () => void;
@@ -23,7 +23,7 @@ interface ModalProps {
     children: ReactNode;
 }
 
-/** Окно поверх страницы; заголовок-строка становится aria-label диалога. */
+/** Window over the page; the title string becomes the dialog's aria-label. */
 export function Modal({open, onClose, title, icon, size = 'md', testId, children}: ModalProps) {
     const {t} = useI18n();
     useEffect(() => {

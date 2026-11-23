@@ -1,7 +1,7 @@
 # --- FILE: src/models/collection.py ---
 """
-«Забавные подборки» архива (таск 16.3): самые короткие партии, больше всего шахов и т. п. Считаются заранее
-скриптом scripts/build_collections.py (правила — src/services/collections.py), здесь — готовые места в подборках.
+The archive's "fun collections" (task 16.3): the shortest games, the most checks, etc. They are computed in advance
+by the script scripts/build_collections.py (rules - src/services/collections.py), here are the ready places in the collections.
 """
 
 from sqlalchemy import ForeignKey, Integer, String, UniqueConstraint
@@ -12,8 +12,9 @@ from src.models.base import Base
 
 class CollectionEntry(Base):
     """
-    Место партии архива в одной из «забавных подборок»: код подборки, место и показатель, по которому партия в неё
-    попала. Таблицу целиком заменяет scripts/build_collections.py.
+    A place of an archive game in one of the "fun collections": the collection code, the place and the indicator by which the
+    game
+    got into it. The whole table is replaced by scripts/build_collections.py.
     """
     __tablename__ = "collection_entries"
     __table_args__ = (UniqueConstraint("collection", "rank", name="uq_collection_rank"),)
@@ -22,5 +23,5 @@ class CollectionEntry(Base):
     collection: Mapped[str] = mapped_column(String(32), index=True)
     rank: Mapped[int] = mapped_column(Integer)
     game_id: Mapped[int] = mapped_column(ForeignKey("games.id", ondelete="CASCADE"), index=True)
-    # Показатель подборки: полуходов, шахов, взятий подряд, превращений, проходных.
+    # The collection indicator: plies, checks, consecutive captures, promotions, passed pawns.
     value: Mapped[int] = mapped_column(Integer)

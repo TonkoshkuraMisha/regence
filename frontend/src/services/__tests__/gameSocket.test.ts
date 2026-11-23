@@ -22,7 +22,7 @@ describe('GameWebSocketService, SoundEngine & API Config', () => {
         gameSocket.off('test_event', noop);
     });
 
-    it('звук шаха — только в обучающих разделах', () => {
+    it('the check sound — only in the learning sections', () => {
         for (const path of ['/learn', '/learn/course', '/learn/basics/check', '/puzzles', '/train/forks', '/workout',
             '/programs/beginner', '/guess/12', '/repertoire/5/drill']) {
             expect(isLearningPath(path), path).toBe(true);
@@ -38,14 +38,14 @@ describe('GameWebSocketService, SoundEngine & API Config', () => {
         expect(resolveMoveSound('exd5')).toBe('capture');
         expect(resolveMoveSound('O-O')).toBe('castle');
         expect(resolveMoveSound('O-O-O')).toBe('castle');
-        // В партиях звука шаха нет: ход с шахом звучит как обычный ход, взятие или превращение.
+        // In games there is no check sound: a move with check sounds like an ordinary move, a capture or a promotion.
         setCheckSounds(false);
         expect(resolveMoveSound('Qh4#')).toBe('move');
         expect(resolveMoveSound('Bb5+')).toBe('move');
         expect(resolveMoveSound('Qxf7#')).toBe('capture');
         expect(resolveMoveSound('a8=N+')).toBe('promote');
         expect(resolveMoveSound('e8=Q')).toBe('promote');
-        // В обучении — есть.
+        // In learning there is.
         setCheckSounds(true);
         expect(resolveMoveSound('Qh4#')).toBe('check');
         expect(resolveMoveSound('Bb5+')).toBe('check');

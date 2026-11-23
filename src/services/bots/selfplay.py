@@ -1,21 +1,26 @@
 # --- FILE: src/services/bots/selfplay.py ---
 """
-Настройка характера самоигрой (таск 32.3). Архетипы мастерской (по ним строятся лестница и турниры) регулярно
-играют между собой — задача celery beat bot_selfplay в очереди simulation: каждый с соседом по силе. Итоги копятся
-по архетипу; после TUNE_GAMES партий считается сила по игре (средний рейтинг соперников ± PERF_SPAN по доле очков).
-Если она отличается от заявленной (target_elo) на DRIFT и больше, ползунки силы сдвигаются на шаг: сильнее
-заявленного — больше разброс (randomness) и шире окно ходов (blunder_guard_cp), слабее — наоборот.
+Personality tuning by self-play (task 32.3). The workshop archetypes (the ladder and tournaments are built from them) regularly
+play each other — the celery beat task bot_selfplay in the simulation queue: each against a neighbour in strength. Results
+accumulate
+per archetype; after TUNE_GAMES games the in-game strength is computed (average opponent rating +- PERF_SPAN by score share).
+If it differs from the declared one (target_elo) by DRIFT or more, the strength sliders are shifted by a step: if stronger than
+declared — more spread (randomness) and a wider move window (blunder_guard_cp), if weaker — the opposite.
 
-Границы стиля: разброс — не дальше RANDOMNESS_SPAN от исходного, окно — не дальше GUARD_SHARE от исходного; остальные
-ползунки (агрессия, центр, привычки, дебюты) не трогаются — бот остаётся собой. Каждый сдвиг пишется в открытый
-журнал (bot_tuning_log, страница прозрачности). Подстроенный характер получают каталог (клиент играет им в мастерской и
-на лестнице), турниры и симуляция — через tuned_config; кэш процесса обновляется не чаще раза в REFRESH_SECONDS.
+Style bounds: the spread — no further than RANDOMNESS_SPAN from the original, the window — no further than GUARD_SHARE from the
+original; the other
+sliders (aggression, centre, habits, openings) are not touched — the bot stays itself. Each shift is written to the open
+log (bot_tuning_log, the transparency page). The tuned personality is received by the catalog (the client plays it in the
+workshop and
+on the ladder), tournaments and simulation — through tuned_config; the process cache is refreshed no more than once per
+REFRESH_SECONDS.
 
-Опорный рейтинг соперника — его заявленная сила: все архетипы держатся около своей, соседи по силе меряют друг друга.
+The opponent's reference rating is its declared strength: all archetypes hold near their own, neighbours in strength measure
+each other.
 
-Данные: таблицы bot_tunings (копилка партий и текущие randomness / blunder_guard_cp, BotTuning) и bot_tuning_log
-(журнал сдвигов, BotTuningLog). Запускает run задача bot_selfplay (src/worker/tasks.py); подстроенный характер читают
-src/api/bots.py (каталог, страница прозрачности), src/api/tournaments.py и tournament_simulation.py.
+Data: tables bot_tunings (the game accumulator and the current randomness / blunder_guard_cp, BotTuning) and bot_tuning_log
+(the shift log, BotTuningLog). Started by the bot_selfplay task via run (src/worker/tasks.py); the tuned personality is read by
+src/api/bots.py (catalog, transparency page), src/api/tournaments.py and tournament_simulation.py.
 """
 
 import asyncio
@@ -33,30 +38,31 @@ from src.services.bots.personality import BotPersonalityConfig
 
 logger = logging.getLogger(__name__)
 
-# Сколько партий копится у архетипа до проверки силы.
+# How many games an archetype accumulates before the strength check.
 TUNE_GAMES = 20
-# Расхождение силы по игре и заявленной (пункты рейтинга), с которого ползунки сдвигаются.
+# The gap between the in-game and declared strength (rating points) from which the sliders shift.
 DRIFT = 75
-# Размах оценки силы по доле очков: доля 100 % даёт средний рейтинг соперников + PERF_SPAN, 0 % — минус PERF_SPAN.
+# Span of the score-share strength estimate: a 100 % share gives the average opponent rating + PERF_SPAN, 0 % — minus
+# PERF_SPAN.
 PERF_SPAN = 400
-# Шаг сдвига за одну проверку: разброс (ед. ползунка randomness) и окно ходов (сп).
+# Shift step per check: spread (randomness slider units) and move window (cp).
 RANDOMNESS_STEP = 5
 GUARD_STEP = 20
-# Границы, за которые подстройка не уходит: разброс ± RANDOMNESS_SPAN от исходного, окно ± GUARD_SHARE от исходного.
+# Bounds the tuning does not leave: spread +- RANDOMNESS_SPAN from the original, window +- GUARD_SHARE from the original.
 RANDOMNESS_SPAN = 15
 GUARD_SHARE = 0.25
-# Сколько партий играет один запуск задачи.
+# How many games one run of the task plays.
 GAMES_PER_RUN = 12
-# Как часто (с) процесс перечитывает подстроенные значения из базы.
+# How often (s) the process re-reads the tuned values from the database.
 REFRESH_SECONDS = 300
 
-# Кэш процесса: ключ архетипа → (randomness, blunder_guard_cp); заполняет refresh, обновляет record_game.
+# Process cache: archetype key → (randomness, blunder_guard_cp); filled by refresh, updated by record_game.
 _tuned: dict[str, tuple[int, int]] = {}
 _loaded_at = -float(REFRESH_SECONDS)
 
 
 def bounds(base: BotPersonalityConfig) -> tuple[tuple[int, int], tuple[int, int]]:
-    """Границы подстройки архетипа: (мин, макс) для randomness и (мин, макс) для blunder_guard_cp."""
+    """Tuning bounds of an archetype: (min, max) for randomness and (min, max) for blunder_guard_cp."""
     randomness = (max(0, base.randomness - RANDOMNESS_SPAN), min(100, base.randomness + RANDOMNESS_SPAN))
     span = max(GUARD_STEP, round(base.blunder_guard_cp * GUARD_SHARE))
     guard = (max(0, base.blunder_guard_cp - span), min(400, base.blunder_guard_cp + span))
@@ -64,7 +70,8 @@ def bounds(base: BotPersonalityConfig) -> tuple[tuple[int, int], tuple[int, int]
 
 
 def tuned_config(archetype: Archetype) -> BotPersonalityConfig:
-    """Характер архетипа с подстроенными randomness и blunder_guard_cp (из кэша); без подстройки — исходный."""
+    """The archetype's personality with tuned randomness and blunder_guard_cp (from the cache); without tuning — the
+    original."""
     values = _tuned.get(archetype.key)
     if values is None:
         return archetype.config
@@ -72,14 +79,14 @@ def tuned_config(archetype: Archetype) -> BotPersonalityConfig:
 
 
 def forget() -> None:
-    """Сбросить кэш процесса (тесты)."""
+    """Reset the process cache (tests)."""
     global _loaded_at
     _tuned.clear()
     _loaded_at = -float(REFRESH_SECONDS)
 
 
 async def refresh(db: AsyncSession, *, force: bool = False) -> None:
-    """Перечитать подстроенные значения из bot_tunings в кэш; без force — не чаще раза в REFRESH_SECONDS."""
+    """Re-read the tuned values from bot_tunings into the cache; without force — no more than once per REFRESH_SECONDS."""
     global _loaded_at
     if not force and time.monotonic() - _loaded_at < REFRESH_SECONDS:
         return
@@ -90,23 +97,24 @@ async def refresh(db: AsyncSession, *, force: bool = False) -> None:
 
 
 def performance(points: float, games: int, opponents_rating: float) -> float:
-    """Сила по игре: средний соперник плюс-минус PERF_SPAN по доле очков (линейная оценка, без крайностей)."""
+    """In-game strength: the average opponent plus or minus PERF_SPAN by score share (linear estimate, without extremes)."""
     return opponents_rating / games + 2 * PERF_SPAN * (points / games - 0.5)
 
 
 def step(base: BotPersonalityConfig, randomness: int, guard: int, measured: float) -> tuple[int, int]:
-    """Новые (randomness, guard): шаг в границах bounds, если сила по игре отличается от target_elo на DRIFT и больше."""
+    """New (randomness, guard): a step within bounds if the in-game strength differs from target_elo by DRIFT or more."""
     gap = measured - base.target_elo
     if abs(gap) < DRIFT:
         return randomness, guard
-    sign = 1 if gap > 0 else -1          # сильнее заявленного — ослабить
+    sign = 1 if gap > 0 else -1          # stronger than declared — weaken
     (r_lo, r_hi), (g_lo, g_hi) = bounds(base)
     return (min(r_hi, max(r_lo, randomness + sign * RANDOMNESS_STEP)),
             min(g_hi, max(g_lo, guard + sign * GUARD_STEP)))
 
 
 async def record_game(db: AsyncSession, key: str, opponent_rating: int, points: float) -> BotTuningLog | None:
-    """Итог партии самоигры для архетипа; если копилка полна — проверка силы и, может быть, сдвиг. Коммит — здесь."""
+    """A self-play game result for an archetype; if the accumulator is full — a strength check and maybe a shift. The commit
+    is here."""
     base = ARCHETYPES_BY_KEY[key].config
     row = await db.get(BotTuning, key)
     if row is None:
@@ -135,7 +143,7 @@ async def record_game(db: AsyncSession, key: str, opponent_rating: int, points: 
 
 
 def pairings(rng: random.Random, games: int = GAMES_PER_RUN) -> list[tuple[Archetype, Archetype]]:
-    """Соседи по силе; цвет — случайный. Каждый архетип встречается с тем, кто чуть сильнее или слабее."""
+    """Neighbours in strength; the colour is random. Each archetype meets one a little stronger or weaker."""
     ladder = sorted(ARCHETYPES, key=lambda a: a.config.target_elo)
     pairs = [(ladder[i], ladder[i + 1]) for i in range(len(ladder) - 1)]
     chosen = [rng.choice(pairs) for _ in range(games)] if pairs else []
@@ -144,8 +152,8 @@ def pairings(rng: random.Random, games: int = GAMES_PER_RUN) -> list[tuple[Arche
 
 async def run(db: AsyncSession, games: int = GAMES_PER_RUN, play: Callable | None = None,
               rng: random.Random | None = None) -> int:
-    """Сыграть партии самоигры и записать итоги; возвращает число сыгранных партий."""
-    # Импорт внутри функции: tournament_simulation сам импортирует selfplay.
+    """Play self-play games and record the results; returns the number of games played."""
+    # Import inside the function: tournament_simulation itself imports selfplay.
     from src.services import tournament_simulation as sim
     from src.services.bots.personality import PersonalityBot
 
@@ -169,5 +177,5 @@ async def run(db: AsyncSession, games: int = GAMES_PER_RUN, play: Callable | Non
 
 
 async def journal(db: AsyncSession, limit: int = 50) -> list[BotTuningLog]:
-    """Последние limit записей открытого журнала сдвигов (новые первыми)."""
+    """The last limit entries of the open shift log (newest first)."""
     return list((await db.execute(select(BotTuningLog).order_by(BotTuningLog.id.desc()).limit(limit))).scalars().all())

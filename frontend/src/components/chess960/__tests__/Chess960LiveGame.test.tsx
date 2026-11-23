@@ -1,4 +1,4 @@
-// Партия Фишера с человеком (21.3): ходы по WebSocket, рокировка «король на свою ладью», ничья и итог.
+// A Fischer game with a person (21.3): moves over WebSocket, castling "king onto its own rook", a draw and the result.
 
 import {act, fireEvent, render, screen} from '@testing-library/react';
 import {MemoryRouter, Route, Routes} from 'react-router-dom';
@@ -17,7 +17,7 @@ vi.mock('../../../services/gameSocket', () => ({
 }));
 import {gameSocket} from '../../../services/gameSocket';
 
-// Обычная расстановка по правилам 960 после 1.e4 e5 2.Nf3 Nc6 3.Bc4 Bc5: белые могут рокироваться (e1 → h1).
+// The ordinary setup by the 960 rules after 1.e4 e5 2.Nf3 Nc6 3.Bc4 Bc5: White can castle (e1 → h1).
 const FEN = 'r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w HAha - 6 4';
 const PGN = '[Variant "Chess960"]\n[SetUp "1"]\n[FEN "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w HAha - 0 1"]\n\n'
     + '1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5';
@@ -45,18 +45,18 @@ afterEach(() => {
     vi.mocked(gameSocket.send).mockClear();
 });
 
-describe('помощники', () => {
-    it('ходы из PGN и позиция для доски без прав на рокировку', () => {
+describe('helpers', () => {
+    it('moves from PGN and a position for the board without castling rights', () => {
         expect(sansOf(PGN)).toEqual(['e4', 'e5', 'Nf3', 'Nc6', 'Bc4', 'Bc5']);
         expect(sansOf('[FEN "x"]\n\n1. e4 e5 2. O-O 1-0')).toEqual(['e4', 'e5', 'O-O']);
         expect(displayFen(FEN).split(' ')[2]).toBe('-');
     });
 });
 
-describe('партия 960 с человеком', () => {
-    it('рокировка щелчком по королю и своей ладье, ответ сервера обновляет доску', async () => {
+describe('a 960 game with a person', () => {
+    it('castling by a click on the king and on its own rook, the server answer updates the board', async () => {
         renderPage();
-        expect(screen.getByTestId('c960-live-status')).toHaveTextContent('Ваш ход');
+        expect(screen.getByTestId('c960-live-status')).toHaveTextContent('Your move');
         expect(screen.getByTestId('c960-live-moves')).toHaveTextContent('1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5');
         fireEvent.click(cell('e1'));
         fireEvent.click(cell('h1'));
@@ -67,23 +67,23 @@ describe('партия 960 с человеком', () => {
             game_id: 42, move: 'e1h1', state_version: 7, white_time_ms: 175000, black_time_ms: 180000,
             fen: 'r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQ1RK1 b ha - 7 4', pgn: `${PGN} 4. O-O`,
         }));
-        expect(screen.getByTestId('c960-live-status')).toHaveTextContent('Ход соперника');
+        expect(screen.getByTestId('c960-live-status')).toHaveTextContent('Opponent to move');
         expect(screen.getByTestId('c960-live-moves')).toHaveTextContent('4. O-O');
     });
 
-    it('ничья: предложение соперника, принять; итог партии', async () => {
+    it('a draw: the opponent\'s offer, accept; the game result', async () => {
         renderPage();
         await act(async () => handlers.get('draw_offered')!({game_id: 42}));
-        fireEvent.click(screen.getByText('Принять'));
+        fireEvent.click(screen.getByText('Accept'));
         expect(gameSocket.send).toHaveBeenCalledWith('accept_draw', {game_id: 42});
         await act(async () => handlers.get('game_over')!({game_id: 42, result: '1/2-1/2', reason: 'agreement'}));
         expect(screen.getByTestId('c960-live-again')).toBeInTheDocument();
         expect(screen.queryByTestId('c960-live-resign')).toBeNull();
     });
 
-    it('реванш после конца партии: предложить; предложение соперника — принять', async () => {
+    it('a rematch after the end of the game: offer; the opponent\'s offer — accept', async () => {
         renderPage();
-        expect(screen.queryByTestId('c960-live-rematch')).toBeNull();  // пока идёт партия — кнопки нет
+        expect(screen.queryByTestId('c960-live-rematch')).toBeNull();  // while the game is on — there is no button
         await act(async () => handlers.get('game_over')!({event: 'game_over', game_id: 42, result: '0-1', reason: 'resignation'}));
         fireEvent.click(screen.getByTestId('c960-live-rematch'));
         expect(gameSocket.send).toHaveBeenCalledWith('offer_rematch', {game_id: 42});
@@ -93,26 +93,26 @@ describe('партия 960 с человеком', () => {
         await act(async () => handlers.get('rematch_offered')!({event: 'rematch_offered', game_id: 42, player_id: 2}));
         fireEvent.click(screen.getByTestId('c960-live-rematch-accept'));
         expect(gameSocket.send).toHaveBeenCalledWith('accept_rematch', {game_id: 42});
-        // Сервер начинает реванш — match_found новой партии 960: доска и статус обновляются, кнопок реванша нет.
+        // The server starts a rematch — match_found of a new 960 game: the board and the status update, no rematch buttons.
         await act(async () => handlers.get('match_found')!({...MATCH, game_id: 43, color: 'black'}));
         expect(screen.queryByTestId('c960-live-rematch')).toBeNull();
         expect(screen.queryByTestId('c960-live-rematch-offer')).toBeNull();
     });
 
-    it('чат партии: сообщения своей партии видны, чужой — нет; своё сообщение уходит по сокету', async () => {
+    it('game chat: messages of one\'s own game are visible, of another — not; one\'s own message goes over the socket', async () => {
         renderPage();
-        await act(async () => handlers.get('chat_message')!({event: 'chat_message', game_id: 42, sender: 'bob', text: 'Удачи!'}));
-        await act(async () => handlers.get('chat_message')!({event: 'chat_message', game_id: 7, sender: 'eve', text: 'чужое'}));
-        expect(screen.getByText('Удачи!')).toBeInTheDocument();
-        expect(screen.queryByText('чужое')).toBeNull();
-        fireEvent.change(screen.getByPlaceholderText('Написать сообщение…'), {target: {value: '  И вам!  '}});
-        fireEvent.click(screen.getByRole('button', {name: 'Отправить'}));
-        expect(gameSocket.send).toHaveBeenCalledWith('chat_message', {game_id: 42, text: 'И вам!'});
-        expect(screen.getByPlaceholderText('Написать сообщение…')).toHaveValue('');
+        await act(async () => handlers.get('chat_message')!({event: 'chat_message', game_id: 42, sender: 'bob', text: 'Good luck!'}));
+        await act(async () => handlers.get('chat_message')!({event: 'chat_message', game_id: 7, sender: 'eve', text: 'foreign'}));
+        expect(screen.getByText('Good luck!')).toBeInTheDocument();
+        expect(screen.queryByText('foreign')).toBeNull();
+        fireEvent.change(screen.getByPlaceholderText('Write a message…'), {target: {value: '  And you!  '}});
+        fireEvent.click(screen.getByRole('button', {name: 'Send'}));
+        expect(gameSocket.send).toHaveBeenCalledWith('chat_message', {game_id: 42, text: 'And you!'});
+        expect(screen.getByPlaceholderText('Write a message…')).toHaveValue('');
     });
 
-    it('предход: выбран в ход соперника, уходит, как только ход наш; отменённый — не уходит', async () => {
-        renderPage({...MATCH, color: 'black'});  // в позиции ходят белые — сейчас ход соперника
+    it('premove: selected on the opponent\'s move, sent as soon as it is our move; a cancelled one is not sent', async () => {
+        renderPage({...MATCH, color: 'black'});  // White is to move in the position — it is the opponent's move now
         click('d7');
         click('d6');
         expect(gameSocket.send).not.toHaveBeenCalledWith('make_move', expect.anything());
@@ -132,15 +132,15 @@ describe('партия 960 с человеком', () => {
         expect(gameSocket.send).not.toHaveBeenCalledWith('make_move', expect.anything());
     });
 
-    it('события чужой партии не трогают доску; без партии — подсказка, как начать', async () => {
+    it('events of another game do not touch the board; without a game — a hint on how to start', async () => {
         renderPage();
         await act(async () => handlers.get('move_made')!({game_id: 99, fen: '8/8/8/8/8/8/8/K6k w - - 0 1', pgn: ''}));
         expect(screen.getByTestId('c960-live-moves')).toHaveTextContent('3. Bc4 Bc5');
         renderPage(null);
-        expect(screen.getByTestId('c960-live-empty')).toHaveTextContent('Партии 960 сейчас нет');
+        expect(screen.getByTestId('c960-live-empty')).toHaveTextContent('No Chess960 game is running');
     });
 
-    it('переподключение: match_found партии 960 восстанавливает доску', async () => {
+    it('reconnect: match_found of a 960 game restores the board', async () => {
         renderPage(null);
         await act(async () => handlers.get('match_found')!(MATCH));
         expect(screen.getByTestId('c960-live')).toBeInTheDocument();

@@ -1,6 +1,6 @@
 # --- FILE: tests/test_blindfold.py ---
-"""Игра вслепую (таск 19.5): партия с ботом сохраняется с пометкой и числом подсмотров; не бывает засчитываемой;
-товарищеская партия с человеком отмечается участником после окончания."""
+"""Blindfold play (task 19.5): a game with a bot is saved with a flag and a peek count; it is never rated;
+a casual game with a human is marked by a participant after it ends."""
 
 from src.models.game import Game, GameStatus
 
@@ -46,7 +46,7 @@ async def test_mark_friendly_pvp_game(client, db_session, token_user_1, token_us
     url = "/api/v1/profile/games/{}/blindfold"
     assert client.post(url.format(friendly.id), json={"level": 2, "peeks": 1}, headers=auth(token_user_1)).json() == {
         "blindfold": 2, "peeks": 1}
-    # Второй игрок тоже играл вслепую: ступень — наибольшая, подсмотры складываются.
+    # The second player also played blindfold: the level is the highest, and the peeks add up.
     assert client.post(url.format(friendly.id), json={"level": 4, "peeks": 0}, headers=auth(token_user_2)).json() == {
         "blindfold": 4, "peeks": 1}
     for game in (rated, running):

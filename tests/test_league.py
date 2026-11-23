@@ -1,5 +1,5 @@
 # --- FILE: tests/test_league.py ---
-"""Команды и сезонная лига (таск 17.2): очки с учётом рейтингов, сезон, команды, таблица."""
+"""Teams and the seasonal league (task 17.2): rating-aware points, season, teams, standings."""
 
 from datetime import UTC, datetime
 
@@ -16,8 +16,8 @@ def auth(token: str) -> dict:
 
 def test_points_rules():
     assert league.win_points(1500, 1500) == 2
-    assert league.win_points(1500, 1900) == 4          # победа над сильным — больше, не выше 4
-    assert league.win_points(1900, 1500) == 1          # над слабым — не меньше 1
+    assert league.win_points(1500, 1900) == 4          # a win over a stronger player gives more, capped at 4
+    assert league.win_points(1900, 1500) == 1          # over a weaker one, at least 1
     assert (league.draw_points(1500, 1700), league.draw_points(1700, 1500)) == (2, 1)
 
 
@@ -37,7 +37,7 @@ async def test_teams_and_league_table(client, db_session, token_user_1, token_us
     joined = client.post(f"{API}/{other['id']}/join", headers=auth(token_user_1)).json()
     assert joined["detail"]["code"] == "team_already_member"
 
-    # Две рейтинговые партии этого сезона между командами и одна — с игроком без команды (не в счёт).
+    # Two rated games this season between teams and one with a player without a team (does not count).
     third = User(username="lonely", hashed_password="x")
     db_session.add(third)
     await db_session.flush()
@@ -62,7 +62,7 @@ async def test_join_leave_and_ownership(client, token_user_1, token_user_2):
     assert {m["username"] for m in joined["members"]} == {"player1", "player2"}
     assert client.post(f"{API}/leave", headers=auth(token_user_1)).json() == {"team": None}
     after = client.get(f"{API}/{team['id']}").json()
-    assert after["members"] == [{"username": "player2", "points": 0, "owner": True}]   # владение перешло
+    assert after["members"] == [{"username": "player2", "points": 0, "owner": True}]   # ownership transferred
     client.post(f"{API}/leave", headers=auth(token_user_2))
-    assert client.get(f"{API}/{team['id']}").status_code == 404                    # последний вышел — команды нет
+    assert client.get(f"{API}/{team['id']}").status_code == 404                    # the last member left: no team
     assert client.post(f"{API}/leave", headers=auth(token_user_2)).json()["detail"]["code"] == "team_not_member"

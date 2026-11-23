@@ -1,7 +1,7 @@
-// Карта навыков (таск 22.1) в своём профиле: решаемость задач по разделам A–L (радар), слабые темы, ошибки в своих
-// партиях, дебюты, эндшпиль и маты, тренажёры. Данные личные — GET /api/v1/skills (src/api/skills.py) отдаёт их
-// только самому игроку по токену, поэтому блок показывается, только если ответ пришёл про этого же игрока.
-// Используется в Profile.tsx.
+// Skill map (task 22.1) in one's own profile: puzzle solvability by sections A-L (a radar), weak themes, mistakes in one's own
+// games, openings, endgame and mates, trainers. The data is personal: GET /api/v1/skills (src/api/skills.py) gives it
+// only to the player themselves by token, so the block is shown only if the response is about this same player.
+// Used in Profile.tsx.
 
 import {useEffect, useState} from 'react';
 import {Link} from 'react-router-dom';
@@ -12,7 +12,7 @@ import type {MessageKey} from '../i18n';
 import {fetchSkillMap} from '../services/skills';
 import type {SkillMapData} from '../services/skills';
 
-/** Блок карты навыков; пока данных нет или они чужие, ничего не рисует. */
+/** Skill map block; while there is no data or it is someone else's, it draws nothing. */
 export function SkillMap({username}: { username: string }) {
     const {t} = useI18n();
     const [data, setData] = useState<SkillMapData | null>(null);

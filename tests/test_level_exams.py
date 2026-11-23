@@ -1,4 +1,4 @@
-"""Экзамены уровней Большого курса (таск 27.12): фиксированный набор позиций и тест через протокол экзамена 22.0."""
+"""Level exams of the Grand Course (task 27.12): a fixed set of positions and a test run through the 22.0 exam protocol."""
 
 import chess
 import pytest
@@ -21,21 +21,21 @@ def test_set_is_fixed_valid_and_covers_every_branch():
         assert item["target"] == TARGETS[n]
         questions = item["questions"]
         assert len(questions) == 12
-        assert {q["branch"] for q in questions} == set(level_exam.BRANCHES)  # все ветви на каждом уровне
+        assert {q["branch"] for q in questions} == set(level_exam.BRANCHES)  # every branch at every level
         for q in questions:
             board = chess.Board(q["fen"])
             assert board.is_valid() and not board.is_game_over()
             assert chess.Move.from_uci(q["answer"]) in board.legal_moves
-            # Решение целиком: начинается с ответа, нечётной длины (последний ход — игрока), все ходы легальны.
+            # Full solution: starts with the answer, odd length (the last move is the player's), all moves legal.
             line = q["moves"]
             assert line[0] == q["answer"] and len(line) % 2 == 1
             for uci in line:
                 board.push_uci(uci)
             assert level_exam.progress(q, line[::2]).solved
-            assert abs(q["rating"] - item["target"]) <= 400  # около порога разряда уровня
-            assert q["fen"] not in seen  # позиции не повторяются между уровнями
+            assert abs(q["rating"] - item["target"]) <= 400  # near the level's rank threshold
+            assert q["fen"] not in seen  # positions are not repeated between levels
             seen.add(q["fen"])
-        # Ответить на всё верно — сила не ниже порога, на половину — около него, ни на что — ниже.
+        # All answers correct: strength not below the threshold; half correct: around it; none: below it.
         ratings = [q["rating"] for q in questions]
         assert estimate([(r, True) for r in ratings]) >= item["target"]
         assert estimate([(r, False) for r in ratings]) < item["target"]
@@ -61,7 +61,8 @@ async def test_level_exam_through_the_exam_api(client, token_user_1):
     assert graded["correct"] == 11 and graded["total"] == 12 and graded["estimate"] >= 1200
     assert graded["max_points"] == sum((len(level_exam.question("level2", q["id"])["moves"]) + 1) // 2 for q in questions)
     assert graded["points"] == graded["max_points"] - graded["review"][0]["max_points"]
-    # Ход во время теста: верный первый ход — ответ соперника из решения (или конец, если решение в один ход).
+    # A move during the test: a correct first move gets the opponent's reply from the solution
+    # (or ends it if the solution is one move).
     second = level_exam.question("level2", 2)
     step = client.post("/api/v1/exam/level2/move", json={"id": 2, "moves": [second["answer"]]}, headers=headers).json()
     assert step["correct"] is True and step["reply"] == (second["moves"][1] if len(second["moves"]) > 1 else None)
@@ -74,14 +75,14 @@ async def test_level_exam_through_the_exam_api(client, token_user_1):
 async def test_level_exam_is_timed_and_unreached_positions_score_nothing(client, token_user_1):
     headers = _auth(token_user_1)
     body = client.get("/api/v1/exam/level1/questions", headers=headers).json()
-    # Минута на позицию: срок сообщает сервер, клиент по истечении сам сдаёт тест.
+    # One minute per position: the server reports the deadline, and the client submits the test itself when it expires.
     assert body["time_limit_s"] == level_exam.SECONDS_PER_POSITION * len(body["questions"]) == 12 * 60
-    # Время вышло после двух решённых позиций: остальные сданы пустыми и идут без очков.
+    # Time ran out after two solved positions: the rest are submitted empty and score no points.
     answers = [{"id": q["id"], "moves": level_exam.question("level1", q["id"])["moves"][::2] if q["id"] <= 2 else []}
                for q in body["questions"]]
     graded = client.post("/api/v1/exam/level1/submit", json={"answers": answers}, headers=headers).json()
     assert graded["correct"] == 2 and graded["total"] == 12
-    # У диагностики разделов времени нет.
+    # The section diagnostic has no time limit.
     assert level_exam.time_limit_s("F") is None
 
 

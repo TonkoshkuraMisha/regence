@@ -1,9 +1,9 @@
 # --- FILE: ops/prometheus/alerts.yml ---
-# Правила алертов Prometheus для Regence (таск 23.2). Подключаются в prometheus.yml:
+# Prometheus alert rules for Regence (task 23.2). Included from prometheus.yml:
 #   rule_files: ["/etc/prometheus/alerts.yml"]
-# Метрики — src/core/observability.py (api:8000, worker:9101, worker-simulation:9101, job_name «regence») и стандартный
-# node_exporter (job_name «node») для процессора. Пороги стоят с запасом для одного сервера; подгоните под нагрузку.
-# Проверка файла: docker run --rm --entrypoint promtool -v "$PWD/ops/prometheus:/r" prom/prometheus check rules /r/alerts.yml
+# Metrics - src/core/observability.py (api:8000, worker:9101, worker-simulation:9101, job_name "regence") and the standard
+# node_exporter (job_name "node") for CPU. Thresholds leave headroom for a single server; tune them to the load.
+# File check: docker run --rm --entrypoint promtool -v "$PWD/ops/prometheus:/r" prom/prometheus check rules /r/alerts.yml
 groups:
   - name: regence-availability
     rules:
@@ -12,27 +12,27 @@ groups:
         for: 2m
         labels: {severity: critical}
         annotations:
-          summary: "{{ $labels.instance }} не отвечает на /metrics"
-          description: "API или воркер недоступны больше двух минут: проверьте контейнер (docker compose ps, логи)."
+          summary: "{{ $labels.instance }} is not responding on /metrics"
+          description: "The API or a worker has been unavailable for more than two minutes: check the container (docker compose ps, logs)."
 
       - alert: RegenceHigh5xxRate
-        # Доля ответов 5xx среди всех запросов; сам /metrics в счётчик не входит.
+        # Share of 5xx responses among all requests; /metrics itself is not counted.
         expr: |
           sum(rate(regence_http_requests_total{status=~"5.."}[5m]))
             / sum(rate(regence_http_requests_total[5m])) > 0.02
         for: 5m
         labels: {severity: critical}
         annotations:
-          summary: "Больше 2% запросов заканчиваются ошибкой сервера"
-          description: "Смотрите Sentry и журнал: python scripts/trace_logs.py --level ERROR."
+          summary: "More than 2% of requests end with a server error"
+          description: "See Sentry and the log: python scripts/trace_logs.py --level ERROR."
 
       - alert: RegenceMoveLatencyHigh
         expr: histogram_quantile(0.95, sum by (le) (rate(regence_ws_action_seconds_bucket{action="make_move"}[5m]))) > 0.5
         for: 10m
         labels: {severity: warning}
         annotations:
-          summary: "95% ходов обрабатываются дольше 0,5 с"
-          description: "Игроки замечают задержку хода: проверьте загрузку процессора, пул БД и Redis."
+          summary: "95% of moves take longer than 0.5 s to process"
+          description: "Players notice move latency: check CPU load, the DB pool and Redis."
 
   - name: regence-capacity
     rules:
@@ -41,48 +41,48 @@ groups:
         for: 10m
         labels: {severity: warning}
         annotations:
-          summary: "Очередь разбора партий растёт: {{ $value }} задач"
-          description: "Воркер analysis не успевает; увеличьте число процессов или вынесите воркер на отдельный хост."
+          summary: "The game analysis queue is growing: {{ $value }} tasks"
+          description: "The analysis worker cannot keep up; increase the number of processes or move the worker to a separate host."
 
       - alert: CeleryTournamentSimulationBacklog
         expr: regence_celery_queue_length{queue="simulation"} > 500
         for: 30m
         labels: {severity: warning}
         annotations:
-          summary: "Очередь партий ботов в турнирах растёт: {{ $value }} задач"
-          description: "Воркер simulation не успевает: турниры доигрываются медленно."
+          summary: "The tournament bot-game queue is growing: {{ $value }} tasks"
+          description: "The simulation worker cannot keep up: tournaments finish slowly."
 
       - alert: RegenceDbPoolNearLimit
-        # Предел — (DB_POOL_SIZE + DB_MAX_OVERFLOW) × WEB_CONCURRENCY = (10 + 20) × 2 = 60 соединений; порог — 80%.
+        # Limit - (DB_POOL_SIZE + DB_MAX_OVERFLOW) × WEB_CONCURRENCY = (10 + 20) × 2 = 60 connections; threshold - 80%.
         expr: regence_db_pool_checked_out > 48
         for: 5m
         labels: {severity: warning}
         annotations:
-          summary: "Занято {{ $value }} из 60 соединений пула БД"
-          description: "Пул почти исчерпан: ищите медленные запросы или увеличьте DB_POOL_SIZE и max_connections в Postgres."
+          summary: "{{ $value }} of 60 DB pool connections in use"
+          description: "The pool is almost exhausted: look for slow queries or increase DB_POOL_SIZE and max_connections in Postgres."
 
       - alert: RegenceEnginePoolBusy
         expr: sum(increase(regence_engine_busy_total[10m])) > 0
         labels: {severity: warning}
         annotations:
-          summary: "Пул движков отказывал в доступе (все заняты)"
-          description: "Разбор и боты ждут Stockfish; нужно больше ядер или меньше одновременных задач (бюджет движка, 23.3)."
+          summary: "The engine pool refused access (all engines busy)"
+          description: "Analysis and bots are waiting for Stockfish; more cores or fewer concurrent tasks are needed (engine budget, 23.3)."
 
       - alert: HostCpuHigh
-        # Нужен node_exporter (job «node»).
+        # Requires node_exporter (job "node").
         expr: 100 - avg by (instance) (rate(node_cpu_seconds_total{mode="idle", job="node"}[5m])) * 100 > 85
         for: 10m
         labels: {severity: warning}
         annotations:
-          summary: "Процессор {{ $labels.instance }} загружен на {{ $value | printf \"%.0f\" }}%"
-          description: "Дольше десяти минут выше 85%: подумайте о выносе воркеров движка на отдельный хост."
+          summary: "CPU of {{ $labels.instance }} is loaded at {{ $value | printf \"%.0f\" }}%"
+          description: "Above 85% for more than ten minutes: consider moving the engine workers to a separate host."
 
   - name: regence-correctness
     rules:
       - alert: RegenceTimeoutChecksFailing
-        # Проверка флагов и неявок должна работать всегда: сбой значит, что партии могут не заканчиваться по времени.
+        # The flag and no-show check must always work: a failure means games may not end on time.
         expr: increase(regence_timeout_check_failures_total[10m]) > 0
         labels: {severity: critical}
         annotations:
-          summary: "Проверка флагов и неявок давала сбои"
-          description: "Игры могут не завершаться по времени: смотрите журнал api по `timeout`."
+          summary: "The flag and no-show check has been failing"
+          description: "Games may not finish on time: look at the api log for `timeout`."

@@ -1,4 +1,4 @@
-// Программы тренировок (таск 22.3): у каждой 8 недель по 5 занятий, и каждое упражнение ведёт в существующий раздел.
+// Training programs (task 22.3): each has 8 weeks of 5 sessions, and every exercise leads to an existing section.
 
 import {describe, expect, it} from 'vitest';
 import {activityLink, PROGRAMS, SESSIONS_PER_PROGRAM, sessionsOf} from '../programs';
@@ -11,8 +11,8 @@ import {hasMessage} from '../../i18n';
 
 const EXAM = ['F', 'A', 'B', 'C', 'D', 'E', 'G', 'H', 'I', 'J', 'endgame'];
 
-describe('программы тренировок', () => {
-    it('8 недель × 5 занятий', () => {
+describe('training programs', () => {
+    it('8 weeks x 5 sessions', () => {
         expect(PROGRAMS.map((p) => p.id)).toEqual(['first_steps', 'to_1200', 'club', 'advanced']);
         for (const program of PROGRAMS) {
             expect(program.weeks).toHaveLength(8);
@@ -21,7 +21,7 @@ describe('программы тренировок', () => {
         }
     });
 
-    it('каждое упражнение существует', () => {
+    it('every exercise exists', () => {
         const missing: string[] = [];
         for (const program of PROGRAMS) {
             for (const activity of sessionsOf(program).flat()) {
@@ -44,7 +44,7 @@ describe('программы тренировок', () => {
         expect(missing).toEqual([]);
     });
 
-    it('ссылки: тема задач открывается тренировкой', () => {
+    it('links: a puzzle theme opens with training', () => {
         expect(activityLink({kind: 'theme', id: 'fork'})).toEqual({to: '/puzzles', state: {train: {theme: 'fork', blind: false}}});
         expect(activityLink({kind: 'endgame', id: 'lucena'}).to).toBe('/learn/endgames/lucena');
         expect(activityLink({kind: 'play'}).to).toBe('/');

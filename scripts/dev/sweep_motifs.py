@@ -1,8 +1,8 @@
 # --- FILE: scripts/dev/sweep_motifs.py ---
 """
-Прогон детектора мотивов наставника по партиям из PGN: частота каждого мотива, время на полуход и случайные
-примеры для ручной проверки. Нужен при настройке правил: тесты проверяют подобранные позиции, а этот прогон —
-как детектор ведёт себя в настоящих партиях (ложные срабатывания видны по примерам).
+A run of the mentor motif detector over PGN games: the frequency of each motif, time per ply and random
+examples for manual checking. Needed when tuning the rules: the tests check hand-picked positions, while this run shows
+how the detector behaves in real games (false positives are visible from the examples).
 
     python scripts/dev/sweep_motifs.py data/pgns/morphy_all_games.pgn 120 fork trapped skewer
 """
@@ -21,7 +21,7 @@ from src.services.mentor_service import analyze_move  # noqa: E402
 
 
 def main(path: str, games_limit: int, show: list[str]) -> None:
-    """Замеряет частоту и скорость детектора мотивов на партиях PGN."""
+    """Measures the frequency and speed of the motif detector on PGN games."""
     random.seed(7)
     counts: collections.Counter[str] = collections.Counter()
     samples: dict[str, list[tuple[str, str, object]]] = collections.defaultdict(list)
@@ -35,7 +35,7 @@ def main(path: str, games_limit: int, show: list[str]) -> None:
             board = game.board()
             for move in game.mainline_moves():
                 if not board.is_valid() or move not in board.legal_moves:
-                    break  # партии с форой и пропуском хода в архиве встречаются
+                    break  # archives contain games with a handicap and with a skipped move
                 facts = analyze_move(board, move)
                 san = board.san(move)
                 for motif in facts.created:
@@ -45,11 +45,11 @@ def main(path: str, games_limit: int, show: list[str]) -> None:
                 board.push(move)
                 plies += 1
     elapsed = time.perf_counter() - started
-    print(f"полуходов: {plies}, время: {elapsed:.1f} с, на полуход: {elapsed / max(plies, 1) * 1000:.1f} мс")
+    print(f"plies: {plies}, time: {elapsed:.1f} s, per ply: {elapsed / max(plies, 1) * 1000:.1f} ms")
     for code, count in counts.most_common():
-        print(f"  {code:18} {count:6}  {count / max(plies, 1) * 100:5.1f} % полуходов")
+        print(f"  {code:18} {count:6}  {count / max(plies, 1) * 100:5.1f} % of plies")
     for code in show:
-        print(f"\n=== {code} (позиция до хода | ход -> поле и цели)")
+        print(f"\n=== {code} (position before the move | move -> square and targets)")
         for fen, san, motif in random.sample(samples[code], min(6, len(samples[code]))):
             targets = [chess.square_name(t) for t in motif.targets]  # type: ignore[attr-defined]
             print(f"  {fen} | {san} -> {chess.square_name(motif.square)} {targets} {motif.value}")  # type: ignore[attr-defined]

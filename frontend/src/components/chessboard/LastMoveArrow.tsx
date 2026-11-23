@@ -1,16 +1,16 @@
 // --- FILE: frontend/src/components/chessboard/LastMoveArrow.tsx ---
-// Стрелка последнего хода (таск 18.4, настройка «показ хода соперника» в config/boardPrefs.ts: подсветка полей,
-// стрелка или и то и другое). Полупрозрачная; лежит под стрелками наставника и пометками игрока (z-index 25
-// против 30), клики не перехватывает.
+// Last-move arrow (task 18.4, the "show opponent's move" setting in config/boardPrefs.ts: square highlight,
+// arrow or both). Semi-transparent; lies under the coach arrows and the player's marks (z-index 25
+// versus 30), does not intercept clicks.
 
 import {squareCenter} from './CoachArrowsOverlay';
 
-/** Стрелка от поля from к полю to; у показываемого хода истории, а не только у хода соперника. */
+/** Arrow from square from to square to; for the history move being shown, not only the opponent's move. */
 export function LastMoveArrow({from, to, flipped}: { from: string; to: string; flipped: boolean }) {
     const a = squareCenter(from, flipped);
     const b = squareCenter(to, flipped);
     if (!a || !b) return null;
-    // Наконечник не заходит на центр поля — фигура остаётся видна.
+    // The arrowhead does not reach the centre of the square: the piece stays visible.
     const len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
     const end = {x: b.x - ((b.x - a.x) / len) * 3, y: b.y - ((b.y - a.y) / len) * 3};
     return (

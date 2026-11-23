@@ -1,8 +1,8 @@
 """
-Инфраструктурные модули: сигналы и расписание Celery (src/worker/celery_app.py), постановка задач
-(src/services/task_dispatch.py), отправка писем (src/services/mailer.py), ограничитель частоты
-(src/api/rate_limit.py) и жизненный цикл приложения (src/main.py). Брокер, SMTP и Redis подменены;
-время фиксируется подменой часов.
+Infrastructure modules: Celery signals and schedule (src/worker/celery_app.py), task dispatch
+(src/services/task_dispatch.py), mail sending (src/services/mailer.py), the rate limiter
+(src/api/rate_limit.py) and the application lifecycle (src/main.py). Broker, SMTP and Redis are stubbed;
+time is fixed by stubbing the clock.
 """
 
 import asyncio
@@ -36,7 +36,7 @@ def test_task_signals_open_and_close_log_context(caplog):
 def test_task_context_without_numeric_arg_and_unknown_task():
     celery_module._bind_task_context(task_id="t2", task=None, args=("x",))
     celery_module._release_task_context(task_id="t2", state="SUCCESS")
-    celery_module._release_task_context(task_id="never-started", state="SUCCESS")  # токена нет — не падает
+    celery_module._release_task_context(task_id="never-started", state="SUCCESS")  # no token: does not fail
     assert "t2" not in celery_module._task_log_tokens
 
 
@@ -62,7 +62,7 @@ def test_logging_and_metrics_signals(monkeypatch):
     forgotten: list[int] = []
     monkeypatch.setattr(celery_module, "forget_worker_process", forgotten.append)
     celery_module._forget_worker_process(pid=123)
-    celery_module._forget_worker_process(pid=None)  # без pid ничего не забываем
+    celery_module._forget_worker_process(pid=None)  # without a pid nothing is forgotten
     assert forgotten == [123]
 
 
@@ -83,7 +83,7 @@ def cooldown_reset():
 
 
 def test_publish_helpers_call_apply_async_without_retry(monkeypatch):
-    monkeypatch.undo()  # autouse-фикстура conftest подменила сами _publish_*; нужны настоящие
+    monkeypatch.undo()  # the conftest autouse fixture replaced _publish_* itself; the real ones are needed
     sent: list[tuple] = []
     for attr, name in (
         ("analyze_game_task", "analyze_game"), ("simulate_tournament_game_task", "simulate_tournament_game"),
@@ -103,9 +103,9 @@ async def test_analysis_cooldown_skips_publish(monkeypatch, cooldown_reset):
         raise ConnectionError("broker down")
 
     monkeypatch.setattr(task_dispatch, "_publish_analysis", broken)
-    assert await task_dispatch.schedule_game_analysis(1) is False  # сбой включил паузу
+    assert await task_dispatch.schedule_game_analysis(1) is False  # the failure triggered the pause
     monkeypatch.setattr(task_dispatch, "_publish_analysis", lambda _id: None)
-    assert await task_dispatch.schedule_game_analysis(1) is False  # пауза: публикации нет
+    assert await task_dispatch.schedule_game_analysis(1) is False  # pause: nothing is published
     task_dispatch.reset_broker_cooldown()
     assert await task_dispatch.schedule_game_analysis(1) is True
 
@@ -127,8 +127,8 @@ async def test_batch_schedulers_publish_and_cool_down(monkeypatch, cooldown_rese
         raise ConnectionError("down")
 
     monkeypatch.setattr(task_dispatch, publisher, broken)
-    assert await schedule([4, 5]) == 0  # первая же ошибка включает паузу
-    assert await schedule([6]) == 0  # пауза: ничего не публикуется
+    assert await schedule([4, 5]) == 0  # the first error triggers the pause
+    assert await schedule([6]) == 0  # pause: nothing is published
 
 
 @pytest.mark.parametrize(
@@ -161,7 +161,7 @@ async def test_send_without_smtp_host_only_logs(monkeypatch, caplog):
     called: list[object] = []
     monkeypatch.setattr(mailer, "_send_smtp", called.append)
     with caplog.at_level(logging.INFO):
-        await mailer.send("a@b.c", "Тема", "Текст")
+        await mailer.send("a@b.c", "Subject", "Body")
     assert called == [] and "not sent" in caplog.text
 
 
@@ -255,7 +255,7 @@ class _BrokenRedis:
 
 
 async def test_try_consume_counts_and_unlimited(freeze_rate_limit_window):
-    assert await rate_limit.try_consume("s", "ip:1", 0, 60) is True  # limit<=0 — без ограничения
+    assert await rate_limit.try_consume("s", "ip:1", 0, 60) is True  # limit<=0 means unlimited
     assert [await rate_limit.try_consume("s", "ip:1", 2, 60) for _ in range(3)] == [True, True, False]
 
 
@@ -277,7 +277,7 @@ async def test_enforce_rate_limit_raises_429_with_retry_after(freeze_rate_limit_
 
 
 async def test_ensure_below_limit_and_record_attempt(freeze_rate_limit_window):
-    await rate_limit.ensure_below_limit("f", "ip:1", 0, 60, "rate_limited")  # лимит выключен
+    await rate_limit.ensure_below_limit("f", "ip:1", 0, 60, "rate_limited")  # limit disabled
     await rate_limit.ensure_below_limit("f", "ip:1", 2, 60, "rate_limited")
     await rate_limit.record_attempt("f", "ip:1", 60)
     await rate_limit.record_attempt("f", "ip:1", 60)
@@ -292,7 +292,7 @@ async def test_daily_quota_off_then_on(monkeypatch, freeze_rate_limit_window):
     monkeypatch.setattr(settings, "FREE_TIER_LIMITS", False)
     assert quota.limit() == 0
     await quota.record(request)
-    await quota.check(request)  # выключена — ничего не считает и не запрещает
+    await quota.check(request)  # disabled: counts and forbids nothing
 
     monkeypatch.setattr(settings, "FREE_TIER_LIMITS", True)
     monkeypatch.setattr(settings, "RATE_LIMIT_WINDOW_S", 2)
@@ -343,6 +343,6 @@ async def test_lifespan_starts_loop_and_closes_resources(monkeypatch):
 async def test_game_analysis_background_task_is_tracked(cooldown_reset):
     task = task_dispatch.schedule_game_analysis_in_background(1)
     assert task in task_dispatch._background_tasks
-    assert await task is True  # публикацию подменяет фикстура conftest
+    assert await task is True  # publishing is stubbed by the conftest fixture
     await asyncio.sleep(0)
     assert task not in task_dispatch._background_tasks

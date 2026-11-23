@@ -1,58 +1,58 @@
 // --- FILE: frontend/src/services/moderation.ts ---
-// Модерация (таск 17.4): жалобы, апелляция, очередь и решения модератора.
-// Все запросы — к /api/v1/moderation и только с входом (маршруты src/api/moderation.py, правила —
-// src/services/moderation.py). Очередь и решения сервер отдаёт только модератору; автоматика лишь ставит заявки.
+// Moderation (task 17.4): reports, appeal, queue and moderator decisions.
+// All requests go to /api/v1/moderation and only with login (routes src/api/moderation.py, rules —
+// src/services/moderation.py). The queue and decisions are served only to a moderator; automation only creates tickets.
 
 import {apiRequest} from './http';
 
-/** Причина жалобы: нечестная игра, оскорбления, спам, другое (REASONS на сервере). */
+/** Report reason: unfair play, insults, spam, other (REASONS on the server). */
 export type ReportReason = 'cheating' | 'abuse' | 'spam' | 'other';
 /**
- * Решение модератора (ACTIONS на сервере): dismiss — отклонить; warn — предупреждение; chat_ban — отключить чат
- * на сутки; mark_cheater / clear_cheater — подтвердить или снять флаг нечестной игры; accept — принять (правку
- * перевода); hide — убрать текст; release — выпустить придержанное фильтром.
+ * Moderator decision (ACTIONS on the server): dismiss — reject; warn — warning; chat_ban — disable chat
+ * for a day; mark_cheater / clear_cheater — confirm or remove the unfair play flag; accept — accept (a translation
+ * fix); hide — remove the text; release — release what the filter held back.
  */
 export type ModerationAction = 'dismiss' | 'warn' | 'chat_ban' | 'mark_cheater' | 'clear_cheater' | 'accept' | 'hide' | 'release';
 
-/** Заявка в очереди модератора (GET /moderation/queue). */
+/** Ticket in the moderator queue (GET /moderation/queue). */
 export interface QueueItem {
     id: number;
     /**
-     * player и message — жалоба на игрока или сообщение чата партии; cheat_review — проверка флага античита;
-     * appeal — апелляция; translation — правка перевода; content — жалоба на личное сообщение, публикацию или
-     * комментарий; held — текст, придержанный фильтром.
+     * player and message — a report on a player or a game chat message; cheat_review — anti-cheat flag review;
+     * appeal — appeal; translation — translation fix; content — a report on a direct message, post or
+     * comment; held — text held back by the filter.
      */
     kind: 'player' | 'message' | 'cheat_review' | 'appeal' | 'translation' | 'content' | 'held';
     reason: string;
     comment: string | null;
-    /** Копия текста, на который жалуются (сохраняется в момент жалобы). */
+    /** Copy of the text being reported (saved at the moment of the report). */
     message_text: string | null;
-    /** Для translation: «язык:ключ» и страница. */
+    /** For translation: "language:key" and page. */
     subject?: string | null;
     context?: string | null;
     game_id: number | null;
     created_at: string | null;
     reporter: string | null;
     target: string | null;
-    /** Сведения об игроке, на которого заявка: флаг античита, фактор доверия (users.trust_factor), число жалоб. */
+    /** Information about the player the ticket is about: anti-cheat flag, trust factor (users.trust_factor), number of reports. */
     target_is_cheater: boolean;
     target_trust: number | null;
     reports_on_target: number;
 }
 
-/** Состояние самого игрока (GET /moderation/me): роль, флаг нечестной игры, открытая апелляция, запрет чата. */
+/** State of the player themself (GET /moderation/me): role, unfair play flag, open appeal, chat ban. */
 export interface ModerationMe {
     is_moderator: boolean;
     is_cheater: boolean;
     open_appeal: boolean;
-    /** До какого момента отключён чат (ISO); null — чат не отключён. */
+    /** Until when chat is disabled (ISO); null — chat is not disabled. */
     chat_banned_until: string | null;
 }
 
-/** Запрос к /api/v1/moderation через общую обёртку http.ts (токен, JSON, ошибки). */
+/** Request to /api/v1/moderation via the common http.ts wrapper (token, JSON, errors). */
 const call = <T>(path: string, init: RequestInit = {}) => apiRequest<T>(`/moderation${path}`, init);
 
-/** Сводка по нарушениям за 30 суток (GET /moderation/summary, src/services/moderation_report.py). */
+/** Summary of violations over 30 days (GET /moderation/summary, src/services/moderation_report.py). */
 export interface ViolationsSummary {
     days: number;
     opened: number;
@@ -67,17 +67,17 @@ export interface ViolationsSummary {
 
 export const moderationApi = {
     me: () => call<ModerationMe>('/me'),
-    /** Жалоба на игрока или на сообщение в чате партии (message_text — копия сообщения). */
+    /** Report on a player or on a game chat message (message_text — a copy of the message). */
     report: (body: { target: string; kind: 'player' | 'message'; reason: ReportReason; comment?: string; message_text?: string; game_id?: number | null }) =>
         call<{ id: number }>('/reports', {method: 'POST', body: JSON.stringify(body)}),
-    /** Правка перевода из режима «помощник перевода»: ключ каталога, текущий текст и предложенный. */
+    /** Translation fix from "translation helper" mode: catalog key, current text and the proposed one. */
     suggestTranslation: (body: { language: string; key: string; current: string; suggestion: string; context: string }) =>
         call<{ id: number }>('/translations', {method: 'POST', body: JSON.stringify(body)}),
-    /** Апелляция на флаг нечестной игры (одна открытая на игрока). */
+    /** Appeal against an unfair play flag (one open per player). */
     appeal: (comment: string) => call<{ id: number }>('/appeal', {method: 'POST', body: JSON.stringify({comment})}),
     queue: () => call<{ reports: QueueItem[] }>('/queue'),
     summary: () => call<ViolationsSummary>('/summary'),
-    /** Жалоба на сообщение, публикацию или комментарий (таск 30.3): subject — «dm:12», «post:5», «comment:7». */
+    /** Report on a message, post or comment (task 30.3): subject — "dm:12", "post:5", "comment:7". */
     reportText: (subject: string, reason: ReportReason) =>
         call<{ id: number }>('/reports/text', {method: 'POST', body: JSON.stringify({subject, reason})}),
     resolve: (id: number, action: ModerationAction) =>

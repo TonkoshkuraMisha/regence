@@ -1,11 +1,11 @@
-// Сравнение счёта «Угадай ход мастера» за партию целиком с уровнем мастеров (таск 14.3).
-// Мастер в каждом отобранном моменте играл лучший ход, то есть набрал бы максимум; сравниваем долю очков игрока
-// от этого максимума и называем уровень по порогам. Чистые правила без сети: ничего не хранится, считает клиент.
+// Comparison of the "Guess the master's move" score for a whole game with the masters' level (task 14.3).
+// In every selected moment the master played the best move, i.e. would score the maximum; we compare the player's share of points
+// of that maximum and name the level by thresholds. Pure rules without network: nothing is stored, the client computes.
 
-/** Уровень результата; ключ каталога — `guess.level.<id>` (en/uk/ru). */
+/** Result level; catalog key — `guess.level.<id>` (en/uk). */
 export type GuessLevelId = 'master' | 'near' | 'confident' | 'learning';
 
-/** Нижние границы доли очков (в процентах) по убыванию: первая подошедшая задаёт уровень. */
+/** Lower bounds of the points share (in percent) in descending order: the first that fits sets the level. */
 export const GUESS_LEVEL_THRESHOLDS: ReadonlyArray<{ id: GuessLevelId; minPercent: number }> = [
     {id: 'master', minPercent: 90},
     {id: 'near', minPercent: 70},
@@ -14,12 +14,12 @@ export const GUESS_LEVEL_THRESHOLDS: ReadonlyArray<{ id: GuessLevelId; minPercen
 ];
 
 export interface GuessLevel {
-    /** Доля очков игрока от максимума, целых процентов (0 при пустой партии). */
+    /** Player's share of points of the maximum, whole percent (0 for an empty game). */
     percent: number;
     id: GuessLevelId;
 }
 
-/** Уровень по набранным очкам и максимуму (100 за момент); пустая партия считается нулевой. */
+/** Level by points scored and the maximum (100 per moment); an empty game counts as zero. */
 export function guessLevel(points: number, max: number): GuessLevel {
     const percent = max > 0 ? Math.max(0, Math.min(100, Math.round((points / max) * 100))) : 0;
     const tier = GUESS_LEVEL_THRESHOLDS.find((item) => percent >= item.minPercent)!;

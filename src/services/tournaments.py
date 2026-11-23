@@ -1,17 +1,17 @@
 # --- FILE: src/services/tournaments.py ---
 """
-Ход турнира (таски 15.1, 15.4, A.1–A.3): создание с посевом и расписанием, запись результата партии и продвижение —
-следующие партии матча на выбывание, следующий тур кругового или швейцарского турнира, итоговые места, сдача
-турнира игроком. Сами правила (расписание, таблицы, сетка) — в tournament_rules.py.
+The course of a tournament (tasks 15.1, 15.4, A.1-A.3): creation with seeding and schedule, recording a game result and
+advancing - the next games of a knockout match, the next round of a round robin or Swiss tournament, final places,
+resignation from a tournament by the player. The rules themselves (schedule, tables, bracket) are in tournament_rules.py.
 
-Данные: таблицы tournaments, tournament_players, tournament_games (src/models/tournament.py), рейтинг игрока —
-поля User (src/services/rating.py), сила ботов — калибровка (bots/calibration.py), мастера прошлого — bots/guests.py.
-Сессию честной партии игрока открывает и закрывает ladder.py (область «tournament», Redis).
+Data: the tables tournaments, tournament_players, tournament_games (src/models/tournament.py), the player's rating is
+the User fields (src/services/rating.py), bot strength is calibration (bots/calibration.py), masters of the past -
+bots/guests.py. The fair-play session of the player's game is opened and closed by ladder.py (the "tournament" scope, Redis).
 
-Результаты сюда приносят: партия игрока (сохранение партии с ботом в src/api/bots.py, таск 15.3, а также сдача и
-повторный старт здесь) и симуляция партий ботов между собой (tournament_simulation.py, Celery, таск 15.2). Игрок не
-может прислать результат сам — отдельного эндпоинта для этого нет. Модуль вызывают также src/api/tournaments.py,
-tournament_career.py и time_machine.py.
+Results are brought here by: the player's game (saving a game with a bot in src/api/bots.py, task 15.3, as well as
+resignation and a repeated start here) and the simulation of bot-vs-bot games (tournament_simulation.py, Celery, task
+15.2). The player cannot send a result themselves - there is no separate endpoint for that. The module is also called by
+src/api/tournaments.py, tournament_career.py and time_machine.py.
 """
 
 import json
@@ -34,15 +34,15 @@ from src.services.bots.calibration import strength_of
 from src.services.bots.guests import GUESTS_BY_ID
 from src.services.rating import classify_time_control, elo_calculator
 
-# Формат турнира: круговой, на выбывание, швейцарская система.
+# Tournament format: round robin, knockout, Swiss system.
 Format = Literal["round_robin", "knockout", "swiss"]
 
-# Партию ботов, которую забрал и не доиграл воркер (упал), через CLAIM_TIMEOUT можно забрать снова.
+# A bot game that a worker took and did not finish (crashed) can be taken again after CLAIM_TIMEOUT.
 CLAIM_TIMEOUT = timedelta(minutes=15)
-# Поставленную в очередь, но не начатую партию ботов ставим снова не раньше чем через REQUEUE_AFTER (таск A.1):
-# страница турнира опрашивает сервер каждые 3 с, и без этого очередь Celery росла бы с каждым опросом.
+# A bot game that was queued but not started is queued again no sooner than after REQUEUE_AFTER (task A.1):
+# the tournament page polls the server every 3 s, and without this the Celery queue would grow with every poll.
 REQUEUE_AFTER = timedelta(minutes=2)
-# Допустимое число участников обычного турнира игрока по форматам (для исторических — rules.OPEN_*).
+# Allowed number of participants of an ordinary player tournament by format (for historical ones - rules.OPEN_*).
 SIZES: dict[str, tuple[int, ...]] = {
     "round_robin": rules.ROUND_ROBIN_SIZES, "knockout": rules.KNOCKOUT_SIZES, "swiss": rules.SWISS_SIZES,
 }
@@ -51,8 +51,9 @@ SIZES: dict[str, tuple[int, ...]] = {
 @dataclass(frozen=True)
 class ParticipantSpec:
     """
-    Соперник в турнире: исторический бот (id), архетип (id), персоналия игрока (id в базе) или мастер прошлого
-    из bots/guests.py (id) — он участвует как персоналия с ключом «guest:<id>» («Машина времени», 28.2).
+    An opponent in a tournament: a historical bot (id), an archetype (id), a player's personality (id in the database) or a
+    master of the past from bots/guests.py (id) - it takes part as a personality with the key "guest:<id>" ("Time Machine",
+    28.2).
     """
 
     kind: Literal["bot", "archetype", "personality", "guest"]
@@ -61,7 +62,7 @@ class ParticipantSpec:
 
 @dataclass
 class _Entrant:
-    """Участник до посева: кто он, сила на старте и порядок перечисления (order — для ничьих при посеве)."""
+    """A participant before seeding: who they are, strength at the start and listing order (order - for ties in seeding)."""
     kind: str
     rating: int
     user_id: int | None = None
@@ -72,7 +73,7 @@ class _Entrant:
 
 
 def _bot_ratings() -> dict[str, int]:
-    """Заявленные рейтинги исторических ботов из каталога src/api/bots.py (id → рейтинг)."""
+    """Stated ratings of the historical bots from the catalogue src/api/bots.py (id -> rating)."""
     from src.api.bots import AVAILABLE_BOTS
 
     return {str(b["id"]): int(str(b["rating"])) for b in AVAILABLE_BOTS}
@@ -80,8 +81,9 @@ def _bot_ratings() -> dict[str, int]:
 
 async def _entrant(db: AsyncSession, owner: User, spec: ParticipantSpec, order: int) -> _Entrant:
     """
-    Превращает заявку в участника с силой на старте: у бота и архетипа — по калибровке, у мастера прошлого —
-    заявленная, у персоналии — target_elo из конфига. Чужая или неизвестная персоналия — tournament_participant_unknown.
+    Turns an entry into a participant with the strength at the start: for a bot and an archetype - by calibration, for a
+    master of the past - the stated one, for a personality - target_elo from the config. Someone else's or an unknown
+    personality - tournament_participant_unknown.
     """
     label = f"{spec.kind}:{spec.id}"
     if spec.kind == "bot":
@@ -99,8 +101,8 @@ async def _entrant(db: AsyncSession, owner: User, spec: ParticipantSpec, order: 
         guest = GUESTS_BY_ID.get(str(spec.id))
         if guest is None:
             raise DomainError("tournament_participant_unknown", participant=label)
-        # Мастер прошлого играет как персоналия: симуляция и партия игрока идут по его характеру, а ключ
-        # позволяет клиенту показать имя на языке игрока.
+        # A master of the past plays as a personality: the simulation and the player's game follow their character, and the key
+        # lets the client show the name in the player's language.
         return _Entrant("personality", guest.rating, bot_key=guest.key, personality_name=guest.pgn_name,
                         config_json=guest.config.model_dump_json(), order=order)
     personality = await db.get(BotPersonality, int(spec.id)) if str(spec.id).isdigit() else None
@@ -115,9 +117,9 @@ async def _entrant(db: AsyncSession, owner: User, spec: ParticipantSpec, order: 
 
 async def active_in_branch(db: AsyncSession, owner_id: int, stages: Collection[str]) -> Tournament | None:
     """
-    Идущий турнир игрока в той же ветке прогресса (этапы карьеры stages); сданный (боты ещё доигрывают) не мешает.
-    Решение владельца (17.11): блокирует только своя ветка — свои турниры и «Машина времени» идут параллельно
-    с чем угодно, сколько угодно сразу.
+    The player's running tournament in the same progress branch (career stages); a resigned one (bots still
+    finishing) does not interfere. Owner's decision (17.11): only its own branch blocks - own tournaments and the "Time
+    Machine" run in parallel with anything, any number at once.
     """
     return (await db.execute(
         select(Tournament).where(
@@ -142,12 +144,12 @@ async def create_tournament(
         progress_branch: Collection[str] = (),
 ) -> Tournament:
     """
-    Создаёт турнир: проверяет размер и состав, сеет участников по силе на старте (игрок при равенстве — первым),
-    пишет участников и партии первого тура (у кругового — расписание всех туров сразу). Сам commit.
-    open_size — турнир в историческом составе («Машина времени», 28.1): круговой или сетка на любое число
-    участников в границах rules.OPEN_*; cycles — число кругов кругового турнира. Свои турниры игрока создаются без
-    них: размеры — из SIZES. progress_branch — этапы карьеры той же ветки: пока один из них идёт, новый не начать.
-    Состав — size − 1 соперников плюс игрок.
+    Creates a tournament: checks the size and the field, seeds participants by strength at the start (the player first on a
+    tie), writes the participants and the games of the first round (for a round robin - the schedule of all rounds at
+    once). Commits itself. open_size - a tournament with a historical field ("Time Machine", 28.1): a round robin or a
+    bracket for any number of participants within rules.OPEN_*; cycles - the number of circuits of a round robin. The
+    player's own tournaments are created without them: sizes come from SIZES. progress_branch - career stages of the same
+    branch: while one of them runs, a new one cannot start. The field is size - 1 opponents plus the player.
     """
     allowed: tuple[int, ...] | range = SIZES[fmt]
     if open_size and fmt == "round_robin":
@@ -168,7 +170,7 @@ async def create_tournament(
     category = classify_time_control(base_time_ms, increment_ms)
     entrants = [_Entrant("user", owner.rating_for(category), user_id=owner.id, order=0)]
     entrants += [await _entrant(db, owner, spec, i + 1) for i, spec in enumerate(participants)]
-    # Посев: по рейтингу на старте; при равенстве — в порядке перечисления (игрок первым).
+    # Seeding: by rating at the start; on a tie - in listing order (the player first).
     entrants.sort(key=lambda e: (-e.rating, e.order))
 
     tournament = Tournament(
@@ -192,7 +194,7 @@ async def create_tournament(
         for board, (white, black) in enumerate(rules.swiss_pairings(list(range(1, size + 1)), []), 1):
             _add_game(db, tournament, 1, board, rules.MatchGame("main", white, black, False))
     else:
-        # Номер доски — место матча в сетке; у прошедших первый круг без игры партии нет.
+        # The board number is the match's place in the bracket; those who passed the first round without playing have no game.
         for board, (high, low) in enumerate(rules.bracket_slots(size), 1):
             if low is not None:
                 _add_game(db, tournament, 1, board, rules.match_game(high, low, "main"))
@@ -203,7 +205,7 @@ async def create_tournament(
 
 
 def _add_game(db: AsyncSession, tournament: Tournament, rnd: int, board: int, game: rules.MatchGame) -> None:
-    """Добавляет партию в сессию; у переигровки и решающей партии контроль времени сокращён (rules.shortened_control)."""
+    """Adds a game to the session; for a replay and a deciding game the time control is shortened (rules.shortened_control)."""
     base, inc = tournament.base_time_ms, tournament.increment_ms
     if game.shortened:
         base, inc = rules.shortened_control(base, inc)
@@ -214,14 +216,14 @@ def _add_game(db: AsyncSession, tournament: Tournament, rnd: int, board: int, ga
 
 
 async def players_of(db: AsyncSession, tournament_id: int) -> list[TournamentPlayer]:
-    """Участники турнира по порядку посева (seat)."""
+    """Participants of a tournament in seeding order (seat)."""
     return list((await db.execute(
         select(TournamentPlayer).where(TournamentPlayer.tournament_id == tournament_id).order_by(TournamentPlayer.seat)
     )).scalars().all())
 
 
 async def games_of(db: AsyncSession, tournament_id: int) -> list[TournamentGame]:
-    """Все партии турнира по турам и доскам."""
+    """All games of a tournament by rounds and boards."""
     return list((await db.execute(
         select(TournamentGame).where(TournamentGame.tournament_id == tournament_id)
         .order_by(TournamentGame.round, TournamentGame.board, TournamentGame.id)
@@ -229,7 +231,7 @@ async def games_of(db: AsyncSession, tournament_id: int) -> list[TournamentGame]
 
 
 def _record(game: TournamentGame) -> rules.GameRecord:
-    """Сыгранная партия в виде записи для чистых правил (result не None)."""
+    """A played game as a record for the pure rules (result is not None)."""
     return rules.GameRecord(game.white_seat, game.black_seat, game.result)  # type: ignore[arg-type]
 
 
@@ -237,14 +239,14 @@ async def record_result(
         db: AsyncSession, tournament: Tournament, game: TournamentGame, result: str, game_id: int | None = None,
 ) -> None:
     """
-    Записывает результат партии турнира и продвигает турнир. Сам commit. Турнир и партия перечитываются под
-    блокировкой строк (SELECT ... FOR UPDATE): результат симуляции партий ботов (воркер Celery) и партия игрока могут
-    прийти одновременно — тур тогда продвигается один раз, а повторная запись той же партии получает
+    Records a tournament game result and advances the tournament. Commits itself. The tournament and the game are re-read under
+    row locks (SELECT ... FOR UPDATE): the result of a bot-game simulation (a Celery worker) and the player's game may
+    arrive at the same time - the round then advances once, and a repeated record of the same game gets
     tournament_game_closed.
     """
     if result not in ("1-0", "0-1", "1/2-1/2"):
         raise ValueError(f"bad result {result}")
-    await db.flush()  # несохранённые правки вызывающего не должны пропасть при перечитывании
+    await db.flush()  # the caller's unsaved changes must not be lost on re-read
     await db.refresh(tournament, with_for_update=True)
     await db.refresh(game, with_for_update=True)
     if game.tournament_id != tournament.id or tournament.status != "active" or game.result is not None:
@@ -262,13 +264,13 @@ async def record_result(
 
 
 async def _finish(tournament: Tournament) -> None:
-    """Закрывает турнир: статус «finished» и время окончания."""
+    """Closes the tournament: status "finished" and the end time."""
     tournament.status = "finished"
     tournament.finished_at = datetime.now(UTC)
 
 
 async def _notify_round(db: AsyncSession, tournament: Tournament) -> None:
-    """Центр уведомлений (17.1): открылся тур, где у игрока есть партия. Без доставки по сокету — колокольчик спросит сам."""
+    """Notification centre (17.1): a round opened in which the player has a game. No socket delivery - the bell asks itself."""
     from src.services import notifications
 
     if tournament.withdrawn_at is not None:
@@ -283,14 +285,14 @@ async def _notify_round(db: AsyncSession, tournament: Tournament) -> None:
 
 async def _advance_round_robin(db: AsyncSession, tournament: Tournament) -> None:
     """
-    Круговой: пока в текущем туре есть неигранные партии — ждём; тур закрыт — открывается следующий; сыграно всё —
-    итоговые места по таблице (rules.round_robin_standings).
+    Round robin: while the current round has unplayed games - wait; the round is closed - the next one opens; everything
+    played - final places by the table (rules.round_robin_standings).
     """
     games = await games_of(db, tournament.id)
     if any(g.result is None for g in games if g.round == tournament.current_round):
         return
     if any(g.result is None for g in games):
-        # Тур закрыт — открывается следующий (его партии ботов между собой можно считать).
+        # The round is closed - the next one opens (its bot-vs-bot games can be computed).
         tournament.current_round += 1
         await _notify_round(db, tournament)
         return
@@ -303,7 +305,7 @@ async def _advance_round_robin(db: AsyncSession, tournament: Tournament) -> None
 
 
 async def _advance_swiss(db: AsyncSession, tournament: Tournament) -> None:
-    """Тур закрыт — пары следующего по очкам (rules.swiss_pairings); последний тур — итоговые места."""
+    """The round is closed - pairs of the next one by points (rules.swiss_pairings); the last round - final places."""
     games = await games_of(db, tournament.id)
     if any(g.result is None for g in games):
         return
@@ -317,7 +319,8 @@ async def _advance_swiss(db: AsyncSession, tournament: Tournament) -> None:
         await _finish(tournament)
         return
     tournament.current_round += 1
-    # Сдавший турнир игрок (таск A.3) в новых турах не играет: его партия сразу записывается поражением.
+    # A player who resigned from the tournament (task A.3) does not play in new rounds: their game is recorded as a loss at
+    # once.
     withdrawn = {p.seat for p in players if p.kind == "user"} if tournament.withdrawn_at is not None else set()
     for board, (white, black) in enumerate(rules.swiss_pairings(seats, records), 1):
         _add_game(db, tournament, tournament.current_round, board, rules.MatchGame("main", white, black, False))
@@ -333,8 +336,9 @@ async def _advance_swiss(db: AsyncSession, tournament: Tournament) -> None:
 
 async def _advance_knockout(db: AsyncSession, tournament: Tournament) -> None:
     """
-    На выбывание: матч с ничьей получает следующую партию (переигровка, затем решающая); когда все матчи круга решены,
-    проигравшие получают круг выбытия, а победители — пары следующего круга; финал закрывает турнир и расставляет места.
+    Knockout: a drawn match gets the next game (replay, then the deciding one); when all matches of a round are decided,
+    the losers get the elimination round and the winners get the pairs of the next round; the final closes the tournament
+    and assigns places.
     """
     games = [g for g in await games_of(db, tournament.id) if g.round == tournament.current_round]
     boards = sorted({g.board for g in games})
@@ -357,7 +361,7 @@ async def _advance_knockout(db: AsyncSession, tournament: Tournament) -> None:
     if pending:
         return
     if tournament.current_round == 1:
-        # Победители по порядку сетки; прошедшие первый круг без игры стоят на своих местах.
+        # Winners in bracket order; those who passed the first round without playing stand in their places.
         winners = [won[slot] if low is not None else high
                    for slot, (high, low) in enumerate(rules.bracket_slots(tournament.size), 1)]
     else:
@@ -386,7 +390,7 @@ async def _advance_knockout(db: AsyncSession, tournament: Tournament) -> None:
 
 @dataclass(frozen=True)
 class PlayerGame:
-    """Партия турнира, которую играет игрок: турнир, партия, его цвет и соперник."""
+    """The tournament game the player plays: tournament, game, their colour and opponent."""
 
     tournament: Tournament
     game: TournamentGame
@@ -395,7 +399,7 @@ class PlayerGame:
 
 
 async def player_game(db: AsyncSession, user: User, tournament_game_id: int) -> PlayerGame:
-    """Партия текущего круга активного турнира игрока, ещё без результата; иначе DomainError."""
+    """A game of the current round of the player's active tournament, still without a result; otherwise DomainError."""
     game = await db.get(TournamentGame, tournament_game_id)
     tournament = await db.get(Tournament, game.tournament_id) if game else None
     if game is None or tournament is None or tournament.owner_id != user.id:
@@ -413,7 +417,7 @@ async def player_game(db: AsyncSession, user: User, tournament_game_id: int) -> 
 
 @dataclass(frozen=True)
 class RatingChange:
-    """Изменение рейтинга игрока за партию турнира: категория контроля времени, рейтинг до и после, разница."""
+    """Change of the player's rating for a tournament game: time-control category, rating before and after, the difference."""
 
     category: str
     before: int
@@ -423,8 +427,9 @@ class RatingChange:
 
 def apply_rating(user: User, played: PlayerGame, result: str) -> RatingChange:
     """
-    Все турниры рейтинговые (решение владельца, 15.11): партия игрока меняет его рейтинг в категории контроля турнира.
-    Соперник — с силой на старте турнира (TournamentPlayer.rating), его «рейтинг» не меняется. Без commit.
+    All tournaments are rated (owner's decision, 15.11): the player's game changes their rating in the tournament's
+    time-control category. The opponent has the strength at the start of the tournament (TournamentPlayer.rating), their
+    "rating" does not change. Without commit.
     """
     category = classify_time_control(played.tournament.base_time_ms, played.tournament.increment_ms)
     before = user.rating_for(category)
@@ -440,7 +445,7 @@ def apply_rating(user: User, played: PlayerGame, result: str) -> RatingChange:
 
 
 def opponent_matches(opponent: TournamentPlayer, bot_id: str, personality_name: str | None) -> bool:
-    """Партию сыграли с тем соперником, что в турнире: бот — по id, архетип — по ключу, персоналия — по имени."""
+    """The game was played with the tournament opponent: a bot - by id, an archetype - by key, a personality - by name."""
     if opponent.kind == "bot":
         return bot_id == opponent.bot_key
     expected = opponent.bot_key if opponent.kind == "archetype" else opponent.personality_name
@@ -448,7 +453,7 @@ def opponent_matches(opponent: TournamentPlayer, bot_id: str, personality_name: 
 
 
 async def simulatable_games(db: AsyncSession, tournament: Tournament) -> list[TournamentGame]:
-    """Партии текущего круга без результата, где оба участника — боты: их играет сервер (таск 15.2)."""
+    """Games of the current round without a result where both are bots: they are played by the server (task 15.2)."""
     if tournament.status != "active":
         return []
     humans = {p.seat for p in await players_of(db, tournament.id) if p.kind == "user"}
@@ -461,14 +466,14 @@ async def simulatable_games(db: AsyncSession, tournament: Tournament) -> list[To
 
 
 def _aware(moment: datetime | None) -> datetime | None:
-    """SQLite в тестах отдаёт время без пояса — считаем его UTC."""
+    """SQLite in tests returns a time without a zone - we treat it as UTC."""
     return moment.replace(tzinfo=UTC) if moment is not None and moment.tzinfo is None else moment
 
 
 async def mark_for_queue(db: AsyncSession, tournament: Tournament) -> list[int]:
     """
-    Партии ботов, которые пора поставить в очередь: не начатые (или брошенные упавшим воркером) и не поставленные
-    недавно. Отмечает их queued_at и возвращает id — их публикует вызывающий.
+    Bot games that are due to be queued: not started (or abandoned by a crashed worker) and not queued
+    recently. Marks them with queued_at and returns the ids - the caller publishes them.
     """
     now = datetime.now(UTC)
     ids = []
@@ -486,37 +491,37 @@ async def mark_for_queue(db: AsyncSession, tournament: Tournament) -> list[int]:
 
 
 def opponent_session_key(opponent: TournamentPlayer) -> str:
-    """Ключ соперника для сессии честной партии (src/services/ladder.py): так его ходы запрашивает клиент."""
+    """Opponent key for a fair-play game session (src/services/ladder.py): this is how the client requests their moves."""
     if opponent.kind in ("bot", "archetype") and opponent.bot_key:
         return opponent.bot_key
     return "custom:other"
 
 
 def loss_for(color: str) -> str:
-    """Результат партии как поражение стороны color ("white" или "black")."""
+    """The game result as a loss of side color ("white" or "black")."""
     return "0-1" if color == "white" else "1-0"
 
 
 @dataclass(frozen=True)
 class StartResult:
-    """Итог старта партии турнира игроком: партия и признак, что повторный старт засчитал поражение."""
+    """Outcome of a player starting a tournament game: the game and a flag that a repeated start recorded a loss."""
 
     played: PlayerGame
-    # Партию уже начинали и бросили: повторный старт — поражение (таск A.2).
+    # The game was already started and abandoned: a repeated start is a loss (task A.2).
     forfeited: bool
 
 
 async def start_player_game(db: AsyncSession, user: User, tournament_game_id: int) -> StartResult:
     """
-    Игрок начинает свою партию турнира. Первый старт — захват партии и сессия честной игры; повторный старт уже
-    начатой партии — поражение: иначе проигрываемую партию можно было бы бросить и начать заново.
+    The player starts their tournament game. The first start - taking the game and a fair-play session; a repeated start of
+    an already started game is a loss: otherwise a game being lost could be abandoned and started anew.
     """
     from src.services import ladder
 
     played = await player_game(db, user, tournament_game_id)
     if played.game.started_at is not None:
         await ladder.clear_session(user.id, "tournament")
-        # Брошенная партия — рейтинговое поражение (пользователь — из этой же сессии, иначе изменение не запишется).
+        # An abandoned game is a rated loss (the user comes from this same session, otherwise the change will not be written).
         apply_rating(await db.get(User, user.id) or user, played, loss_for(played.color))
         await record_result(db, played.tournament, played.game, loss_for(played.color))
         return StartResult(played, forfeited=True)
@@ -530,7 +535,7 @@ async def start_player_game(db: AsyncSession, user: User, tournament_game_id: in
 
 
 async def withdraw(db: AsyncSession, user: User, tournament: Tournament) -> None:
-    """Игрок сдаёт турнир: его несыгранные партии — поражения, партии ботов доигрываются сами (таск A.3)."""
+    """The player resigns from the tournament: their unplayed games are losses, bot games finish by themselves (task A.3)."""
     from src.services import ladder
 
     if tournament.status != "active" or tournament.withdrawn_at is not None:
@@ -550,7 +555,7 @@ async def withdraw(db: AsyncSession, user: User, tournament: Tournament) -> None
         game = pending[0]
         color = "white" if game.white_seat == mine else "black"
         if game.started_at is not None:
-            # Сдача посреди начатой партии — рейтинговое поражение; несыгранные партии рейтинг не меняют.
+            # Resigning in the middle of a started game is a rated loss; unplayed games do not change the rating.
             seats = {p.seat: p for p in await players_of(db, tournament.id)}
             opponent = seats[game.black_seat if color == "white" else game.white_seat]
             fresh = await db.get(User, user.id) or user

@@ -4,8 +4,8 @@ Revision ID: e6b1c9d4a7f2
 Revises: d3f8a2c6e914
 Create Date: 2026-11-18 15:00:00.000000
 
-Таблица arena_awards: тройка таблицы итогов законченной арены или швейцарки (src/services/arena_awards.py). Уже
-закончившиеся арены награды не получают: задача смотрит только арены, конец которых был не раньше LOOKBACK назад.
+The arena_awards table: the top three of the results table of a finished arena or Swiss (src/services/arena_awards.py). Arenas that have
+already finished get no awards: the task looks only at arenas that ended no earlier than LOOKBACK ago.
 """
 from collections.abc import Sequence
 

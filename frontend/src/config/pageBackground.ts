@@ -1,18 +1,18 @@
 // --- FILE: frontend/src/config/pageBackground.ts ---
-// Фон страницы (таск 18.1): тихий тайл с тиснёным узором (собственные SVG в /assets/patterns, CC0) и палитра.
-// Тиснение — светлый и тёмный штрих, поэтому один тайл подходит к любой тёмной палитре. «Пергамент» — приглушённый
-// тёплый тон: интерфейс тёмный, на светлом фоне текст вне карточек не читался бы.
+// Page background (task 18.1): a quiet tile with an embossed pattern (own SVGs in /assets/patterns, CC0) and a palette.
+// The embossing is a light and a dark stroke, so one tile suits any dark palette. "Parchment" is a muted
+// warm tone: the interface is dark, and on a light background text outside cards would be unreadable.
 
 export const PAGE_PATTERNS = [
     'none', 'celtic', 'map', 'manuscript', 'circuit', 'bauhaus', 'marble',
-    // Таск 31.1: осенние листья, паркет «ёлочкой», тетрадь в клетку.
+    // Task 31.1: autumn leaves, herringbone parquet, squared notebook.
     'leaves', 'parquet', 'notebook',
 ] as const;
 export type PagePattern = (typeof PAGE_PATTERNS)[number];
 
 export const PAGE_PALETTES = {
     room: '#2C221C', teal: '#12323C', parchment: '#3B3022',
-    // Таск 31.1: сумерки осеннего парка, бутылочная зелень клуба, чернила школьной тетради.
+    // Task 31.1: autumn park twilight, club bottle green, school notebook ink.
     autumn: '#3A2814', bottle: '#1F3028', ink: '#252C3D',
 } as const;
 export type PagePalette = keyof typeof PAGE_PALETTES;
@@ -45,14 +45,14 @@ export function pageBackgroundStyle(pattern: PagePattern, palette: PagePalette):
     };
 }
 
-/** Применить к странице (при запуске и при смене в настройках) и запомнить выбор. */
+/** Apply to the page (at startup and on a settings change) and remember the choice. */
 export function applyPageBackground(pattern = getSavedPagePattern(), palette = getSavedPagePalette(), persist = false): void {
     if (persist) {
         try {
             localStorage.setItem(PATTERN_KEY, pattern);
             localStorage.setItem(PALETTE_KEY, palette);
         } catch {
-            // Хранилище недоступно — фон всё равно меняется до перезагрузки.
+            // Storage unavailable - the background still changes until reload.
         }
     }
     if (typeof document === 'undefined') return;

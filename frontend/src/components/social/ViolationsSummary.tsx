@@ -1,7 +1,7 @@
 // --- FILE: frontend/src/components/social/ViolationsSummary.tsx ---
-// Сводка по нарушениям за 30 суток для модератора (таск 26.4): поступило и закрыто заявок, очередь и возраст самой
-// старой, помеченные нарушители, разбивка по видам и решениям, игроки с наибольшим числом жалоб. Данные —
-// GET /moderation/summary (src/services/moderation_report.py); названия видов и решений — из moderation.kinds/actions.
+// Violations summary for the last 30 days for a moderator (task 26.4): reports received and closed, the queue and the age of the
+// oldest one, flagged offenders, breakdown by kind and decision, players with the most reports. Data -
+// GET /moderation/summary (src/services/moderation_report.py); kind and decision names - from moderation.kinds/actions.
 
 import {useEffect, useState} from 'react';
 import {useI18n} from '../../i18n';

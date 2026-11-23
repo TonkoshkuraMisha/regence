@@ -1,7 +1,7 @@
 // --- FILE: frontend/src/components/gameViewer/AnalysisSummary.tsx ---
-// Части панели разбора партии (вынесено из GameViewer.tsx, таск 17.6): критические моменты, карточка стороны,
-// график оценки и комментарий наставника. Чистые вычисления — viewerModel.ts; данные приходят пропсами
-// из GameViewer.tsx (отчёт разбора сервера и текст наставника, собранный клиентом из кодов coach.*).
+// Parts of the game review panel (extracted from GameViewer.tsx, task 17.6): critical moments, a side card,
+// the evaluation graph and the coach's comment. Pure calculations are in viewerModel.ts; data comes as props
+// from GameViewer.tsx (the server review report and the coach text assembled by the client from coach.* codes).
 
 import {Area, AreaChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis} from 'recharts';
 import {GraduationCap} from 'lucide-react';
@@ -9,7 +9,7 @@ import {useI18n} from '../../i18n';
 import {GAME_PHASES, criticalMoments} from './viewerModel';
 import type {ChartPoint, FullGameAnalysisReport, SideSummaryStats} from './viewerModel';
 
-/** Список критических моментов партии (перелом, худшие ходы, упущенное); щелчок переходит к ходу. */
+/** List of the game's critical moments (turning point, worst moves, missed chances); a click jumps to the move. */
 export function CriticalMoments({report, viewIndex, onSelect}: {
     report: FullGameAnalysisReport; viewIndex: number; onSelect: (index: number) => void;
 }) {
@@ -35,7 +35,7 @@ export function CriticalMoments({report, viewIndex, onSelect}: {
     );
 }
 
-/** Точность, счёт оценок ходов и точность по фазам одной стороны. */
+/** Accuracy, move evaluation counts and per-phase accuracy of one side. */
 export function SideStatsCard({symbol, name, stats, side}: {
     symbol: string; name: string; stats: SideSummaryStats; side: 'white' | 'black';
 }) {
@@ -66,7 +66,7 @@ export function SideStatsCard({symbol, name, stats, side}: {
     );
 }
 
-/** График оценки по ходам; щелчок по точке — к этому ходу. */
+/** Evaluation graph by move; a click on a point goes to that move. */
 export function EvalChart({data, onSelect}: { data: ChartPoint[]; onSelect: (index: number) => void }) {
     return (
         <div className="h-24 w-full bg-room-dark rounded border border-amber-900/50 p-1">
@@ -96,7 +96,7 @@ export function EvalChart({data, onSelect}: { data: ChartPoint[]; onSelect: (ind
     );
 }
 
-/** Комментарий наставника к текущему ходу; флажок включает показ его стрелок на доске (если они есть). */
+/** Coach's comment on the current move; a checkbox turns on showing its arrows on the board (if there are any). */
 export function CoachCommentBox({text, hasArrows, showArrows, onShowArrowsChange}: {
     text: string; hasArrows: boolean; showArrows: boolean; onShowArrowsChange: (value: boolean) => void;
 }) {

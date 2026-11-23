@@ -1,25 +1,25 @@
 """
-Наблюдаемость: сбор ошибок в Sentry и метрики Prometheus.
+Observability: error collection in Sentry and Prometheus metrics.
 
-Sentry включается только при заданном SENTRY_DSN (без него — полностью выключен). Персональные
-данные (cookie, заголовки авторизации, IP) не отправляются. Интеграции FastAPI, Celery, SQLAlchemy
-и logging подключаются автоматически: всё, что логируется через logger.exception/error (сбои
-WS-действий, цикла таймаутов, анализа партий), становится событием Sentry.
+Sentry is enabled only when SENTRY_DSN is set (without it - fully off). Personal
+data (cookies, authorization headers, IP) is not sent. The FastAPI, Celery, SQLAlchemy integrations
+and logging are connected automatically: everything logged via logger.exception/error (failures
+of WS actions, the timeout loop, game analysis) becomes a Sentry event.
 
-Метрики отдаются на GET /metrics самого API — nginx этот путь наружу не проксирует, его читает
-Prometheus изнутри сети compose (api:8000/metrics). API работает в нескольких процессах uvicorn
-(WEB_CONCURRENCY), поэтому в продакшене включён multiprocess-режим prometheus_client: каждый
-процесс пишет значения в файлы PROMETHEUS_MULTIPROC_DIR, а /metrics суммирует их по всем
-процессам. Переменная должна быть задана до импорта prometheus_client: её задаёт сервис api в
-docker-compose.prod.yml (каталог /tmp/prometheus на tmpfs, очищается при старте контейнера). В разработке
-переменной нет — метрики берутся из памяти единственного процесса.
+Metrics are served at GET /metrics of the API itself - nginx does not proxy this path outside, it is read by
+Prometheus from inside the compose network (api:8000/metrics). The API runs in several uvicorn processes
+(WEB_CONCURRENCY), so in production the multiprocess mode of prometheus_client is on: each
+process writes values to files in PROMETHEUS_MULTIPROC_DIR, and /metrics sums them over all
+processes. The variable must be set before importing prometheus_client: it is set by the api service in
+docker-compose.prod.yml (the directory /tmp/prometheus on tmpfs, cleared at container start). In development
+there is no variable - metrics are taken from the memory of the single process.
 
-Воркеры Celery (фоновый разбор, симуляции турниров) отдают свои метрики сами — start_worker_metrics_server на порту
-WORKER_METRICS_PORT; так regence_engine_seconds_total учитывает и фоновую работу движка.
+Celery workers (background review, tournament simulations) serve their own metrics - start_worker_metrics_server on the port
+WORKER_METRICS_PORT; this way regence_engine_seconds_total counts background engine work too.
 
-Откуда значения: счётчики WebSocket увеличивает src/api/websockets.py, HTTP — http_metrics_middleware ниже,
-законченные партии и сбои цикла часов — src/services/game_state.py, время движка — src/services/engine_pool.py,
-число игроков за сутки — Redis (ключ active_players:<дата UTC>, отметку ставит src/api/deps.get_current_user).
+Where the values come from: WebSocket counters are increased by src/api/websockets.py, HTTP - by http_metrics_middleware below,
+finished games and clock loop failures - src/services/game_state.py, engine time - src/services/engine_pool.py,
+the number of players per day - Redis (key active_players:<UTC date>, the mark is set by src/api/deps.get_current_user).
 """
 
 import logging
@@ -46,9 +46,9 @@ from src.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-# --- Метрики ------------------------------------------------------------------------------------
-# Метки — только из конечных наборов (имя действия из реестра, шаблон маршрута, исход), никогда
-# не id пользователей или партий: иначе число временных рядов растёт без предела.
+# --- Metrics ------------------------------------------------------------------------------------
+# Labels come only from finite sets (an action name from the registry, a route template, an outcome), never
+# user or game ids: otherwise the number of time series grows without bound.
 
 WS_CONNECTIONS = Gauge(
     "regence_ws_connections", "Open WebSocket connections", multiprocess_mode="livesum",
@@ -70,32 +70,33 @@ DB_POOL_CHECKED_OUT = Gauge(
     "regence_db_pool_checked_out", "Database connections currently checked out of the pool",
     multiprocess_mode="livesum",
 )
-# Только партии между людьми (game_state.finish_game); партии с ботами (/bots/save-game) сюда не входят.
+# Only games between people (game_state.finish_game); games with bots (/bots/save-game) are not included.
 GAMES_FINISHED = Counter(
     "regence_games_finished_total", "Games finished and recorded in the database", ["termination"],
 )
 TIMEOUT_CHECK_FAILURES = Counter(
     "regence_timeout_check_failures_total", "Failed timeout checks of individual games",
 )
-# Бюджет движка (таск 23.3): «процессор на активного игрока в день» =
-#   increase(regence_engine_seconds_total[1d]) / regence_active_players_today (в конце суток UTC).
-# Время движка считает сам пул (src/services/engine_pool.py), игроков за день — HyperLogLog в Redis.
+# The engine budget (task 23.3): "CPU per active player per day" =
+#   increase(regence_engine_seconds_total[1d]) / regence_active_players_today (at the end of a UTC day).
+# Engine time is counted by the pool itself (src/services/engine_pool.py), players per day - by a HyperLogLog in Redis.
 ACTIVE_PLAYERS_TODAY = Gauge(
     "regence_active_players_today", "Distinct logged-in players seen today (UTC)", multiprocess_mode="mostrecent",
 )
-# Очереди Celery (таск 23.2, алерты): длина — LLEN списка очереди в брокере Redis; считается при каждом запросе /metrics.
-# Растущая очередь analysis значит, что воркер не успевает с разбором партий; simulation — с партиями ботов в турнирах.
+# Celery queues (task 23.2, alerts): the length is LLEN of the queue list in the Redis broker; computed on every /metrics
+# request.
+# A growing analysis queue means the worker cannot keep up with game review; simulation - with bot games in tournaments.
 CELERY_QUEUE_LENGTH = Gauge(
     "regence_celery_queue_length", "Messages waiting in a Celery queue (not yet taken by a worker)", ["queue"],
     multiprocess_mode="mostrecent",
 )
-# Суточный счётчик игроков хранится в Redis трое суток — с запасом, чтобы вчерашнее значение ещё можно было прочесть.
+# The daily player counter is kept in Redis for three days - with a margin, so that yesterday's value can still be read.
 ACTIVE_PLAYERS_TTL_S = 3 * 86400
 
-# Исходы WS-действия.
+# Outcomes of a WS action.
 OUTCOME_OK = "ok"
 OUTCOME_IGNORED = "ignored"
-OUTCOME_REJECTED = "rejected"  # MatchmakingError: штатный отказ с объяснением клиенту
+OUTCOME_REJECTED = "rejected"  # MatchmakingError: a regular refusal with an explanation to the client
 OUTCOME_ERROR = "error"
 OUTCOME_RATE_LIMITED = "rate_limited"
 
@@ -104,7 +105,7 @@ _LABEL_RE = re.compile(r"^[a-z_]{1,40}$")
 
 
 def bounded_label(value: object) -> str:
-    """Значение метки из конечного набора: всё, что не похоже на короткий идентификатор, — "other"."""
+    """A label value from a finite set: anything that does not look like a short identifier is "other"."""
     text = str(value or "").lower()
     return text if _LABEL_RE.match(text) else "other"
 
@@ -114,19 +115,19 @@ def _active_players_key(now: datetime | None = None) -> str:
 
 
 async def note_active_player(user_id: int) -> None:
-    """Отмечает игрока активным сегодня (HyperLogLog: ~12 КБ на сутки при любом числе игроков)."""
+    """Marks the player as active today (HyperLogLog: ~12 KB per day for any number of players)."""
     from src.db import redis as redis_module
 
     key = _active_players_key()
     try:
         if await redis_module.redis_client.pfadd(key, user_id):
             await redis_module.redis_client.expire(key, ACTIVE_PLAYERS_TTL_S)
-    except Exception as exc:  # метрика не должна ронять запрос
+    except Exception as exc:  # a metric must not bring down a request
         logger.debug("Active player mark failed: %s", exc)
 
 
 async def refresh_active_players() -> None:
-    """Перед отдачей /metrics: число игроков за сегодня из Redis."""
+    """Before serving /metrics: the number of players today from Redis."""
     from src.db import redis as redis_module
 
     try:
@@ -136,29 +137,31 @@ async def refresh_active_players() -> None:
 
 
 async def refresh_queue_lengths() -> None:
-    """Перед отдачей /metrics: сколько сообщений ждёт в каждой очереди Celery (брокер — тот же Redis, база 0)."""
+    """Before serving /metrics: how many messages wait in each Celery queue (the broker is the same Redis, db 0)."""
     from src.db import redis as redis_module
 
-    # Импорт здесь, а не вверху: celery_app сам импортирует этот модуль.
+    # Imported here, not at the top: celery_app itself imports this module.
     from src.worker.celery_app import ANALYSIS_QUEUE, SIMULATION_QUEUE
 
     for queue in (ANALYSIS_QUEUE, SIMULATION_QUEUE):
         try:
             CELERY_QUEUE_LENGTH.labels(queue=queue).set(await redis_module.redis_client.llen(queue))
-        except Exception as exc:  # метрика не должна ронять /metrics
+        except Exception as exc:  # a metric must not bring down /metrics
             logger.debug("Queue length failed for %s: %s", queue, exc)
 
 
 def metrics_response() -> Response:
     """
-    Тело ответа /metrics в формате Prometheus. Если задан PROMETHEUS_MULTIPROC_DIR, значения суммируются из файлов
-    всех процессов uvicorn; иначе берётся реестр текущего процесса.
+    The body of the /metrics response in Prometheus format. If PROMETHEUS_MULTIPROC_DIR is set, the values are summed from the
+    files
+    of all uvicorn processes; otherwise the registry of the current process is taken.
     """
     return Response(generate_latest(_collect_registry()), media_type=CONTENT_TYPE_LATEST)
 
 
 def _collect_registry() -> CollectorRegistry:
-    """Реестр для отдачи метрик: сумма файлов всех процессов (multiprocess) или реестр текущего процесса."""
+    """The registry for serving metrics: the sum of the files of all processes (multiprocess) or the registry of the current
+    process."""
     if os.environ.get("PROMETHEUS_MULTIPROC_DIR"):
         registry = CollectorRegistry()
         multiprocess.MultiProcessCollector(registry)
@@ -168,11 +171,12 @@ def _collect_registry() -> CollectorRegistry:
 
 def start_worker_metrics_server(port: int) -> bool:
     """
-    Отдаёт /metrics воркера Celery на port (поток в главном процессе воркера; вызывает сигнал worker_init в
-    src/worker/celery_app.py). Задачи выполняют дочерние процессы, поэтому у сервисов worker и worker-simulation,
-    как у api, задан PROMETHEUS_MULTIPROC_DIR — свой tmpfs у каждого контейнера: общий каталог с api нельзя, номера
-    процессов в разных контейнерах совпадают, и файлы метрик затирали бы друг друга. Prometheus опрашивает
-    worker:9101 и worker-simulation:9101 вместе с api:8000 (DEPLOY.md, раздел 6) и суммирует сам. port 0 — выключено.
+    Serves the /metrics of a Celery worker on port (a thread in the worker's main process; called by the worker_init signal in
+    src/worker/celery_app.py). Tasks are executed by child processes, so the worker and worker-simulation services,
+    like api, have PROMETHEUS_MULTIPROC_DIR set - each container has its own tmpfs: a directory shared with api is not
+    possible, process
+    numbers in different containers coincide, and metric files would overwrite each other. Prometheus polls
+    worker:9101 and worker-simulation:9101 together with api:8000 (DEPLOY.md, section 6) and sums them itself. port 0 - off.
     """
     if port <= 0:
         return False
@@ -185,8 +189,8 @@ def start_worker_metrics_server(port: int) -> bool:
 
 def forget_worker_process(pid: int) -> None:
     """
-    Дочерний процесс воркера завершился: его файлы «живых» показателей (Gauge livesum/liveall) удаляются, чтобы
-    сумма не учитывала умерший процесс. Счётчики (время движка) остаются — их сумма не должна уменьшаться.
+    A worker child process has ended: its "live" indicator files (Gauge livesum/liveall) are deleted so that
+    the sum does not include the dead process. Counters (engine time) stay - their sum must not decrease.
     """
     if os.environ.get("PROMETHEUS_MULTIPROC_DIR"):
         multiprocess.mark_process_dead(pid)
@@ -194,17 +198,17 @@ def forget_worker_process(pid: int) -> None:
 
 def route_template(scope) -> str:
     """
-    Шаблон маршрута (/api/v1/profile/{username}), а не фактический путь — конечный набор меток.
+    The route template (/api/v1/profile/{username}), not the actual path - a finite set of labels.
 
-    Начиная с FastAPI 0.14x маршрут подключённого роутера хранит путь без префикса include_router
-    (/profile/{username}), поэтому префикс берётся из фактического пути: столько последних
-    сегментов, сколько их в шаблоне, — это и есть подставленный шаблон.
+    Since FastAPI 0.14x the route of an included router keeps the path without the include_router prefix
+    (/profile/{username}), so the prefix is taken from the actual path: as many last
+    segments as there are in the template - that is the substituted template.
     """
     route = scope.get("route")
     template = getattr(route, "path_format", None) or getattr(route, "path", None)
     if not template:
         return "unmatched"
-    if ":path}" in template:  # параметр может содержать "/", сегменты не сопоставить
+    if ":path}" in template:  # a parameter may contain "/", the segments cannot be matched
         return template
     path_segments = scope.get("path", "").strip("/").split("/")
     template_segments = template.strip("/").split("/")
@@ -218,8 +222,8 @@ async def http_metrics_middleware(
         request: Request, call_next: Callable[[Request], Awaitable[Response]],
 ) -> Response:
     """
-    Считает HTTP-запросы и их длительность по шаблону маршрута и коду ответа; сам запрос метрик (/metrics) не
-    учитывается.
+    Counts HTTP requests and their duration by route template and response code; the metrics request itself (/metrics) is not
+    counted.
     """
     start = time.perf_counter()
     status = 500
@@ -235,7 +239,7 @@ async def http_metrics_middleware(
 
 
 def instrument_engine(engine) -> None:
-    """Счётчик занятых соединений пула по событиям checkout/checkin движка SQLAlchemy."""
+    """The counter of busy pool connections by the checkout/checkin events of the SQLAlchemy engine."""
     from sqlalchemy import event
 
     sync_engine = getattr(engine, "sync_engine", engine)
@@ -247,9 +251,9 @@ def instrument_engine(engine) -> None:
 
 def init_sentry(component: str) -> bool:
     """
-    Подключает Sentry, если задан SENTRY_DSN; возвращает, подключён ли. component — "api" (вызов в src/main.py) или
-    "worker" (src/worker/celery_app.py), попадает в тег событий. Релиз — regence@VERSION, личные данные не
-    отправляются (send_default_pii=False).
+    Connects Sentry if SENTRY_DSN is set; returns whether it is connected. component is "api" (called in src/main.py) or
+    "worker" (src/worker/celery_app.py), it goes into the event tag. The release is regence@VERSION, personal data is not
+    sent (send_default_pii=False).
     """
     if not settings.SENTRY_DSN:
         return False

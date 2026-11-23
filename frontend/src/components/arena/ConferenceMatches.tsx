@@ -1,8 +1,8 @@
 // --- FILE: frontend/src/components/arena/ConferenceMatches.tsx ---
-// Матчи конференций (таск 33.6, схема владельца 18.11): раз в неделю две конференции играют матч — доски по рейтингу,
-// на доске партия белыми и партия чёрными, победа 1, ничья ½. Правила и счёт считает сервер
-// (src/services/conference_match_rules.py, arena.match_view, conferences.matches); здесь только показ:
-// MatchBoards — счёт и доски на странице матча (/arenas/:id), MatchList — матчи сезона и ближайшие на /conferences.
+// Conference matches (task 33.6, the owner's scheme 18.11): once a week two conferences play a match: boards by rating,
+// on a board a game with White and a game with Black, a win is 1, a draw is 1/2. Rules and the score are computed by the server
+// (src/services/conference_match_rules.py, arena.match_view, conferences.matches); here only display:
+// MatchBoards is the score and boards on the match page (/arenas/:id), MatchList is the season's matches and the nearest ones on /conferences.
 
 import {Link} from 'react-router-dom';
 import {Swords} from 'lucide-react';
@@ -12,23 +12,23 @@ import type {MatchDetail} from '../../services/arenas';
 import type {MatchRow} from '../../services/conferences';
 import {EmptyState, Section} from '../ui';
 
-// Тип функции перевода t из useI18n — для вспомогательных функций вне компонентов.
+// Type of the translation function t from useI18n, for helper functions outside components.
 type T = ReturnType<typeof useI18n>['t'];
 
-/** Название конференции на языке игрока; незнакомый ключ — как есть. */
+/** Conference name in the player's language; an unknown key is shown as is. */
 export function conferenceName(value: string | null | undefined, t: T): string {
     const key = conferenceKey(value);
     return key ? t(`arenas.conferences.${key}`) : value ?? '';
 }
 
-/** Счёт «1½» вместо «1.5»: так принято записывать очки матча. */
+/** Score "1½" instead of "1.5": this is the accepted way to write match points. */
 export function matchScore(value: number): string {
     const whole = Math.floor(value);
     const half = value - whole >= 0.5 ? '½' : '';
     return whole === 0 && half ? half : `${whole}${half}`;
 }
 
-/** Счёт матча и доски (по партии белыми и чёрными на каждой) на странице матча /arenas/:id; без досок — подсказка. */
+/** Match score and boards (a game with White and with Black on each) on the match page /arenas/:id; without boards, a hint. */
 export function MatchBoards({match}: { match: MatchDetail }) {
     const {t} = useI18n();
     return (
@@ -70,7 +70,7 @@ export function MatchBoards({match}: { match: MatchDetail }) {
     );
 }
 
-/** Список матчей конференций сезона и ближайших: у ещё не сыгранного — время начала, у идущего и законченного — счёт. */
+/** List of the season's and nearest conference matches: one not yet played shows the start time, a running or finished one the score. */
 export function MatchList({matches}: { matches: MatchRow[] }) {
     const {t, language} = useI18n();
     return (

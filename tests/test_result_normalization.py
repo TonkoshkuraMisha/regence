@@ -1,7 +1,8 @@
 # --- FILE: tests/test_result_normalization.py ---
 """
-Итог партии из чужого PGN (ревизия базы 29.1, находка 3): game_engine.normalize_result приводит варианты записи к
-стандарту, загрузчик архива и импорт пользуются им, а база не принимает нестандартный итог (CHECK games.result).
+Game result from a foreign PGN (database revision 29.1, finding 3): game_engine.normalize_result brings notation
+variants to the standard, the archive loader and the import use it, and the database rejects a non-standard
+result (CHECK games.result).
 """
 
 import pytest

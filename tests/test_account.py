@@ -1,5 +1,5 @@
 # --- FILE: tests/test_account.py ---
-"""Учётная запись (таски 17.5, 23.1): выгрузка своих данных и удаление аккаунта с анонимизацией."""
+"""Account (tasks 17.5, 23.1): export of own data and account deletion with anonymization."""
 
 from sqlalchemy import func, select
 
@@ -60,11 +60,11 @@ async def test_delete_anonymises_and_wipes_personal_data(client, db_session, tes
     db_session.expire_all()
     user = await db_session.get(User, user_id)
     assert user.username == f"deleted_{user_id}" and user.deleted_at is not None and user.email is None
-    assert user.country is None                                                 # страна из профиля — личные данные
+    assert user.country is None                                                 # country from the profile — personal data
     assert await db_session.scalar(select(func.count(BotPersonality.id)).where(BotPersonality.owner_id == user_id)) == 0
-    # Партия осталась у соперника.
+    # The game stays with the opponent.
     assert await db_session.scalar(select(func.count(Game.id)).where(Game.white_player_id == user_id)) == 1
-    # Старый токен больше не действует, старое имя не входит и не открывает профиль.
+    # The old token no longer works, the old name cannot log in or open the profile.
     assert client.get("/api/v1/profile/me", headers=auth(token_user_1)).status_code == 401
     login = client.post("/api/v1/auth/login", data={"username": name, "password": PASSWORD})
     assert login.status_code in (400, 401)

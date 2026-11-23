@@ -1,10 +1,10 @@
-// Программы тренировок (таск 22.3): /programs — четыре программы по уровням с прогрессом; /programs/:id — 8 недель
-// по 5 занятий, текущее занятие отмечено, упражнения ведут в готовые разделы. Прогресс — запись урока
-// «program-<id>» (шаг — последнее пройденное занятие), без входа план виден, но не сохраняется.
-// Автозачёт (план владельца 18.11, по правилам Большого курса — services/courseProgress.ts): по фактам
-// GET /learn/course-progress выполненные упражнения отмечены галочкой, а подряд идущие занятия, где сделаны все
-// проверяемые упражнения, засчитываются сами (programAutoCount). Занятие без проверяемых упражнений (репертуар,
-// библиотека, «угадай ход», партия, разминка) отмечается кнопкой, как раньше.
+// Training programmes (task 22.3): /programs has four programmes by level with progress; /programs/:id is 8 weeks
+// of 5 sessions, the current session is marked, exercises lead to ready sections. Progress is a lesson record
+// "program-<id>" (the step is the last completed session); without sign-in the plan is visible but not saved.
+// Auto-credit (owner's plan 18.11, by the Great Course rules, services/courseProgress.ts): by the facts of
+// GET /learn/course-progress, completed exercises are marked with a checkmark, and consecutive sessions in which all
+// verifiable exercises are done are credited by themselves (programAutoCount). A session without verifiable exercises (repertoire,
+// library, "guess the move", a game, a warm-up) is marked with a button, as before.
 
 import {examTitle} from './ExamPage';
 import {useEffect, useState} from 'react';
@@ -20,10 +20,10 @@ import {activityLink, PROGRAMS, programById, SESSIONS_PER_PROGRAM} from '../cont
 import type {Activity} from '../content/programs';
 import {lessonById, localized} from '../content/lessons';
 
-/** Код записи урока, в которой хранится прогресс программы (таблица прогресса уроков, services/lessonProgress.ts). */
+/** Lesson record code that stores programme progress (the lesson progress table, services/lessonProgress.ts). */
 export const progressId = (programId: string) => `program-${programId}`;
 
-/** Подпись упражнения — из каталогов самих разделов. */
+/** Exercise label: from the catalogs of the sections themselves. */
 export function activityLabel(t: (key: never) => string, language: Language, activity: Activity): string {
     const tr = t as unknown as (key: string, params?: Record<string, string | number>) => string;
     const safe = (key: string, fallback: string) => (hasMessage(key) ? tr(key) : fallback);
@@ -48,8 +48,8 @@ export function activityLabel(t: (key: never) => string, language: Language, act
 }
 
 /**
- * Пройденные занятия программ (запись урока program-<id>) и отметка нового счёта. loaded — сохранённый прогресс уже
- * прочитан: до этого автозачёт не пишет, иначе ранний ответ затёр бы сохранённое.
+ * Completed sessions of the programmes (the program-<id> lesson record) and a mark of the new count. loaded means the saved progress has already
+ * been read: before that auto-credit does not write, or an early response would overwrite what was saved.
  */
 function useProgramProgress(): [Record<string, number>, (programId: string, done: number) => Promise<void>, boolean] {
     const [done, setDone] = useState<Record<string, number>>({});
@@ -78,7 +78,7 @@ function useProgramProgress(): [Record<string, number>, (programId: string, done
     return [done, mark, loaded];
 }
 
-/** Список программ тренировок с прогрессом по каждой (занятий пройдено из SESSIONS_PER_PROGRAM). */
+/** List of training programmes with progress for each (sessions completed out of SESSIONS_PER_PROGRAM). */
 export function ProgramsPage() {
     const {t} = useI18n();
     const [done] = useProgramProgress();
@@ -106,8 +106,8 @@ export function ProgramsPage() {
 }
 
 /**
- * Одна программа: недели и занятия. Автозачёт (programAutoCount) запускается, когда известны и сохранённый
- * прогресс, и факты о курсе. Индекс занятия = неделя * 5 + номер в неделе (пять занятий в неделе).
+ * One programme: weeks and sessions. Auto-credit (programAutoCount) starts when both the saved
+ * progress and the course facts are known. Session index = week * 5 + number in the week (five sessions per week).
  */
 export function ProgramPage() {
     const {t, language} = useI18n();
@@ -122,7 +122,7 @@ export function ProgramPage() {
     useEffect(() => {
         if (logged) fetchCourseFacts().then(setFacts).catch(() => undefined);
     }, [logged]);
-    // Автозачёт: подряд идущие занятия, закрытые сами, — когда известны и сохранённый прогресс, и факты.
+    // Auto-credit: consecutive sessions closed by themselves, once both the saved progress and the facts are known.
     useEffect(() => {
         if (!program || !facts || !loaded) return;
         const next = programAutoCount(program.weeks.flat(), count, facts);

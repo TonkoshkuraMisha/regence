@@ -1,6 +1,6 @@
-// Страница ожидания regence.club (Worker regence-landing): на любой запрос отдаёт одну страницу «скоро запуск».
-// HTML собирает scripts/dev/build_error_pages.py (ретро-коллаж из портретов мастеров, общественное достояние и CC0)
-// и кладёт в page.js; здесь — только отдача с заголовками безопасности. Только английский, без скриптов и внешних ресурсов.
+// Waiting page of regence.club (Worker regence-landing): answers any request with a single "launching soon" page.
+// The HTML is built by scripts/dev/build_error_pages.py (a retro collage of master portraits, public domain and CC0)
+// and put into page.js; here we only serve it with security headers. English only, no scripts or external resources.
 
 import { PAGE } from "./page.js";
 

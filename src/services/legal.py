@@ -1,12 +1,13 @@
 # --- FILE: src/services/legal.py ---
 """
-Согласие с условиями при регистрации (таск 23.1): какая версия документов («Правила сообщества» и «Конфиденциальность»,
-страницы клиента /rules и /privacy) действует сейчас и как фиксируется согласие игрока.
+Consent to the terms at registration (task 23.1): which version of the documents ("Community Rules" and "Privacy",
+client pages /rules and /privacy) is in force now and how the player's consent is recorded.
 
-TERMS_VERSION — дата редакции документов. Меняется при каждой правке их смысла; игроки с более старой отметкой
-(users.terms_version) видны в базе, чтобы при необходимости запросить повторное согласие. Согласие хранится в
-users.terms_version и users.terms_accepted_at; архивные игроки из PGN и боты его не имеют (NULL). Включает проверку
-настройка REQUIRE_TERMS_CONSENT (src/core/config.py): тесты и закрытые стенды могут её выключить.
+TERMS_VERSION is the edition date of the documents. It changes with every edit of their meaning; players with an older mark
+(users.terms_version) are visible in the database so that consent can be requested again if needed. Consent is stored in
+users.terms_version and users.terms_accepted_at; archive players from PGN and bots do not have it (NULL). The check is
+enabled by
+the REQUIRE_TERMS_CONSENT setting (src/core/config.py): tests and closed environments may disable it.
 """
 
 from datetime import UTC, datetime
@@ -14,18 +15,18 @@ from datetime import UTC, datetime
 from src.core.errors import ApiError
 from src.models.user import User
 
-# Редакция документов, с которой соглашается новый игрок (дата в формате ГГГГ-ММ-ДД).
+# The edition of the documents the new player agrees to (a date in the format YYYY-MM-DD).
 TERMS_VERSION = "2026-11-21"
 
 
 def require_consent(accepted: bool, required: bool) -> None:
-    """Отказ регистрации без согласия (400 terms_not_accepted), если проверка включена настройкой."""
+    """Registration refusal without consent (400 terms_not_accepted) if the check is enabled by the setting."""
     if required and not accepted:
         raise ApiError(400, "terms_not_accepted")
 
 
 def record_consent(user: User, accepted: bool, now: datetime | None = None) -> None:
-    """Записывает отметку согласия в нового игрока; без согласия (проверка выключена) поля остаются пустыми."""
+    """Records the consent mark in the new player; without consent (check disabled) the fields stay empty."""
     if not accepted:
         return
     user.terms_version = TERMS_VERSION

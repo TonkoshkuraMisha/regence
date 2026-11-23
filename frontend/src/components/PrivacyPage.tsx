@@ -1,8 +1,8 @@
 // --- FILE: frontend/src/components/PrivacyPage.tsx ---
-// «Конфиденциальность» (таск 23.1): что хранится об игроке, сколько и как им управлять. Текст — ключи `privacy.*`
-// трёх каталогов i18n; цифры (срок хранения ходов 90 суток — src/services/telemetry_retention.py, выгрузка и удаление —
-// src/services/account.py) должны совпадать с сервером. Страница открыта без входа; на неё ведёт флажок согласия в
-// окне регистрации (AuthModal.tsx). Маршрут — App.tsx.
+// "Privacy" (task 23.1): what is stored about the player, for how long and how to manage it. The text is the `privacy.*` keys
+// of the i18n catalogs; the figures (move retention of 90 days in src/services/telemetry_retention.py, export and deletion in
+// src/services/account.py) must match the server. The page is open without sign-in; it is linked from the consent checkbox in the
+// registration window (AuthModal.tsx). Route is App.tsx.
 
 import {Lock} from 'lucide-react';
 import {useI18n} from '../i18n';

@@ -2,8 +2,8 @@
 
 """club_ladder
 
-Клубная лестница (таск 10.4): отдельный рейтинг игрока в партиях с ботами без подсказок движка и
-возвратов хода, число таких партий и ступень лестницы — индекс следующего соперника.
+Club ladder (task 10.4): a separate player rating for games against bots without engine hints and
+takebacks, the number of such games and the ladder rung - the index of the next opponent.
 
 Revision ID: c8e1f4a7b2d5
 Revises: bd6c0a20889e

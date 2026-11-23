@@ -1,4 +1,4 @@
-"""Пешечные структуры (таск 27.5): правила по пешкам, зеркальные структуры, структура партии, метка в библиотеке."""
+"""Pawn structures (task 27.5): pawn rules, mirrored structures, game structure, library label."""
 
 import chess
 import pytest
@@ -39,9 +39,9 @@ def test_rules(white, black, expected):
 
 
 def test_mirrored_structure_for_black():
-    # Изолированная пешка у чёрных (d5 без c/e), у белых d-пешки нет.
+    # An isolated pawn for Black (d5 with no c/e pawns); White has no d-pawn.
     assert ps.detect(board("a2 b2 e3 f2 g2 h2", "a7 b7 d5 f7 g7 h7")) == "isolated_pawn"
-    # Каменная стена у чёрных: c6 d5 e6 f5.
+    # Stonewall for Black: c6 d5 e6 f5.
     assert ps.detect(board("a2 b2 c4 d4 g2 h2", "a7 b7 c6 d5 e6 f5")) == "stonewall"
 
 
@@ -52,7 +52,7 @@ def test_game_structure_needs_a_lasting_structure():
     for san in line.split(" "):
         moves.append(b.push_san(san))
     assert ps.game_structure(moves) == "french_chain"
-    assert ps.game_structure(moves[:14]) is None  # меньше 8 полуходов в окне
+    assert ps.game_structure(moves[:14]) is None  # fewer than 8 plies in the window
 
 
 def test_library_import_tags_structure():

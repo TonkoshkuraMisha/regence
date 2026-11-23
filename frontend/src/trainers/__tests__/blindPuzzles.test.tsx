@@ -1,4 +1,4 @@
-// Задачи вслепую и «Где фигура?» (таск 19.6): на настоящих партиях классики — задания корректны; игра целиком.
+// Blindfold puzzles and "Where is the piece?" (task 19.6): on real classic games — the tasks are correct; a whole game.
 
 import {act, fireEvent, render, screen} from '@testing-library/react';
 import {Chess} from 'chess.js';
@@ -8,8 +8,8 @@ import {blindPlies, blindTask, whereQuestion} from '../blindPuzzles';
 
 afterEach(() => vi.useRealTimers());
 
-describe('задания вслепую на партиях классики', () => {
-    it('для каждой остановки и N = 1, 5, 10: N ходов, ход остановки легален в итоговой позиции, вопрос однозначен', async () => {
+describe('blindfold tasks on classic games', () => {
+    it('for every stop and N = 1, 5, 10: N moves, the stop move is legal in the final position, the question is unambiguous', async () => {
         const games = await loadAllClassics();
         let checked = 0;
         for (const game of games) {
@@ -29,17 +29,17 @@ describe('задания вслепую на партиях классики', (
             }
         }
         expect(checked).toBeGreaterThan(500);
-    }, 60_000);   // ~540 заданий, каждое переигрывает партию в chess.js
+    }, 60_000);   // ~540 tasks, each replays a game in chess.js
 
-    it('номера ходов в объявлении: белые — «N.», чёрные — «N…»', async () => {
+    it('move numbers in the announcement: White — "N.", Black — "N…"', async () => {
         const [game] = await loadAllClassics();
         const task = blindTask([game], 2, 3, 0)!;
         expect(task.moves.every((m) => /^\d+(\.|…) \S+$/.test(m))).toBe(true);
     });
 });
 
-describe('игра', () => {
-    it('ход вслепую: позиция → ходы по одному → ход на пустой доске → оценка; пять заданий — итог', async () => {
+describe('game', () => {
+    it('a blindfold move: position → moves one by one → a move on an empty board → evaluation; five tasks — the result', async () => {
         vi.useFakeTimers();
         const games = await loadAllClassics();
         vi.doMock('../../content/classics', async (orig) => ({...(await orig<object>()), loadAllClassics: async () => games}));
@@ -65,7 +65,7 @@ describe('игра', () => {
         vi.doUnmock('../../content/classics');
     });
 
-    it('«Где фигура?»: верное поле — 100, неверное — 0', async () => {
+    it('"Where is the piece?": the right square — 100, a wrong one — 0', async () => {
         vi.useFakeTimers();
         const games = await loadAllClassics();
         const {BlindGame} = await import('../../components/trainers/BlindGames');
@@ -79,7 +79,7 @@ describe('игра', () => {
                 vi.advanceTimersByTime(1400);
             });
         }
-        expect(screen.getByTestId('blind-question').textContent).toMatch(/Где сейчас/);
+        expect(screen.getByTestId('blind-question').textContent).toMatch(/Where is/);
         const wrong = q.square === 'a1' ? 'h8' : 'a1';
         fireEvent.click(document.querySelector(`[data-square="${wrong}"]`)!);
         expect(screen.getByTestId('blind-score')).toHaveTextContent('0');

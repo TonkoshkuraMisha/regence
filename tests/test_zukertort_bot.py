@@ -14,7 +14,7 @@ from src.services.bots.zukertort import (
 
 
 def test_zukertort_opening_repertoire():
-    """Проверяем, что Цукерторт делает ход из дебютной книги."""
+    """Check that Zukertort makes a move from the opening book."""
     bot = ZukertortBot(stockfish_path=None)
     board = chess.Board()
     start_key = normalize_fen_key(board)
@@ -26,7 +26,7 @@ def test_zukertort_opening_repertoire():
 
 
 def test_zukertort_style_rewards_development_and_castling():
-    """Проверяем, что стилевой фильтр Цукерторта поощряет развитие лёгких фигур и рокировку."""
+    """Check that Zukertort's style filter rewards developing minor pieces and castling."""
     board = chess.Board("r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4")
 
     castle_bonus, _ = evaluate_zukertort_style_bonus(board, chess.Move.from_uci("e1g1"))
@@ -39,7 +39,7 @@ def test_zukertort_style_rewards_development_and_castling():
 
 @pytest.mark.asyncio
 async def test_zukertort_api_move_endpoint():
-    """Проверяем REST-эндпоинты /api/v1/bots/list и /api/v1/bots/move для игры с Цукертортом."""
+    """Check the REST endpoints /api/v1/bots/list and /api/v1/bots/move for a game against Zukertort."""
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         list_resp = await client.get("/api/v1/bots/list")

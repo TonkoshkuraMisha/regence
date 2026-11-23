@@ -1,34 +1,43 @@
 # --- FILE: src/services/bots/memory.py ---
 """
-Память ботов (таск 32.1). Бот остаётся собой — в своём стиле и около заявленной силы, — но помнит сыгранное.
+Bot memory (task 32.1). A bot stays itself — in its own style and near its declared strength — but remembers what has been
+played.
 
-* Дебюты. По каждой сыгранной партии (с людьми — save-game, и в турнирах ботов — симуляция) записывается итог для
-  бота у каждого его хода из книги, пока партия не вышла из книги (не дальше BOOK_PLIES полуходов). При выборе хода
-  вес книги умножается на book_factor: сглаженный результат (PRIOR виртуальных партий по 50 %) переводится в
-  множитель от FACTOR_MIN до FACTOR_MAX. Выбор — только среди ходов его исторической книги: новых вариантов бот не
-  придумывает, проигранные просто играет реже.
-* Сила. Рейтинг бота пересчитывается по партиям с людьми как у игрока (Эло, коэффициент K) — без партий с помощью,
-  вслепую и из своей позиции. Начальное значение — калибровка (calibration.json) или заявленная сила. Если после
-  OFFSET_MIN_GAMES партий расхождение с заявленной силой не меньше DRIFT, раз в OFFSET_EVERY партий поправка к UCI_Elo
-  бота сдвигается на четверть расхождения (не дальше MAX_OFFSET): бот возвращается к заявленной силе, а не
-  заявленная сила подгоняется под бота — рейтинговые партии с ним остаются честными.
+* Openings. For each game played (with humans — save-game, and in bot tournaments — simulation) the result is recorded for the
+  bot at each of its book moves while the game has not left the book (no further than BOOK_PLIES half-moves). When choosing a
+  move the
+  book weight is multiplied by book_factor: the smoothed result (PRIOR virtual games at 50 %) is turned into a
+  multiplier from FACTOR_MIN to FACTOR_MAX. The choice is only among moves of its historical book: the bot does not
+  invent new variations, it simply plays the lost ones less often.
+* Strength. The bot's rating is recalculated from games with humans like a player's (Elo, coefficient K) — without games with
+  help,
+  blindfold and from a given position. The initial value is the calibration (calibration.json) or the declared strength. If
+  after
+  OFFSET_MIN_GAMES games the gap from the declared strength is at least DRIFT, once every OFFSET_EVERY games the correction to
+  the bot's UCI_Elo
+  is shifted by a quarter of the gap (no further than MAX_OFFSET): the bot returns to the declared strength, and the
+  declared strength is not fitted to the bot — rated games against it stay fair.
 
-Память читается из базы в кэш процесса (refresh, не чаще раза в REFRESH_SECONDS на бота): выбор хода синхронный и
-базу не трогает. Таблицы (src/models/bot_memory.py): bot_opening_stats, bot_ratings, bot_rivals, bot_rival_stats.
-Записывают итоги src/api/bots.py (партии с людьми), симуляция турниров и задача analyze_game (ошибки соперника);
-читает выбор хода (base.HistoricalBot._book_move и _candidate_scores).
+Memory is read from the database into the process cache (refresh, no more than once per REFRESH_SECONDS per bot): move
+selection is synchronous and
+does not touch the database. Tables (src/models/bot_memory.py): bot_opening_stats, bot_ratings, bot_rivals, bot_rival_stats.
+Results are written by src/api/bots.py (games with humans), tournament simulation and the analyze_game task (opponent errors);
+it is read by move selection (base.HistoricalBot._book_move and _candidate_scores).
 
-* Соперник (таск 32.2). По завершённым партиям с человеком бот помнит итог каждого своего хода книги против именно
-  этого игрока. С постоянным соперником (не меньше RIVAL_MIN_GAMES партий) вес хода дополнительно умножается на
-  rival_factor от RIVAL_MIN до RIVAL_MAX: варианты, где игрок набирал меньше, — чаще (там ему труднее), где бот
-  проигрывал — реже; ход, с которым бот проиграл этому игроку в последний раз, — ещё × LAST_LOSS. Память соперника
-  загружается на запрос хода (load_rival) и передаётся в синхронный выбор хода через contextvars: объекты ботов
-  общие на все запросы.
-* Где соперник ошибается (32.2, по разбору). Когда фоновый разбор партии готов (games.analysis_json, задача
-  analyze_game), record_rival_errors отмечает ходы книги бота, после которых игрок в ближайшие ERROR_WINDOW
-  полуходов сделал ошибку или зевок (классы ERROR_CLASSES разбора). Вес такого хода против этого игрока — ещё
-  × до ERROR_MAX по доле партий с ошибкой: бот охотнее ведёт его в позиции, где тот уже ошибался. Учитываются те же
-  партии, что и для итогов соперника: исторический бот, обычная расстановка, без наставника.
+* Opponent (task 32.2). From finished games with a human the bot remembers the result of each of its book moves against this
+  very player. With a regular opponent (at least RIVAL_MIN_GAMES games) the move weight is additionally multiplied by
+  rival_factor from RIVAL_MIN to RIVAL_MAX: variations where the player scored less are played more often (it is harder for him
+  there), where the bot
+  lost — less often; the move with which the bot lost to this player last time — another x LAST_LOSS. The opponent memory
+  is loaded on a move request (load_rival) and passed to the synchronous move selection through contextvars: the bot objects
+  are shared across all requests.
+* Where the opponent errs (32.2, from the analysis). When the background game analysis is ready (games.analysis_json, task
+  analyze_game), record_rival_errors marks the bot's book moves after which the player made a mistake or blunder within the
+  next ERROR_WINDOW
+  half-moves (the ERROR_CLASSES classes of the analysis). The weight of such a move against this player is another
+  x up to ERROR_MAX by the share of games with an error: the bot more willingly steers into a position where he already erred.
+  The same
+  games are counted as for the opponent results: a historical bot, the standard setup, no coach.
 """
 
 import json
@@ -48,40 +57,40 @@ from src.models.user import User
 
 logger = logging.getLogger(__name__)
 
-# Сглаживание опыта хода книги: столько «виртуальных» партий с результатом 50 % добавляется к реальным.
+# Smoothing of a book move's experience: this many "virtual" games with a 50 % result are added to the real ones.
 PRIOR = 4
-# Границы множителя веса хода книги по его результатам в партиях бота (0,5 — всегда проигрывал, 1,5 — всегда выигрывал).
+# Bounds of the book move weight multiplier by its results in the bot's games (0.5 — always lost, 1.5 — always won).
 FACTOR_MIN, FACTOR_MAX = 0.5, 1.5
-# Опыт записывается ходам книги не дальше этого числа полуходов от начала партии.
+# Experience is recorded for book moves no further than this many half-moves from the start of the game.
 BOOK_PLIES = 24
-# Коэффициент K обновления рейтинга бота по формуле Эло (как у игрока).
+# Coefficient K of the bot's rating update by the Elo formula (as for a player).
 K = 16
-# Поправка силы начинает считаться после стольких партий с людьми и пересчитывается каждые OFFSET_EVERY партий.
+# The strength correction starts being computed after this many games with humans and is recalculated every OFFSET_EVERY games.
 OFFSET_MIN_GAMES = 50
 OFFSET_EVERY = 25
-# Расхождение рейтинга бота с заявленной силой (пункты), с которого поправка сдвигается.
+# Gap between the bot's rating and the declared strength (points) from which the correction shifts.
 DRIFT = 100
-# Наибольшая поправка к UCI_Elo бота (пункты в любую сторону).
+# The largest correction to the bot's UCI_Elo (points in either direction).
 MAX_OFFSET = 150
-# Как часто (с) кэш процесса перечитывается из базы для одного бота.
+# How often (s) the process cache is re-read from the database for one bot.
 REFRESH_SECONDS = 300
-# Память о конкретном игроке действует от стольких партий с ним.
+# Memory about a specific player applies from this many games with him.
 RIVAL_MIN_GAMES = 2
-# Границы множителя веса хода по очкам бота против этого игрока.
+# Bounds of the move weight multiplier by the bot's points against this player.
 RIVAL_MIN, RIVAL_MAX = 0.25, 1.75
-# Дополнительный множитель для хода, с которым бот проиграл этому игроку в последний раз.
+# Additional multiplier for the move with which the bot lost to this player last time.
 LAST_LOSS = 0.1
-# Ошибка игрока засчитывается ходу книги, если случилась не дальше ERROR_WINDOW полуходов после него.
+# A player's error is credited to a book move if it happened no further than ERROR_WINDOW half-moves after it.
 ERROR_WINDOW = 12
-# Классы ходов разбора (analysis_service.classify_move_by_cp_loss), которые считаются ошибкой игрока.
+# Analysis move classes (analysis_service.classify_move_by_cp_loss) that count as a player's error.
 ERROR_CLASSES = ("Mistake", "Blunder")
-# Предел добавки к весу хода, после которого игрок ошибался во всех партиях.
+# The cap of the addition to a move's weight, after which the player erred in all games.
 ERROR_MAX = 1.5
-# Суффикс служебного имени бота, если его имя занято человеком (api/bots._get_or_create_bot_user).
+# Suffix of the bot's service name if its name is taken by a human (api/bots._get_or_create_bot_user).
 BOT_USERNAME_SUFFIX = "_bot"
 
-# Кэш процесса. _book: бот → (ключ позиции, UCI) → (партий, очков бота); _offset: бот → поправка UCI_Elo;
-# _loaded_at: бот → момент (time.monotonic) последнего чтения из базы.
+# Process cache. _book: bot → (position key, UCI) → (games, bot points); _offset: bot → UCI_Elo correction;
+# _loaded_at: bot → the moment (time.monotonic) of the last read from the database.
 _book: dict[str, dict[tuple[str, str], tuple[int, float]]] = {}
 _offset: dict[str, int] = {}
 _loaded_at: dict[str, float] = {}
@@ -89,12 +98,12 @@ _loaded_at: dict[str, float] = {}
 
 @dataclass
 class Rival:
-    """Память бота об одном игроке на время запроса хода."""
+    """A bot's memory about one player for the duration of a move request."""
     bot_id: str
     games: int
-    # Ход книги (ключ позиции, UCI) → (партий с ним против игрока, очков бота, проиграл ли бот с ним в последний раз).
+    # Book move (position key, UCI) → (games with it against the player, bot points, whether the bot lost with it last time).
     moves: dict[tuple[str, str], tuple[int, float, bool]] = field(default_factory=dict)
-    # Ход книги → в скольких партиях игрок ошибся вскоре после него (по разбору).
+    # Book move → in how many games the player erred soon after it (from the analysis).
     errors: dict[tuple[str, str], int] = field(default_factory=dict)
 
 
@@ -102,27 +111,28 @@ _rival: ContextVar[Rival | None] = ContextVar("bot_rival", default=None)
 
 
 def use_rival(rival: Rival | None) -> None:
-    """Соперник текущего запроса (asyncio.to_thread копирует контекст в поток выбора хода)."""
+    """The opponent of the current request (asyncio.to_thread copies the context into the move selection thread)."""
     _rival.set(rival)
 
 
 def rival_factor(rival: Rival, fen_key: str, uci: str) -> float:
     """
-    Множитель веса хода книги против этого игрока: от RIVAL_MIN до RIVAL_MAX по очкам бота с этим ходом, плюс добавка
-    за ошибки игрока после него (до ERROR_MAX), × LAST_LOSS, если бот проиграл с ним в последний раз. 1.0 — опыта нет.
+    Book move weight multiplier against this player: from RIVAL_MIN to RIVAL_MAX by the bot's points with this move, plus an
+    addition
+    for the player's errors after it (up to ERROR_MAX), x LAST_LOSS if the bot lost with it last time. 1.0 — no experience.
     """
     games, points, last_lost = rival.moves.get((fen_key, uci), (0, 0.0, False))
     if games == 0:
         return 1.0
     rate = (points + 1.0) / (games + 2.0)
     factor = RIVAL_MIN + (RIVAL_MAX - RIVAL_MIN) * rate
-    # Доля партий, где игрок ошибся после этого хода; +1 в знаменателе — одна ошибка ещё не закономерность.
+    # Share of games where the player erred after this move; +1 in the denominator — one error is not yet a pattern.
     factor *= 1.0 + (ERROR_MAX - 1.0) * rival.errors.get((fen_key, uci), 0) / (games + 1)
     return factor * LAST_LOSS if last_lost else factor
 
 
 def book_factor(bot_id: str, fen_key: str, uci: str) -> float:
-    """Множитель веса хода книги по опыту бота и, если он играет с постоянным соперником, — по партиям с ним."""
+    """Book move weight multiplier by the bot's experience and, if it plays a regular opponent, by the games with him."""
     factor = 1.0
     games, points = _book.get(bot_id, {}).get((fen_key, uci), (0, 0.0))
     if games:
@@ -135,19 +145,20 @@ def book_factor(bot_id: str, fen_key: str, uci: str) -> float:
 
 
 def strength_offset(bot_id: str) -> int:
-    """Поправка к UCI_Elo бота (пункты) из кэша; 0 — поправки нет или память ещё не загружена."""
+    """Correction to the bot's UCI_Elo (points) from the cache; 0 — no correction or memory not loaded yet."""
     return _offset.get(bot_id, 0)
 
 
 def forget() -> None:
-    """Очистить кэш процесса (тесты)."""
+    """Clear the process cache (tests)."""
     _book.clear()
     _offset.clear()
     _loaded_at.clear()
 
 
 async def refresh(db: AsyncSession, bot_id: str, *, force: bool = False) -> None:
-    """Загрузить опыт книги и поправку силы бота из базы в кэш; без force — не чаще раза в REFRESH_SECONDS."""
+    """Load the book experience and strength correction of the bot from the database into the cache; without force — no more
+    than once per REFRESH_SECONDS."""
     if not force and time.monotonic() - _loaded_at.get(bot_id, -REFRESH_SECONDS) < REFRESH_SECONDS:
         return
     rows = (await db.execute(select(BotOpeningStat).where(BotOpeningStat.bot_id == bot_id))).scalars().all()
@@ -158,7 +169,7 @@ async def refresh(db: AsyncSession, bot_id: str, *, force: bool = False) -> None
 
 
 def bot_points(result: str, bot_color: chess.Color) -> float:
-    """Очки бота по результату партии PGN («1-0», «0-1», «1/2-1/2»): 1, 0 или 0,5."""
+    """Bot points by the result of a PGN game ("1-0", "0-1", "1/2-1/2"): 1, 0 or 0.5."""
     if result == "1/2-1/2":
         return 0.5
     white_won = result == "1-0"
@@ -166,12 +177,14 @@ def bot_points(result: str, bot_color: chess.Color) -> float:
 
 
 def book_moves_played(opening_book: dict, moves_uci: list[str], bot_color: chess.Color) -> list[tuple[str, str]]:
-    """Ходы бота из его книги с начала партии — до первого выхода из книги (любой из сторон) или BOOK_PLIES."""
+    """The bot's moves from its book from the start of the game — up to the first exit from the book (by either side) or
+    BOOK_PLIES."""
     return [(key, uci) for _, key, uci in book_plies(opening_book, moves_uci, bot_color)]
 
 
 def book_plies(opening_book: dict, moves_uci: list[str], bot_color: chess.Color) -> list[tuple[int, str, str]]:
-    """То же, что book_moves_played, с номером полухода каждого хода (1 — первый ход партии, как ply в разборе)."""
+    """The same as book_moves_played, with the half-move number of each move (1 — the first move of the game, like ply in
+    the analysis)."""
     from src.services.bots.base import normalize_fen_key
 
     board = chess.Board()
@@ -192,8 +205,9 @@ def book_plies(opening_book: dict, moves_uci: list[str], bot_color: chess.Color)
 
 def erred_after(book: list[tuple[int, str, str]], report_moves: list[dict], player_color: str) -> set[tuple[str, str]]:
     """
-    Ходы книги бота, после которых игрок ошибся: в разборе (moves из analysis_json) у хода игрока класс из
-    ERROR_CLASSES не дальше ERROR_WINDOW полуходов после хода бота.
+    Book moves of the bot after which the player erred: in the analysis (moves from analysis_json) the player's move has a
+    class from
+    ERROR_CLASSES no further than ERROR_WINDOW half-moves after the bot's move.
     """
     error_plies = [int(item["ply"]) for item in report_moves
                    if item.get("color") == player_color and item.get("classification") in ERROR_CLASSES]
@@ -203,7 +217,7 @@ def erred_after(book: list[tuple[int, str, str]], report_moves: list[dict], play
 
 async def record_book(db: AsyncSession, bot_id: str, opening_book: dict, moves_uci: list[str],
                       bot_color: chess.Color, result: str) -> int:
-    """Записать итог партии ходам книги бота; возвращает, сколько ходов учтено. Коммит — здесь."""
+    """Record the game result for the bot's book moves; returns how many moves were counted. The commit is here."""
     played = book_moves_played(opening_book, moves_uci, bot_color)
     if not played:
         return 0
@@ -218,7 +232,7 @@ async def record_book(db: AsyncSession, bot_id: str, opening_book: dict, moves_u
             row.points += points
     try:
         await db.commit()
-    except IntegrityError:  # та же позиция записана параллельной партией — опыт этой партии не критичен
+    except IntegrityError:  # the same position was written by a parallel game — this game's experience is not critical
         await db.rollback()
         logger.info("Bot opening stat race for %s", bot_id)
         return 0
@@ -227,12 +241,12 @@ async def record_book(db: AsyncSession, bot_id: str, opening_book: dict, moves_u
 
 
 def expected(rating: float, opponent: float) -> float:
-    """Ожидаемый результат по формуле Эло для игрока с рейтингом rating против opponent."""
+    """Expected result by the Elo formula for a player with the given rating against opponent."""
     return 1.0 / (1.0 + 10 ** ((opponent - rating) / 400))
 
 
 def next_offset(offset: int, rating: float, declared: int) -> int:
-    """Поправка силы: сдвиг на четверть расхождения, если оно не меньше DRIFT; в пределах MAX_OFFSET."""
+    """Strength correction: a shift by a quarter of the gap if it is at least DRIFT; within MAX_OFFSET."""
     gap = declared - rating
     if abs(gap) < DRIFT:
         return offset
@@ -240,7 +254,7 @@ def next_offset(offset: int, rating: float, declared: int) -> int:
 
 
 async def record_rating(db: AsyncSession, bot_id: str, declared: int, opponent_rating: int, score: float) -> BotRating:
-    """Партия с человеком: рейтинг бота по Эло и, если пора, новая поправка силы. Коммит — здесь."""
+    """A game with a human: the bot's Elo rating and, when due, a new strength correction. The commit is here."""
     from src.services.bots import calibration
 
     row = await db.get(BotRating, bot_id)
@@ -262,13 +276,14 @@ async def record_rating(db: AsyncSession, bot_id: str, declared: int, opponent_r
 
 
 async def live_strength(db: AsyncSession) -> dict[str, BotRating]:
-    """Живой рейтинг и поправка всех ботов из bot_ratings: bot_id → строка."""
+    """Live rating and correction of all bots from bot_ratings: bot_id → row."""
     return {r.bot_id: r for r in (await db.execute(select(BotRating))).scalars().all()}
 
 async def load_rival(db: AsyncSession, bot_id: str, user_id: int | None) -> Rival | None:
     """
-    Что бот помнит об игроке: сколько партий сыграно и чем кончались ходы, сыгранные против него. None — игрок не
-    вошёл или партий с ним ещё не было.
+    What the bot remembers about a player: how many games were played and how the moves played against him ended. None — the
+    player did not
+    sign in or there were no games with him yet.
     """
     if user_id is None:
         return None
@@ -283,7 +298,8 @@ async def load_rival(db: AsyncSession, bot_id: str, user_id: int | None) -> Riva
 
 async def record_rival(db: AsyncSession, bot_id: str, user_id: int, opening_book: dict, moves_uci: list[str],
                        bot_color: chess.Color, result: str) -> None:
-    """Завершённая партия с игроком: итог — в сводку соперника и ходам книги бота против него. Коммит — здесь."""
+    """A finished game with a player: the result goes into the opponent summary and the bot's book moves against him. The
+    commit is here."""
     points = bot_points(result, bot_color)
     summary = await db.scalar(select(BotRival).where(BotRival.bot_id == bot_id, BotRival.user_id == user_id))
     if summary is None:
@@ -304,18 +320,19 @@ async def record_rival(db: AsyncSession, bot_id: str, user_id: int, opening_book
             row.last_lost = points == 0.0
     try:
         await db.commit()
-    except IntegrityError:  # параллельная партия того же игрока с тем же ботом — опыт этой не критичен
+    except IntegrityError:  # a parallel game of the same player with the same bot — this one's experience is not critical
         await db.rollback()
 
 
 async def rivals_of(db: AsyncSession, user_id: int) -> list[BotRival]:
-    """Сводки по ботам, с которыми играл игрок: больше партий — выше."""
+    """Summaries for the bots the player has played: more games — higher."""
     return list((await db.execute(select(BotRival).where(BotRival.user_id == user_id)
                                   .order_by(BotRival.games.desc()))).scalars().all())
 
 
 def _bot_id_of(user: User) -> str | None:
-    """Исторический бот за записью игрока (имя — id бота, иногда со служебным суффиксом); иначе None."""
+    """The historical bot behind a player's record (the name is the bot id, sometimes with a service suffix); otherwise
+    None."""
     from src.services.bots import BOT_INSTANCES
 
     if not user.is_bot:
@@ -326,10 +343,10 @@ def _bot_id_of(user: User) -> str | None:
 
 async def record_rival_errors(db: AsyncSession, game_id: int) -> int:
     """
-    Ошибки игрока из готового разбора партии с историческим ботом (вызывает задача analyze_game после разбора):
-    ходам книги бота против этого игрока добавляется errors. Партия — та же, что учитывает record_rival: законченная,
-    из обычной расстановки, без наставника, не персоналия мастерской. Повторный разбор не удваивает счёт
-    (BotRival.errors_game_id). Возвращает число отмеченных ходов книги. Коммит — здесь.
+    Player errors from a ready analysis of a game with a historical bot (called by the analyze_game task after the analysis):
+    errors is added to the bot's book moves against this player. The game is the same one record_rival counts: finished,
+    from the standard setup, without a coach, not a workshop persona. A repeated analysis does not double the count
+    (BotRival.errors_game_id). Returns the number of marked book moves. The commit is here.
     """
     from src.services.bots import BOT_INSTANCES
 

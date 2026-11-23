@@ -1,9 +1,9 @@
 // --- FILE: frontend/src/components/trainers/VisionGames.tsx ---
-// Игры тренажёров видения доски (таск 16.5). Каждая сообщает итог попытки через onFinish(score, mistakes).
-// * PathGame — «Тихая тропа» и «Маршрут коня»: ROUNDS позиций подряд, фигуру — к цели, не вставая под бой.
-// * ForkGame — «Двойной удар»: за FORK_SECONDS найти как можно больше полей вилки конём (щелчком по полю).
-// * TailGame — «Хвост»: фигура собирает пешки, за каждой вырастает хвост; очки — 10 за съеденную, правила — trainers/tail.ts.
-// Правила и задания — trainers/vision.ts; ход проверяется так же, как в азбуке (starsMove из content/basics/rules.ts). Запускается из TrainersPage.tsx.
+// Board-vision trainer games (task 16.5). Each reports the attempt result via onFinish(score, mistakes).
+// * PathGame - "Quiet Path" and "Knight Route": ROUNDS positions in a row, move the piece to the target without stepping under attack.
+// * ForkGame - "Double Strike": within FORK_SECONDS find as many knight-fork squares as possible (by clicking a square).
+// * TailGame - "Tail": the piece collects pawns and a tail grows behind it; score is 10 per pawn eaten, rules are in trainers/tail.ts.
+// Rules and tasks are in trainers/vision.ts; a move is validated the same way as in the primer (starsMove from content/basics/rules.ts). Launched from TrainersPage.tsx.
 
 import {useEffect, useMemo, useRef, useState} from 'react';
 import {useI18n} from '../../i18n';
@@ -14,17 +14,17 @@ import {boardFen, legalMoves, newGame, step} from '../../trainers/tail';
 import {PuzzleBoard} from '../puzzles/PuzzleBoard';
 import type {TrainerGameProps} from './trainerGame';
 
-/** Позиций в одной попытке PathGame. */
+/** Positions in a single PathGame attempt. */
 export const ROUNDS = 5;
-/** Длительность попытки ForkGame, секунд. */
+/** Duration of a ForkGame attempt, in seconds. */
 export const FORK_SECONDS = 60;
 
-/** Пауза перед следующей позицией в «Пути» (мс): видно, что цель взята. */
+/** Pause before the next position in "Path" (ms): shows that the target was captured. */
 const NEXT_ROUND_MS = 400;
 
 /**
- * Очки за позицию — pathScore(ходы, par); в «Маршруте коня» превышение par даёт 0 очков и ошибку. Неверный ход — ошибка,
- * позиция не меняется. Следующая позиция открывается через NEXT_ROUND_MS после взятия цели.
+ * Score per position is pathScore(moves, par); in "Knight Route" exceeding par gives 0 points and a mistake. A wrong move is a mistake and
+ * the position does not change. The next position opens NEXT_ROUND_MS after the target is captured.
  */
 export function PathGame({kind, level, seed, onFinish}: TrainerGameProps & { kind: 'quiet' | 'knight' }) {
     const {t} = useI18n();
@@ -82,7 +82,7 @@ export function PathGame({kind, level, seed, onFinish}: TrainerGameProps & { kin
     );
 }
 
-/** Поля вилки за FORK_SECONDS: 10 очков за найденное; тип промаха (не ход коня, нет вилки, поле под боем) определяет подсказку. */
+/** Fork squares within FORK_SECONDS: 10 points per square found; the miss type (not a knight move, no fork, square under attack) determines the hint. */
 export function ForkGame({level, seed, onFinish}: TrainerGameProps) {
     const {t} = useI18n();
     const [round, setRound] = useState(0);
@@ -136,7 +136,7 @@ export function ForkGame({level, seed, onFinish}: TrainerGameProps) {
     );
 }
 
-/** «Хвост»: очки — 10 за каждую съеденную пешку; попытку можно закончить досрочно (stop). */
+/** "Tail": score is 10 per pawn eaten; the attempt can be ended early (stop). */
 export function TailGame({level, seed, onFinish}: TrainerGameProps) {
     const {t} = useI18n();
     const [state, setState] = useState(() => newGame(level, seed));

@@ -1,17 +1,17 @@
 // --- FILE: frontend/src/content/lessons/format.ts ---
-// Формат урока школы (таск 14.1). Урок — JSON-файл в этой папке: тексты на трёх языках, позиции и ходы.
-// Проверка контента — validateLesson (её гоняет тест в CI: все ходы легальны, у каждого вопроса есть верный
-// ответ, тексты на всех языках); ответы на шахматные вопросы сверяет движком офлайн-скрипт
+// School lesson format (task 14.1). A lesson is a JSON file in this folder: texts in several languages, positions and moves.
+// Content check is validateLesson (run by the CI test: all moves are legal, every question has a correct
+// answer, texts in all languages); answers to chess questions are verified by the engine in an offline script
 // scripts/verify_lessons.py.
 //
-// Шаги урока:
-//  * text      — позиция и объяснение; стрелки, подсветка полей, «призрачная» фигура;
-//  * demo      — показ: последовательность действий на доске (ход-скольжение, стрелка, подсветка, появление фигуры,
-//                «призрак», пауза), синхронная с текстом;
-//  * find_move — «найдите ход»: верные ответы, свой отклик на каждый ожидаемый неверный ход, ответ компьютера и
-//                «сыграйте продолжение» (линия из нескольких ходов игрока);
-//  * choice    — вопрос с выбором ответа и откликом на каждый вариант.
-// После шагов — экзамен: 1–5 контрольных вопросов (find_move или choice), считается верное с первой попытки.
+// Lesson steps:
+//  * text      - position and explanation; arrows, square highlights, a "ghost" piece;
+//  * demo      - showcase: a sequence of board actions (sliding move, arrow, highlight, piece appearance,
+//                "ghost", pause), synchronised with the text;
+//  * find_move - "find the move": correct answers, a dedicated reply to each expected wrong move, the computer's reply and
+//                "play the continuation" (a line of several player moves);
+//  * choice    - a multiple-choice question with a reply for each option.
+// After the steps comes an exam: 1-5 control questions (find_move or choice); a first-attempt correct answer counts.
 
 import type {Language} from '../../i18n';
 
@@ -25,7 +25,7 @@ export interface Arrow {
     color?: ArrowColor;
 }
 
-/** Фигура в формате цвет + тип: «wN», «bq»… (регистр типа не важен). */
+/** Piece in colour + type format: "wN", "bq"... (type case does not matter). */
 export type PieceCode = string;
 
 export interface Ghost {
@@ -62,14 +62,14 @@ export interface DemoStep extends BoardDecor {
     actions: DemoAction[];
 }
 
-/** Один ход игрока в линии вопроса: верные ответы, отклики на неверные, ответ компьютера. */
+/** One player move in a question line: correct answers, replies to wrong ones, the computer's reply. */
 export interface MoveTask {
     answers: string[];
-    /** Ход компьютера после верного ответа (uci). */
+    /** Computer move after a correct answer (uci). */
     reply?: string;
-    /** Свой отклик на ожидаемый неверный ход (uci → текст). */
+    /** Dedicated reply to an expected wrong move (uci -> text). */
     wrong?: Record<string, LocalizedText>;
-    /** Отклик на верный ход. */
+    /** Reply to a correct move. */
     correct?: LocalizedText;
 }
 
@@ -100,7 +100,7 @@ export type Step = TextStep | DemoStep | QuestionStep;
 export interface Lesson {
     id: string;
     course: string;
-    /** Порядок урока в курсе. */
+    /** Lesson order within the course. */
     order: number;
     title: LocalizedText;
     summary: LocalizedText;

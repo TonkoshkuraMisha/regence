@@ -1,12 +1,12 @@
 // --- FILE: frontend/src/components/tournaments/TournamentsPage.tsx ---
-// Турниры (таск 15.3): /tournaments — свои турниры и создание нового; /tournaments/:id — турнир: таблица или сетка,
-// партии по турам, «Играть мою партию», диплом призёра. Партии ботов между собой играет сервер — страница
-// обновляет состояние, пока они идут.
-// Раскладка списка (план владельца 18.11, общие компоненты): шапка, карточки «Арены» и «Машина времени», «Мои
-// турниры» с меткой места или статуса, карьера и создание турнира.
-// Данные: services/tournaments.ts (listTournaments, createTournament, getTournament, startMyGame, withdrawTournament),
-// каталог ботов services/botCatalog.ts и личности игрока services/personalities.ts; имя игрока — GET /api/v1/profile/me.
-// Роуты — App.tsx. Соперников для своего турнира выбирает любой игрок — без порогов по силе.
+// Tournaments (task 15.3): /tournaments - own tournaments and creating a new one; /tournaments/:id - a tournament: table or bracket,
+// games by round, "Play my game", prize-winner diploma. Games between bots are played by the server - the page
+// refreshes the state while they are in progress.
+// List layout (owner plan 18.11, shared components): header, "Arenas" and "Time Machine" cards, "My
+// tournaments" with a place or status label, career and tournament creation.
+// Data: services/tournaments.ts (listTournaments, createTournament, getTournament, startMyGame, withdrawTournament),
+// bot catalogue services/botCatalog.ts and player personalities services/personalities.ts; player name - GET /api/v1/profile/me.
+// Routes - App.tsx. Any player picks opponents for their own tournament - no strength thresholds.
 
 import {useCallback, useEffect, useMemo, useState} from 'react';
 import {Link, useNavigate, useParams} from 'react-router-dom';
@@ -40,28 +40,28 @@ import {Career} from './Career';
 import {getToken} from '../../services/authToken';
 import {accountApi} from '../../services/account';
 
-// Период обновления страницы турнира (мс), пока сервер играет партии ботов.
+// Tournament page refresh period (ms) while the server plays bot games.
 const POLL_MS = 3000;
 
-// Выбранный соперник: вид участника (бот, архетип, личность игрока) и его id; pickKey — ключ для сравнения.
+// Selected opponent: participant kind (bot, archetype, player personality) and its id; pickKey - the key for comparison.
 type Pick = { kind: ParticipantKind; id: string | number };
 const pickKey = (p: Pick) => `${p.kind}:${p.id}`;
 
-/** Форма нового турнира: формат, размер, контроль и соперники — выбранные вручную или случайные (режимы my_level/stronger/weaker). */
+/** New tournament form: format, size, control and opponents - picked manually or random (modes my_level/stronger/weaker). */
 function CreateTournament() {
     const {t, tp} = useI18n();
     const navigate = useNavigate();
     const [format, setFormat] = useState<TournamentFormat>('round_robin');
     const [size, setSize] = useState(4);
-    // Допустимые размеры по форматам — с сервера (GET /tournaments/formats); до ответа в списке только текущий размер.
+    // Allowed sizes per format - from the server (GET /tournaments/formats); before the response the list has only the current size.
     const [formatSizes, setFormatSizes] = useState<Record<TournamentFormat, number[]> | null>(null);
     const [picks, setPicks] = useState<Pick[]>([]);
-    // Соперники: выбранные вручную или случайные из диапазона силы (таск 15.4).
+    // Opponents: picked manually or random from a strength range (task 15.4).
     const [mode, setMode] = useState<'chosen' | RandomOpponents>('chosen');
     const presets = useMemo(() => ALL_TIME_CONTROLS.filter((o) => !o.isManual), []);
     const [timeControlId, setTimeControlId] = useState(presets.find((o) => o.base === 5)?.id ?? presets[0].id);
     const [archetypes, setArchetypes] = useState<CatalogArchetype[]>([]);
-    // Сила исторических ботов из каталога сервера: посев турнира идёт по измеренной силе, её и показываем.
+    // Strength of historic bots from the server catalogue: tournament seeding goes by measured strength, and that is what we show.
     const [historical, setHistorical] = useState<Record<string, BotStrength>>({});
     const [personalities, setPersonalities] = useState<Personality[]>([]);
     const [error, setError] = useState<UiMessage | null>(null);
@@ -180,7 +180,7 @@ function CreateTournament() {
     );
 }
 
-/** Страница списка: ссылки на арены и «Машину времени», мои турниры, карьера и создание. */
+/** List page: links to arenas and "Time Machine", my tournaments, career and creation. */
 export function TournamentsPage() {
     const {t} = useI18n();
     const [items, setItems] = useState<TournamentSummary[]>([]);
@@ -223,7 +223,7 @@ export function TournamentsPage() {
     );
 }
 
-/** Итог партии глазами места seat: «1», «½», «0»; пусто, пока партия не сыграна. */
+/** Game result from the seat's point of view: "1", "½", "0"; empty until the game is played. */
 function resultFor(game: TournamentGame, seat: number): string {
     if (!game.result) return '';
     if (game.result === '1/2-1/2') return '½';
@@ -231,14 +231,14 @@ function resultFor(game: TournamentGame, seat: number): string {
     return (game.white_seat === seat) === whiteWon ? '1' : '0';
 }
 
-/** Название круга сетки по числу кругов от конца: финал, полуфинал, четвертьфинал или «круг N». */
+/** Bracket round name by the number of rounds from the end: final, semifinal, quarterfinal or "round N". */
 function knockoutRoundName(t: ReturnType<typeof useI18n>['t'], size: number, round: number): string {
     const fromEnd = Math.max(1, Math.ceil(Math.log2(size))) - round;
     if (fromEnd > 2) return t('tournaments.knockoutRounds.round', {n: round});
     return t(`tournaments.knockoutRounds.${fromEnd === 0 ? 'final' : fromEnd === 1 ? 'semifinal' : 'quarterfinal'}`);
 }
 
-/** Страница одного турнира: таблица (круговой, швейцарка) или сетка, расписание по турам, действия игрока, диплом и праздник. */
+/** Single tournament page: table (round robin, Swiss) or bracket, round schedule, player actions, diploma and celebration. */
 export function TournamentView() {
     const {t, dateLocale} = useI18n();
     const navigate = useNavigate();
@@ -248,7 +248,7 @@ export function TournamentView() {
     const [myName, setMyName] = useState('');
     const [notice, setNotice] = useState<UiMessage | null>(null);
     const [reloadKey, setReloadKey] = useState(0);
-    // Экран итогов (17.11, таблица — 21.11): при первом взгляде на законченный турнир, где у игрока есть место; повтор — кнопкой.
+    // Results screen (17.11, table - 21.11): on the first look at a finished tournament where the player has a place; repeat - by a button.
     const [celebrating, setCelebrating] = useState(false);
     const finishedPlace = tournament?.status === 'finished'
         ? tournament.players.find((p) => p.seat === tournament.my_seat)?.place ?? null : null;
@@ -267,7 +267,7 @@ export function TournamentView() {
             .then((data) => {
                 if (!alive) return;
                 setTournament(data);
-                // Пока сервер играет партии ботов — обновляем состояние.
+                // While the server plays bot games - refresh the state.
                 if (botGamesRunning(data)) timer = setTimeout(load, POLL_MS);
             })
             .catch((err) => alive && setError(errorMessage(err, 'tournaments.loadFailed')));
@@ -291,11 +291,11 @@ export function TournamentView() {
     const rounds = Array.from(new Set(tournament.games.map((g) => g.round))).sort((a, b) => a - b);
     const totalRounds = roundsTotal(tournament);
     const historic = Boolean(tournament.event_key);
-    // Сетка на выбывание: кто в первом круге не играл — прошёл дальше без игры (по порядку посева).
+    // Knockout bracket: whoever did not play in the first round advanced without playing (by seeding order).
     const firstRoundSeats = new Set(tournament.games.filter((g) => g.round === 1).flatMap((g) => [g.white_seat, g.black_seat]));
     const byes = tournament.format === 'knockout'
         ? tournament.players.filter((p) => !firstRoundSeats.has(p.seat)).sort((a, b) => a.seat - b.seat) : [];
-    // В большом турнире расписание длинное: туры свёрнуты, открыт текущий.
+    // In a big tournament the schedule is long: rounds are collapsed, the current one is open.
     const foldRounds = rounds.length > 8;
     const pending = myPendingGame(tournament);
     const me = tournament.players.find((p) => p.seat === tournament.my_seat);
@@ -305,7 +305,7 @@ export function TournamentView() {
     const play = async () => {
         if (!pending) return;
         try {
-            // Партию начинает сервер (таск A.2): брошенная и начатая заново партия засчитывается поражением.
+            // The server starts the game (task A.2): an abandoned and restarted game counts as a loss.
             const started = await startMyGame(tournament.id, pending.id);
             if (started.forfeited) {
                 setNotice({key: 'tournaments.forfeitedAbandoned'});
@@ -416,7 +416,7 @@ export function TournamentView() {
                                     <td className="px-1 whitespace-nowrap">{name(row.seat)}</td>
                                     {tournament.standings.map((col) => {
                                         if (col.seat === row.seat) return <td key={col.seat} className="px-1 bg-black/40"/>;
-                                        // В турнире в несколько кругов пара встречается несколько раз: все итоги подряд.
+                                        // In a multi-round tournament a pair meets several times: all results in a row.
                                         const games = tournament.games.filter((g) => g.result
                                             && ((g.white_seat === row.seat && g.black_seat === col.seat)
                                                 || (g.white_seat === col.seat && g.black_seat === row.seat)));
@@ -469,7 +469,7 @@ export function TournamentView() {
                                 <div key={round} className="flex flex-col gap-3 justify-around min-w-[180px]">
                                     <h3 className="text-xs text-boxwood/70">{knockoutRoundName(t, tournament.size, round)}</h3>
                                     {round === 1 && byes.length > 0 && (
-                                        // Большая сетка: сильнейшие по посеву проходят первый круг без игры.
+                                        // Big bracket: the strongest by seeding pass the first round without playing.
                                         <p className="text-xs text-boxwood/70" data-testid="bracket-byes">
                                             {t('tournaments.byes', {names: byes.map((p) => name(p.seat)).join(', ')})}
                                         </p>

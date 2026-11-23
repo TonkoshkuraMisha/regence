@@ -1,6 +1,6 @@
 // --- FILE: frontend/src/content/lessons/validate.ts ---
-// Проверка урока (таск 14.1): возвращает список проблем — пустой, если урок корректен. Её вызывает тест в CI для
-// каждого файла урока; ответы на шахматные вопросы дополнительно сверяет движком scripts/verify_lessons.py.
+// Lesson check (task 14.1): returns a list of problems - empty if the lesson is correct. It is called by a CI test for
+// every lesson file; answers to chess questions are additionally verified by the engine in scripts/verify_lessons.py.
 
 import {Chess} from 'chess.js';
 import {LANGUAGES} from '../../i18n/core';
@@ -39,7 +39,7 @@ function load(fen: string, where: string, problems: Problems): Chess | null {
     }
 }
 
-/** Ход uci, если он легален в позиции; иначе null. */
+/** Move uci if it is legal in the position; otherwise null. */
 function play(game: Chess, uci: string): boolean {
     if (!UCI.test(uci)) return false;
     try {

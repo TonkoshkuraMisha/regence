@@ -1,13 +1,13 @@
 """
-Библиотека партий (таски 27.1–27.2): разбор PGN в записи библиотеки, слияние одинаковых партий, дерево коллекций,
-видимость и сборка PGN для просмотра.
+Game library (tasks 27.1-27.2): parsing PGN into library records, merging identical games, the collection tree,
+visibility and PGN assembly for viewing.
 
-При импорте берутся только заголовки и главная линия: комментарии, варианты и оценки из файлов отбрасываются
-(правило 5, `docs/research/books-library-review.md`). Нелегальный ход обрывает партию на нём, а не импорт.
+On import only the headers and the main line are taken: comments, variations and evaluations from the files are discarded
+(rule 5, `docs/research/books-library-review.md`). An illegal move cuts the game off at that move, not the import.
 
-Данные: таблицы library_games, library_collections, library_game_collections (src/models/library.py); читают файлы
-PGN со скриптов scripts/import_library.py и scripts/build_master_books.py и начальная загрузка src/db/seed.py.
-Видимость и аннотации используют src/api/library.py и src/services/opening_explorer.py.
+Data: the tables library_games, library_collections, library_game_collections (src/models/library.py); PGN files are read
+by the scripts scripts/import_library.py and scripts/build_master_books.py and the initial load src/db/seed.py.
+Visibility and annotations are used by src/api/library.py and src/services/opening_explorer.py.
 """
 
 import hashlib
@@ -29,17 +29,17 @@ from src.services.beauty import is_beautiful
 from src.services.game_engine import normalize_result
 
 STANDARD_FEN = chess.STARTING_FEN
-# Предел длины главной линии, полуходы: более длинное остаётся обрезанным, а не отвергается.
+# The main line length limit, plies: a longer one is left truncated rather than rejected.
 MAX_PLIES = 1000
-# Год в начале поля Date («1985.??.??»).
+# The year at the start of the Date field ("1985.??.??").
 YEAR = re.compile(r"^(\d{4})")
 
 
 @dataclass
 class ParsedGame:
     """
-    Партия, прочитанная из PGN: поля заголовков, главная линия ходов и её хэш — по нему одинаковые партии из разных
-    файлов сливаются.
+    A game read from PGN: header fields, the main line of moves and its hash -- by which identical games from different
+    files are merged.
     """
     white: str
     black: str
@@ -58,14 +58,14 @@ class ParsedGame:
 
     @property
     def moves_hash(self) -> str:
-        """SHA-256 от игроков, года, начальной позиции и ходов: ключ слияния одинаковых партий."""
+        """SHA-256 of the players, year, starting position and moves: the merge key of identical games."""
         key = "|".join((self.white.lower(), self.black.lower(), str(self.year or ""), self.start_fen or "",
                         " ".join(self.moves)))
         return hashlib.sha256(key.encode("utf-8")).hexdigest()
 
 
-# Фигурки-символы старых шрифтов в тексте PGN (¢ король … § пешка) и буквы ходов, на которые они заменяются; символ
-# заменяется только перед полем или взятием (см. _FIGURINE).
+# Figurine symbols of old fonts in PGN text (¢ king ... § pawn) and the move letters they are replaced with; a symbol
+# is replaced only before a square or a capture (see _FIGURINE).
 FIGURINES = {"¢": "K", "£": "Q", "¤": "N", "¥": "B", "¦": "R", "§": "P"}
 _FIGURINE = re.compile(r"[¢£¤¥¦§](?=[a-hx])")
 _LATIN_HIGH = re.compile(r"[\u00c0-\u00ff]")
@@ -75,9 +75,9 @@ _HIGH_WORD = re.compile(r"[\u00c0-\u00ff]{3,}")
 
 def repair_text(value: str) -> str:
     """
-    Текст в cp1251, прочитанный как однобайтовая латиница («Ñèöèëèàíñêàÿ» вместо «Сицилианская»), — обратно в
-    кириллицу; фигурки шрифта — в буквы ходов. Латиница с диакритикой (Müller, Réti) не трогается: в ней старших
-    букв мало, а в кириллице, прочитанной не так, — почти все.
+    Text in cp1251 read as single-byte Latin (mojibake such as "Ñèöèëèàíñêàÿ") -- back to
+    Cyrillic; font figurines -- to move letters. Latin with diacritics (Müller, Réti) is left alone: it has few
+    high letters, while Cyrillic read the wrong way has almost all of them.
     """
     value = _FIGURINE.sub(lambda m: FIGURINES[m.group(0)], value)
     if _CYRILLIC.search(value):
@@ -86,13 +86,13 @@ def repair_text(value: str) -> str:
     letters = high + sum(ch.isascii() and ch.isalpha() for ch in value)
     if high >= 2 and high / letters > 0.5:
         return _to_cp1251(value)
-    # Латинский префикс разбавляет долю («KID_AverbakhVar-Ñòàðîèíäèéñêàÿ»): слово из трёх и более старших букв
-    # подряд в настоящих западных именах не встречается.
+    # A Latin prefix dilutes the share ("KID_AverbakhVar-Ñòàðîèíäèéñêàÿ"): a word of three or more high letters
+    # in a row does not occur in real Western names.
     return _HIGH_WORD.sub(lambda m: _to_cp1251(m.group(0)), value)
 
 
 def _to_cp1251(value: str) -> str:
-    """Обратное преобразование «cp1251, прочитанный как cp1252/latin-1»; не удалось — строка как есть."""
+    """The reverse of "cp1251 read as cp1252/latin-1"; if it fails -- the string as is."""
     for single_byte in ("cp1252", "latin-1"):
         try:
             return value.encode(single_byte).decode("cp1251")
@@ -102,19 +102,19 @@ def _to_cp1251(value: str) -> str:
 
 
 def _header(game: chess.pgn.Game, name: str, limit: int) -> str:
-    """Заголовок PGN после repair_text, обрезанный до limit; «?» и «????.??.??» — пустая строка."""
+    """A PGN header after repair_text, truncated to limit; "?" and "????.??.??" -- an empty string."""
     value = repair_text(game.headers.get(name, "").strip())
     return "" if value in ("?", "????.??.??") else value[:limit]
 
 
 def _int(value: str) -> int | None:
-    """Рейтинг из заголовка: целое от 1 до 3999, иначе None."""
+    """A rating from a header: an integer from 1 to 3999, otherwise None."""
     value = value.strip()
     return int(value) if value.isdigit() and 0 < int(value) < 4000 else None
 
 
 def parse_game(game: chess.pgn.Game) -> ParsedGame | None:
-    """Партия PGN → запись библиотеки; None — партия без ходов или шахматы другого вида."""
+    """A PGN game -> a library record; None -- a game without moves or chess of another variant."""
     variant = game.headers.get("Variant", "").lower()
     if variant and variant not in ("standard", "chess"):
         return None
@@ -152,20 +152,22 @@ def parse_game(game: chess.pgn.Game) -> ParsedGame | None:
 
 
 def open_pgn(path: str) -> TextIO:
-    """Файл PGN в UTF-8 или в cp1251 (старые русские базы): кодировка — по началу файла."""
+    """
+    A PGN file in UTF-8 or cp1251 (old Cyrillic-language databases): the encoding is determined from the start of the file.
+    """
     with open(path, "rb") as raw:
         head = raw.read(65536)
     try:
         head.decode("utf-8")
         encoding = "utf-8-sig"
     except UnicodeDecodeError as exc:
-        # Обрезанный в конце блока многобайтный символ — не повод считать файл не UTF-8.
+        # A multibyte character cut off at the end of a block is no reason to consider the file not UTF-8.
         encoding = "utf-8-sig" if exc.start >= len(head) - 4 else "cp1251"
     return open(path, encoding=encoding, errors="replace")
 
 
 def read_games(handle: TextIO) -> Iterator[chess.pgn.Game]:
-    """Лениво читает партии из открытого файла PGN, пока они не кончатся."""
+    """Lazily reads games from an open PGN file until they run out."""
     while True:
         game = chess.pgn.read_game(handle)
         if game is None:
@@ -174,13 +176,13 @@ def read_games(handle: TextIO) -> Iterator[chess.pgn.Game]:
 
 
 def read_text(text: str) -> Iterator[chess.pgn.Game]:
-    """То же, что read_games, для PGN в строке."""
+    """The same as read_games, for a PGN in a string."""
     return read_games(io.StringIO(text))
 
 
 @dataclass
 class ImportStats:
-    """Счётчики импорта: прочитано партий, добавлено, найдено дублей, привязано к коллекции, пропущено."""
+    """Import counters: games read, added, duplicates found, attached to a collection, skipped."""
     games: int = 0
     added: int = 0
     duplicates: int = 0
@@ -195,7 +197,7 @@ class ImportStats:
 
 async def ensure_collection(db: AsyncSession, path: str, *, visibility: str = "public", owner_id: int | None = None,
                             source: str = "") -> LibraryCollection:
-    """Коллекция по пути «A/B/C» со всеми родителями; видимость и владелец — у всех узлов пути."""
+    """A collection by the path "A/B/C" with all parents; visibility and owner are those of all path nodes."""
     parent: LibraryCollection | None = None
     parts = [part.strip() for part in path.split("/") if part.strip()]
     for depth in range(len(parts)):
@@ -214,7 +216,7 @@ async def ensure_collection(db: AsyncSession, path: str, *, visibility: str = "p
 
 async def import_games(db: AsyncSession, collection: LibraryCollection, games: Iterable[chess.pgn.Game],
                        batch: int = 500) -> ImportStats:
-    """Партии → библиотека: новые добавляются, одинаковые (по хэшу) только привязываются к коллекции."""
+    """Games -> the library: new ones are added, identical ones (by hash) are only attached to the collection."""
     stats = ImportStats()
     sort = await db.scalar(select(LibraryGameCollection.sort).where(LibraryGameCollection.collection_id == collection.id)
                            .order_by(LibraryGameCollection.sort.desc()).limit(1)) or 0
@@ -222,8 +224,9 @@ async def import_games(db: AsyncSession, collection: LibraryCollection, games: I
 
     async def flush() -> None:
         """
-        Записывает накопленную пачку партий: уже известные (по хэшу ходов) только привязываются к коллекции, новые
-        добавляются в библиотеку.
+        Writes the accumulated batch of games: already known ones (by move hash) are only attached to the collection, new
+        ones are
+        added to the library.
         """
         nonlocal sort
         hashes = {game.moves_hash for game in pending}
@@ -249,7 +252,8 @@ async def import_games(db: AsyncSession, collection: LibraryCollection, games: I
                                   beautiful=is_beautiful(parsed.start_fen, parsed.moves))
                 db.add(row)
                 await db.flush()
-                # Позиции новой партии — в индекс библиотеки: примеры под позицией в справочнике дебютов (8б).
+                # Positions of the new game go into the library index: examples under a position in the openings reference
+                # (8b).
                 await position_index.index_library_game(db, row)
                 known[key] = game_id = row.id
                 stats.added += 1
@@ -276,14 +280,14 @@ async def import_games(db: AsyncSession, collection: LibraryCollection, games: I
 
 
 def structure_of(parsed: ParsedGame) -> str | None:
-    """Пешечная структура партии (27.5) — только из начальной позиции."""
+    """The game's pawn structure (27.5) -- only from the starting position."""
     if parsed.start_fen is not None:
         return None
     return pawn_structures.game_structure(chess.Move.from_uci(uci) for uci in parsed.moves)
 
 
 def ends_in_mate(start_fen: str | None, moves: list[str]) -> bool:
-    """Партия закончилась матом на доске (метка для «Миниатюр», 27.9)."""
+    """The game ended in mate on the board (a mark for "Miniatures", 27.9)."""
     board = chess.Board(start_fen) if start_fen else chess.Board()
     try:
         for uci in moves:
@@ -294,7 +298,7 @@ def ends_in_mate(start_fen: str | None, moves: list[str]) -> bool:
 
 
 def visible_clause(user: User | None) -> ColumnElement[bool]:
-    """Какие коллекции видит пользователь: публичные, свои закрытые, служебные — модераторы."""
+    """Which collections a user sees: public ones, their own closed ones, service ones -- moderators."""
     conditions: list[ColumnElement[bool]] = [LibraryCollection.visibility == "public"]
     if user is not None:
         conditions.append((LibraryCollection.visibility == "owner") & (LibraryCollection.owner_id == user.id))
@@ -303,14 +307,14 @@ def visible_clause(user: User | None) -> ColumnElement[bool]:
     return or_(*conditions)
 
 
-# Статусы аннотации (таск 27.4): auto и approved видны всем, draft и review — модераторам.
+# Annotation statuses (task 27.4): auto and approved are visible to everyone, draft and review -- to moderators.
 ANNOTATION_STATUSES = ("auto", "draft", "review", "approved")
-# Подмножество статусов, которое показывается без прав модератора.
+# The subset of statuses shown without moderator rights.
 PUBLIC_ANNOTATION = ("auto", "approved")
 
 
 def annotation_view(annotation, user: User | None) -> dict | None:
-    """Аннотация для просмотра партии — если её можно показать этому пользователю."""
+    """An annotation for viewing a game -- if it can be shown to this user."""
     if annotation is None:
         return None
     if annotation.status not in PUBLIC_ANNOTATION and not (user is not None and user.is_moderator):
@@ -321,7 +325,7 @@ def annotation_view(annotation, user: User | None) -> dict | None:
 
 
 def to_pgn(game: LibraryGame) -> str:
-    """PGN партии библиотеки: заголовки и ходы, без комментариев."""
+    """The PGN of a library game: headers and moves, without comments."""
     pgn = chess.pgn.Game()
     for name, value in (("Event", game.event), ("Site", game.site), ("Date", game.date), ("Round", game.round),
                         ("White", game.white), ("Black", game.black), ("Result", game.result),

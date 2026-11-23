@@ -1,5 +1,5 @@
-// Повторение репертуара (таск 20.2): карточки (верно, ошибка → повтор в конце сессии без смены расписания, итог),
-// режим «Учить новые» (сначала показ), «Игра против репертуара» (ответ соперника, выход из линий, конец линии).
+// Repertoire review (task 20.2): cards (right, a mistake → a repeat at the end of the session without changing the schedule, the result),
+// the "Learn new" mode (the show first), "Play against the repertoire" (the opponent's reply, leaving the lines, the end of a line).
 
 import {act, fireEvent, render, screen} from '@testing-library/react';
 import {MemoryRouter, Route, Routes} from 'react-router-dom';
@@ -13,7 +13,7 @@ const AFTER_E4 = 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq -';
 const AFTER_D4 = 'rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq -';
 
 const REP: Repertoire = {
-    id: 7, name: 'Каро', color: 'black', starter: null, root: ROOT,
+    id: 7, name: 'Caro', color: 'black', starter: null, root: ROOT,
     moves: [
         {position: ROOT, uci: 'e2e4', san: 'e4', child: AFTER_E4, comment: '', mine: false},
         {position: AFTER_E4, uci: 'c7c6', san: 'c6', child: 'x', comment: 'solid', mine: true},
@@ -69,46 +69,46 @@ afterEach(() => {
     setToken(null);
 });
 
-describe('повторение репертуара', () => {
-    it('верно, ошибка, повтор ошибки в конце сессии, итог', async () => {
+describe('repertoire review', () => {
+    it('right, a mistake, a repeat of the mistake at the end of the session, the result', async () => {
         const answers = stub();
         await act(async () => page());
-        expect(screen.getByTestId('drill-stats')).toHaveTextContent('новых 2');
-        expect(screen.getByTestId('drill-prompt')).toHaveTextContent('Ваш ход в этой позиции?');
+        expect(screen.getByTestId('drill-stats')).toHaveTextContent('new 2');
+        expect(screen.getByTestId('drill-prompt')).toHaveTextContent('Your move in this position?');
         await move('c7', 'c6');
-        expect(screen.getByTestId('drill-prompt')).toHaveTextContent('Верно!');
+        expect(screen.getByTestId('drill-prompt')).toHaveTextContent('Correct!');
         expect(screen.getByText('solid', {exact: false})).toBeInTheDocument();
         fireEvent.click(screen.getByTestId('drill-next'));
 
         await move('e7', 'e5');
-        expect(screen.getByTestId('drill-prompt')).toHaveTextContent('Не этот ход. В вашем репертуаре: d5.');
+        expect(screen.getByTestId('drill-prompt')).toHaveTextContent('Not this move. In your repertoire: d5.');
         fireEvent.click(screen.getByTestId('drill-next'));
-        expect(screen.getByTestId('drill-prompt')).toHaveTextContent('Ещё раз');
+        expect(screen.getByTestId('drill-prompt')).toHaveTextContent('Once more');
         await move('d7', 'd5');
         fireEvent.click(screen.getByTestId('drill-next'));
 
-        expect(screen.getByTestId('drill-done')).toHaveTextContent('верно 1, ошибок 1');
+        expect(screen.getByTestId('drill-done')).toHaveTextContent('1 correct, 1 mistakes');
         expect(answers.map((a) => [a.uci, a.retry])).toEqual([['c7c6', false], ['e7e5', false], ['d7d5', true]]);
     });
 
-    it('«Учить новые»: сначала показ, потом проверка', async () => {
+    it('"Learn new": the show first, then the check', async () => {
         stub();
         await act(async () => page());
         await act(async () => fireEvent.click(screen.getByTestId('drill-tab-learn')));
-        expect(screen.getByTestId('drill-prompt')).toHaveTextContent('показан стрелкой');
+        expect(screen.getByTestId('drill-prompt')).toHaveTextContent('shown by the arrow');
         fireEvent.click(screen.getByTestId('drill-check'));
-        expect(screen.getByTestId('drill-prompt')).toHaveTextContent('Ваш ход в этой позиции?');
+        expect(screen.getByTestId('drill-prompt')).toHaveTextContent('Your move in this position?');
     });
 
-    it('игра против репертуара: соперник ходит первым, выход из линий, конец линии', async () => {
+    it('play against the repertoire: the opponent moves first, leaving the lines, the end of a line', async () => {
         stub((moves) => (moves.length === 0 ? 'e2e4' : null));
         await act(async () => page());
         await act(async () => fireEvent.click(screen.getByTestId('drill-tab-play')));
         expect(screen.getByTestId('drill-play-line')).toHaveTextContent('1. e4');
         await move('e7', 'e5');
-        expect(screen.getByTestId('drill-play-status')).toHaveTextContent('Здесь вы играете: c6');
+        expect(screen.getByTestId('drill-play-status')).toHaveTextContent('Here you play: c6');
         fireEvent.click(screen.getByTestId('drill-play-retry'));
         await move('c7', 'c6');
-        expect(screen.getByTestId('drill-play-status')).toHaveTextContent('Линия пройдена');
+        expect(screen.getByTestId('drill-play-status')).toHaveTextContent('The line is complete');
     });
 });

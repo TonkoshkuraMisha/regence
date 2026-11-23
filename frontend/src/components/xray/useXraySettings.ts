@@ -1,23 +1,23 @@
 // --- FILE: frontend/src/components/xray/useXraySettings.ts ---
-// Настройки «рентгена» (таск 12.1): какие режимы включены и за какую сторону смотреть. Режимы запоминаются в
-// localStorage (ключ regence_xray_modes), «за соперника» — нет: сбрасывается при новой загрузке страницы.
-// Хук подключают Chessboard.tsx, GameViewer.tsx и chessboard/AuxBoard.tsx; рисуют XrayPanel и XrayOverlay.
+// "X-ray" settings (task 12.1): which modes are enabled and which side to look from. Modes are remembered in
+// localStorage (key regence_xray_modes), "for the opponent" is not: it resets on a fresh page load.
+// The hook is used by Chessboard.tsx, GameViewer.tsx and chessboard/AuxBoard.tsx; rendered by XrayPanel and XrayOverlay.
 
 import {useCallback, useState} from 'react';
 
-/** Режим «рентгена»; ключ xray.modes.<режим>.name/legend в трёх каталогах и поле отчёта xrayFor. */
+/** An "x-ray" mode; key xray.modes.<mode>.name/legend in the three catalogs and a field of the xrayFor report. */
 export type XrayMode =
     | 'control' | 'hanging' | 'lines' | 'captures' | 'defenses' | 'checks' | 'moves' | 'pawns' | 'safety';
 
-/** Все режимы в порядке показа в панели; значения из localStorage, которых здесь нет, отбрасываются. */
+/** All modes in panel display order; localStorage values not listed here are discarded. */
 export const XRAY_MODES: readonly XrayMode[] = [
     'control', 'hanging', 'lines', 'captures', 'defenses', 'checks', 'moves', 'pawns', 'safety',
 ];
 
-/** Ключ localStorage со списком включённых режимов (JSON-массив). */
+/** localStorage key holding the list of enabled modes (JSON array). */
 const STORAGE_KEY = 'regence_xray_modes';
 
-/** Прочитать запомненные режимы; повреждённое значение или недоступное хранилище — пустое множество. */
+/** Read the remembered modes; a corrupted value or unavailable storage gives an empty set. */
 function readModes(): Set<XrayMode> {
     try {
         const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]');
@@ -27,18 +27,18 @@ function readModes(): Set<XrayMode> {
     }
 }
 
-/** Состояние и действия настроек «рентгена». */
+/** State and actions of the "x-ray" settings. */
 export interface XraySettings {
-    /** Включённые режимы. */
+    /** Enabled modes. */
     modes: Set<XrayMode>;
-    /** Включить или выключить режим и сохранить выбор. */
+    /** Enable or disable a mode and persist the choice. */
     toggle: (mode: XrayMode) => void;
-    /** Показать те же подсказки за соперника: «что он мне ответит?». */
+    /** Show the same hints for the opponent: "what will they answer?". */
     forOpponent: boolean;
     setForOpponent: (value: boolean) => void;
 }
 
-/** Хук настроек «рентгена»: режимы читаются из localStorage один раз при создании. */
+/** "X-ray" settings hook: modes are read from localStorage once on creation. */
 export function useXraySettings(): XraySettings {
     const [modes, setModes] = useState<Set<XrayMode>>(readModes);
     const [forOpponent, setForOpponent] = useState(false);
@@ -50,7 +50,7 @@ export function useXraySettings(): XraySettings {
             try {
                 localStorage.setItem(STORAGE_KEY, JSON.stringify([...next]));
             } catch {
-                // приватный режим — настройка не запомнится
+                // private mode - the setting will not be remembered
             }
             return next;
         });

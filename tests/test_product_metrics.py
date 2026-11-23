@@ -1,5 +1,5 @@
 # --- FILE: tests/test_product_metrics.py ---
-"""Продуктовые метрики без сторонних трекеров (таск 23.5): события, активация, удержание, отчёт владельца."""
+"""Product metrics without third-party trackers (task 23.5): events, activation, retention, owner report."""
 
 from datetime import UTC, date, datetime, timedelta
 
@@ -25,8 +25,8 @@ async def test_event_is_recorded_once_per_day_and_kind(db_session, test_user_1):
     for _ in range(3):
         await pm.record_event(db_session, test_user_1.id, pm.PUZZLE_ATTEMPT)
     await pm.record_event(db_session, test_user_1.id, pm.GAME_FINISHED)
-    await pm.record_event(db_session, test_user_1.id, "made_up_kind")  # вне списка — не пишется
-    await pm.record_event(db_session, None, pm.GAME_FINISHED)  # гость — не пишется
+    await pm.record_event(db_session, test_user_1.id, "made_up_kind")  # not in the list: not recorded
+    await pm.record_event(db_session, None, pm.GAME_FINISHED)  # guest: not recorded
     await db_session.commit()
     assert await _count(db_session, user_id=test_user_1.id) == 2
     assert await _count(db_session, kind=pm.PUZZLE_ATTEMPT) == 1
@@ -52,11 +52,11 @@ async def test_report_counts_activation_and_retention(db_session, test_user_1, t
     fast, slow = test_user_1.id, test_user_2.id
     db_session.add_all([
         _event(fast, pm.REGISTERED, start),
-        _event(fast, pm.GAME_FINISHED, start + timedelta(minutes=3)),  # первая партия за 3 минуты
+        _event(fast, pm.GAME_FINISHED, start + timedelta(minutes=3)),  # first game within 3 minutes
         _event(fast, pm.ACTIVE, start + timedelta(days=1)),
-        _event(fast, pm.PUZZLE_ATTEMPT, start + timedelta(days=7)),  # любое действие — активный день
+        _event(fast, pm.PUZZLE_ATTEMPT, start + timedelta(days=7)),  # any action: an active day
         _event(slow, pm.REGISTERED, start + timedelta(hours=1)),
-        _event(slow, pm.GAME_FINISHED, start + timedelta(hours=12)),  # в тот же день, но не за 5 минут
+        _event(slow, pm.GAME_FINISHED, start + timedelta(hours=12)),  # the same day, but not within 5 minutes
     ])
     await db_session.commit()
 

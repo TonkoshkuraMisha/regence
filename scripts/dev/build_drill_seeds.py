@@ -1,11 +1,11 @@
 # --- FILE: scripts/dev/build_drill_seeds.py ---
 """
-Таблица seed для упражнений-генераторов (таск 13.7) → data/drills/seeds.json.
+Seed table for generator drills (task 13.7) -> data/drills/seeds.json.
 
-Для каждого сочетания «вид × фигура × уровень» перебираются seed подряд, пока не наберётся ``--per-combo`` позиций с
-единственным верным ответом (src/services/drill_generator.py). Сервер берёт seed из таблицы и восстанавливает
-упражнение одной попыткой — быстро даже для мата в 2, а редкие сочетания (мат конём, угроза мата слоном) не
-заставляют игрока ждать перебора. Детерминировано: та же версия генератора даёт ту же таблицу.
+For each "kind x piece x level" combination seeds are tried in sequence until ``--per-combo`` positions with a
+unique correct answer are collected (src/services/drill_generator.py). The server takes a seed from the table and restores the
+drill in one attempt - fast even for mate in 2, and rare combinations (mate with a knight, a mate threat by a bishop) do not
+make the player wait for the search. Deterministic: the same generator version gives the same table.
 
     python -m scripts.dev.build_drill_seeds [--per-combo 40] [--max-seed 400000]
 """
@@ -22,7 +22,7 @@ OUTPUT = pathlib.Path(__file__).resolve().parents[2] / "data" / "drills" / "seed
 
 
 def find(args: tuple[str, str, int, int, int]) -> tuple[str, list[int]]:
-    """Находит набор seed с единственным решением для одной комбинации генератора."""
+    """Finds a set of seeds with a unique solution for one generator combination."""
     kind, piece, level, need, max_seed = args
     seeds: list[int] = []
     seed = 0
@@ -34,12 +34,12 @@ def find(args: tuple[str, str, int, int, int]) -> tuple[str, list[int]]:
 
 
 def main() -> None:
-    """Собирает таблицу проверенных seed для всех упражнений-генераторов."""
+    """Builds the table of verified seeds for all generator drills."""
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--per-combo", type=int, default=40)
     parser.add_argument("--max-seed", type=int, default=400_000)
     parser.add_argument("--only", nargs="*", default=None,
-                        help="пересобрать только эти сочетания (вид.фигура.уровень), остальные оставить из файла")
+                        help="rebuild only these combinations (kind.piece.level), keep the others from the file")
     args = parser.parse_args()
     combos = [(k, p, lv, args.per_combo, args.max_seed)
               for k in KINDS for p in PIECES for lv in LEVELS if supported(k, p)]

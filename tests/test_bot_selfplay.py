@@ -1,5 +1,5 @@
 # --- FILE: tests/test_bot_selfplay.py ---
-"""Настройка характера самоигрой (таск 32.3): шаг в границах стиля, копилка партий, журнал, каталог."""
+"""Character tuning by self-play (task 32.3): a step within the style bounds, the game accumulator, the log, the catalog."""
 
 import random
 
@@ -23,14 +23,14 @@ def test_step_moves_toward_declared_strength_within_style_bounds():
     base = ARCH.config
     target = base.target_elo
     r, g = base.randomness, base.blunder_guard_cp
-    # Сильнее заявленного — ослабить: больше разброс, шире окно.
+    # Stronger than rated: weaken it with more spread and a wider window.
     assert selfplay.step(base, r, g, target + 200) == (min(100, r + selfplay.RANDOMNESS_STEP), g + selfplay.GUARD_STEP)
-    # Слабее — усилить.
+    # Weaker: strengthen it.
     weaker = selfplay.step(base, r, g, target - 200)
     assert weaker[0] <= r and weaker[1] == g - selfplay.GUARD_STEP
-    # Расхождение меньше порога — ничего не трогаем.
+    # The discrepancy is below the threshold: leave it alone.
     assert selfplay.step(base, r, g, target + selfplay.DRIFT - 1) == (r, g)
-    # Сколько ни ослабляй — не дальше границ стиля.
+    # However much it is weakened, never beyond the style bounds.
     (r_lo, r_hi), (g_lo, g_hi) = selfplay.bounds(base)
     for _ in range(50):
         r, g = selfplay.step(base, r, g, target + 500)
@@ -52,7 +52,7 @@ async def test_full_bank_tunes_logs_and_resets(db_session, monkeypatch):
     assert log is not None and log.measured == target + selfplay.PERF_SPAN and log.target == target
     assert log.randomness_after > log.randomness_before or log.randomness_after == 100
     row = await db_session.get(BotTuning, ARCH.key)
-    assert (row.games, row.points) == (0, 0.0)                               # копилка начата заново
+    assert (row.games, row.points) == (0, 0.0)                               # the accumulator restarts
     tuned = selfplay.tuned_config(ARCH)
     assert tuned.blunder_guard_cp == log.guard_after
     assert (tuned.aggression, tuned.target_elo, tuned.habits) == (ARCH.config.aggression, target, ARCH.config.habits)
@@ -68,7 +68,7 @@ async def test_run_plays_neighbours_and_records_both_sides(db_session):
     played = await selfplay.run(db_session, games=6, play=fake_play, rng=random.Random(3))
     assert played == 6 and len(calls) == 6
     ladder = sorted({a.config.target_elo for a in ARCHETYPES})
-    for white, black in calls:                                                  # только соседи по силе
+    for white, black in calls:                                                  # only neighbours in strength
         assert abs(ladder.index(white) - ladder.index(black)) <= 1
     rows = {r.key: r for r in (await db_session.execute(BotTuning.__table__.select())).all()}
     assert sum(r.games for r in rows.values()) == 12
@@ -82,7 +82,7 @@ async def test_tuning_log_and_catalog_are_public(client, db_session, monkeypatch
     log = client.get("/api/v1/bots/tuning-log").json()
     [entry] = log["entries"]
     assert entry["key"] == ARCH.key and entry["measured"] == ARCH.config.target_elo - selfplay.PERF_SPAN
-    assert entry["blunder_guard_cp"][1] < entry["blunder_guard_cp"][0]       # слабее заявленного — окно уже
+    assert entry["blunder_guard_cp"][1] < entry["blunder_guard_cp"][0]       # weaker than rated: the window is narrower
     assert log["rules"] == {"games": 2, "drift": selfplay.DRIFT}
     catalog = client.get("/api/v1/bots/catalog").json()
     shown = next(a for a in catalog["archetypes"] if a["id"] == ARCH.id)

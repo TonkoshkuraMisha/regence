@@ -1,6 +1,6 @@
 # --- FILE: tests/test_civility.py ---
-"""Уважительное общение (таск 30.3): фильтр до отправки, придержание до модератора, жалоба на текст в один шаг,
-ограничения новичкам и нарушителям, скрытие переписки."""
+"""Respectful communication (task 30.3): a pre-send filter, holding until a moderator reviews, a one-step report on text,
+restrictions for newcomers and offenders, hiding conversations."""
 
 from datetime import UTC, datetime, timedelta
 
@@ -33,57 +33,57 @@ async def moderator(db_session):
 
 @pytest.fixture(autouse=True)
 async def veterans(db_session, test_user_1, test_user_2):
-    """Тестовые игроки «старые», чтобы ограничения новичков не мешали остальным проверкам."""
+    """The test players are "old" so that newcomer restrictions do not interfere with the other checks."""
     for user in (test_user_1, test_user_2):
         user.created_at = datetime.now(UTC) - timedelta(days=30)
     await db_session.commit()
 
 
 @pytest.mark.parametrize("text", [
-    "ты идиот", "Ты ИДИОООТ!", "ид1от", "you are an idiot", "f*ck off".replace("*", "u"), "иди нахуй",
-    "кил yourself".replace("кил", "kill"), "ти ідіот", "дeбил",  # латинская «e» в кириллическом слове
-    "убей себя",
+    "ти ідіот", "Ти ІДІООООТ!", "you are an idiot", "f*ck off".replace("*", "u"),
+    "кил yourself".replace("кил", "kill"), "дeбіл",  # Latin "e" inside a Cyrillic word
+    "вбий себе",
 ])
 def test_offensive_texts(text):
     assert civility.offensive(text) is True
 
 
 @pytest.mark.parametrize("text", [
-    "Отличная партия!", "колебание в эндшпиле", "застрахуй ладью", "Great game, well played", "лохматый конь",
-    "assess the position", "Scunthorpe", "уродился же такой ход", "",
+    "Чудова партія!", "коливання в ендшпілі", "застрахуй туру", "Great game, well played", "лохматий кінь",
+    "assess the position", "Scunthorpe", "",
 ])
 def test_harmless_texts(text):
     assert civility.offensive(text) is False
 
 
 async def test_dm_flagged_then_held_until_released(client, token_user_1, token_user_2, moderator, db_session):
-    flagged = client.post(f"{MSG}/with/player2", json={"body": "ты идиот"}, headers=auth(token_user_1))
+    flagged = client.post(f"{MSG}/with/player2", json={"body": "ти ідіот"}, headers=auth(token_user_1))
     assert flagged.status_code == 409 and flagged.json()["detail"]["code"] == "text_flagged"
-    sent = client.post(f"{MSG}/with/player2", json={"body": "ты идиот", "send_anyway": True}, headers=auth(token_user_1))
+    sent = client.post(f"{MSG}/with/player2", json={"body": "ти ідіот", "send_anyway": True}, headers=auth(token_user_1))
     assert sent.status_code == 200 and sent.json()["held"] is True
-    # Отправитель видит своё придержанное, получатель — нет (и не считает непрочитанным).
+    # The sender sees their own held message, the recipient does not (and does not count it as unread).
     assert [m["held"] for m in client.get(f"{MSG}/with/player2", headers=auth(token_user_1)).json()["messages"]] == [True]
     assert client.get(f"{MSG}/with/player1", headers=auth(token_user_2)).json()["messages"] == []
     assert client.get(f"{MSG}/unread", headers=auth(token_user_2)).json() == {"unread": 0}
 
     queue = client.get(f"{MOD}/queue", headers=auth(moderator)).json()["reports"]
     assert [(r["kind"], r["subject"], r["message_text"], r["target"]) for r in queue] == [
-        ("held", f"dm:{sent.json()['id']}", "ты идиот", "player1")]
+        ("held", f"dm:{sent.json()['id']}", "ти ідіот", "player1")]
     client.post(f"{MOD}/reports/{queue[0]['id']}/resolve", json={"action": "release"}, headers=auth(moderator))
     released = client.get(f"{MSG}/with/player1", headers=auth(token_user_2)).json()["messages"]
-    assert [m["body"] for m in released] == ["ты идиот"]
+    assert [m["body"] for m in released] == ["ти ідіот"]
 
 
 async def test_held_post_and_comment_then_hidden(client, token_user_1, token_user_2, moderator, db_session):
-    refused = client.post(FEED, json={"body": "все дебилы"}, headers=auth(token_user_1))
+    refused = client.post(FEED, json={"body": "всі дебіли"}, headers=auth(token_user_1))
     assert refused.json()["detail"]["code"] == "text_flagged"
-    held = client.post(FEED, json={"body": "все дебилы", "send_anyway": True}, headers=auth(token_user_1)).json()
+    held = client.post(FEED, json={"body": "всі дебіли", "send_anyway": True}, headers=auth(token_user_1)).json()
     assert held["held"] is True
-    assert client.get(f"{FEED}/user/player1").json()["posts"] == []           # чужим не видно
+    assert client.get(f"{FEED}/user/player1").json()["posts"] == []           # not visible to others
     assert [p["held"] for p in client.get(f"{FEED}/user/player1", headers=auth(token_user_1)).json()["posts"]] == [True]
 
-    post_id = client.post(FEED, json={"body": "Красивый этюд"}, headers=auth(token_user_1)).json()["id"]
-    comment = client.post(f"{FEED}/posts/{post_id}/comments", json={"body": "сука", "send_anyway": True},
+    post_id = client.post(FEED, json={"body": "A beautiful study"}, headers=auth(token_user_1)).json()["id"]
+    comment = client.post(f"{FEED}/posts/{post_id}/comments", json={"body": "курва", "send_anyway": True},
                           headers=auth(token_user_2)).json()
     assert comment["held"] is True
     assert client.get(f"{FEED}/posts/{post_id}", headers=auth(token_user_1)).json()["comments"] == []
@@ -99,7 +99,7 @@ async def test_held_post_and_comment_then_hidden(client, token_user_1, token_use
 
 
 async def test_text_report_in_one_step(client, token_user_1, token_user_2, moderator, db_session):
-    message = client.post(f"{MSG}/with/player2", json={"body": "отдай партию"}, headers=auth(token_user_1)).json()
+    message = client.post(f"{MSG}/with/player2", json={"body": "give me the game"}, headers=auth(token_user_1)).json()
     subject = f"dm:{message['id']}"
     own = client.post(f"{MOD}/reports/text", json={"subject": subject}, headers=auth(token_user_1))
     assert own.json()["detail"]["code"] == "report_self"
@@ -110,12 +110,12 @@ async def test_text_report_in_one_step(client, token_user_1, token_user_2, moder
     bad = client.post(f"{MOD}/reports/text", json={"subject": "game:1"}, headers=auth(token_user_2))
     assert bad.status_code == 422
     [report] = (await db_session.execute(select(Report).where(Report.kind == "content"))).scalars().all()
-    assert (report.subject, report.message_text, report.reason) == (subject, "отдай партию", "spam")
+    assert (report.subject, report.message_text, report.reason) == (subject, "give me the game", "spam")
 
     queue = client.get(f"{MOD}/queue", headers=auth(moderator)).json()["reports"]
     client.post(f"{MOD}/reports/{queue[0]['id']}/resolve", json={"action": "warn"}, headers=auth(moderator))
     assert await db_session.scalar(select(DirectMessage.id).where(DirectMessage.id == message["id"])) is None
-    # После предупреждения игрок месяц под ограничением.
+    # After a warning the player is restricted for a month.
     user = await db_session.scalar(select(User).where(User.username == "player1"))
     assert await civility.restricted(db_session, user) is True
 
@@ -126,7 +126,7 @@ async def test_someone_elses_message_cannot_be_reported_by_outsider(client, toke
     outsider = User(username="player3", hashed_password="x", created_at=datetime.now(UTC) - timedelta(days=30))
     db_session.add(outsider)
     await db_session.commit()
-    message = client.post(f"{MSG}/with/player2", json={"body": "привет"}, headers=auth(token_user_1)).json()
+    message = client.post(f"{MSG}/with/player2", json={"body": "hello"}, headers=auth(token_user_1)).json()
     peek = client.post(f"{MOD}/reports/text", json={"subject": f"dm:{message['id']}"},
                        headers=auth(create_user_token(outsider)))
     assert peek.status_code == 404

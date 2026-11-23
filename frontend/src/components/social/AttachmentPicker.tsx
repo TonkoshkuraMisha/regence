@@ -1,30 +1,30 @@
 // --- FILE: frontend/src/components/social/AttachmentPicker.tsx ---
-// Выбор вложения для публикации ленты (FeedPage.tsx, Composer) и личного сообщения (MessagesPage.tsx): вид вложения
-// и ссылка или идентификатор. Вставленная ссылка на партию, задачу, урок и т. п. распознаётся сама
-// (detectAttachment из services/messages.ts) — вид выбирается по ней. Достижение вручную не выбирается: оно приходит
-// готовым черновиком от кнопки «поделиться» в профиле и показывается подписью. Сеть не нужна: вложение уходит на
-// сервер вместе с текстом, проверяет его src/services/attachments.py.
+// Attachment choice for a feed post (FeedPage.tsx, Composer) and a direct message (MessagesPage.tsx): the attachment kind
+// and a link or identifier. A pasted link to a game, puzzle, lesson etc. is recognised automatically
+// (detectAttachment from services/messages.ts), and the kind is chosen by it. An achievement is not chosen manually: it arrives
+// as a ready draft from the "share" button in the profile and is shown with a label. No network needed: the attachment goes to the
+// server together with the text, and src/services/attachments.py validates it.
 
 import {X} from 'lucide-react';
 import {useI18n} from '../../i18n';
 import {detectAttachment} from '../../services/messages';
 import type {AttachmentKind} from '../../services/messages';
 
-/** Черновик вложения: вид и ссылка или идентификатор (ref); приходит и из location.state.attach. */
+/** Attachment draft: the kind and a link or identifier (ref); it also comes from location.state.attach. */
 export interface AttachmentDraft {
     kind: AttachmentKind;
     ref: string;
 }
 
-/** Виды вложений, выбираемые вручную; достижение добавляется только кнопкой «поделиться» в профиле. */
+/** Attachment kinds chosen manually; an achievement is added only by the "share" button in the profile. */
 export const ATTACHMENT_KINDS: AttachmentKind[] = ['game', 'position', 'puzzle', 'lesson', 'tournament', 'library'];
 
-/** Наибольшая длина поля ссылки: целый адрес страницы, из которого detectAttachment достаёт ref (на сервере ref ≤ 100). */
+/** Maximum length of the link field: a whole page address from which detectAttachment extracts ref (on the server ref <= 100). */
 const REF_INPUT_MAX = 200;
 
 /**
- * Строка выбора вложения. testId — префикс data-testid раздела («feed» или «dm»): у полей …-attach, …-attach-kind,
- * …-attach-ref. onRemove — крестик: вложение снято, строка закрывается.
+ * Attachment choice row. testId is the section's data-testid prefix ("feed" or "dm"): for the ...-attach, ...-attach-kind,
+ * ...-attach-ref fields. onRemove is the cross: the attachment is removed, the row closes.
  */
 export function AttachmentPicker({draft, onChange, onRemove, testId}: {
     draft: AttachmentDraft | null;

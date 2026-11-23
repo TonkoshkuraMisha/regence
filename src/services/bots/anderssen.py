@@ -1,16 +1,19 @@
 # --- FILE: src/services/bots/anderssen.py ---
 """
-Исторический бот «Адольф Андерсен»: дебютная книга и правила стиля.
+Historical bot "Adolf Anderssen": opening book and style rules.
 
-Дебют — книга из партий прототипа (books/anderssen.json, собирает scripts/build_opening_books.py) и несколько
-«фирменных» начал, заданных здесь (DEFAULT_ANDERSSEN_BOOK).
+Opening — a book from the prototype's games (books/anderssen.json, built by scripts/build_opening_books.py) and several
+"signature" openings set here (DEFAULT_ANDERSSEN_BOOK).
 
-Стиль (ANDERSSEN_STYLE) — бонусы в сантипешках кандидатам движка: шахи, взятия ради открытия линий, развитие, после
-дебюта — жертвы и фигуры у короля соперника (окно выбора хода у него самое широкое из семи ботов). Бонусы только
-выбирают среди ходов, близких по оценке к лучшему (окно — blunder_guard_cp); оценку позиции они не меняют.
+Style (ANDERSSEN_STYLE) — bonuses in centipawns for engine candidates: checks, captures that open lines, development, after
+the opening — sacrifices and pieces near the opponent's king (his move selection window is the widest of the seven bots). The
+bonuses only
+choose among moves close in evaluation to the best one (the window is blunder_guard_cp); they do not change the position
+evaluation.
 
-Сила: заявленный рейтинг и ограничение движка UCI_Elo — 2100; измеренная матчами — calibration.json. Порядок выбора
-хода — base.HistoricalBot; реплики бота — ключи каталога botComments.anderssen.* на клиенте.
+Strength: the declared rating and the engine's UCI_Elo limit — 2100; the match-measured one — calibration.json. The move
+selection
+order is base.HistoricalBot; the bot's remarks are the botComments.anderssen.* catalog keys on the client.
 """
 
 from src.services.bots.base import BookEntry, HistoricalBot, load_bot_opening_book
@@ -34,13 +37,16 @@ from src.services.bots.style import (
     to,
 )
 
-# Ширина окна выбора хода, сп (base.HistoricalBot._window): с опорным ходом силы бот может уступить ему не больше
-# половины этого значения, без движка — лучшему ходу не больше всего значения. Чем шире, тем больше простора стилю.
+# Width of the move selection window, cp (base.HistoricalBot._window): with a strength reference move the bot may fall short of
+# it by at most
+# half of this value, without an engine — short of the best move by at most the whole value. The wider, the more room for
+# style.
 ANDERSSEN_BLUNDER_GUARD_CP = 220.0
 
-# Фирменные линии: позиция (FEN без счётчиков ходов) → [(UCI, вес, ключ реплики botComments.*)]. Поверх книги из
-# books/*.json (load_bot_opening_book): ход из файла заменяет совпадающий, а фирменные ходы, которых в файле нет,
-# добавляются.
+# Signature lines: position (FEN without move counters) → [(UCI, weight, remark key botComments.*)]. On top of the book from
+# books/*.json (load_bot_opening_book): a move from the file replaces the matching one, and signature moves absent from the
+# file
+# are added.
 DEFAULT_ANDERSSEN_BOOK: dict[str, list[BookEntry]] = {
     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -": [
         ("e2e4", 96, "anderssen.bookGambit"),
@@ -75,12 +81,12 @@ ANDERSSEN_STYLE = Style(
         Rule(NEAR_ENEMY_KING, 18.0),
     ),
 )
-# Функция оценки стиля как самостоятельное имя (её импортируют тесты бота).
+# The style evaluation function as a standalone name (bot tests import it).
 evaluate_anderssen_style_bonus = ANDERSSEN_STYLE.evaluate
 
 
 class AnderssenBot(HistoricalBot):
-    """Адольф Андерсен: UCI_Elo 2100, глубина 6, уровень 8; случайный разброс ±10 сп, MultiPV 8."""
+    """Adolf Anderssen: UCI_Elo 2100, depth 6, level 8; random spread +-10 cp, MultiPV 8."""
 
     bot_id = "anderssen"
     engine_source_name = "anderssen_style_engine"

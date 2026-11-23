@@ -2,10 +2,10 @@
 
 """add_is_bot_to_users
 
-Исторических ботов (играбельных AI-соперников) и архивных исторических игроков (партии из
-PGN-архивов, посмотреть — нельзя сыграть) до сих пор опознавали по служебному маркеру в
-hashed_password. Явная колонка надёжнее и позволяет убрать их из таблицы лидеров одним
-условием, а не угадыванием по строке пароля в каждом запросе.
+Historical bots (playable AI opponents) and archived historical players (games from
+PGN archives, can be viewed but not played) used to be recognised by a service marker in
+hashed_password. An explicit column is more reliable and allows removing them from the leaderboard with a single
+condition instead of guessing by the password string in every query.
 
 Revision ID: b7e3f1a9c2d4
 Revises: f6c8d0e2b3a4
@@ -22,7 +22,7 @@ down_revision: str | Sequence[str] | None = "f6c8d0e2b3a4"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
-# Те же маркеры, что в src/api/bots.py (BOT_PASSWORD_MARKER) и src/db/seed.py.
+# The same markers as in src/api/bots.py (BOT_PASSWORD_MARKER) and src/db/seed.py.
 NO_LOGIN_MARKERS = ("!historical_bot_no_login!", "!historical_archive_no_login!")
 
 

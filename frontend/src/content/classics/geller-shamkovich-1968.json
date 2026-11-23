@@ -614,12 +614,10 @@
   }
  ],
  "intro": {
-  "ru": "Испанская партия, защита Стейница (3...d6). После 20...cxd5 белые получают ощутимый перевес.",
   "uk": "Іспанська партія, захист Стейніца (3...d6). Після 20...cxd5 білі отримують відчутну перевагу.",
   "en": "A Ruy Lopez, Steinitz Defence (3...d6). After 20...cxd5 White gets a clear advantage."
  },
  "summary": {
-  "ru": "Взятие 26.Bxg7+ с шахом ломает прикрытие короля, а затем ладья и ферзь собирают материал: 27.Rxa7, 29.Qxe6, 30.Rxe7. Урок: взятие с шахом рядом с королём часто вскрывает его — посчитайте, не выигрываете ли вы после этого материал по всей доске.",
   "uk": "Взяття 26.Bxg7+ із шахом ламає прикриття короля, а потім тура й ферзь збирають матеріал: 27.Rxa7, 29.Qxe6, 30.Rxe7. Урок: взяття з шахом поруч із королем часто розкриває його — порахуйте, чи не виграєте ви після цього матеріал по всій дошці.",
   "en": "The capture 26.Bxg7+ with check breaks the king's cover, and then rook and queen collect material: 27.Rxa7, 29.Qxe6, 30.Rxe7. Lesson: a capture with check next to the king often exposes it — calculate whether you then win material all over the board."
  }

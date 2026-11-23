@@ -1,7 +1,7 @@
 # --- FILE: tests/test_tablebase.py ---
 """
-Эндшпильные таблицы (таск 14.4): ответ таблиц, лучший ход защитника, кэш, ошибки, правило честной игры; запасной
-ответ движка, когда сервер таблиц недоступен (пул движка подменён — бинарник в CI не используется).
+Endgame tablebases (task 14.4): the tablebase answer, the defender's best move, cache, errors, the fair-play rule; the fallback
+engine answer when the tablebase server is unavailable (the engine pool is replaced - the binary is not used in CI).
 """
 
 from contextlib import contextmanager
@@ -64,7 +64,7 @@ def tables_down(monkeypatch):
 
 
 class _FakeEngine:
-    """Движок-заглушка: оценка и главная линия — те, что задал тест."""
+    """Stub engine: the evaluation and the main line are the ones set by the test."""
 
     def __init__(self, score: chess.engine.Score, pv: list[str]):
         self.score, self.pv, self.limits = score, pv, []
@@ -104,7 +104,7 @@ def test_engine_answer_is_not_cached(client, tables_down, monkeypatch, lichess):
 
 
 def _down_once(calls: list[str]):
-    """Первый запрос к таблицам падает по таймауту, следующие получают ответ таблиц."""
+    """The first tablebase request fails with a timeout, the following ones get a tablebase answer."""
 
     async def fetch(fen: str) -> dict:
         calls.append(fen)

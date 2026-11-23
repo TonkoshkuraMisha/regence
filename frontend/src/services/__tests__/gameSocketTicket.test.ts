@@ -27,12 +27,12 @@ class FakeWebSocket {
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
-describe('gameSocket: подключение по одноразовому тикету', () => {
+describe('gameSocket: connecting by a one-time ticket', () => {
     let events: string[];
 
     beforeEach(() => {
         FakeWebSocket.instances = [];
-        setToken('jwt.secret.token');  // токен входа — в памяти (таск 17.5)
+        setToken('jwt.secret.token');  // the login token is in memory (task 17.5)
         events = [];
         vi.stubGlobal('WebSocket', FakeWebSocket);
         vi.stubGlobal('window', {dispatchEvent: (e: Event) => events.push(e.type)});
@@ -43,7 +43,7 @@ describe('gameSocket: подключение по одноразовому ти�
         vi.unstubAllGlobals();
     });
 
-    it('кладёт в адрес WebSocket тикет, а не JWT', async () => {
+    it('puts a ticket into the WebSocket address, not the JWT', async () => {
         const fetchMock = vi.fn().mockResolvedValue({ok: true, status: 200, json: async () => ({ticket: 'one-time'})});
         vi.stubGlobal('fetch', fetchMock);
 
@@ -58,7 +58,7 @@ describe('gameSocket: подключение по одноразовому ти�
         expect(FakeWebSocket.instances[0].url).not.toContain('jwt.secret.token');
     });
 
-    it('при 401 на запрос тикета разлогинивает и не подключается', async () => {
+    it('on 401 for the ticket request logs out and does not connect', async () => {
         vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ok: false, status: 401}));
 
         gameSocket.connect('jwt.secret.token');
@@ -69,7 +69,7 @@ describe('gameSocket: подключение по одноразовому ти�
         expect(events).toContain('regence-auth-expired');
     });
 
-    it('закрытие с кодом 1008 (сессия отозвана) разлогинивает', async () => {
+    it('a close with code 1008 (session revoked) logs out', async () => {
         vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ok: true, status: 200, json: async () => ({ticket: 't'})}));
 
         gameSocket.connect('jwt.secret.token');
@@ -80,7 +80,7 @@ describe('gameSocket: подключение по одноразовому ти�
         expect(events).toContain('regence-auth-expired');
     });
 
-    it('не открывает сокет, если отключились, пока ждали тикет', async () => {
+    it('does not open a socket if they disconnected while waiting for the ticket', async () => {
         let resolveFetch: (v: unknown) => void = () => {
         };
         vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise((r) => (resolveFetch = r))));
@@ -93,7 +93,7 @@ describe('gameSocket: подключение по одноразовому ти�
         expect(FakeWebSocket.instances).toHaveLength(0);
     });
 
-    it('закрытие старого сокета после смены токена не трогает новое соединение', async () => {
+    it('closing the old socket after a token change does not touch the new connection', async () => {
         vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ok: true, status: 200, json: async () => ({ticket: 't'})}));
 
         gameSocket.connect('jwt.secret.token');
@@ -105,12 +105,12 @@ describe('gameSocket: подключение по одноразовому ти�
         newSocket.readyState = FakeWebSocket.OPEN;
         const sendSpy = vi.spyOn(newSocket, 'send');
 
-        // Событие закрытия старого сокета приходит с опозданием — в том числе с кодом 1008.
+        // The close event of the old socket arrives late — including with code 1008.
         oldSocket.onclose?.({code: 1008});
 
         expect(events).not.toContain('regence-auth-expired');
         gameSocket.send('leave_queue');
-        expect(sendSpy).toHaveBeenCalledOnce();           // ушло в действующий сокет,
-        expect(FakeWebSocket.instances).toHaveLength(2);  // а не открыло третье соединение
+        expect(sendSpy).toHaveBeenCalledOnce();           // went to the current socket,
+        expect(FakeWebSocket.instances).toHaveLength(2);  // and did not open a third connection
     });
 });

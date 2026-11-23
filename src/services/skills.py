@@ -1,19 +1,19 @@
 """
-Карта навыков (таск 22.1): сильные и слабые стороны игрока по уже собранным данным — без новых таблиц.
+Skills map (task 22.1): a player's strengths and weaknesses from data already collected - without new tables.
 
-* Тактика: решаемость задач по разделам A–L каталога тем (попытки × темы задач) и самые слабые темы.
-* Ошибки в своих партиях (13.5): какие темы чаще всего упускались.
-* Тренажёры зрения, памяти и счёта (19): попытки и лучший результат.
-* Дебюты (20): карточки репертуаров — выучено / в работе / новые.
-* Эндшпиль (14.4) и матовые конструкции (14.6): пройденные упражнения.
+* Tactics: puzzle solve rate by sections A-L of the theme catalogue (attempts x puzzle themes) and the weakest themes.
+* Mistakes in own games (13.5): which themes were missed most often.
+* Vision, memory and counting trainers (19): attempts and best result.
+* Openings (20): repertoire cards - learned / in progress / new.
+* Endgame (14.4) and mating patterns (14.6): completed exercises.
 
-Только для самого игрока: данные тренировок — личные.
+For the player only: training data is personal.
 
-Откуда данные: puzzle_attempts и puzzle_themes (тактика; учитываются все попытки, включая забеги и курс матов),
-personal_puzzles (ошибки в партиях), trainer_results (тренажёры), repertoires и repertoire_cards (дебюты),
-lesson_progress (эндшпиль и маты: пройденные записи с идентификатором «endgame-…» и «mates-…»), exam_results
-(диагностика, src/services/exam.py). Маршрут — src/api/skills.py; слабые темы берёт и разминка
-(src/services/workout.py). Сам модуль ничего не пишет.
+Where the data comes from: puzzle_attempts and puzzle_themes (tactics; all attempts are counted, including runs and the
+mate course), personal_puzzles (mistakes in games), trainer_results (trainers), repertoires and repertoire_cards (openings),
+lesson_progress (endgame and mates: completed records with the identifier "endgame-..." and "mates-..."), exam_results
+(diagnostics, src/services/exam.py). Route - src/api/skills.py; weak themes are also used by the warm-up
+(src/services/workout.py). The module itself writes nothing.
 """
 
 from collections import Counter
@@ -30,25 +30,25 @@ from src.services import exam
 from src.services.personal_puzzles import split_themes
 from src.services.themes import SECTIONS, THEMES
 
-MIN_ATTEMPTS = 5  # меньше — оценки раздела или темы нет («мало данных»)
-WEAK_THEMES = 5  # сколько слабых тем и сколько частых тем своих ошибок показывается
-# «Всего» для полосы прогресса эндшпиля. Число записано вручную и с данными не сверяется: в
-# frontend/src/content/endgames.json на 17.11.2026 — 34 упражнения (см. также ``lessons_done``).
+MIN_ATTEMPTS = 5  # fewer - there is no estimate for the section or theme ("not enough data")
+WEAK_THEMES = 5  # how many weak themes and how many frequent themes of own mistakes are shown
+# "Total" for the endgame progress bar. The number is written by hand and is not checked against the data: in
+# frontend/src/content/endgames.json as of 17.11.2026 there are 34 exercises (see also ``lessons_done``).
 ENDGAME_EXERCISES = 25
-MATE_CONSTRUCTIONS = 20  # «всего» конструкций курса матов; то же число, что len(mate_course.COURSE)
-SECTION_OF = {theme.code: theme.section for theme in THEMES}  # код темы → раздел каталога (A–L)
+MATE_CONSTRUCTIONS = 20  # "total" constructions of the mate course; the same number as len(mate_course.COURSE)
+SECTION_OF = {theme.code: theme.section for theme in THEMES}  # theme code -> catalogue section (A-L)
 
 
 def _percent(solved: int, total: int) -> int | None:
-    """Доля решённых в процентах; None — попыток меньше MIN_ATTEMPTS, оценка была бы случайной."""
+    """Share solved in percent; None - fewer attempts than MIN_ATTEMPTS, the estimate would be random."""
     return round(100 * solved / total) if total >= MIN_ATTEMPTS else None
 
 
 async def tactics(db: AsyncSession, user_id: int) -> tuple[list[dict], list[dict]]:
     """
-    Решаемость по разделам и самые слабые темы (не меньше MIN_ATTEMPTS попыток). Попытка задачи с несколькими
-    темами засчитывается каждой из них. Слабые — WEAK_THEMES тем с наименьшей долей решённых; при равной доле
-    первой идёт тема с большим числом попыток.
+    Solve rate by section and the weakest themes (at least MIN_ATTEMPTS attempts). An attempt at a puzzle with several
+    themes counts for each of them. Weak ones - the WEAK_THEMES themes with the lowest solved share; with an equal share
+    the theme with more attempts comes first.
     """
     rows = (await db.execute(
         select(PuzzleTheme.theme, func.count(), func.sum(case((PuzzleAttempt.solved, 1), else_=0)))
@@ -75,8 +75,8 @@ async def tactics(db: AsyncSession, user_id: int) -> tuple[list[dict], list[dict
 
 async def mistakes(db: AsyncSession, user_id: int) -> dict:
     """
-    Ошибки в своих партиях: сколько личных задач всего, сколько исправлено и какие темы встречаются чаще других.
-    У задачи может быть несколько тем — каждая считается; коды вне реестра тем пропускаются.
+    Mistakes in own games: how many personal puzzles in total, how many corrected and which themes occur more often than
+    others. A puzzle may have several themes - each counts; codes outside the theme registry are skipped.
     """
     rows = (await db.execute(
         select(PersonalPuzzle.themes, PersonalPuzzle.done).where(PersonalPuzzle.user_id == user_id)
@@ -89,7 +89,7 @@ async def mistakes(db: AsyncSession, user_id: int) -> dict:
 
 
 async def trainers(db: AsyncSession, user_id: int) -> list[dict]:
-    """Тренажёры зрения, памяти и счёта (trainer_results): число попыток, лучший счёт и наибольший уровень каждого."""
+    """Vision, memory and counting trainers (trainer_results): number of attempts, best score and the highest level of each."""
     rows = (await db.execute(
         select(TrainerResult.trainer, func.count(), func.max(TrainerResult.score), func.max(TrainerResult.level))
         .where(TrainerResult.user_id == user_id).group_by(TrainerResult.trainer).order_by(TrainerResult.trainer)
@@ -100,8 +100,8 @@ async def trainers(db: AsyncSession, user_id: int) -> list[dict]:
 
 async def openings(db: AsyncSession, user_id: int) -> dict:
     """
-    Карточки повторения репертуаров (20.2): выучено — интервал от 6 дней. Правило то же, что
-    repertoire_drill.status; число 6 здесь повторено (repertoire_drill.LEARNED_DAYS).
+    Repertoire repetition cards (20.2): learned - interval from 6 days. The rule is the same as
+    repertoire_drill.status; the number 6 is repeated here (repertoire_drill.LEARNED_DAYS).
     """
     rows = (await db.execute(
         select(RepertoireCard.first_reviewed_at.is_(None), RepertoireCard.interval_days >= 6, func.count())
@@ -118,9 +118,9 @@ async def openings(db: AsyncSession, user_id: int) -> dict:
 
 async def lessons_done(db: AsyncSession, user_id: int, prefix: str) -> int:
     """
-    Сколько записей lesson_progress игрока с идентификатором на prefix пройдено. Итоговая проверка курса матов
-    («mates-exam») не считается. Считаются все идентификаторы с таким началом: под «endgame-» попадают и упражнения
-    эндшпильного тренажёра, и уроки школы с идентификатором «endgame-…».
+    How many of the player's lesson_progress records with an identifier starting with prefix are completed. The final check
+    of the mate course ("mates-exam") is not counted. All identifiers with such a start are counted: "endgame-" covers both
+    exercises of the endgame trainer and school lessons with an identifier "endgame-...".
     """
     return await db.scalar(select(func.count()).select_from(LessonProgress).where(
         LessonProgress.user_id == user_id, LessonProgress.lesson_id.like(f"{prefix}%"),
@@ -130,8 +130,8 @@ async def lessons_done(db: AsyncSession, user_id: int, prefix: str) -> int:
 
 async def skill_map(db: AsyncSession, user: User) -> dict:
     """
-    Карта навыков игрока: тактика по разделам каталога, слабые темы, свои ошибки, тренажёры, дебюты, эндшпиль и
-    матовые конструкции.
+    The player's skills map: tactics by catalogue section, weak themes, own mistakes, trainers, openings, endgame and
+    mating patterns.
     """
     sections, weakest = await tactics(db, user.id)
     return {
@@ -144,6 +144,6 @@ async def skill_map(db: AsyncSession, user: User) -> dict:
         "openings": await openings(db, user.id),
         "endgames": {"done": await lessons_done(db, user.id, "endgame-"), "total": ENDGAME_EXERCISES},
         "mates": {"done": await lessons_done(db, user.id, "mates-"), "total": MATE_CONSTRUCTIONS},
-        # Диагностический экзамен (22.0) — стартовые данные, пока попыток задач мало.
+        # Diagnostic exam (22.0) - starting data while there are few puzzle attempts.
         "exam": await exam.latest(db, user.id),
     }

@@ -1,5 +1,5 @@
 # --- FILE: tests/test_auth_sessions.py ---
-"""Сессии входа (таск 17.5): короткий access-токен + refresh-токен в httpOnly-cookie, обновление и отзыв."""
+"""Login sessions (task 17.5): short-lived access token + refresh token in an httpOnly cookie, renewal and revocation."""
 
 from src.services import auth_sessions
 
@@ -25,7 +25,7 @@ def test_login_sets_an_http_only_strict_cookie_for_auth_paths_only(client):
     cookie = res.headers["set-cookie"]
     assert cookie.startswith(f"{auth_sessions.REFRESH_COOKIE}=")
     assert "HttpOnly" in cookie and "SameSite=strict" in cookie and "Path=/api/v1/auth" in cookie
-    assert "Max-Age=2592000" in cookie  # 30 суток
+    assert "Max-Age=2592000" in cookie  # 30 days
 
 
 def test_refresh_gives_a_working_access_token(client):
@@ -61,7 +61,7 @@ def test_password_change_keeps_this_client_and_drops_the_others(client):
     res = client.post("/api/v1/auth/change-password", headers={"Authorization": f"Bearer {token}"},
                       json={"current_password": PASSWORD, "new_password": "another-secret"})
     assert res.status_code == 200
-    assert client.post(REFRESH).status_code == 200  # новая cookie этого клиента
+    assert client.post(REFRESH).status_code == 200  # new cookie for this client
     client.cookies.set(auth_sessions.REFRESH_COOKIE, other_device, path="/api/v1/auth")
     assert client.post(REFRESH).status_code == 401
 
@@ -78,13 +78,13 @@ async def test_sessions_are_stored_as_hashes():
     token = await auth_sessions.issue(7, 3)
     assert await auth_sessions.lookup(token) == (7, 3)
     from src.db import redis as redis_module
-    assert await redis_module.redis_client.get(f"{auth_sessions.REFRESH_PREFIX}{token}") is None  # не в открытом виде
+    assert await redis_module.redis_client.get(f"{auth_sessions.REFRESH_PREFIX}{token}") is None  # not stored in plain text
     await auth_sessions.revoke(token)
     assert await auth_sessions.lookup(token) is None
 
 
 def test_refresh_ignores_the_old_platform_cookie_name(client):
-    """Кука под прежним именем платформы (michess_refresh) не читается: сайт не выкладывался, боевых сессий под ним нет."""
+    """A cookie under the platform's former name (michess_refresh) is not read: the site was never deployed."""
     _login(client)
     token = client.cookies.get(auth_sessions.REFRESH_COOKIE)
     client.cookies.clear()

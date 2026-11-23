@@ -1,14 +1,17 @@
 # --- FILE: src/api/client_errors.py ---
 """
-Отчёты об ошибках клиента (наблюдаемость, 21.11.2026): POST /client-errors принимает от страницы сведения о сбое —
-ошибка отрисовки, необработанное исключение, оборванное соединение — и пишет их в журнал сервера строкой
-`client_error` (логгер regence.client) вместе с номером запроса и игроком. Так баг «страница внезапно обновилась»
-виден в одном журнале с серверными событиями: по `request_id` из «хлебных крошек» находится вся цепочка.
+Client error reports (observability, 21.11.2026): POST /client-errors accepts from the page information about a failure -
+a render error, an unhandled exception, a dropped connection - and writes it to the server log as a
+`client_error` line (logger regence.client) together with the request id and the player. This way the bug "the page suddenly
+reloaded"
+is visible in the same log as server events: by the `request_id` from the "breadcrumbs" the whole chain is found.
 
-Открыт без входа (сбой может случиться до входа), поэтому: размеры всех полей ограничены, лимит на адрес
-(RATE_LIMIT_CLIENT_ERRORS за окно) — сверх лимита отчёты молча отбрасываются (ответ тот же 204: клиенту сообщать о
-лимите незачем, а повторять отправку он не должен). В базу ничего не пишется. Тела запросов, токены и личные данные
-клиент не присылает; сервер в любом случае пишет только присланные короткие поля. Клиентская часть —
+Open without login (a failure may happen before login), therefore: the sizes of all fields are limited, the limit per address
+(RATE_LIMIT_CLIENT_ERRORS per window) - over the limit reports are silently dropped (the same 204 response: there is no need to
+tell the client about
+the limit, and it must not retry sending). Nothing is written to the database. The client does not send request bodies, tokens
+or personal data;
+in any case the server writes only the short fields that were sent. The client part -
 frontend/src/services/clientErrors.ts.
 """
 
@@ -25,7 +28,7 @@ from src.core.logging_setup import REQUEST_ID_PATTERN, bind_log_context
 router = APIRouter(tags=["observability"])
 client_logger = logging.getLogger("regence.client")
 
-# Пределы полей отчёта: лишнее отсекается при разборе, а не молча принимается.
+# Report field limits: the excess is cut off at parsing instead of being silently accepted.
 MAX_MESSAGE = 500
 MAX_STACK = 4000
 MAX_URL = 300
@@ -33,8 +36,8 @@ MAX_BREADCRUMBS = 30
 
 
 class Breadcrumb(BaseModel):
-    """Одно событие перед сбоем: запрос к API (с номером), сообщение WebSocket, смена страницы."""
-    t: int = Field(..., description="Unix-время в миллисекундах")
+    """One event before a failure: an API request (with its id), a WebSocket message, a page change."""
+    t: int = Field(..., description="Unix time in milliseconds")
     kind: Literal["request", "socket", "route", "reload"]
     name: str = Field(..., max_length=120)
     status: int | None = None
@@ -42,7 +45,7 @@ class Breadcrumb(BaseModel):
 
 
 class ClientErrorIn(BaseModel):
-    """Отчёт страницы о сбое."""
+    """A page failure report."""
     kind: Literal["render", "error", "unhandledrejection", "socket", "reload"]
     message: str = Field(..., max_length=MAX_MESSAGE)
     stack: str | None = Field(None, max_length=MAX_STACK)
@@ -54,13 +57,13 @@ class ClientErrorIn(BaseModel):
 
 @router.post("/client-errors", status_code=status.HTTP_204_NO_CONTENT)
 async def report_client_error(report: ClientErrorIn, request: Request) -> Response:
-    """Пишет отчёт клиента в журнал; сверх лимита с адреса — тихо отбрасывает (204 в обоих случаях)."""
+    """Writes the client report to the log; over the per-address limit - silently drops it (204 in both cases)."""
     if not await try_consume("client_error", f"ip:{client_ip(request)}",
                              settings.RATE_LIMIT_CLIENT_ERRORS, settings.RATE_LIMIT_CLIENT_ERRORS_WINDOW_S):
         return Response(status_code=status.HTTP_204_NO_CONTENT)
     bind_log_context(game_id=report.game_id)
     crumbs = [c.model_dump(exclude_none=True) for c in report.breadcrumbs]
-    # Номера запросов из крошек — отдельным списком: по ним удобно искать серверные строки.
+    # Request ids from the breadcrumbs - as a separate list: handy for searching server lines.
     related = [c["request_id"] for c in crumbs if REQUEST_ID_PATTERN.match(c.get("request_id", ""))]
     client_logger.error("client_error", extra={
         "client_kind": report.kind, "client_message": report.message, "client_stack": report.stack,

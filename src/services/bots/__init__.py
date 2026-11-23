@@ -1,14 +1,17 @@
 # --- FILE: src/services/bots/__init__.py ---
 """
-Реестр готовых ботов BOT_INSTANCES (id → экземпляр) и точка входа в пакет ботов.
+Registry of ready-made bots BOT_INSTANCES (id → instance) and the entry point of the bots package.
 
-В реестре — семь исторических ботов первой волны (каждый в своём модуле рядом: philidor.py … zukertort.py, с дебютной
-книгой и правилами стиля) и мастера из masters.py (MASTER_BOTS). Общий порядок выбора хода — base.HistoricalBot.
-Архетипы мастерской (archetypes.py) и «мастера прошлого» (guests.py) в реестр не входят: их строят на лету из
-настроек характера (personality.py).
+The registry holds seven historical bots of the first wave (each in its own module nearby: philidor.py … zukertort.py, with an
+opening
+book and style rules) and the masters from masters.py (MASTER_BOTS). The general move selection order is base.HistoricalBot.
+Workshop archetypes (archetypes.py) and the "masters of the past" (guests.py) are not in the registry: they are built on the
+fly from
+personality settings (personality.py).
 
-Реестр читают память ботов (memory.py: книга бота по id) и симуляция турниров (tournament_simulation.py: свежий бот
-как type(bot)()). Маршруты src/api/bots.py берут ботов из этого реестра.
+The registry is read by bot memory (memory.py: the bot's book by id) and tournament simulation (tournament_simulation.py: a
+fresh bot
+as type(bot)()). The routes in src/api/bots.py take bots from this registry.
 """
 
 from src.services.bots.anderssen import AnderssenBot, anderssen_bot
@@ -29,7 +32,7 @@ BOT_INSTANCES: dict[str, HistoricalBot] = {
     "morphy": morphy_bot,
     "paulsen": paulsen_bot,
     "zukertort": zukertort_bot,
-    **MASTER_BOTS,  # мастера из masters.py (таск 21.5 и последующие волны)
+    **MASTER_BOTS,  # masters from masters.py (task 21.5 and later waves)
 }
 
 __all__ = [

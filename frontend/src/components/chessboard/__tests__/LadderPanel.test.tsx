@@ -1,4 +1,4 @@
-// Клубная лестница: прогресс игрока и старт партии со следующим соперником.
+// The club ladder: the player's progress and the start of a game with the next opponent.
 
 import {act, fireEvent, render, screen} from '@testing-library/react';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
@@ -38,33 +38,33 @@ afterEach(() => {
 });
 
 describe('LadderPanel', () => {
-    it('показывает рейтинг, прогресс и ступени', async () => {
+    it('shows the rating, the progress and the steps', async () => {
         stub();
         render(<LadderPanel playDisabled={false} onStart={vi.fn()} lastOutcome={null}/>);
 
         expect(await screen.findByTestId('ladder-rating')).toHaveTextContent('1032');
         expect(screen.getByText('1/3')).toBeInTheDocument();
-        expect(screen.getByText('Следующий: Тихоня')).toBeInTheDocument();
-        expect(screen.getByLabelText('пройден')).toBeInTheDocument();
-        expect(screen.getByLabelText('закрыт')).toBeInTheDocument();
+        expect(screen.getByText('Next: Quiet One')).toBeInTheDocument();
+        expect(screen.getByLabelText('beaten')).toBeInTheDocument();
+        expect(screen.getByLabelText('locked')).toBeInTheDocument();
     });
 
-    it('соперник ниже пройденного — «пропущен», а не закрыт', async () => {
+    it('an opponent below the passed one — "skipped", not closed', async () => {
         const skipped = {key: 'archetype:blunderer', kind: 'archetype', id: 'blunderer', rating: 350, measured: false, status: 'skipped'};
         vi.stubGlobal('fetch', vi.fn(async () => ({ok: true, status: 200,
             json: async () => ({...STATE, total: 4, rungs: [skipped, ...STATE.rungs]})}) as Response));
         render(<LadderPanel playDisabled={false} onStart={vi.fn()} lastOutcome={null}/>);
         expect(await screen.findByTestId('ladder-skipped-archetype:blunderer')).toBeInTheDocument();
-        expect(screen.getByLabelText(/пропущен — соперник появился/)).toBeInTheDocument();
-        expect(screen.getByText('Следующий: Тихоня')).toBeInTheDocument();
+        expect(screen.getByLabelText(/skipped — this opponent joined/)).toBeInTheDocument();
+        expect(screen.getByText('Next: Quiet One')).toBeInTheDocument();
     });
 
-    it('старт отправляет цвет и отдаёт соперника, выбранного сервером', async () => {
+    it('the start sends the colour and gives the opponent chosen by the server', async () => {
         const fetchMock = stub();
         const onStart = vi.fn();
         render(<LadderPanel playDisabled={false} onStart={onStart} lastOutcome={null}/>);
 
-        const black = await screen.findByRole('button', {name: /Чёрными/});
+        const black = await screen.findByRole('button', {name: /Black/});
         await act(async () => fireEvent.click(black));
 
         const call = fetchMock.mock.calls.find(([url]) => String(url).endsWith('/bots/ladder/start')) as unknown as [string, RequestInit];
@@ -72,24 +72,24 @@ describe('LadderPanel', () => {
         expect(onStart).toHaveBeenCalledWith(START);
     });
 
-    it('пока идёт партия, начать новую нельзя', async () => {
+    it('while a game is in progress, a new one cannot be started', async () => {
         stub();
         render(<LadderPanel playDisabled onStart={vi.fn()} lastOutcome={null}/>);
-        expect(await screen.findByRole('button', {name: /Белыми/})).toBeDisabled();
+        expect(await screen.findByRole('button', {name: /White/})).toBeDisabled();
     });
 });
 
-describe('итог партии лестницы', () => {
+describe('result of a ladder game', () => {
     const base = {delta: 0, rating: 1000, step: 0, promoted: false, opponent: 'archetype:quiet'};
 
     const promoted = {...base, counted: true, reason: null, delta: 18, rating: 1018, promoted: true};
 
-    it('засчитанная победа', () => {
-        expect(renderStatus(ladderOutcomeMessage(promoted), makeI18n('ru').t))
-            .toBe('Лестница: рейтинг 1018 (+18) — открыт следующий соперник!');
+    it('a counted win', () => {
+        expect(renderStatus(ladderOutcomeMessage(promoted), makeI18n('en').t))
+            .toBe('Ladder: rating 1018 (+18) — the next opponent is unlocked!');
     });
 
-    it('итог на всех трёх языках', () => {
+    it('the result in both languages', () => {
         expect(renderStatus(ladderOutcomeMessage(promoted), makeI18n('en').t))
             .toBe('Ladder: rating 1018 (+18) — the next opponent is unlocked!');
         expect(renderStatus(ladderOutcomeMessage(promoted), makeI18n('uk').t))
@@ -98,8 +98,8 @@ describe('итог партии лестницы', () => {
             .toBe('Ladder: rating 993 (-7).');
     });
 
-    it('незасчитанная партия называет причину', () => {
-        expect(renderStatus(ladderOutcomeMessage({...base, counted: false, reason: 'takeback'}), makeI18n('ru').t))
-            .toBe('Партия не засчитана в лестницу: в партии был возврат хода.');
+    it('a not counted game names the reason', () => {
+        expect(renderStatus(ladderOutcomeMessage({...base, counted: false, reason: 'takeback'}), makeI18n('en').t))
+            .toBe('The game does not count for the ladder: a move was taken back during the game.');
     });
 });

@@ -1,15 +1,15 @@
 // --- FILE: frontend/src/components/tournaments/TournamentCelebration.tsx ---
-// Экран окончания турнира (решение владельца, 17.11; итоговая таблица — 21.11): после окончания любого турнира или
-// арены — полноэкранное окно. Призёру (1–3 место): лучи, большой кубок цвета места (золото, серебро, бронза) с бликом,
-// лавровый венок, конфетти и фанфары. Остальным — спокойный значок места без фанфар. Рядом с кубком — сводка игрока
-// (очки, победы/ничьи/поражения, рейтинг) и прокручиваемая таблица всех участников с аватарами, рейтингами и очками;
-// строка игрока подсвечена и прокручена в видимую область (строки готовит services/tournamentResults.ts). Над таблицей —
-// сводка турнира (партий, ничьих, побед белых — как шапка итогов lichess), под именем — победы/ничьи/поражения (турнир)
-// или перформанс (арена), снизу — «Скачать CSV» (как результаты на chess.com). Всё рисуется кодом (SVG, canvas, Web Audio) — без чужих картинок и записей. Показывается один раз на
-// турнир (shouldCelebrate / markCelebrated; ключ — номер турнира или строка вида «arena-5» для арен, 33.5); повторить
-// можно кнопкой. При «уменьшить движение» — без конфетти и вращения.
-// Единственное хранилище — localStorage с ключом regence_celebrated_<id>. Фанфары — services/soundEngine.ts.
-// Используют TournamentsPage.tsx, TournamentGameBar.tsx и arena/ArenaPages.tsx.
+// Tournament end screen (owner decision, 17.11; final table - 21.11): after any tournament or arena ends -
+// a full-screen window. For a prize-winner (places 1-3): rays, a large trophy in the place colour (gold, silver, bronze) with a glint,
+// a laurel wreath, confetti and fanfare. For the others - a calm place badge without fanfare. Next to the trophy - the player's summary
+// (points, wins/draws/losses, rating) and a scrollable table of all participants with avatars, ratings and points;
+// the player's row is highlighted and scrolled into view (rows are prepared by services/tournamentResults.ts). Above the table -
+// a tournament summary (games, draws, white wins - like the lichess results header), under the name - wins/draws/losses (tournament)
+// or performance (arena), at the bottom - "Download CSV" (like results on chess.com). Everything is drawn by code (SVG, canvas, Web Audio) - no third-party images or recordings. Shown once per
+// tournament (shouldCelebrate / markCelebrated; the key is the tournament number or a string like "arena-5" for arenas, 33.5); it can be repeated
+// by a button. With "reduce motion" - no confetti and no rotation.
+// The only storage is localStorage with the key regence_celebrated_<id>. Fanfare - services/soundEngine.ts.
+// Used by TournamentsPage.tsx, TournamentGameBar.tsx and arena/ArenaPages.tsx.
 
 import {useEffect, useRef} from 'react';
 import {Download, X} from 'lucide-react';
@@ -18,12 +18,12 @@ import {soundEngine} from '../../services/soundEngine';
 import {type ResultRow, type ResultStats, resultsCsv, type TournamentSummary} from '../../services/tournamentResults';
 import {PlayerAvatar} from '../PlayerAvatar';
 
-// Префикс ключа localStorage: отметка «праздник для этого турнира уже показан».
+// localStorage key prefix: a mark "the celebration for this tournament has already been shown".
 const STORAGE_PREFIX = 'regence_celebrated_';
-// Длительность конфетти (мс): залпы из углов, затем дождь сверху до CONFETTI_MS минус 2,5 с; ещё 4 с на падение остатка.
+// Confetti duration (ms): volleys from the corners, then rain from above until CONFETTI_MS minus 2.5 s; another 4 s for the rest to fall.
 const CONFETTI_MS = 7000;
 
-/** Палитра медали места: оттенки металла, свечение фона, цвет лучей и ключ заголовка в каталоге celebration.*. */
+/** Place medal palette: metal shades, background glow, ray colour and the heading key in the celebration.* catalogue. */
 interface Medal {
     light: string;
     main: string;
@@ -33,17 +33,17 @@ interface Medal {
     key: 'first' | 'second' | 'third';
 }
 
-/** Палитры по местам 1–3. */
+/** Palettes for places 1-3. */
 export const MEDALS: Record<1 | 2 | 3, Medal> = {
     1: {light: '#fff4b8', main: '#e2b33c', dark: '#8a6510', glow: 'rgba(255, 210, 90, 0.55)', ray: 'rgba(255, 215, 110, 0.16)', key: 'first'},
     2: {light: '#ffffff', main: '#c3c7cf', dark: '#6d717a', glow: 'rgba(220, 228, 240, 0.5)', ray: 'rgba(225, 232, 245, 0.14)', key: 'second'},
     3: {light: '#ffd9b0', main: '#c27a3e', dark: '#6b3a16', glow: 'rgba(230, 150, 90, 0.5)', ray: 'rgba(235, 160, 100, 0.15)', key: 'third'},
 };
 
-// Цвета кусочков конфетти.
+// Confetti piece colours.
 const CONFETTI_COLORS = ['#f6c945', '#e85d5d', '#4fa3e0', '#58c48b', '#b27ae6', '#ffffff', '#ff9f43'];
 
-/** Праздник ещё не показывали для этого турнира (хранилище недоступно — показываем). */
+/** The celebration has not yet been shown for this tournament (storage unavailable - we show it). */
 export function shouldCelebrate(tournamentId: number | string): boolean {
     try {
         return localStorage.getItem(`${STORAGE_PREFIX}${tournamentId}`) === null;
@@ -52,22 +52,22 @@ export function shouldCelebrate(tournamentId: number | string): boolean {
     }
 }
 
-/** Запоминает, что праздник для турнира показан. */
+/** Remembers that the celebration for the tournament has been shown. */
 export function markCelebrated(tournamentId: number | string): void {
     try {
         localStorage.setItem(`${STORAGE_PREFIX}${tournamentId}`, '1');
     } catch {
-        // Хранилище недоступно — праздник покажется ещё раз, это не беда.
+        // Storage unavailable - the celebration will show once more, no harm done.
     }
 }
 
-/** Включено ли в системе «уменьшить движение» (тогда без конфетти и анимаций). */
+/** Whether the system has "reduce motion" enabled (then no confetti and animations). */
 function reducedMotion(): boolean {
     return typeof window !== 'undefined' && typeof window.matchMedia === 'function'
         && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
-// Один кусочек конфетти: положение, скорость, размер, вращение, раскачивание (sway) и форма (круг или полоска).
+// One confetti piece: position, speed, size, rotation, sway and shape (circle or strip).
 interface Piece {
     x: number;
     y: number;
@@ -81,7 +81,7 @@ interface Piece {
     sway: number;
 }
 
-/** Конфетти на canvas: два залпа из нижних углов, затем дождь сверху; сила тяжести, сопротивление, вращение. */
+/** Confetti on canvas: two volleys from the bottom corners, then rain from above; gravity, drag, rotation. */
 function Confetti() {
     const canvas = useRef<HTMLCanvasElement>(null);
     useEffect(() => {
@@ -150,12 +150,12 @@ function Confetti() {
     return <canvas ref={canvas} className="pointer-events-none fixed inset-0 z-[102]" aria-hidden="true" data-testid="celebration-confetti"/>;
 }
 
-// Геометрия лаврового венка в координатах SVG кубка: центр, радиус дуги, углы начала и конца ветви (градусы), число пар листьев.
+// Laurel wreath geometry in the trophy SVG coordinates: centre, arc radius, branch start and end angles (degrees), number of leaf pairs.
 const WREATH = {cx: 160, cy: 165, r: 132, from: 100, to: 235, leaves: 12};
 
 /**
- * Левая лавровая ветвь: листья парами по дуге окружности вокруг кубка — от низа (у подставки) вверх к краю чаши;
- * пара листьев направлена по касательной. Каждая пара «вырастает» с задержкой. Правая ветвь — зеркало левой.
+ * Left laurel branch: leaves in pairs along a circle arc around the trophy - from the bottom (at the base) up to the cup rim;
+ * a leaf pair is directed along the tangent. Each pair "grows" with a delay. The right branch mirrors the left.
  */
 function LaurelBranch() {
     const {cx, cy, r, from, to, leaves} = WREATH;
@@ -181,7 +181,7 @@ function LaurelBranch() {
         </g>
     );
 }
-/** Кубок цвета места (SVG) с лавровым венком и бликом; левая ветвь венка зеркалится в правую. */
+/** Trophy in the place colour (SVG) with a laurel wreath and a glint; the left wreath branch is mirrored into the right one. */
 function Trophy({place}: { place: 1 | 2 | 3 }) {
     const m = MEDALS[place];
     return (
@@ -209,20 +209,20 @@ function Trophy({place}: { place: 1 | 2 | 3 }) {
             </defs>
             <LaurelBranch/>
             <g transform="translate(320 0) scale(-1 1)"><LaurelBranch/></g>
-            {/* Ручки */}
+            {/* Handles */}
             <path d="M95 78 C55 78 55 140 102 150" fill="none" stroke="url(#cup)" strokeWidth="12" strokeLinecap="round"/>
             <path d="M225 78 C265 78 265 140 218 150" fill="none" stroke="url(#cup)" strokeWidth="12" strokeLinecap="round"/>
-            {/* Чаша */}
+            {/* Cup */}
             <path d="M95 60 H225 V120 C225 175 195 205 160 212 C125 205 95 175 95 120 Z" fill="url(#cup)"/>
             <rect x="88" y="52" width="144" height="14" rx="5" fill={m.main} stroke={m.dark} strokeWidth="2"/>
             <g clipPath="url(#cupClip)">
                 <rect className="regence-shine" x="-60" y="40" width="50" height="190" fill="url(#shine)" transform="skewX(-18)"/>
             </g>
-            {/* Звезда и место */}
+            {/* Star and place */}
             <circle cx="160" cy="128" r="30" fill={m.dark} opacity="0.35"/>
             <text x="160" y="142" textAnchor="middle" fontSize="40" fontWeight="800" fill={m.light}
                   fontFamily="Georgia, 'Times New Roman', serif">{place}</text>
-            {/* Ножка и подставка */}
+            {/* Stem and base */}
             <rect x="150" y="210" width="20" height="38" fill="url(#cup)"/>
             <rect x="118" y="246" width="84" height="16" rx="4" fill="url(#cup)"/>
             <rect x="104" y="262" width="112" height="26" rx="5" fill={m.dark}/>
@@ -231,7 +231,7 @@ function Trophy({place}: { place: 1 | 2 | 3 }) {
     );
 }
 
-// Палитра для места вне тройки призёров: сдержанный синевато-серый, без фанфар и конфетти.
+// Palette for a place outside the top three: restrained bluish grey, no fanfare or confetti.
 const PLAIN: Medal = {
     light: '#e6edf7', main: '#8fa3c0', dark: '#3d4a60', glow: 'rgba(143, 163, 192, 0.35)', ray: 'rgba(160, 180, 210, 0.08)',
     key: 'third',
@@ -239,21 +239,21 @@ const PLAIN: Medal = {
 
 export interface CelebrationProps {
     place: number;
-    /** Название турнира на языке игрока. */
+    /** Tournament name in the player's language. */
     title: string;
     size: number;
     onClose: () => void;
-    /** Итоговая таблица всех участников; без неё окно показывает только кубок (как раньше). */
+    /** Final table of all participants; without it the window shows only the trophy (as before). */
     rows?: ResultRow[];
-    /** Сводка игрока над таблицей. */
+    /** Player summary above the table. */
     stats?: ResultStats | null;
-    /** Сводка турнира целиком; у арены её нет. */
+    /** Whole-tournament summary; an arena has none. */
     summary?: TournamentSummary | null;
-    /** Подпись детали под именем — «перф.» у арены; у турнира там победы/ничьи/поражения. */
+    /** Detail caption under the name - "perf." for an arena; for a tournament it is wins/draws/losses. */
     detailLabel?: string;
 }
 
-/** Скачивает таблицу итогов файлом CSV (без сервера: файл собирается в браузере). */
+/** Downloads the results table as a CSV file (no server: the file is built in the browser). */
 function downloadCsv(rows: ResultRow[], title: string): void {
     try {
         const url = URL.createObjectURL(new Blob(['\ufeff' + resultsCsv(rows)], {type: 'text/csv;charset=utf-8'}));
@@ -263,11 +263,11 @@ function downloadCsv(rows: ResultRow[], title: string): void {
         link.click();
         URL.revokeObjectURL(url);
     } catch {
-        // Браузер без Blob/URL — кнопка просто ничего не делает.
+        // A browser without Blob/URL - the button simply does nothing.
     }
 }
 
-/** Значок места вне тройки: круг с номером вместо кубка. */
+/** Place badge outside the top three: a circle with the number instead of a trophy. */
 function PlaceBadge({place}: { place: number }) {
     return (
         <div className="flex items-center justify-center w-28 h-28 rounded-full border-4 text-5xl font-black"
@@ -278,7 +278,7 @@ function PlaceBadge({place}: { place: number }) {
     );
 }
 
-/** Таблица участников: место, аватар, имя, рейтинг, очки; прокручивается, строка игрока подсвечена и видна сразу. */
+/** Participant table: place, avatar, name, rating, points; scrollable, the player's row is highlighted and visible at once. */
 function ResultsTable({rows, summary, title, detailLabel}: {
     rows: ResultRow[]; summary?: TournamentSummary | null; title: string; detailLabel?: string;
 }) {
@@ -324,7 +324,7 @@ function ResultsTable({rows, summary, title, detailLabel}: {
     );
 }
 
-/** Сводка игрока: очки, победы/ничьи/поражения, рейтинг — плитками под местом. */
+/** Player summary: points, wins/draws/losses, rating - as tiles under the place. */
 function StatsStrip({stats}: { stats: ResultStats }) {
     const {t} = useI18n();
     const cells = [
@@ -345,8 +345,8 @@ function StatsStrip({stats}: { stats: ResultStats }) {
 }
 
 /**
- * Полноэкранный экран итогов: у призёра играют фанфары и сыплется конфетти; закрывается кнопкой или Escape.
- * Место 1–3 — кубок цвета места; ниже — значок с номером. С rows рядом с кубком появляется таблица участников.
+ * Full-screen results screen: for a prize-winner fanfare plays and confetti falls; closed by a button or Escape.
+ * Place 1-3 - a trophy in the place colour; below - a badge with the number. With rows a participant table appears next to the trophy.
  */
 export function TournamentCelebration({place, title, size, onClose, rows, stats, summary, detailLabel}: CelebrationProps) {
     const {t} = useI18n();
@@ -384,7 +384,7 @@ export function TournamentCelebration({place, title, size, onClose, rows, stats,
                     .regence-leaf, .regence-shine, .regence-anim { animation: none !important; }
                 }
             `}</style>
-            {/* Лучи (фон, не прокручивается) */}
+            {/* Rays (background, does not scroll) */}
             <div aria-hidden="true" className="regence-anim fixed left-1/2 top-[42%] w-[160vmax] h-[160vmax] -translate-x-1/2 -translate-y-1/2 pointer-events-none"
                  style={{
                      background: `repeating-conic-gradient(${medal.ray} 0deg 6deg, transparent 6deg 18deg)`,

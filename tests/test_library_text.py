@@ -1,4 +1,4 @@
-"""Тексты заголовков библиотеки: кириллица в cp1251, прочитанная как латиница, и фигурки шрифтов — чинятся."""
+"""Library header texts: Cyrillic in cp1251 read as Latin, and font figurines, are repaired."""
 
 import pytest
 
@@ -33,6 +33,6 @@ def test_pgn_import_repairs_headers():
 
 
 def test_cbh_text_decides_per_string():
-    """В базе с латинскими именами (cp1252) русская строка всё равно читается как cp1251."""
+    """In a database with Latin names (cp1252), a Cyrillic string is still read as cp1251."""
     assert cbh_reader._text("Сицилианская".encode("cp1251") + b"\x00", "cp1252") == "Сицилианская"
     assert cbh_reader._text("Müller".encode("cp1252"), "cp1252") == "Müller"

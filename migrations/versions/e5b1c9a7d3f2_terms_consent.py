@@ -1,6 +1,6 @@
 """users.terms_version, users.terms_accepted_at: consent to the terms at registration (task 23.1)
 
-Редакция документов и момент согласия игрока (src/services/legal.py). У существующих аккаунтов — NULL.
+The edition of the documents and the moment of the player's consent (src/services/legal.py). NULL for existing accounts.
 
 Revision ID: e5b1c9a7d3f2
 Revises: d3a8f1c6e2b7
@@ -20,12 +20,12 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    """Два необязательных столбца в users."""
+    """Two optional columns in users."""
     op.add_column('users', sa.Column('terms_version', sa.String(length=16), nullable=True))
     op.add_column('users', sa.Column('terms_accepted_at', sa.DateTime(timezone=True), nullable=True))
 
 
 def downgrade() -> None:
-    """Убирает столбцы согласия."""
+    """Removes the consent columns."""
     op.drop_column('users', 'terms_accepted_at')
     op.drop_column('users', 'terms_version')

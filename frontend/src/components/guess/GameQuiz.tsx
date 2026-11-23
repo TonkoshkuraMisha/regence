@@ -1,7 +1,7 @@
 // --- FILE: frontend/src/components/guess/GameQuiz.tsx ---
-// Вопросы после партии «целиком» в «Угадай ход мастера» (таск 14.3): кто выиграл, где был ключевой момент, кончилась ли
-// партия матом. Вопросы и проверку отдаёт сервер (GET/POST /guess/game/{id}/quiz, src/services/guess_quiz.py) кодами
-// вариантов; компонент только показывает варианты и итог. Ошибка сети не мешает партии — блок просто не появляется.
+// Questions after a "whole" game in "Guess the master's move" (task 14.3): who won, where the key moment was, whether the
+// game ended in mate. The questions and the check are provided by the server (GET/POST /guess/game/{id}/quiz, src/services/guess_quiz.py) as option
+// codes; the component only shows the options and the result. A network error does not affect the game: the block simply does not appear.
 
 import {useEffect, useState} from 'react';
 import {useI18n} from '../../i18n';
@@ -9,7 +9,7 @@ import type {MessageKey} from '../../i18n';
 import {guessApi} from '../../services/guess';
 import type {QuizQuestion, QuizResult} from '../../services/guess';
 
-/** Код хода вида «12w» — «Ход 12, белые»; остальные коды вариантов — по каталогу guess.quiz.option.<код>. */
+/** Move code like "12w" means "Move 12, White"; the other option codes come from the guess.quiz.option.<code> catalog. */
 const MOVE_CODE = /^\d+[wb]$/;
 
 export function GameQuiz({gameId}: { gameId: number }) {

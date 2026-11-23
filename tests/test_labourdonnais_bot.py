@@ -14,7 +14,7 @@ from src.services.bots.philidor import normalize_fen_key
 
 
 def test_labourdonnais_opening_repertoire_branches():
-    """Проверяем, что в книге Лабурдонне сохранены все стартовые ветки (e4, d4, f4)."""
+    """Check that the Labourdonnais book keeps all opening branches (e4, d4, f4)."""
     bot = LabourdonnaisBot(stockfish_path=None)
     board = chess.Board()
     start_key = normalize_fen_key(board)
@@ -28,7 +28,7 @@ def test_labourdonnais_opening_repertoire_branches():
 
 
 def test_labourdonnais_plays_evans_gambit_or_italian_from_book():
-    """Проверяем, что в итальянской позиции Лабурдонне выбирает гамбит Эванса (b2b4) или c2c3."""
+    """Check that in the Italian position Labourdonnais chooses the Evans Gambit (b2b4) or c2c3."""
     bot = LabourdonnaisBot(stockfish_path=None)
     board = chess.Board()
     for san in ["e4", "e5", "Nf3", "Nc6", "Bc4", "Bc5"]:
@@ -40,7 +40,7 @@ def test_labourdonnais_plays_evans_gambit_or_italian_from_book():
 
 
 def test_labourdonnais_style_rewards_castling_and_development():
-    """Проверяем, что атакующий фильтр Лабурдонне поощряет рокировку и вывод фигур в центр."""
+    """Check that the Labourdonnais attacking filter rewards castling and developing pieces to the center."""
     board = chess.Board("r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4")
 
     castle_bonus, _ = evaluate_labourdonnais_style_bonus(board, chess.Move.from_uci("e1g1"))
@@ -52,7 +52,7 @@ def test_labourdonnais_style_rewards_castling_and_development():
 
 
 def test_labourdonnais_middlegame_move_generation():
-    """Проверяем генерацию хода Лабурдонне в миттельшпиле вне дебютной книги."""
+    """Check Labourdonnais move generation in the middlegame outside the opening book."""
     bot = LabourdonnaisBot(stockfish_path=None)
     board = chess.Board("r1bq1rk1/ppp2ppp/2np1n2/2b1p3/2B1P3/2PP1N2/PP3PPP/RNBQ1RK1 w - - 3 7")
 
@@ -63,7 +63,7 @@ def test_labourdonnais_middlegame_move_generation():
 
 @pytest.mark.asyncio
 async def test_labourdonnais_api_move_endpoint():
-    """Проверяем REST-эндпоинт /api/v1/bots/move для игры с Лабурдонне."""
+    """Check the REST endpoint /api/v1/bots/move for playing against Labourdonnais."""
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         list_resp = await client.get("/api/v1/bots/list")

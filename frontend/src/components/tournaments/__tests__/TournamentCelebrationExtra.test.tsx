@@ -1,6 +1,6 @@
-// Экран окончания турнира, ветки сверх TournamentCelebration.test.tsx: недоступное хранилище (праздник показывается,
-// запись молча пропускается), конфетти на canvas (залпы, дождь, смена размера окна, остановка при закрытии, отказ при
-// «уменьшить движение»), сводка турнира и скачивание CSV из таблицы итогов.
+// The tournament end screen, branches beyond TournamentCelebration.test.tsx: unavailable storage (the celebration is shown,
+// the record is silently skipped), confetti on a canvas (volleys, rain, a window resize, stopping on close, a refusal on
+// "reduce motion"), the tournament summary and downloading CSV from the results table.
 
 import {act, fireEvent, render, screen} from '@testing-library/react';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
@@ -8,7 +8,7 @@ import {soundEngine} from '../../../services/soundEngine';
 import {markCelebrated, shouldCelebrate, TournamentCelebration} from '../TournamentCelebration';
 
 const ROWS = [
-    {key: 1, place: 1, name: 'Морфи, Пол', rating: 2100, score: '2', mine: false, detail: '2/0/0'},
+    {key: 1, place: 1, name: 'Morphy, Paul', rating: 2100, score: '2', mine: false, detail: '2/0/0'},
     {key: 2, place: 2, name: 'misha', rating: 1500, score: '1', mine: true},
 ];
 
@@ -28,8 +28,8 @@ afterEach(() => {
     vi.restoreAllMocks();
 });
 
-describe('хранилище недоступно', () => {
-    it('праздник показывается, а отметка не пишется и не бросает ошибку', () => {
+describe('storage unavailable', () => {
+    it('the celebration is shown, and the mark is not written and does not throw', () => {
         vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
             throw new Error('denied');
         });
@@ -41,8 +41,8 @@ describe('хранилище недоступно', () => {
     });
 });
 
-describe('конфетти', () => {
-    it('рисует залпы и дождь, реагирует на смену размера окна и останавливается при закрытии', () => {
+describe('confetti', () => {
+    it('draws volleys and rain, reacts to a window resize and stops on close', () => {
         const ctx = fakeContext();
         vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(ctx as unknown as CanvasRenderingContext2D);
         vi.stubGlobal('matchMedia', () => ({matches: false}));
@@ -54,9 +54,9 @@ describe('конфетти', () => {
         const cancel = vi.fn();
         vi.stubGlobal('requestAnimationFrame', raf);
         vi.stubGlobal('cancelAnimationFrame', cancel);
-        vi.spyOn(Math, 'random').mockReturnValue(0.1);  // круглые кусочки и дождь
+        vi.spyOn(Math, 'random').mockReturnValue(0.1);  // round pieces and rain
 
-        const {unmount} = render(<TournamentCelebration place={1} title="Кубок" size={4} onClose={vi.fn()}/>);
+        const {unmount} = render(<TournamentCelebration place={1} title="Cup" size={4} onClose={vi.fn()}/>);
         expect(screen.getByTestId('celebration-confetti')).toBeInTheDocument();
         act(() => {
             window.dispatchEvent(new Event('resize'));
@@ -64,7 +64,7 @@ describe('конфетти', () => {
         });
         expect(ctx.clearRect).toHaveBeenCalled();
         expect(ctx.arc).toHaveBeenCalled();
-        // Позже кусочки опускаются ниже окна и удаляются, а кадры прекращаются, когда падать больше нечему.
+        // Later the pieces drop below the window and are removed, and the frames stop when there is nothing left to fall.
         vi.spyOn(Math, 'random').mockReturnValue(0.9);
         act(() => {
             tick(performance.now() + 20000);
@@ -73,7 +73,7 @@ describe('конфетти', () => {
         expect(cancel).toHaveBeenCalled();
     });
 
-    it('полоски (не круглые кусочки) рисуются прямоугольниками', () => {
+    it('strips (not round pieces) are drawn as rectangles', () => {
         const ctx = fakeContext();
         vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(ctx as unknown as CanvasRenderingContext2D);
         vi.stubGlobal('matchMedia', () => ({matches: false}));
@@ -84,33 +84,33 @@ describe('конфетти', () => {
         });
         vi.stubGlobal('cancelAnimationFrame', vi.fn());
         vi.spyOn(Math, 'random').mockReturnValue(0.9);
-        render(<TournamentCelebration place={2} title="Кубок" size={4} onClose={vi.fn()}/>);
+        render(<TournamentCelebration place={2} title="Cup" size={4} onClose={vi.fn()}/>);
         act(() => {
             tick(performance.now() + 50);
         });
         expect(ctx.fillRect).toHaveBeenCalled();
     });
 
-    it('при «уменьшить движение» конфетти не рисуется', () => {
+    it('with "reduce motion" confetti is not drawn', () => {
         const ctx = fakeContext();
         vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(ctx as unknown as CanvasRenderingContext2D);
         vi.stubGlobal('matchMedia', () => ({matches: true}));
         const raf = vi.fn(() => 1);
         vi.stubGlobal('requestAnimationFrame', raf);
-        render(<TournamentCelebration place={1} title="Кубок" size={4} onClose={vi.fn()}/>);
+        render(<TournamentCelebration place={1} title="Cup" size={4} onClose={vi.fn()}/>);
         expect(raf).not.toHaveBeenCalled();
         expect(ctx.clearRect).not.toHaveBeenCalled();
     });
 });
 
-describe('таблица итогов', () => {
-    it('сводка турнира, подпись детали и скачивание CSV', () => {
+describe('results table', () => {
+    it('the tournament summary, the detail label and downloading CSV', () => {
         const createUrl = vi.fn(() => 'blob:x');
         const revoke = vi.fn();
         Object.assign(URL, {createObjectURL: createUrl, revokeObjectURL: revoke});
         const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
-        render(<TournamentCelebration place={2} title="Киев 1903" size={2} onClose={vi.fn()} rows={ROWS}
-                                      summary={{games: 6, drawPercent: 33, whitePercent: 50}} detailLabel="перф."/>);
+        render(<TournamentCelebration place={2} title="Kyiv 1903" size={2} onClose={vi.fn()} rows={ROWS}
+                                      summary={{games: 6, drawPercent: 33, whitePercent: 50}} detailLabel="perf."/>);
         expect(screen.getByTestId('celebration-summary')).toBeInTheDocument();
         expect(screen.getByTestId('celebration-detail-1')).toHaveTextContent('2/0/0');
         fireEvent.click(screen.getByTestId('celebration-csv'));
@@ -119,11 +119,11 @@ describe('таблица итогов', () => {
         expect(revoke).toHaveBeenCalledWith('blob:x');
     });
 
-    it('браузер без Blob/URL: кнопка CSV молча ничего не делает', () => {
+    it('a browser without Blob/URL: the CSV button silently does nothing', () => {
         Object.assign(URL, {createObjectURL: () => {
             throw new Error('unsupported');
         }});
-        render(<TournamentCelebration place={5} title="Т" size={2} onClose={vi.fn()} rows={ROWS}/>);
+        render(<TournamentCelebration place={5} title="T" size={2} onClose={vi.fn()} rows={ROWS}/>);
         expect(() => fireEvent.click(screen.getByTestId('celebration-csv'))).not.toThrow();
     });
 });

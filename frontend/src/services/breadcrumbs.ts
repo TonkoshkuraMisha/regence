@@ -1,9 +1,9 @@
 // --- FILE: frontend/src/services/breadcrumbs.ts ---
-// «Хлебные крошки» — след последних событий страницы: запросы к API (с номером X-Request-ID, по нему в журнале сервера
-// находится вся цепочка), сообщения и закрытия WebSocket, смены страниц. Лежит в sessionStorage, поэтому ПЕРЕЖИВАЕТ
-// перезагрузку страницы: отчёт новой страницы (clientErrors.ts) несёт то, что происходило до перезагрузки. Модуль без
-// зависимостей от сети — его пишут http.ts и gameSocket.ts, читает clientErrors.ts (так нет круговой зависимости).
-// В крошки не попадают тела запросов, токены и личные данные — только метод, путь без параметров, статус и номер запроса.
+// «Breadcrumbs» — a trail of the page's latest events: API requests (with an X-Request-ID number, by which the whole chain is found
+// in the server log), WebSocket messages and closes, page changes. Stored in sessionStorage, so it SURVIVES
+// a page reload: the report of the new page (clientErrors.ts) carries what happened before the reload. The module has no
+// network dependencies — it is written by http.ts and gameSocket.ts and read by clientErrors.ts (so there is no circular dependency).
+// Request bodies, tokens and personal data do not get into the breadcrumbs — only the method, the path without parameters, the status and the request number.
 
 export type CrumbKind = 'request' | 'socket' | 'route' | 'reload';
 
@@ -15,11 +15,11 @@ export interface Breadcrumb {
     request_id?: string;
 }
 
-/** Путь запроса отчёта: его собственные запросы в крошки не пишутся (иначе отчёт описывал бы сам себя). */
+/** Path of the report request: its own requests are not written to the breadcrumbs (otherwise the report would describe itself). */
 export const CLIENT_ERRORS_PATH = '/client-errors';
 
 const STORAGE_KEY = 'regence_breadcrumbs';
-// Столько крошек принимает сервер (MAX_BREADCRUMBS в src/api/client_errors.py) и хранит страница.
+// This many breadcrumbs are accepted by the server (MAX_BREADCRUMBS in src/api/client_errors.py) and kept by the page.
 const MAX_CRUMBS = 30;
 const MAX_NAME = 120;
 
@@ -39,28 +39,28 @@ function saveCrumbs() {
     try {
         sessionStorage.setItem(STORAGE_KEY, JSON.stringify(crumbs));
     } catch {
-        // Хранилище недоступно (приватный режим, переполнено) — крошки остаются только в памяти.
+        // Storage unavailable (private mode, full) — the breadcrumbs stay only in memory.
     }
 }
 
-/** Дописывает событие в след; старые вытесняются. */
+/** Appends an event to the trail; old ones are pushed out. */
 export function addBreadcrumb(kind: CrumbKind, name: string, extra: {status?: number; request_id?: string} = {}) {
     crumbs = [...crumbs, {t: Date.now(), kind, name: name.slice(0, MAX_NAME), ...extra}].slice(-MAX_CRUMBS);
     saveCrumbs();
 }
 
-/** Копия следа (для отчётов и тестов). */
+/** Copy of the trail (for reports and tests). */
 export function getBreadcrumbs(): Breadcrumb[] {
     return [...crumbs];
 }
 
-/** Очистка следа — только для тестов. */
+/** Clearing the trail — tests only. */
 export function clearBreadcrumbs() {
     crumbs = [];
     saveCrumbs();
 }
 
-/** Новый номер запроса: 16 символов [0-9a-f] — подходит под REQUEST_ID_PATTERN сервера. */
+/** New request number: 16 characters [0-9a-f] — fits the server's REQUEST_ID_PATTERN. */
 export function newRequestId(): string {
     const uuid = typeof crypto !== 'undefined' && 'randomUUID' in crypto
         ? crypto.randomUUID()

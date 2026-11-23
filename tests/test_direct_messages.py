@@ -1,5 +1,5 @@
 # --- FILE: tests/test_direct_messages.py ---
-"""Личные сообщения (таск 30.1): переписка, карточки-вложения, кто может писать, чёрный список, доставка."""
+"""Direct messages (task 30.1): conversation, attachment cards, who may write, blocklist, delivery."""
 
 from datetime import UTC, datetime, timedelta
 
@@ -22,10 +22,10 @@ async def test_conversation_unread_and_read(client, token_user_1, token_user_2, 
         delivered.append((message.recipient_id, sender_name, message.body))
 
     monkeypatch.setattr(dm, "deliver", fake_deliver)
-    first = client.post(f"{API}/with/PLAYER2", json={"body": "  Привет!\n\n\n\nСыграем?  "}, headers=auth(token_user_1))
+    first = client.post(f"{API}/with/PLAYER2", json={"body": "  Hello!\n\n\n\nShall we play?  "}, headers=auth(token_user_1))
     assert first.status_code == 200
-    assert first.json()["mine"] is True and first.json()["body"] == "Привет!\n\nСыграем?"
-    client.post(f"{API}/with/player1", json={"body": "Давай"}, headers=auth(token_user_2))
+    assert first.json()["mine"] is True and first.json()["body"] == "Hello!\n\nShall we play?"
+    client.post(f"{API}/with/player1", json={"body": "Sure"}, headers=auth(token_user_2))
     client.post(f"{API}/with/player1", json={"body": "5+3?"}, headers=auth(token_user_2))
     assert [d[1] for d in delivered] == ["player1", "player2", "player2"]
 
@@ -36,10 +36,10 @@ async def test_conversation_unread_and_read(client, token_user_1, token_user_2, 
 
     thread = client.get(f"{API}/with/player2", headers=auth(token_user_1)).json()
     assert [(m["body"], m["mine"]) for m in thread["messages"]] == [
-        ("Привет!\n\nСыграем?", True), ("Давай", False), ("5+3?", False)]
+        ("Hello!\n\nShall we play?", True), ("Sure", False), ("5+3?", False)]
     assert thread["can_write"] is True and thread["reason"] is None
     assert client.post(f"{API}/with/player2/read", headers=auth(token_user_1)).json() == {"unread": 0}
-    # Прочитанное мной не делает прочитанным моё сообщение у собеседника.
+    # What I have read does not mark my message as read for the other party.
     assert client.get(f"{API}/unread", headers=auth(token_user_2)).json() == {"unread": 1}
 
 
@@ -69,7 +69,7 @@ async def test_attachments_are_cards(client, token_user_1, test_user_1, test_use
         return client.post(f"{API}/with/player2", json={"body": body, "attachment": {"kind": kind, "ref": ref}},
                            headers=auth(token_user_1))
 
-    card = send("game", str(game.id), "Смотри").json()["attachment"]
+    card = send("game", str(game.id), "Look").json()["attachment"]
     assert card == {"kind": "game", "ref": str(game.id), "white": "player1", "black": "player2", "result": "1-0",
                     "status": "COMPLETED"}
     assert send("puzzle", str(puzzle.id)).json()["attachment"] == {"kind": "puzzle", "ref": str(puzzle.id),
@@ -90,7 +90,7 @@ async def test_policy_following_and_nobody(client, token_user_1, token_user_2):
     assert closed.status_code == 403 and closed.json()["detail"]["code"] == "dm_closed"
     view = client.get(f"{API}/with/player2", headers=auth(token_user_1)).json()
     assert (view["can_write"], view["reason"]) == (False, "dm_closed")
-    client.post("/api/v1/social/follow/player1", headers=auth(token_user_2))     # player2 подписан на player1
+    client.post("/api/v1/social/follow/player1", headers=auth(token_user_2))     # player2 follows player1
     assert client.post(f"{API}/with/player2", json={"body": "hi"}, headers=auth(token_user_1)).status_code == 200
     client.put(f"{API}/settings", json={"dm_policy": "nobody"}, headers=auth(token_user_2))
     assert client.post(f"{API}/with/player2", json={"body": "hi"}, headers=auth(token_user_1)).status_code == 403
@@ -103,7 +103,7 @@ async def test_block_both_ways(client, token_user_1, token_user_2):
     assert blocked["blocked"] == ["player2"]
     assert client.post(f"{API}/block/player1", headers=auth(token_user_1)).json()["detail"]["code"] == "cannot_block_self"
     them = client.post(f"{API}/with/player1", json={"body": "spam"}, headers=auth(token_user_2))
-    assert them.status_code == 403 and them.json()["detail"]["code"] == "dm_closed"   # не раскрываем, что заблокирован
+    assert them.status_code == 403 and them.json()["detail"]["code"] == "dm_closed"   # do not reveal the user is blocked
     me = client.post(f"{API}/with/player2", json={"body": "hi"}, headers=auth(token_user_1))
     assert me.json()["detail"]["code"] == "dm_you_blocked"
     [talk] = client.get(API, headers=auth(token_user_1)).json()["conversations"]

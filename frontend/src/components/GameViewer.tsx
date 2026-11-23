@@ -1,21 +1,21 @@
 // --- FILE: frontend/src/components/GameViewer.tsx ---
-// Просмотр и разбор партии (/game/:id, /library/game/:id, /import/game/:id): доска с листанием ходов, полный разбор
-// движком (точность сторон, классификация ходов, шкала и график оценки), комментарии наставника, итог партии,
-// справочник дебютов, рентген доски, стрелки и пометки правой кнопкой, отклонения от своего репертуара, экспорт PGN.
-// Разбор считает сервер (/analysis/game/{id}) и хранит его; для партии библиотеки разбора движком нет, для
-// импортированной — он свой (/imports).
+// Game viewing and review (/game/:id, /library/game/:id, /import/game/:id): a board with move paging, a full review
+// by the engine (side accuracy, move classification, evaluation bar and graph), coach comments, the game summary,
+// the openings reference, a board x-ray, arrows and right-button marks, deviations from one's own repertoire, PGN export.
+// The review is computed by the server (/analysis/game/{id}) and stored; a library game has no engine review, and
+// an imported one has its own (/imports).
 //
-// Откуда данные. Ходы и заголовки — PGN партии: GET /profile/games/{id}/pgn, /library/games/{id}/pgn или
-// /imports/games/{id}/pgn (последний — только владельцу, с токеном). Готовый разбор — GET по адресу разбора при
-// открытии; нового разбора страница сама не запускает — только по кнопке (POST; сервер ограничивает число
-// разборов). Имена, рейтинги, итог и дата — из state маршрута, если партию открыли из списка, иначе из заголовков
-// PGN. Текст наставника собирается из ключей каталога coach.*; аннотация партии библиотеки — поле annotation
-// ответа GET /library/games/{id}; «Угадай ход» — GET /guess/game/{id}; свои задачи по ошибкам — GET
-// /puzzles/personal/game/{id} или поле puzzle_plies импортированной партии (GET /imports/games/{id}). Пока
-// разбора нет, шкала оценки показывает грубый подсчёт
-// материала на клиенте (не движок). Оформление — тема разбора из настроек или, если она не задана, тема игры.
-// Листание здесь устроено иначе, чем на главной доске: viewIndex — индекс показанного полухода, -1 — начальная
-// позиция; «живой» позиции нет.
+// Where the data comes from. Moves and headers are the game PGN: GET /profile/games/{id}/pgn, /library/games/{id}/pgn or
+// /imports/games/{id}/pgn (the last one only for the owner, with a token). A ready review is a GET at the review address on
+// open; the page does not start a new review by itself, only on a button (POST; the server limits the number of
+// reviews). Names, ratings, result and date come from the route state if the game was opened from a list, otherwise from the PGN
+// headers. The coach text is assembled from coach.* catalog keys; the library game annotation is the annotation field of the
+// GET /library/games/{id} response; "Guess the move" is GET /guess/game/{id}; one's own mistake puzzles are GET
+// /puzzles/personal/game/{id} or the puzzle_plies field of an imported game (GET /imports/games/{id}). While there is
+// no review, the evaluation bar shows a rough material count
+// on the client (not the engine). Styling is the review theme from the settings or, if not set, the game theme.
+// Paging here works differently from the main board: viewIndex is the index of the shown ply, -1 is the starting
+// position; there is no "live" position.
 
 import {useState, useEffect, useRef, useMemo, useCallback} from 'react';
 import {useParams, useLocation, Link} from 'react-router-dom';
@@ -79,10 +79,10 @@ import {NavigationControls} from './gameViewer/NavigationControls';
 import {ViewerAppearancePanel} from './gameViewer/ViewerAppearancePanel';
 
 /**
- * library — партия библиотеки (таск 27.1): PGN из /library, без разбора движком, «Угадай ход» и своих ошибок —
- * они привязаны к партиям игроков и ботов.
- * imported — партия игрока с другого сайта (таск 24.1): PGN и разбор из /imports (только владельцу, с токеном),
- * значки «из этого хода сделана задача»; без «Угадай ход» и отклонений от репертуара по партиям сайта.
+ * library is a library game (task 27.1): PGN from /library, no engine review, no "Guess the move" and no own mistakes,
+ * as they are tied to games of players and bots.
+ * imported is a game of a player from another site (task 24.1): PGN and review from /imports (only for the owner, with a token),
+ * "a puzzle was made from this move" badges; no "Guess the move" and no repertoire deviations for site games.
  */
 export default function GameViewer({library = false, imported = false}: { library?: boolean; imported?: boolean }) {
     const {t, dateLocale} = useI18n();
@@ -92,8 +92,8 @@ export default function GameViewer({library = false, imported = false}: { librar
 
     const [history, setHistory] = useState<any[]>([]);
     const [pgnHeaders, setPgnHeaders] = useState<Record<string, string>>({});
-    // Партия могла начаться не с обычной расстановки (заголовок FEN в PGN) — тогда позиции
-    // восстанавливаются от неё.
+    // The game may have started from a non-standard setup (a FEN header in the PGN): then positions
+    // are restored from it.
     const [startFen, setStartFen] = useState<string | null>(null);
     const [viewIndex, setViewIndex] = useState<number>(-1);
     const [libraryAnnotation, setLibraryAnnotation] = useState<LibraryAnnotation | null>(null);
@@ -105,16 +105,16 @@ export default function GameViewer({library = false, imported = false}: { librar
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [analysisError, setAnalysisError] = useState<UiMessage | null>(null);
 
-    // Пометки правой кнопкой — общий слой досок (таск B.1). В разборе они переживают листание ходов (план на
-    // несколько ходов вперёд) и снимаются со сменой партии, левым щелчком по доске или Escape.
+    // Right-button marks are a shared layer of the boards (task B.1). In review they survive move paging (a plan several
+    // moves ahead) and are cleared by changing the game, a left click on the board or Escape.
     const notes = useBoardAnnotations(library ? `library-${gameId ?? ''}` : imported ? `imported-${gameId ?? ''}` : gameId ?? '');
-    // Откуда партия: от этого зависят адреса PGN и разбора (services/analysis.ts).
+    // Where the game comes from: the PGN and review addresses depend on it (services/analysis.ts).
     const source: GameSource = library ? 'library' : imported ? 'imported' : 'played';
     const pgnUrl = analysisApi.pgnUrl(source, gameId ?? '');
-    // Партии с других сайтов видит только владелец: запросы — с токеном.
+    // Games from other sites are seen only by the owner: requests carry a token.
     const clearNotes = notes.clear;
 
-    // Тема разбора (таск 18.3): своя, если задана в настройках, иначе — как в игре.
+    // Review theme (task 18.3): one's own if set in the settings, otherwise as in the game.
     const [boardThemeKey, setBoardThemeKey] = useState<string>(() => getAnalysisBoardThemeKey());
     const [pieceSetKey, setPieceSetKey] = useState<string>(() => getAnalysisPieceSetKey());
 
@@ -247,12 +247,12 @@ export default function GameViewer({library = false, imported = false}: { librar
                 setPgnHeaders(newGame.header());
                 setStartFen(customStartFen(newGame));
                 setHistory(newHistory);
-                // По умолчанию показываем финальную позицию партии, а не начальную —
-                // это разбор только что сыгранной (или архивной) партии, а не пустая доска.
+                // By default we show the final position of the game, not the starting one:
+                // this is a review of a game just played (or an archived one), not an empty board.
                 setViewIndex(newHistory.length - 1);
 
-                // Пустой отчёт по партии с ходами — не анализ, а сбой разбора PGN на сервере:
-                // показывать «100 %» без графика нельзя, пусть игрок запустит анализ заново.
+                // An empty report for a game with moves is not an analysis but a PGN parsing failure on the server:
+                // showing "100 %" without a graph is wrong, let the player run the analysis again.
                 if (cachedData && Array.isArray(cachedData.moves)
                     && (cachedData.moves.length > 0 || newHistory.length === 0)) {
                     setAnalysisReport(cachedData);
@@ -274,7 +274,7 @@ export default function GameViewer({library = false, imported = false}: { librar
         setIsAnalyzing(true);
         setAnalysisError(null);
         try {
-            // С токеном (если игрок вошёл) лимит запросов считается на пользователя, а не на общий IP.
+            // With a token (if the player is signed in) the request limit is counted per user, not per shared IP.
             const data = await analysisApi.run(source, gameId);
             if (!Array.isArray(data.moves) || (data.moves.length === 0 && history.length > 0)) {
                 setAnalysisError(uiMessage('viewer.analysisEmpty'));
@@ -289,9 +289,9 @@ export default function GameViewer({library = false, imported = false}: { librar
         }
     };
 
-    // Обработчик клавиш висит на window и переживает рендеры. Историю и текущий ход он читает через ref,
-    // обновляемый на каждом рендере, а не из замыкания эффекта: эффект перерегистрируется только после
-    // отрисовки, и нажатие сразу после загрузки партии видело пустую историю и молча терялось.
+    // The key handler hangs on window and outlives renders. It reads the history and the current move through a ref
+    // updated on every render, not from the effect closure: the effect is re-registered only after
+    // rendering, and a key press right after the game loaded saw an empty history and was silently lost.
     const navigationRef = useRef({history, viewIndex});
     navigationRef.current = {history, viewIndex};
 
@@ -302,9 +302,9 @@ export default function GameViewer({library = false, imported = false}: { librar
                 setShowAppearancePanel(false);
                 return;
             }
-            // setViewIndex принимает готовое значение, а не функцию-обновитель: React StrictMode
-            // в разработке вызывает такую функцию дважды, и звук из побочного эффекта внутри неё
-            // проигрывался бы два раза подряд (рассинхронизированно, по разным тикам Audio).
+            // setViewIndex takes a ready value, not an updater function: React StrictMode
+            // in development calls such a function twice, and the sound from a side effect inside it
+            // would play twice in a row (out of sync, on different Audio ticks).
             const {history: moves, viewIndex: current} = navigationRef.current;
             if (e.key === 'ArrowLeft') {
                 e.preventDefault();
@@ -336,7 +336,7 @@ export default function GameViewer({library = false, imported = false}: { librar
     }, [playAudio, clearNotes]);
 
     useEffect(() => {
-        // Прокручивается только окно списка ходов — страница и доска остаются на месте (scrollMove.ts).
+        // Only the move list window scrolls: the page and the board stay in place (scrollMove.ts).
         const list = notationScrollRef.current;
         if (!list) return;
         const activeElement = list.querySelector<HTMLElement>('.active-move');
@@ -372,13 +372,13 @@ export default function GameViewer({library = false, imported = false}: { librar
 
     const whiteBarPercent = evalCpToWhitePercentage(currentEval.cp);
 
-    // Наставник к текущему ходу: текст, стрелки (лучший ход, угроза, идея) и подсвеченные цели.
+    // The coach for the current move: the text, arrows (best move, threat, idea) and highlighted targets.
     const [showCoachArrows, setShowCoachArrows] = useState(true);
-    // Рентген доски (таск 12.1): в разборе — за сторону, которая ходит в показанной позиции.
+    // Board x-ray (task 12.1): in review, for the side that is to move in the shown position.
     const xray = useXraySettings();
-    // Отобранные моменты для «Угадай ход мастера» (таск 14.3): есть — кнопка ведёт к первому.
+    // Selected moments for "Guess the master's move" (task 14.3): if present, the button leads to the first.
     const [guessFirstId, setGuessFirstId] = useState<number | null>(null);
-    // Справочник дебютов к показанной позиции (таск 16.2): открывается по кнопке — запрос только тогда.
+    // Openings reference for the shown position (task 16.2): opens on a button, the request only then.
     const [showExplorer, setShowExplorer] = useState(false);
     useEffect(() => {
         if (!gameId || library || imported) return;
@@ -386,7 +386,7 @@ export default function GameViewer({library = false, imported = false}: { librar
             .then((r) => setGuessFirstId(r.positions[0]?.id ?? null))
             .catch(() => setGuessFirstId(null));
     }, [gameId]);
-    // Ходы этой партии, из которых сделаны задачи «Ваши ошибки» (таск 13.5) — только свои, только с токеном.
+    // Moves of this game from which "Your mistakes" puzzles were made (task 13.5): only one's own, only with a token.
     const [personalPlies, setPersonalPlies] = useState<Set<number>>(new Set());
     useEffect(() => {
         if (!gameId || library || !getToken()) return;
@@ -417,7 +417,7 @@ export default function GameViewer({library = false, imported = false}: { librar
         );
     };
 
-    // Имена ботов и архетипов из архива — на языке игрока; заголовки PGN — как записаны.
+    // Names of bots and archetypes from the archive are in the player's language; PGN headers are as recorded.
     const whiteName = displayPlayerName(gameDataFromState?.white_username, t) || pgnHeaders.White || t('common.white');
     const whiteRating = gameDataFromState?.white_rating || pgnHeaders.WhiteElo || '?';
     const blackName = displayPlayerName(gameDataFromState?.black_username, t) || pgnHeaders.Black || t('common.black');
@@ -908,7 +908,7 @@ export default function GameViewer({library = false, imported = false}: { librar
                     >
                         <Download size={16}/> {t('viewer.downloadPgnFile')}
                     </a>
-                    {/* Поделиться в ленте (таск 30.2): своя или чужая партия портала, партия библиотеки; импортированные — личные. */}
+                    {/* Share to the feed (task 30.2): one's own or someone else's portal game, a library game; imported ones are private. */}
                     {!imported && gameId && getToken() && (
                         <Link to="/feed" state={{attach: {kind: library ? 'library' : 'game', ref: gameId}}} data-testid="share-to-feed"
                               className="flex items-center justify-center gap-2 w-full px-4 py-2 bg-room-dark text-amber-400 font-bold text-sm rounded-md hover:bg-black transition shadow border border-amber-800/60">

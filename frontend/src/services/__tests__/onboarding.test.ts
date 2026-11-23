@@ -1,4 +1,4 @@
-// Первый вход (таск 17.8): соперник первой партии по стартовому рейтингу.
+// First login (task 17.8): the opponent of the first game by the starting rating.
 
 import {describe, expect, it} from 'vitest';
 import {pickFirstOpponent} from '../onboarding';
@@ -11,17 +11,17 @@ const archetype = (id: string, rating: number) => ({
 
 const CATALOG = [archetype('quiet', 848), archetype('rusher', 792), archetype('cavalier', 1198), archetype('centralist', 1395)];
 
-describe('соперник первой партии', () => {
-    it('самый сильный архетип не сильнее игрока — по измеренной силе', () => {
+describe('opponent of the first game', () => {
+    it('the strongest archetype is not stronger than the player — by the measured strength', () => {
         expect(pickFirstOpponent(CATALOG, 1200)?.id).toBe('cavalier');
         expect(pickFirstOpponent(CATALOG, 1850)?.id).toBe('centralist');
     });
 
-    it('новичку, который слабее всех, — самый слабый', () => {
+    it('for a beginner who is weaker than all — the weakest', () => {
         expect(pickFirstOpponent(CATALOG, 600)?.id).toBe('rusher');
     });
 
-    it('пустой каталог — соперника нет', () => {
+    it('an empty catalog — no opponent', () => {
         expect(pickFirstOpponent([], 1200)).toBeNull();
     });
 });

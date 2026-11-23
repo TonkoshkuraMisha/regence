@@ -1,19 +1,19 @@
 # --- FILE: scripts/dev/build_puzzle_subset.py ---
 """
-Выборка задач из открытой базы lichess (таск 13.1) → data/puzzles/lichess_subset.csv.gz.
+Selection of puzzles from the open lichess database (task 13.1) -> data/puzzles/lichess_subset.csv.gz.
 
-База: https://database.lichess.org/#puzzles (lichess_db_puzzle.csv.zst, лицензия CC0). Скрипт читает её потоком и
-отбирает задачи хорошего качества (устойчивый рейтинг, высокая популярность, много решений) так, чтобы:
-* рейтинг 600–2600 был покрыт равномерно — 20 корзин по 100 пунктов, по ``--per-bucket`` задач в каждой;
-* у каждого тега, который реестр тем (src/services/themes.py) переводит в свою тему, на каждой ступени (таск 13.4,
-  ``stage_for``) было не меньше ``--per-tag-stage`` задач (сколько найдётся), — редкие темы и лёгкие ступени не
-  тонут среди частых.
+The database: https://database.lichess.org/#puzzles (lichess_db_puzzle.csv.zst, licence CC0). The script reads it as a stream
+and selects good-quality puzzles (stable rating, high popularity, many plays) so that:
+* the rating 600-2600 is covered evenly - 20 buckets of 100 points, ``--per-bucket`` puzzles in each;
+* every tag that the theme registry (src/services/themes.py) maps to its own theme has at least ``--per-tag-stage`` puzzles
+  (as many as can be found) at every stage (task 13.4, ``stage_for``) - rare themes and easy stages are not
+  drowned among the frequent ones.
 
-Где задач хорошего качества не хватает (редкий тег на лёгкой ступени), квота добирается из задач с мягким
-фильтром (``acceptable``): популярность ≥ 70, ≥ 100 решений, отклонение рейтинга ≤ 90.
+Where there are not enough good-quality puzzles (a rare tag at an easy stage), the quota is topped up from puzzles with a soft
+filter (``acceptable``): popularity >= 70, >= 100 plays, rating deviation <= 90.
 
-Отбор детерминирован (``--seed``): повторный запуск на той же базе даёт ту же выборку. Нужен пакет zstandard
-(только для этого скрипта; сервер его не использует). В CI не запускается.
+The selection is deterministic (``--seed``): a re-run on the same database gives the same selection. The zstandard package
+is needed (only for this script; the server does not use it). Not run in CI.
 
     python -m scripts.dev.build_puzzle_subset path/to/lichess_db_puzzle.csv.zst
 """
@@ -35,26 +35,26 @@ RATING_MIN, RATING_MAX, BUCKET = 600, 2600, 100
 
 
 def acceptable(row: dict) -> bool:
-    """Мягкий фильтр — только чтобы добрать редкие темы и ступени."""
+    """Soft filter - only to top up rare themes and stages."""
     return (int(row["RatingDeviation"]) <= 90 and int(row["Popularity"]) >= 70 and int(row["NbPlays"]) >= 100
             and RATING_MIN <= int(row["Rating"]) < RATING_MAX)
 
 
 def good(row: dict) -> bool:
-    """Проверяет, проходит ли задача основной фильтр качества и популярности."""
+    """Checks whether a puzzle passes the main quality and popularity filter."""
     return (int(row["RatingDeviation"]) <= 80 and int(row["Popularity"]) >= 85 and int(row["NbPlays"]) >= 300
             and RATING_MIN <= int(row["Rating"]) < RATING_MAX)
 
 
 class Reservoir:
-    """Равномерная случайная выборка фиксированного размера из потока (алгоритм R)."""
+    """Uniform random sample of fixed size from a stream (algorithm R)."""
 
     def __init__(self, size: int, rng: random.Random):
-        """Инициализирует резервуар равномерной случайной выборки фиксированного размера."""
+        """Initialises the reservoir of a uniform random sample of fixed size."""
         self.size, self.rng, self.seen, self.items = size, rng, 0, []
 
     def offer(self, item: dict) -> None:
-        """Добавляет элемент в резервуар с равномерной вероятностью замещения."""
+        """Adds an element to the reservoir with uniform replacement probability."""
         self.seen += 1
         if len(self.items) < self.size:
             self.items.append(item)
@@ -65,7 +65,7 @@ class Reservoir:
 
 
 def main() -> None:
-    """Формирует сбалансированную выборку задач из полного дампа lichess."""
+    """Builds a balanced puzzle selection from the full lichess dump."""
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("source", type=pathlib.Path)
     parser.add_argument("--per-bucket", type=int, default=900)
@@ -73,7 +73,7 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=13)
     args = parser.parse_args()
 
-    import zstandard  # только для сборки выборки
+    import zstandard  # only for building the selection
 
     rng = random.Random(args.seed)
     buckets = {low: Reservoir(args.per_bucket, rng) for low in range(RATING_MIN, RATING_MAX, BUCKET)}
@@ -100,7 +100,7 @@ def main() -> None:
                 if (tag, stage) in tags:
                     tags[(tag, stage)].offer(item)
 
-    # Неполные квоты — добираем из мягкого фильтра.
+    # Incomplete quotas - topped up from the soft filter.
     for key, reservoir in tags.items():
         missing = args.per_tag_stage - len(reservoir.items)
         if missing > 0:
@@ -117,10 +117,10 @@ def main() -> None:
         writer.writeheader()
         writer.writerows(rows)
 
-    print(f"Прочитано {total}, подходит по качеству {kept}, в выборке {len(rows)} → {OUTPUT}", file=sys.stderr)
+    print(f"Read {total}, pass quality {kept}, in the selection {len(rows)} -> {OUTPUT}", file=sys.stderr)
     thin = {f"{tag}/{stage}": len(r.items) for (tag, stage), r in tags.items() if len(r.items) < args.per_tag_stage}
     if thin:
-        print(f"Неполные квоты (тег/ступень: найдено): {thin}", file=sys.stderr)
+        print(f"Incomplete quotas (tag/stage: found): {thin}", file=sys.stderr)
 
 
 if __name__ == "__main__":

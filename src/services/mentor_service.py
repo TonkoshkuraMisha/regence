@@ -1,21 +1,21 @@
 # --- FILE: src/services/mentor_service.py ---
 """
-Детектор шахматных мотивов для наставника.
+Chess motif detector for the mentor.
 
-Возвращает **факты**, а не текст: код мотива, сторону, которой он выгоден, ключевое поле, цели и числовое
-значение. Слова из фактов собирает слой шаблонов (таск 11.2). Детектор не использует движок: всё считается
-по правилам на `python-chess`, поэтому результат воспроизводим и проверяется тестами на конкретных позициях.
+Returns **facts**, not text: the motif code, the side that benefits from it, the key square, the targets and a numeric
+value. The template layer (task 11.2) turns the facts into words. The detector does not use the engine: everything is computed
+by rules on `python-chess`, so the result is reproducible and is checked by tests on concrete positions.
 
-Главный принцип — ложное срабатывание хуже пропуска: наставник, который видит «вилку» там, где её нет,
-вреднее молчащего. Поэтому материальные мотивы проверяются честным разменом на поле (SEE по легальным
-ходам — с учётом связок и защит), а не признаком «атакована и не защищена».
+The main principle is that a false positive is worse than a miss: a mentor who sees a "fork" where there is none
+does more harm than a silent one. Therefore material motifs are verified by an honest exchange on the square (SEE over legal
+moves, taking pins and defenders into account), not by the "attacked and not defended" flag.
 
-Поле ``color`` у факта — сторона, которой мотив **выгоден** (может им воспользоваться): у вилки — та, чья
-фигура бьёт; у слабости последней горизонтали — соперник владельца этой горизонтали; у проходной пешки —
-её владелец.
+The ``color`` field of a fact is the side that **benefits** from the motif (can make use of it): for a fork, the side whose
+piece attacks; for a weak back rank, the opponent of the owner of that rank; for a passed pawn,
+its owner.
 
-Вызывают coach.py (слова наставника), personal_puzzles.py (темы личных задач) и puzzle_import.py (темы базы задач).
-Данных из БД, Redis и настроек не берёт: вход — только позиция (chess.Board) и ход.
+Called by coach.py (mentor words), personal_puzzles.py (personal puzzle themes) and puzzle_import.py (puzzle database themes).
+Takes no data from the DB, Redis or settings: the input is only a position (chess.Board) and a move.
 """
 
 from collections.abc import Iterator
@@ -25,29 +25,29 @@ from typing import Literal
 import chess
 
 MotifCode = Literal[
-    "hanging",            # фигуру можно взять с выигрышем материала
-    "fork",               # одна фигура нападает на две цели, обе не уберечь
-    "pin_absolute",       # связка: за фигурой король — ходить ею нельзя
-    "pin_relative",       # связка: за фигурой более ценная фигура
-    "skewer",             # сквозной удар: ценная фигура впереди, за ней — ещё одна
-    "discovered_attack",  # ход открыл линию дальнобойной фигуры на цель
-    "discovered_check",   # ход открыл шах
-    "double_check",       # двойной шах
-    "overloaded",         # одна фигура — единственная защита двух атакованных
-    "trapped",            # фигура под боем, и уйти ей некуда
-    "back_rank",          # слабость последней горизонтали
-    "mate_threat",        # если бы ходила сторона color, у неё был бы мат в один ход
-    "mate_in",            # у стороны, которая ходит, есть мат в один или два хода (в два — только с шаха)
-    "passed_pawn",        # проходная пешка
-    "open_file",          # ладья на открытой вертикали
-    "half_open_file",     # ладья на полуоткрытой вертикали
-    "development_lag",    # отставание в развитии лёгких фигур
-    "delayed_castling",   # король не рокировался и стоит дома, у соперника есть ферзь, а у короля нет своей пешки на d или e
-    "battery",            # две дальнобойные фигуры одной линии вплотную, линия упирается в фигуру соперника
-    "interference",       # ход перекрыл линию, по которой фигура соперника защищала свою
+    "hanging",            # a piece can be captured with a material gain
+    "fork",               # one piece attacks two targets, and both cannot be saved
+    "pin_absolute",       # pin: the king is behind the piece, so it cannot move
+    "pin_relative",       # pin: a more valuable piece is behind the piece
+    "skewer",             # skewer: a valuable piece in front, with another one behind it
+    "discovered_attack",  # the move opened the line of a long-range piece onto a target
+    "discovered_check",   # the move opened a check
+    "double_check",       # double check
+    "overloaded",         # one piece is the only defender of two attacked pieces
+    "trapped",            # a piece is under attack and has nowhere to go
+    "back_rank",          # weak back rank
+    "mate_threat",        # if the ``color`` side were to move, it would have mate in one
+    "mate_in",            # the side to move has mate in one or two (in two, only starting with a check)
+    "passed_pawn",        # passed pawn
+    "open_file",          # rook on an open file
+    "half_open_file",     # rook on a half-open file
+    "development_lag",    # lag in the development of minor pieces
+    "delayed_castling",   # king uncastled at home, opponent has a queen, king has no own pawn on d or e
+    "battery",            # two long-range pieces on one line, adjacent, with the line ending on an opponent piece
+    "interference",       # the move blocked a line along which an opponent piece defended its own
 ]
 
-# Учебные ценности фигур (в сантипешках): размен считается по ним, как его объясняют ученику.
+# Teaching piece values (in centipawns): the exchange is computed with them, the way it is explained to a student.
 PIECE_VALUE = {
     chess.PAWN: 100,
     chess.KNIGHT: 300,
@@ -57,27 +57,28 @@ PIECE_VALUE = {
     chess.KING: 10_000,
 }
 
-# Дебютные мотивы (отставание в развитии, задержка рокировки) считаются только на ходах
+# Opening motifs (development lag, delayed castling) are computed only on moves
 # DEVELOPMENT_MIN_MOVE ... OPENING_MOVE_LIMIT.
 OPENING_MOVE_LIMIT = 20
-# Раньше этого хода (номер хода партии) о развитии судить рано.
+# Before this move (the game's move number) it is too early to judge development.
 DEVELOPMENT_MIN_MOVE = 6
-# С этого хода король, не покинувший дом, при ферзе соперника и без своей пешки на d или e, считается задержавшим рокировку.
+# From this move on, a king that has not left home, with an opponent queen on the board and no pawn of its own on d or e,
+# counts as having delayed castling.
 CASTLING_MIN_MOVE = 10
-# Насколько больше нетронутых лёгких фигур у стороны, чем у соперника, чтобы это стало мотивом.
+# How many more untouched minor pieces a side must have than its opponent for this to become a motif.
 DEVELOPMENT_LAG_MIN = 2
 
-# Домашние поля коней и слонов: фигура на своём поле считается неразвитой.
+# Home squares of knights and bishops: a piece on its home square counts as undeveloped.
 _MINOR_HOME = {
     chess.WHITE: {chess.B1: chess.KNIGHT, chess.G1: chess.KNIGHT, chess.C1: chess.BISHOP, chess.F1: chess.BISHOP},
     chess.BLACK: {chess.B8: chess.KNIGHT, chess.G8: chess.KNIGHT, chess.C8: chess.BISHOP, chess.F8: chess.BISHOP},
 }
-# Дом короля для проверки «не рокировался».
+# King's home square for the "has not castled" check.
 _KING_HOME = {chess.WHITE: chess.E1, chess.BLACK: chess.E8}
-# Номер последней горизонтали каждой стороны (0 — первая, 7 — восьмая).
+# Number of each side's back rank (0 is the first rank, 7 is the eighth).
 _BACK_RANK = {chess.WHITE: 0, chess.BLACK: 7}
 
-# Шаги по доске (файл, горизонталь) для лучей ладьи и слона; ферзь — их сумма (_slider_steps).
+# Board steps (file, rank) for rook and bishop rays; the queen is their sum (_slider_steps).
 _ROOK_STEPS = ((1, 0), (-1, 0), (0, 1), (0, -1))
 _BISHOP_STEPS = ((1, 1), (1, -1), (-1, 1), (-1, -1))
 
@@ -85,9 +86,10 @@ _BISHOP_STEPS = ((1, 1), (1, -1), (-1, 1), (-1, -1))
 @dataclass(frozen=True)
 class Motif:
     """
-    Один факт о позиции: код, сторона, которой он выгоден, ключевое поле, цели и число (``value``: выигрыш в
-    сантипешках, длина мата, число ходов до превращения — по коду). ``targets`` — поля целей (для связки: связанная
-    фигура, затем фигура за ней; у ``hanging`` — поля нападающих фигур).
+    One fact about a position: a code, the side that benefits from it, the key square, the targets and a number (``value``:
+    material gain in centipawns, mate length, number of moves to promotion, depending on the code). ``targets`` are the
+    target squares (for a pin: the pinned piece, then the piece behind it; for ``hanging``: the squares of the attacking
+    pieces).
     """
 
     code: MotifCode
@@ -98,11 +100,11 @@ class Motif:
 
     @property
     def key(self) -> tuple:
-        """Идентичность факта для сравнения позиций до и после хода (значение не входит)."""
+        """Identity of a fact for comparing positions before and after a move (the value is not included)."""
         return self.code, self.color, self.square, self.targets
 
     def to_dict(self, board: chess.Board) -> dict:
-        """JSON-представление: имена полей и фигуры на них в позиции ``board``."""
+        """JSON representation: field names and the pieces on them in position ``board``."""
         def describe(square: chess.Square) -> dict:
             piece = board.piece_at(square)
             return {"square": chess.square_name(square), "piece": piece.symbol() if piece else None}
@@ -119,8 +121,8 @@ class Motif:
 @dataclass
 class MoveFacts:
     """
-    Что изменил ход: ``created`` — мотивы, появившиеся в пользу сходившего, ``allowed`` — отданные сопернику,
-    ``resolved`` — мотивы, которые после хода исчезли.
+    What the move changed: ``created`` are motifs that appeared in favour of the mover, ``allowed`` are those handed to the
+    opponent, ``resolved`` are motifs that disappeared after the move.
     """
 
     created: list[Motif] = field(default_factory=list)
@@ -128,16 +130,16 @@ class MoveFacts:
     resolved: list[Motif] = field(default_factory=list)
 
 
-# --- размен на поле ---------------------------------------------------------------------------
+# --- exchange on a square ---------------------------------------------------------------------
 
 
 def _value(piece: chess.Piece | None) -> int:
-    """Учебная ценность фигуры по PIECE_VALUE; пустое поле — 0."""
+    """Teaching value of a piece according to PIECE_VALUE; an empty square is 0."""
     return PIECE_VALUE[piece.piece_type] if piece else 0
 
 
 def _least_valuable_capture(board: chess.Board, square: chess.Square) -> chess.Move | None:
-    """Легальное взятие на поле самой дешёвой фигурой стороны, которая ходит (превращение — в ферзя)."""
+    """Legal capture on the square by the cheapest piece of the side to move (promotion is to a queen)."""
     best: chess.Move | None = None
     best_value = 0
     for move in board.generate_legal_captures(to_mask=chess.BB_SQUARES[square]):
@@ -150,7 +152,7 @@ def _least_valuable_capture(board: chess.Board, square: chess.Square) -> chess.M
 
 
 def _see(board: chess.Board, square: chess.Square) -> int:
-    """Выигрыш стороны, которая ходит, от размена на поле при лучшей игре обеих сторон (можно и не брать)."""
+    """Gain of the side to move from an exchange on the square with best play by both sides (it may decline)."""
     move = _least_valuable_capture(board, square)
     if move is None:
         return 0
@@ -165,8 +167,8 @@ def _see(board: chess.Board, square: chess.Square) -> int:
 
 def capture_gain(board: chess.Board, square: chess.Square) -> int | None:
     """
-    Чистый выигрыш стороны, которая ходит, если она **начнёт** размен на поле (уже не может передумать
-    после первого взятия). None — взять на поле нечем.
+    Net gain of the side to move if it **starts** the exchange on the square (it can no longer change its mind
+    after the first capture). None means there is nothing to capture on the square with.
     """
     move = _least_valuable_capture(board, square)
     if move is None:
@@ -182,8 +184,8 @@ def capture_gain(board: chess.Board, square: chess.Square) -> int | None:
 
 def _as_side_to_move(board: chess.Board, color: chess.Color) -> chess.Board | None:
     """
-    Копия позиции, где ходит ``color``: так считаются угрозы стороны, которая сейчас не ходит («что будет,
-    если пропустить ход»). None — если пропуск хода невозможен (сторона, которая ходит, под шахом).
+    A copy of the position where ``color`` is to move: this is how threats of the side that is not currently on move are
+    computed ("what happens if the move is skipped"). None if skipping the move is impossible (the side to move is in check).
     """
     if board.turn == color:
         return board.copy(stack=False)
@@ -194,11 +196,11 @@ def _as_side_to_move(board: chess.Board, color: chess.Color) -> chess.Board | No
     return probe
 
 
-# --- геометрия ------------------------------------------------------------------------------
+# --- geometry -------------------------------------------------------------------------------
 
 
 def _ray_squares(square: chess.Square, step: tuple[int, int]) -> Iterator[chess.Square]:
-    """Поля луча от ``square`` (не включая его) в направлении ``step`` до края доски."""
+    """Squares of the ray from ``square`` (excluding it) in direction ``step`` up to the edge of the board."""
     file, rank = chess.square_file(square), chess.square_rank(square)
     while True:
         file, rank = file + step[0], rank + step[1]
@@ -208,7 +210,7 @@ def _ray_squares(square: chess.Square, step: tuple[int, int]) -> Iterator[chess.
 
 
 def _slider_steps(piece_type: chess.PieceType) -> tuple[tuple[int, int], ...]:
-    """Направления лучей дальнобойной фигуры; для остальных видов — пусто."""
+    """Ray directions of a long-range piece; empty for other kinds."""
     if piece_type == chess.ROOK:
         return _ROOK_STEPS
     if piece_type == chess.BISHOP:
@@ -219,7 +221,7 @@ def _slider_steps(piece_type: chess.PieceType) -> tuple[tuple[int, int], ...]:
 
 
 def _first_two_on_ray(board: chess.Board, square: chess.Square, step: tuple[int, int]) -> list[chess.Square]:
-    """Первые две фигуры (любого цвета) на луче от поля."""
+    """The first two pieces (of any colour) on the ray from the square."""
     found: list[chess.Square] = []
     for target in _ray_squares(square, step):
         if board.piece_at(target):
@@ -230,7 +232,7 @@ def _first_two_on_ray(board: chess.Board, square: chess.Square, step: tuple[int,
 
 
 def _real_defenders(board: chess.Board, square: chess.Square, color: chess.Color) -> list[chess.Square]:
-    """Защитники поля, которые могут отбить: фигура, связанная с королём, защищает только вдоль линии связки."""
+    """Defenders of the square that can recapture: a piece pinned to the king defends only along the pin line."""
     return [
         defender for defender in board.attackers(color, square)
         if not board.is_pinned(color, defender) or square in board.pin(color, defender)
@@ -238,16 +240,16 @@ def _real_defenders(board: chess.Board, square: chess.Square, color: chess.Color
 
 
 def _is_defended(board: chess.Board, square: chess.Square) -> bool:
-    """Фигуру на поле защищает хотя бы один настоящий защитник (``_real_defenders``)."""
+    """The piece on the square is defended by at least one real defender (``_real_defenders``)."""
     piece = board.piece_at(square)
     return piece is not None and bool(_real_defenders(board, square, piece.color))
 
 
-# --- мотивы позиции ---------------------------------------------------------------------------
+# --- position motifs --------------------------------------------------------------------------
 
 
 def _hanging(board: chess.Board) -> list[Motif]:
-    """Фигуры, которые сторона может взять с выигрышем материала (для обеих сторон)."""
+    """Pieces that a side can capture with a material gain (for both sides)."""
     found: list[Motif] = []
     for attacker in (chess.WHITE, chess.BLACK):
         probe = _as_side_to_move(board, attacker)
@@ -265,7 +267,7 @@ def _hanging(board: chess.Board) -> list[Motif]:
 
 
 def _loose_target(board: chess.Board, attacker_square: chess.Square, target: chess.Square) -> bool:
-    """Цель, на которую нападение реально опасно: король, более ценная фигура или незащищённая фигура."""
+    """A target on which an attack is really dangerous: the king, a more valuable piece or an undefended piece."""
     piece = board.piece_at(target)
     if piece is None:
         return False
@@ -278,9 +280,9 @@ def _loose_target(board: chess.Board, attacker_square: chess.Square, target: che
 
 def _forks(board: chess.Board) -> list[Motif]:
     """
-    Вилки стороны, которая только что сходила: её фигура нападает на две цели или больше, и соперник не
-    может просто взять эту фигуру с выигрышем. Для стороны, которая ходит, нападение на две фигуры — это
-    уже не вилка, а возможность взять одну из них (мотив ``hanging``).
+    Forks by the side that has just moved: its piece attacks two or more targets, and the opponent cannot
+    simply capture that piece with a gain. For the side to move, an attack on two pieces is
+    no longer a fork but an opportunity to capture one of them (the ``hanging`` motif).
     """
     forker = not board.turn
     found: list[Motif] = []
@@ -296,15 +298,15 @@ def _forks(board: chess.Board) -> list[Motif]:
             continue
         gain = capture_gain(board, square)
         if gain is not None and gain > 0:
-            continue  # вилочную фигуру просто снимут
+            continue  # the forking piece will simply be removed
         found.append(Motif("fork", forker, square, targets))
     return found
 
 
 def _slider_can_be_taken(board: chess.Board, slider_square: chess.Square, victim: chess.Color) -> bool:
     """
-    Сторона-жертва может снять связывающую фигуру хотя бы с равным разменом — тогда связки по сути нет
-    (ферзь против незащищённого ферзя — это предложение размена, а не сквозной удар).
+    The victim side can remove the pinning piece at least with an equal exchange, in which case there is effectively no pin
+    (a queen against an undefended queen is an offer to trade, not a skewer).
     """
     probe = _as_side_to_move(board, victim)
     if probe is None:
@@ -314,7 +316,7 @@ def _slider_can_be_taken(board: chess.Board, slider_square: chess.Square, victim
 
 
 def _pins_and_skewers(board: chess.Board) -> list[Motif]:
-    """Связки (абсолютная и относительная) и сквозные удары для обеих сторон; мотив — на дальнобойной фигуре."""
+    """Pins (absolute and relative) and skewers for both sides; the motif is on the long-range piece."""
     found: list[Motif] = []
     for square in chess.SquareSet(board.occupied):
         slider = board.piece_at(square)
@@ -346,8 +348,8 @@ def _pins_and_skewers(board: chess.Board) -> list[Motif]:
 
 def _overloaded(board: chess.Board) -> list[Motif]:
     """
-    Фигура — единственный защитник двух атакованных фигур своей стороны, и обе сейчас удерживаются только
-    ею (если фигуру можно взять и так, это мотив ``hanging``, а не перегрузка).
+    The piece is the only defender of two attacked pieces of its own side, and both are currently held only
+    by it (if the piece can be captured anyway, that is the ``hanging`` motif, not overloading).
     """
     found: list[Motif] = []
     for defender_color in (chess.WHITE, chess.BLACK):
@@ -365,7 +367,7 @@ def _overloaded(board: chess.Board) -> list[Motif]:
             gain = capture_gain(probe, square)
             if gain is None or gain > 0:
                 continue
-            # Связанный с королём «второй защитник» не защищает — перегружен единственный настоящий.
+            # A defender pinned to the king is not a "second defender": the only real one is overloaded.
             defenders = _real_defenders(board, square, defender_color)
             if len(defenders) == 1:
                 duties.setdefault(defenders[0], []).append(square)
@@ -378,8 +380,8 @@ def _overloaded(board: chess.Board) -> list[Motif]:
 
 def _trapped(board: chess.Board) -> list[Motif]:
     """
-    Фигура стороны, которая ходит, под боем, и спасти её нечем: ни отступлением, ни защитой, ни взятием
-    нападающего — после любого хода её выигрывают. Иначе это просто угроза (мотив ``hanging``).
+    A piece of the side to move is under attack and there is nothing to save it with: neither retreat, nor defence, nor capture
+    of the attacker, since any move loses it. Otherwise it is merely a threat (the ``hanging`` motif).
     """
     found: list[Motif] = []
     owner = board.turn
@@ -395,7 +397,7 @@ def _trapped(board: chess.Board) -> list[Motif]:
             continue
         safe = False
         for move in list(board.legal_moves):
-            # Ход со взятием окупается, если потом отдаётся не больше взятого.
+            # A capturing move pays off if what is then given up is no more than what was taken.
             taken = _value(board.piece_at(move.to_square)) if board.is_capture(move) else 0
             where = move.to_square if move.from_square == square else square
             board.push(move)
@@ -414,9 +416,9 @@ def _trapped(board: chess.Board) -> list[Motif]:
 
 def _back_rank(board: chess.Board) -> list[Motif]:
     """
-    Король на последней горизонтали без «форточки», а тяжёлая фигура соперника уже бьёт поле этой
-    горизонтали, откуда даст шах, где её не возьмёт король и которое больше никто не защищает. Просто
-    «пешки f, g, h не двигались» мотивом не считается.
+    The king is on the back rank with no "luft", and an opponent heavy piece already attacks the square of that
+    rank from which it will give check, where the king cannot capture it and which nobody else defends. Simply
+    "pawns f, g, h have not moved" does not count as a motif.
     """
     found: list[Motif] = []
     for owner in (chess.WHITE, chess.BLACK):
@@ -444,11 +446,11 @@ def _back_rank(board: chess.Board) -> list[Motif]:
             if not any(attacker in heavy for attacker in enemy_attackers):
                 continue
             if chess.between(square, king) & board.occupied:
-                continue  # с этого поля шаха не будет: между ним и королём есть фигуры
+                continue  # there will be no check from this square: there are pieces between it and the king
             if board.attackers(owner, square) - chess.SquareSet(chess.BB_SQUARES[king]):
-                continue  # поле защищает не только король
+                continue  # the square is defended by more than just the king
             if square in board.attacks(king) and len(enemy_attackers) < 2:
-                continue  # король просто возьмёт пришедшую фигуру
+                continue  # the king will simply capture the piece that arrives
             weak.append(square)
         if weak:
             found.append(Motif("back_rank", enemy, king, tuple(weak)))
@@ -456,7 +458,7 @@ def _back_rank(board: chess.Board) -> list[Motif]:
 
 
 def _mate_in_one(board: chess.Board) -> chess.Move | None:
-    """Первый найденный мат в один ход для стороны, которая ходит, иначе None."""
+    """The first mate in one found for the side to move, otherwise None."""
     for move in board.legal_moves:
         board.push(move)
         try:
@@ -468,7 +470,7 @@ def _mate_in_one(board: chess.Board) -> chess.Move | None:
 
 
 def _mate_in_two_by_checks(board: chess.Board) -> chess.Move | None:
-    """Мат в 2 хода, начинающийся с шаха: полный перебор тихих первых ходов на Python слишком медленный."""
+    """Mate in 2 starting with a check: a full search of quiet first moves in Python is too slow."""
     for move in board.legal_moves:
         if not board.gives_check(move):
             continue
@@ -483,7 +485,7 @@ def _mate_in_two_by_checks(board: chess.Board) -> chess.Move | None:
 
 
 def _mates_after(board: chess.Board, reply: chess.Move) -> bool:
-    """После ответа ``reply`` у стороны, которая ходит, есть мат в один ход."""
+    """After the reply ``reply`` the side to move has mate in one."""
     board.push(reply)
     try:
         return _mate_in_one(board) is not None
@@ -493,8 +495,8 @@ def _mates_after(board: chess.Board, reply: chess.Move) -> bool:
 
 def _mates(board: chess.Board) -> list[Motif]:
     """
-    Мат в 1 или 2 хода у стороны, которая ходит (``mate_in``), и мат в один ход, который она получила бы
-    при пропуске хода соперника (``mate_threat``).
+    Mate in 1 or 2 for the side to move (``mate_in``), and a mate in one that it would get
+    if the opponent's move were skipped (``mate_threat``).
     """
     found: list[Motif] = []
     if board.is_game_over():
@@ -518,8 +520,9 @@ def _mates(board: chess.Board) -> list[Motif]:
 
 def _batteries(board: chess.Board) -> list[Motif]:
     """
-    Батарея: передняя и задняя дальнобойные фигуры одной линии стоят вплотную (без фигур между ними), а линия за
-    передней упирается в фигуру соперника. Мотив — на передней фигуре; цели — задняя фигура и мишень.
+    Battery: the front and rear long-range pieces of one line stand adjacent (no pieces between them), and the line beyond
+    the front one ends on an opponent piece. The motif is on the front piece; the targets are the rear piece and the target
+    piece.
     """
     found: list[Motif] = []
     for color in (chess.WHITE, chess.BLACK):
@@ -528,7 +531,7 @@ def _batteries(board: chess.Board) -> list[Motif]:
             if front is None:
                 continue
             for step in _slider_steps(front.piece_type):
-                # Ищем заднюю фигуру — позади передней, в противоположную сторону от мишени.
+                # Look for the rear piece: behind the front one, in the direction opposite to the target.
                 back_step = (-step[0], -step[1])
                 rear_square = next((s for s in _ray_squares(square, back_step) if board.piece_at(s)), None)
                 if rear_square is None:
@@ -544,7 +547,7 @@ def _batteries(board: chess.Board) -> list[Motif]:
 
 
 def _passed_pawns(board: chess.Board) -> list[Motif]:
-    """Проходные пешки обеих сторон; ``value`` — сколько ходов осталось до поля превращения."""
+    """Passed pawns of both sides; ``value`` is how many moves remain to the promotion square."""
     found: list[Motif] = []
     for color in (chess.WHITE, chess.BLACK):
         enemy_pawns = board.pieces(chess.PAWN, not color)
@@ -563,10 +566,10 @@ def _passed_pawns(board: chess.Board) -> list[Motif]:
 
 
 def _files(board: chess.Board) -> list[Motif]:
-    """Ладьи на открытой (нет пешек на вертикали) и полуоткрытой (нет только своих пешек) вертикали."""
+    """Rooks on an open file (no pawns on it) and a half-open file (no pawns of their own only)."""
     found: list[Motif] = []
     for color in (chess.WHITE, chess.BLACK):
-        # Только ладьи: ферзь ходит и по диагоналям, и «ферзь на открытой линии» ученику ничего не объясняет.
+        # Rooks only: the queen also moves along diagonals, and a "queen on an open file" explains nothing to a student.
         for square in board.pieces(chess.ROOK, color):
             file_mask = chess.BB_FILES[chess.square_file(square)]
             own_pawns = board.pieces_mask(chess.PAWN, color) & file_mask
@@ -579,7 +582,7 @@ def _files(board: chess.Board) -> list[Motif]:
 
 
 def _undeveloped(board: chess.Board, color: chess.Color) -> int:
-    """Сколько коней и слонов стороны ещё стоит на домашних полях (_MINOR_HOME)."""
+    """How many knights and bishops of the side are still on their home squares (_MINOR_HOME)."""
     return sum(
         1 for square, piece_type in _MINOR_HOME[color].items()
         if board.piece_type_at(square) == piece_type and board.color_at(square) == color
@@ -588,8 +591,8 @@ def _undeveloped(board: chess.Board, color: chess.Color) -> int:
 
 def _opening(board: chess.Board) -> list[Motif]:
     """
-    Дебютные мотивы ``development_lag`` и ``delayed_castling`` (в пользу соперника отстающей стороны); считаются
-    только на ходах DEVELOPMENT_MIN_MOVE ... OPENING_MOVE_LIMIT.
+    Opening motifs ``development_lag`` and ``delayed_castling`` (in favour of the opponent of the lagging side); computed
+    only on moves DEVELOPMENT_MIN_MOVE ... OPENING_MOVE_LIMIT.
     """
     found: list[Motif] = []
     move_number = board.fullmove_number
@@ -609,7 +612,7 @@ def _opening(board: chess.Board) -> list[Motif]:
                 and board.pieces(chess.QUEEN, not color)
                 and any(
                     not (board.pieces_mask(chess.PAWN, color) & chess.BB_FILES[file])
-                    for file in (3, 4)  # вертикали d и e
+                    for file in (3, 4)  # files d and e
                 )
         ):
             found.append(Motif("delayed_castling", not color, king))
@@ -618,8 +621,8 @@ def _opening(board: chess.Board) -> list[Motif]:
 
 def detect_motifs(board: chess.Board) -> list[Motif]:
     """
-    Все мотивы позиции для обеих сторон, в стабильном порядке. После мата или пата мотивов нет: «вилка»
-    ладьёй, давшей мат, ученику ничего не объясняет.
+    All motifs of the position for both sides, in a stable order. After mate or stalemate there are no motifs: a "fork"
+    by the rook that gave mate explains nothing to a student.
     """
     if board.is_game_over():
         return []
@@ -642,11 +645,11 @@ def detect_motifs(board: chess.Board) -> list[Motif]:
     return list(unique.values())
 
 
-# --- мотивы хода ------------------------------------------------------------------------------
+# --- move motifs ------------------------------------------------------------------------------
 
 
 def _discoveries(board_before: chess.Board, move: chess.Move, board_after: chess.Board) -> list[Motif]:
-    """Ход открыл линию своей дальнобойной фигуре: вскрытое нападение, вскрытый шах, двойной шах."""
+    """The move opened a line for its own long-range piece: discovered attack, discovered check, double check."""
     mover = board_before.turn
     found: list[Motif] = []
     enemy_king = board_after.king(not mover)
@@ -674,8 +677,9 @@ def _discoveries(board_before: chess.Board, move: chess.Move, board_after: chess
 
 def _interferences(board_before: chess.Board, move: chess.Move, board_after: chess.Board) -> list[Motif]:
     """
-    Перекрытие: ходившая фигура встала между дальнобойной фигурой соперника и фигурой, которую та защищала, и
-    защищённая фигура стала добычей (её можно взять с выигрышем). Мотив — на поле хода; цели — защитник и фигура.
+    Interference: the moved piece stepped between an opponent long-range piece and the piece it defended, and
+    the defended piece became prey (it can be captured with a gain). The motif is on the move square; the targets are the
+    defender and the piece.
     """
     mover = board_before.turn
     enemy = not mover
@@ -702,10 +706,10 @@ def analyze_move(
         board_before: chess.Board, move: chess.Move, before_motifs: list[Motif] | None = None,
 ) -> MoveFacts:
     """
-    Что изменил ход: ``created`` — новые мотивы в пользу сходившего (в том числе вскрытия, которые видны
-    только по самому ходу), ``allowed`` — новые мотивы в пользу соперника, ``resolved`` — мотивы, которых
-    после хода не стало. ``before_motifs`` — уже найденные мотивы позиции до хода (чтобы не искать их заново,
-    когда разбираются несколько ходов из одной позиции).
+    What the move changed: ``created`` are new motifs in favour of the mover (including discovered ones, which are visible
+    only from the move itself), ``allowed`` are new motifs in favour of the opponent, ``resolved`` are motifs that
+    disappeared after the move. ``before_motifs`` are the already found motifs of the position before the move (so as not
+    to search for them again when several moves from one position are analysed).
     """
     if move not in board_before.legal_moves:
         raise ValueError(f"Illegal move {move.uci()} in position {board_before.fen()}")

@@ -1,7 +1,7 @@
 """
-Основа ботов (src/services/bots/base.py): поиск движка, загрузка книги, обращения к движку и отказы.
+Bot foundation (src/services/bots/base.py): engine lookup, book loading, engine calls and failures.
 
-Движок — заглушка с готовыми ответами, Stockfish не запускается. Случайность выбора книги фиксируется seed.
+The engine is a stub with canned answers; Stockfish is not started. Book-choice randomness is fixed with a seed.
 """
 
 import json
@@ -19,10 +19,10 @@ BOARD = chess.Board("r2q1rk1/pp2bppp/2n1pn2/3p4/3P4/2NBPN2/PP3PPP/R2Q1RK1 w - - 
 E4 = chess.Move.from_uci("e2e4")
 
 
-# --- поиск движка -----------------------------------------------------------------------------------------------
+# --- engine lookup -----------------------------------------------------------------------------------------------
 
 def test_resolve_stockfish_path_order(monkeypatch, tmp_path):
-    monkeypatch.undo()  # настоящие функции вместо заглушек conftest
+    monkeypatch.undo()  # the real functions instead of the conftest stubs
     custom = tmp_path / "custom-engine"
     custom.write_text("x")
     assert bots_base.resolve_stockfish_path(str(custom)) == str(custom)
@@ -31,23 +31,23 @@ def test_resolve_stockfish_path_order(monkeypatch, tmp_path):
     (root / "bin").mkdir(parents=True)
     monkeypatch.setattr(bots_base, "PROJECT_ROOT", root)
     monkeypatch.setattr(bots_base.shutil, "which", lambda name: None)
-    real_exists = bots_base.os.path.exists  # Path.exists в Python 3.14 тоже идёт через os.path.exists
+    real_exists = bots_base.os.path.exists  # Path.exists in Python 3.14 also goes through os.path.exists
     monkeypatch.setattr(bots_base.os.path, "exists", lambda path: False)
-    assert bots_base.resolve_stockfish_path("/no/such/path") is None  # нигде нет
+    assert bots_base.resolve_stockfish_path("/no/such/path") is None  # found nowhere
 
     monkeypatch.setattr(bots_base.shutil, "which", lambda name: "/opt/stockfish")
-    assert bots_base.resolve_stockfish_path() == "/opt/stockfish"  # из PATH
+    assert bots_base.resolve_stockfish_path() == "/opt/stockfish"  # from PATH
 
     monkeypatch.setattr(bots_base.shutil, "which", lambda name: None)
     monkeypatch.setattr(bots_base.os.path, "exists", lambda path: path == "/usr/games/stockfish" or real_exists(path))
     monkeypatch.setattr(bots_base.os.path, "isfile", lambda path: True)
-    assert bots_base.resolve_stockfish_path() == "/usr/games/stockfish"  # пути Linux
+    assert bots_base.resolve_stockfish_path() == "/usr/games/stockfish"  # Linux paths
 
     (root / "bin" / "stockfish").write_text("x")
-    assert bots_base.resolve_stockfish_path() == str(root / "bin" / "stockfish")  # bin/ проекта — раньше PATH
+    assert bots_base.resolve_stockfish_path() == str(root / "bin" / "stockfish")  # the project's bin/ comes before PATH
 
 
-# --- книга ---------------------------------------------------------------------------------------------------------
+# --- book ---------------------------------------------------------------------------------------------------------
 
 def test_book_merges_file_with_signature_moves_and_survives_broken_files(monkeypatch, tmp_path):
     books = tmp_path / "books"
@@ -61,14 +61,14 @@ def test_book_merges_file_with_signature_moves_and_survives_broken_files(monkeyp
         "empty": [["0000", 1, 1]],
     }), encoding="utf-8")
     book = bots_base.load_bot_opening_book("demo", fallback)
-    assert {m[0] for m in book[key]} == {"e2e4", "g1f3", "d2d4"}  # ходы файла + фирменные, которых в файле нет
+    assert {m[0] for m in book[key]} == {"e2e4", "g1f3", "d2d4"}  # the file's moves + signature ones missing from the file
     assert "only" in book and "empty" not in book
-    # Файл с мусором: ошибка в лог, остаётся книга-запас.
-    (books / "broken.json").write_text("{не json", encoding="utf-8")
+    # A file with garbage: the error is logged and the fallback book remains.
+    (books / "broken.json").write_text("{not json", encoding="utf-8")
     assert bots_base.load_bot_opening_book("broken", fallback) == fallback
 
 
-# --- обращения к движку ---------------------------------------------------------------------------------------------
+# --- engine calls ---------------------------------------------------------------------------------------------
 
 class _Engine:
     def __init__(self, info=None, move=None, error: Exception | None = None):
@@ -104,13 +104,13 @@ def _info(move: chess.Move | None, cp: int | None = 40) -> dict:
 def test_analyse_without_path_or_with_engine_error_is_empty(monkeypatch, tmp_path):
     assert bots_base.analyse_with_stockfish(BOARD, None) == {}
     assert bots_base.analyse_with_stockfish(BOARD, "/no/such/engine") == {}
-    path = _install(monkeypatch, _Engine(error=RuntimeError("сбой")), tmp_path)
+    path = _install(monkeypatch, _Engine(error=RuntimeError("failure")), tmp_path)
     assert bots_base.analyse_with_stockfish(BOARD, path) == {}
 
 
 def test_analyse_reads_single_and_multiple_lines_and_skips_empty_pv(monkeypatch, tmp_path):
     path = _install(monkeypatch, _Engine(info=_info(E4)), tmp_path)
-    assert bots_base.analyse_with_stockfish(BOARD, path) == {E4: 40.0}  # ответ-словарь одной линии
+    assert bots_base.analyse_with_stockfish(BOARD, path) == {E4: 40.0}  # a dict answer for a single line
     lines = [_info(E4), _info(None), _info(chess.Move.from_uci("d3e4"), cp=None)]
     path = _install(monkeypatch, _Engine(info=lines), tmp_path)
     assert set(bots_base.analyse_with_stockfish(BOARD, path)) == {E4, chess.Move.from_uci("d3e4")}
@@ -120,7 +120,7 @@ def test_reference_move_and_scoring_report_failures(monkeypatch, tmp_path):
     monkeypatch.undo()
     path = _install(monkeypatch, _Engine(move=E4), tmp_path)
     assert bots_base.strength_reference_move(BOARD, path, 1500, 0.1) == E4
-    failing = _install(monkeypatch, _Engine(error=RuntimeError("сбой")), tmp_path)
+    failing = _install(monkeypatch, _Engine(error=RuntimeError("failure")), tmp_path)
     assert bots_base.strength_reference_move(BOARD, failing, 1500, 0.1) is None
     assert bots_base.score_move(BOARD, failing, E4, 5, 0.1) is None
     path = _install(monkeypatch, _Engine(info=_info(E4, cp=55)), tmp_path)
@@ -129,7 +129,7 @@ def test_reference_move_and_scoring_report_failures(monkeypatch, tmp_path):
     assert bots_base.score_move(BOARD, path, E4, 5, 0.1) == 0.0
 
 
-# --- бот ---------------------------------------------------------------------------------------------------------------
+# --- bot ---------------------------------------------------------------------------------------------------------------
 
 class _Bot(HistoricalBot):
     bot_id = "extra"
@@ -139,12 +139,12 @@ class _Bot(HistoricalBot):
 def test_active_engine_path_rules(tmp_path):
     existing = tmp_path / "engine"
     existing.write_text("x")
-    assert _Bot(stockfish_path=str(tmp_path / "missing"))._get_active_engine_path() is None  # явный путь потерян
+    assert _Bot(stockfish_path=str(tmp_path / "missing"))._get_active_engine_path() is None  # the explicit path is lost
     assert _Bot(stockfish_path=str(existing))._get_active_engine_path() == str(existing)
     bot = _Bot()
     bot.stockfish_path = str(existing)
     assert bot._get_active_engine_path() == str(existing)
-    bot.stockfish_path = str(tmp_path / "gone")  # найденный движок пропал — ищется заново
+    bot.stockfish_path = str(tmp_path / "gone")  # the engine that was found vanished: it is searched for again
     assert bot._get_active_engine_path() == bots_base.resolve_stockfish_path()
 
 
@@ -153,10 +153,10 @@ def test_book_move_skips_bad_entries(monkeypatch):
     bot = _Bot()
     key = bots_base.normalize_fen_key(chess.Board())
     bot.opening_book = {key: [("0000", 1, "n"), ("zzzz", 1, "n"), ("e2e5", 1, "n")]}
-    assert bot._book_move(chess.Board()) is None  # ни одного легального хода
+    assert bot._book_move(chess.Board()) is None  # no legal moves at all
     bot.opening_book = {key: [("0000", 1, "n"), ("e2e4", 3, 12)]}
     move, comment = bot._book_move(chess.Board())
-    assert move == E4 and comment["params"] == {"games": 12}  # число партий архива вместо фирменной фразы
+    assert move == E4 and comment["params"] == {"games": 12}  # the archive's game count instead of the signature phrase
 
 
 def test_unscorable_reference_is_dropped(monkeypatch):

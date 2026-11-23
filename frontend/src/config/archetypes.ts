@@ -1,9 +1,9 @@
 // --- FILE: frontend/src/config/archetypes.ts ---
 
 /**
- * Соперник из мастерской на доске: профиль, радар стиля и пояснение силы. Сами архетипы
- * (вымышленные персонажи) живут на сервере — src/services/bots/archetypes.py, — фронтенд получает
- * их вместе с измеренной силой через GET /bots/catalog (services/botCatalog.ts).
+ * Workshop opponent on the board: profile, style radar and strength explanation. The archetypes themselves
+ * (fictional characters) live on the server - src/services/bots/archetypes.py - the frontend receives
+ * them together with the measured strength via GET /bots/catalog (services/botCatalog.ts).
  */
 
 import {t} from '../i18n';
@@ -12,46 +12,46 @@ import type {HistoricalBotProfile} from './champions';
 import {hasMessage} from '../i18n';
 import type {Messages} from '../i18n';
 
-/** Соперник из мастерской в партии: имя, конфиг и (если сохранён на сервере) его id. */
+/** Workshop opponent in a game: name, config and (if saved on the server) its id. */
 export interface CustomOpponent {
     name: string;
     /**
-     * Имя, под которым партия сохраняется на сервере, если оно отличается от показанного: у мастера прошлого
-     * («Машина времени») на доске — имя на языке игрока, в турнире и PGN — латинское.
+     * Name under which the game is saved on the server, if it differs from the displayed one: for a past master
+     * ("Time Machine") the board shows the name in the player's language, while the tournament and PGN use the Latin one.
      */
     savedName?: string;
     config: PersonalityConfig;
     personalityId?: number;
     bio?: string;
     /**
-     * Архетип мастерской без изменений (в том числе соперник лестницы): имя и описание берутся из каталога на
-     * языке игрока, а в архив партия уходит с ключом «archetype:<id>».
+     * Workshop archetype unchanged (including a ladder opponent): name and description are taken from the catalog in the
+     * player's language, and the game goes to the archive with the key "archetype:<id>".
      */
     archetypeId?: ArchetypeId;
 }
 
-/** id архетипа мастерской — ключ раздела archetypes в каталогах (тот же список, что на сервере). */
+/** Workshop archetype id - key of the archetypes section in the catalogs (the same list as on the server). */
 export type ArchetypeId = keyof Messages['archetypes'];
 
-/** Проверка id, пришедшего с сервера: неизвестный архетип (сервер новее клиента) не показывается. */
+/** Check of an id that came from the server: an unknown archetype (server newer than the client) is not shown. */
 export function isArchetypeId(value: unknown): value is ArchetypeId {
     return typeof value === 'string' && hasMessage(`archetypes.${value}.name`);
 }
 
-/** Ключ архетипа в архиве партий (games.personality_name) — тот же, что на сервере. */
+/** Archetype key in the game archive (games.personality_name) - the same as on the server. */
 export const ARCHETYPE_PREFIX = 'archetype:';
 
 export function archetypeKey(id: ArchetypeId): string {
     return `${ARCHETYPE_PREFIX}${id}`;
 }
 
-// Аватар соперника из мастерской — силуэт коня (своё изображение, без внешних файлов).
+// Workshop opponent avatar - a knight silhouette (our own image, no external files).
 const WORKSHOP_AVATAR = `data:image/svg+xml;utf8,${encodeURIComponent(
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="10" fill="#3b2412"/>'
     + '<path d="M22 50h22l-2-6c0-8 4-12 4-20 0-8-6-14-14-14l-2 4-4 2-6 8 2 4 6-2 4 2-10 12z" fill="#e7c38b"/></svg>',
 )}`;
 
-/** Профиль для доски и панели — в том же виде, что у исторических ботов. */
+/** Profile for the board and panel - in the same form as for historical bots. */
 export function customBotProfile(opponent: CustomOpponent): HistoricalBotProfile {
     const name = () => (opponent.archetypeId ? t(`archetypes.${opponent.archetypeId}.name`) : opponent.name);
     return {
@@ -82,8 +82,8 @@ export function customBotProfile(opponent: CustomOpponent): HistoricalBotProfile
 }
 
 /**
- * Наглядная сводка ползунков для радара (0..100). Это иллюстрация характера, а не измерение силы:
- * измеренная сила — таск 10.4.
+ * Illustrative summary of the sliders for the radar (0..100). This is an illustration of character, not a strength measurement:
+ * measured strength is task 10.4.
  */
 export type RadarAxis = 'attack' | 'defense' | 'tactics' | 'position' | 'endgame';
 
@@ -107,8 +107,8 @@ export function styleRadar(config: PersonalityConfig): { key: RadarAxis; axis: s
 }
 
 /**
- * Доля управляемых ошибок по целевой силе — копия ERROR_RATE_CURVE сервера (src/services/bots/personality.py,
- * подобрана по калибровке). Совпадение чисел проверяет tests/test_personality_bot.py.
+ * Share of controlled mistakes by target strength - a copy of the server's ERROR_RATE_CURVE (src/services/bots/personality.py,
+ * tuned from calibration). That the numbers match is checked by tests/test_personality_bot.py.
  */
 export const ERROR_RATE_CURVE: readonly (readonly [number, number])[] = [
     [300, 0.57], [600, 0.43], [1500, 0.0],
@@ -126,7 +126,7 @@ export function errorRate(elo: number): number {
     return 0;
 }
 
-// --- Фильтры выбора соперника (таск 21.4) ----------------------------------------------------
+// --- Opponent selection filters (task 21.4) -------------------------------------------------
 
 export const STRENGTH_BUCKETS = ['beginner', 'novice', 'club', 'strong', 'expert'] as const;
 export type StrengthBucket = typeof STRENGTH_BUCKETS[number];
@@ -141,7 +141,7 @@ export function strengthBucket(rating: number): StrengthBucket {
     return 'expert';
 }
 
-/** Метки стиля соперника по его конфигу: слабость, атака, спокойствие, дебютный характер. */
+/** Opponent style labels from its config: weakness, attack, calm, opening character. */
 export function styleTags(config: PersonalityConfig): StyleTag[] {
     const tags: StyleTag[] = [];
     if ((config.habits ?? []).length > 0) tags.push('weakness');
@@ -151,7 +151,7 @@ export function styleTags(config: PersonalityConfig): StyleTag[] {
     return tags;
 }
 
-/** Пояснение силы: доля ошибок — по той же кривой, что на сервере. */
+/** Strength explanation: error share - by the same curve as on the server. */
 export function strengthNote(config: PersonalityConfig): string {
     const elo = config.target_elo;
     const errors = Math.round(errorRate(elo) * 100);

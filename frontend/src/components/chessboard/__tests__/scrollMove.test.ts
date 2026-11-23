@@ -1,11 +1,11 @@
-// Список ходов прокручивается сам, страница — нет: текущий ход встаёт в середину окна списка.
+// The move list scrolls by itself, the page does not: the current move is placed in the middle of the list window.
 
 import {describe, expect, it, vi} from 'vitest';
 import {centeredScrollTop, scrollMoveIntoList} from '../scrollMove';
 
 const box = (top: number, height: number) => ({top, height, bottom: top + height, left: 0, right: 0, width: 0, x: 0, y: top, toJSON: () => ({})}) as DOMRect;
 
-/** Окно списка высотой 300 на экранной координате 200, содержимое 2000, строки по 30. */
+/** A list window 300 high at screen coordinate 200, content 2000, rows of 30. */
 function listWith(scrollTop: number, moveScreenTop: number) {
     const list = document.createElement('div');
     const move = document.createElement('button');
@@ -19,35 +19,35 @@ function listWith(scrollTop: number, moveScreenTop: number) {
 }
 
 describe('centeredScrollTop', () => {
-    it('ставит строку в середину окна', () => {
+    it('places the row in the middle of the window', () => {
         expect(centeredScrollTop(900, 30, 300, 2000)).toBe(765);
     });
 
-    it('в начале и в конце списка не выходит за края', () => {
+    it('at the start and at the end of the list it does not go beyond the edges', () => {
         expect(centeredScrollTop(30, 30, 300, 2000)).toBe(0);
         expect(centeredScrollTop(1970, 30, 300, 2000)).toBe(1700);
     });
 
-    it('список целиком помещается в окно — прокрутки нет', () => {
+    it('the list fits entirely in the window — no scrolling', () => {
         expect(centeredScrollTop(120, 30, 300, 240)).toBe(0);
     });
 });
 
 describe('scrollMoveIntoList', () => {
-    it('прокручивает список к ходу с учётом уже сделанной прокрутки', () => {
-        // Ход на 400 px ниже верха окна списка, список уже прокручен на 500 → строка на 900 от начала содержимого.
+    it('scrolls the list to the move taking into account the scroll already made', () => {
+        // The move is 400 px below the top of the list window, the list is already scrolled by 500 → the row is at 900 from the start of the content.
         const {list, move} = listWith(500, 600);
         scrollMoveIntoList(list, move);
         expect(list.scrollTop).toBe(765);
     });
 
-    it('ход выше видимой части — список прокручивается назад', () => {
-        const {list, move} = listWith(1000, 100);  // на 100 px выше окна: 900 от начала содержимого
+    it('a move above the visible part — the list scrolls back', () => {
+        const {list, move} = listWith(1000, 100);  // 100 px above the window: 900 from the start of the content
         scrollMoveIntoList(list, move);
         expect(list.scrollTop).toBe(765);
     });
 
-    it('страницу не трогает: ни scrollIntoView, ни прокрутки окна', () => {
+    it('does not touch the page: neither scrollIntoView nor window scrolling', () => {
         const {list, move} = listWith(0, 900);
         const intoView = vi.fn();
         move.scrollIntoView = intoView;

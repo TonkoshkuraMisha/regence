@@ -1,4 +1,4 @@
-"""Карта навыков (таск 22.1): только свои данные — видит лишь сам игрок."""
+"""Skill map (task 22.1): only one's own data - visible only to the player themselves."""
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession

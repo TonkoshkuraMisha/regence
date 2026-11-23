@@ -1,9 +1,9 @@
 // --- FILE: frontend/src/components/Profile.tsx ---
-// Страница игрока (/profile/:username): рейтинги по категориям, график рейтинга по сыгранным партиям (точка
-// открывает партию), итоги и история партий, достижения и звание клуба, клубная лестница, история турниров,
-// публикации, подписка и вызов; самому игроку — ещё карта навыков. Данные — GET /api/v1/profile/<имя> (профиль и
-// лестница), /stats (итоги по всем партиям), /games (страницами по GAMES_PAGE_SIZE), /rating-history; история
-// рейтинга берётся из значений, сохранённых сервером при завершении партий. Маршрут — App.tsx.
+// Player page (/profile/:username): ratings by category, a rating graph over played games (a point
+// opens the game), results and game history, achievements and the club title, the club ladder, tournament history,
+// posts, subscription and challenge; for the player themselves also the skill map. Data is GET /api/v1/profile/<name> (the profile and
+// the ladder), /stats (results over all games), /games (in pages of GAMES_PAGE_SIZE), /rating-history; the rating
+// history is taken from values saved by the server when games finished. Route is App.tsx.
 
 import {useState, useEffect} from 'react';
 import {useParams, Link, useNavigate} from 'react-router-dom';
@@ -35,7 +35,7 @@ import {TournamentHistory} from './tournaments/TournamentHistory';
 import {Achievements} from './social/Achievements';
 import {SkillMap} from './SkillMap';
 
-// Соответствие поля профиля и категории контроля времени, в порядке показа.
+// Mapping of a profile field to a time control category, in display order.
 const RATING_CATEGORIES: Array<{ key: 'bullet_rating' | 'blitz_rating' | 'rapid_rating' | 'classical_rating'; category: RatingCategory }> = [
     {key: 'bullet_rating', category: 'bullet'},
     {key: 'blitz_rating', category: 'blitz'},
@@ -43,26 +43,26 @@ const RATING_CATEGORIES: Array<{ key: 'bullet_rating' | 'blitz_rating' | 'rapid_
     {key: 'classical_rating', category: 'classical'},
 ];
 
-// Категории, между которыми переключается график рейтинга.
+// Categories the rating graph switches between.
 const CHART_CATEGORIES: RatingCategory[] = ['bullet', 'blitz', 'rapid', 'classical'];
-// Цвет кубка арены по месту.
+// Arena trophy colour by place.
 const MEDAL_COLORS = {gold: 'text-amber-300', silver: 'text-slate-300', bronze: 'text-orange-400'} as const;
 
-// Сколько партий истории загружается за один запрос.
+// How many history games are loaded per request.
 const GAMES_PAGE_SIZE = 30;
 
-/** Точка графика рейтинга: рейтинг после партии, изменение за неё и ссылка на партию. */
+/** Rating graph point: the rating after a game, the change from it and a link to the game. */
 export interface RatingChartPoint {
     game_id: number;
     rating: number;
     delta: number;
-    /** Подпись оси: день партии. */
+    /** Axis label: the day of the game. */
     date: string;
-    /** Подсказка: дата и время завершения партии. */
+    /** Tooltip: the date and time the game finished. */
     fullDate: string;
 }
 
-/** Готовит точку для графика: подписи оси и подсказки на языке интерфейса. */
+/** Prepares a graph point: axis and tooltip labels in the interface language. */
 export function toRatingChartPoint(point: RatingPoint, locale: Locale = getDateLocale()): RatingChartPoint {
     const finished = parseISO(point.finished_at);
     return {
@@ -74,14 +74,14 @@ export function toRatingChartPoint(point: RatingPoint, locale: Locale = getDateL
     };
 }
 
-/** «+12», «-8», «0»: изменение рейтинга со знаком. */
+/** "+12", "-8", "0": a signed rating change. */
 export function formatRatingDelta(delta: number): string {
     if (delta > 0) return `+${delta}`;
     if (delta < 0) return `${delta}`;
     return '0';
 }
 
-/** Подсказка графика: когда сыграна партия, рейтинг после неё и изменение за неё. */
+/** Graph tooltip: when the game was played, the rating after it and the change from it. */
 export function RatingTooltip({active, payload}: {
     active?: boolean;
     payload?: Array<{ payload: RatingChartPoint }>;
@@ -102,8 +102,8 @@ export function RatingTooltip({active, payload}: {
 }
 
 /**
- * Точка графика, по которой можно открыть партию. Recharts передаёт в свой элемент точки
- * координаты и данные точки (payload).
+ * A graph point from which a game can be opened. Recharts passes into its point element
+ * the coordinates and point data (payload).
  */
 export function RatingDot({cx, cy, payload, r = 4, active = false, onSelect}: {
     cx?: number;
@@ -132,7 +132,7 @@ export function RatingDot({cx, cy, payload, r = 4, active = false, onSelect}: {
     );
 }
 
-/** Категория с наибольшим числом рейтинговых партий — её график показываем первым. */
+/** Category with the most rated games: its graph is shown first. */
 function mostPlayedCategory(stats: PlayerStats | null): RatingCategory {
     let best: RatingCategory = 'blitz';
     let bestCount = 0;
@@ -146,7 +146,7 @@ function mostPlayedCategory(stats: PlayerStats | null): RatingCategory {
     return best;
 }
 
-/** Страница профиля игрока по имени из адреса; загрузка профиля, итогов, партий и истории рейтинга. */
+/** Player profile page by the name from the address; loading the profile, results, games and rating history. */
 export default function Profile() {
     const {t, dateLocale} = useI18n();
     const {targetUsername} = useParams<{ targetUsername: string }>();
@@ -161,7 +161,7 @@ export default function Profile() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<UiMessage | null>(null);
 
-    // Профиль и итоги — один раз на игрока.
+    // The profile and results are loaded once per player.
     useEffect(() => {
         if (!targetUsername) return;
         let cancelled = false;
@@ -177,7 +177,7 @@ export default function Profile() {
                 if (cancelled) return;
                 setProfile(profileData);
 
-                // Итоги считаются на сервере по всем партиям, а не по загруженной странице; без них страница работает.
+                // Results are computed on the server over all games, not over the loaded page; the page works without them.
                 const statsData = await profileApi.stats(targetUsername).catch(() => null);
                 if (cancelled) return;
                 if (statsData && typeof statsData.total === 'number') {
@@ -199,7 +199,7 @@ export default function Profile() {
         };
     }, [targetUsername]);
 
-    // Страница истории партий.
+    // Game history page.
     useEffect(() => {
         if (!targetUsername) return;
         let cancelled = false;
@@ -217,7 +217,7 @@ export default function Profile() {
         };
     }, [targetUsername, gamesPage]);
 
-    // История рейтинга выбранной категории — сохранённые сервером значения после каждой партии.
+    // Rating history of the selected category: values saved by the server after each game.
     useEffect(() => {
         if (!targetUsername) return;
         let cancelled = false;
@@ -269,8 +269,8 @@ export default function Profile() {
                     className="bg-acacia-dark border border-amber-900/40 p-6 rounded shadow-heavy flex flex-col items-center justify-center text-center relative overflow-hidden">
                     <PlayerAvatar username={profile.username} avatar={profile.avatar}
                                   className="w-24 h-24 rounded-lg shadow-inner border-2 border-amber-600/40 mb-3 z-10"/>
-                    {/* Длинное имя (до 30 знаков, без пробелов) переносится внутри карточки: на планшете колонка узкая,
-                        и имя в одну строку вылезало за её края. */}
+                    {/* A long name (up to 30 characters, without spaces) wraps inside the card: on a tablet the column is narrow,
+                        and the name on one line stuck out past its edges. */}
                     <h1 className="text-3xl font-bold text-amber-200 z-10 max-w-full break-all">{displayPlayerName(profile.username, t)}</h1>
                     <ProfileSocial username={profile.username}/>
 

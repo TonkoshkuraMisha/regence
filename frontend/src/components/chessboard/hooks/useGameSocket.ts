@@ -1,21 +1,21 @@
 // --- FILE: frontend/src/components/chessboard/hooks/useGameSocket.ts ---
-// Матчмейкинг, PvP-партия по WebSocket, лобби/зрители и чат. Основное игровое состояние
-// (game/history/viewIndex/gameId/myColor/gameOverResult и т.п.) остаётся в Chessboard.tsx как
-// обычный useState и передаётся сюда параметрами — оно одинаково нужно и этому хуку, и useBotGame
-// (партия с ботом использует те же game/history/gameOverResult/... поля), и порядок вызова
-// хуков не позволяет кому-то одному быть единственным владельцем без цикла зависимостей.
+// Matchmaking, a PvP game over WebSocket, lobby/spectators and chat. The main game state
+// (game/history/viewIndex/gameId/myColor/gameOverResult etc.) stays in Chessboard.tsx as
+// plain useState and is passed here as parameters: it is needed equally by this hook and by useBotGame
+// (a bot game uses the same game/history/gameOverResult/... fields), and the hook call order
+// does not let any one of them be the sole owner without a dependency cycle.
 //
-// Откуда данные. WebSocket (services/gameSocket.ts, сервер — src/api/websockets.py), события: connected,
-// match_found (старт или восстановление партии), move_made (ход: позиция, часы, версия состояния), game_over (итог
-// и изменение рейтинга), berserk, draw_offered / draw_declined, rematch_offered / rematch_declined, invite_created,
-// spectate_started, chat_message, error (отказ с кодом из src/core/errors.py). Действия, которые хук отправляет:
+// Where the data comes from. WebSocket (services/gameSocket.ts, the server is src/api/websockets.py), events: connected,
+// match_found (game start or restore), move_made (a move: position, clocks, state version), game_over (the result
+// and rating change), berserk, draw_offered / draw_declined, rematch_offered / rematch_declined, invite_created,
+// spectate_started, chat_message, error (a refusal with a code from src/core/errors.py). Actions the hook sends:
 // join_queue, leave_queue, accept_challenge, create_invite, accept_invite, spectate_game, leave_spectate,
-// chat_message, offer_draw, accept_draw, decline_draw, accept_rematch, decline_rematch, berserk (ход, сдачу, отмену
-// и предложение реванша отправляет сам Chessboard). HTTP — подстраховка на случай потерянного события и источник
-// списков, опрос раз в 1,5 с: GET /profile/games/my-active (идущая партия игрока), GET /profile/matchmaking/queue
-// (вызовы в лобби), GET /profile/games/live (идущие партии), GET /profile/games/{id}/summary (итог пропущенной
-// партии); вход в лобби и приём вызова дублируются POST /profile/matchmaking/join, /leave и /accept/{id}.
-// Источник правды о позиции, часах и итоге — сервер: хук кладёт на доску то, что он прислал.
+// chat_message, offer_draw, accept_draw, decline_draw, accept_rematch, decline_rematch, berserk (a move, resignation, cancellation
+// and a rematch offer are sent by Chessboard itself). HTTP is a safety net in case an event is lost and the source of
+// the lists, polled every 1.5 s: GET /profile/games/my-active (the player's game in progress), GET /profile/matchmaking/queue
+// (lobby challenges), GET /profile/games/live (games in progress), GET /profile/games/{id}/summary (the result of a missed
+// game); joining the lobby and accepting a challenge are duplicated by POST /profile/matchmaking/join, /leave and /accept/{id}.
+// The source of truth for position, clocks and result is the server: the hook puts on the board what it sent.
 
 import {inviteOddsFields} from '../odds';
 import type {OddsChoice} from '../odds';
@@ -35,46 +35,46 @@ import type {GameStatus} from '../status';
 import {serverErrorMessage} from '../../../services/apiErrors';
 import {getToken} from '../../../services/authToken';
 
-// Статусы ничьей — общие объекты: по ключу статуса Chessboard решает, показывать ли кнопки «Принять / Отклонить».
+// Draw statuses are shared objects: Chessboard uses the status key to decide whether to show the "Accept / Decline" buttons.
 const DRAW_OFFER_INCOMING = status('status.drawOffered');
 const DRAW_OFFER_OUTGOING = status('status.drawOfferSent');
 const DRAW_DECLINED = status('status.drawDeclined');
 
-/** Сколько опросов подряд сервер должен ответить «активной партии нет», чтобы считать её завершённой. */
+/** How many polls in a row the server must answer "no active game" for the game to be considered finished. */
 const MISSING_GAME_POLLS = 2;
 
 /**
- * Что хук получает от Chessboard: значения состояния, их сеттеры и ref-копии. Ref нужны обработчикам WebSocket —
- * они подписываются один раз и должны видеть текущую партию, а не ту, что была при подписке.
+ * What the hook receives from Chessboard: state values, their setters and ref copies. Refs are needed by WebSocket handlers:
+ * they subscribe once and must see the current game, not the one at subscription time.
  */
 export interface UseGameSocketOptions {
-    /** id своей партии с человеком; null — такой партии нет (свободная доска, бот, просмотр). */
+    /** id of one's own game against a human; null means no such game (free board, bot, spectating). */
     gameId: number | null;
     gameIdRef: React.MutableRefObject<number | null>;
     myColorRef: React.MutableRefObject<'white' | 'black'>;
-    /** id чужой партии, которую игрок смотрит; null — не зритель. */
+    /** id of someone else's game the player is watching; null means not a spectator. */
     spectatingGameId: number | null;
-    /** Версия состояния партии на сервере (растёт с каждым ходом): по ней отбрасываются устаревшие снимки. */
+    /** Game state version on the server (grows with every move): stale snapshots are dropped by it. */
     stateVersionRef: React.MutableRefObject<number>;
     gameOverResult: string | null;
     gameOverResultRef: React.MutableRefObject<string | null>;
     activeBot: BotOpponentId | null;
     currentUsernameRef: React.MutableRefObject<string>;
-    /** Код из адреса /challenge/{код}: приглашение принимается сразу после открытия страницы. */
+    /** Code from the /challenge/{code} address: the invitation is accepted right after the page opens. */
     inviteCode: string | undefined;
     navigate: NavigateFunction;
     effectiveWhiteBaseMinutes: number;
     effectiveIncSeconds: number;
     inviteColorPref: 'white' | 'black' | 'random';
-    /** Фора в партии по ссылке (21.1): сервер строит позицию или время после распределения цветов. */
+    /** Handicap in a game by link (21.1): the server builds the position or time after the colours are assigned. */
     inviteOdds?: OddsChoice;
-    /** Вариант партии по ссылке: обычные шахматы или Фишера (21.3; 960 идёт на отдельной странице). */
+    /** Variant of a game by link: ordinary chess or Fischer (21.3; 960 runs on a separate page). */
     inviteVariant?: 'standard' | 'chess960';
-    /** Тип новых партий, выбранный игроком: рейтинговая или товарищеская. */
+    /** Type of new games chosen by the player: rated or friendly. */
     ratedChoice: boolean;
-    /** Тип партии, которая сейчас на доске (приходит с сервера). */
+    /** Type of the game currently on the board (comes from the server). */
     setIsRatedGame: (rated: boolean) => void;
-    /** «Песочные часы» партии на доске (21.1, поле hourglass с сервера): часы ждущего растут, пока думает ходящий. */
+    /** "Hourglass clock" of the game on the board (21.1, the hourglass field from the server): the waiting side's clock grows while the mover thinks. */
     setHourglass: (on: boolean) => void;
 
     setGame: (g: Chess) => void;
@@ -96,7 +96,7 @@ export interface UseGameSocketOptions {
     setIsManualFlip: (v: boolean) => void;
     setSelectedSquare: (s: string | null) => void;
     setPendingPromotion: (p: PendingPromotion | null) => void;
-    /** Снимает премув — используется на старте/окончании партии и при отказе сервера. */
+    /** Clears the premove; used at the start/end of a game and on a server refusal. */
     clearPremove: () => void;
     setWhiteTimeMs: (ms: number) => void;
     setBlackTimeMs: (ms: number) => void;
@@ -111,7 +111,7 @@ export interface UseGameSocketOptions {
     updateSessionStats: (result: string) => void;
 }
 
-/** «Берсерк» в партии арены (33.3): доступен ли он в партии и кто его сыграл. */
+/** "Berserk" in an arena game (33.3): whether it is available in the game and who played it. */
 export interface BerserkState {
     allowed: boolean;
     white: boolean;
@@ -120,39 +120,39 @@ export interface BerserkState {
 
 const NO_BERSERK: BerserkState = {allowed: false, white: false, black: false};
 
-// Поля берсерка из события сервера (match_found, spectate_started, berserk): berserk_allowed, white_berserk,
-// black_berserk; отсутствующее поле — «нет».
+// Berserk fields from a server event (match_found, spectate_started, berserk): berserk_allowed, white_berserk,
+// black_berserk; an absent field means "no".
 function berserkFrom(data: any): BerserkState {
     return {allowed: data.berserk_allowed === true, white: data.white_berserk === true, black: data.black_berserk === true};
 }
 
 export interface UseGameSocketResult {
     berserk: BerserkState;
-    /** Сыграть «берсерк»: половина своего времени без добавки ради лишнего очка за победу. */
+    /** Play "berserk": half of one's own time without increment for an extra point for a win. */
     handleBerserk: () => void;
-    /** Чат партии на доске (последние 50 сообщений); очищается при новой партии и при начале просмотра. */
+    /** Chat of the game on the board (the last 50 messages); cleared on a new game and when spectating starts. */
     chatMessages: ChatMessageItem[];
     chatInput: string;
     setChatInput: (v: string) => void;
-    /** Идущие партии (GET /profile/games/live) и вызовы в лобби (GET /profile/matchmaking/queue), опрос. */
+    /** Games in progress (GET /profile/games/live) and lobby challenges (GET /profile/matchmaking/queue), polled. */
     liveGames: LiveGameItem[];
     queuePlayers: QueuePlayer[];
-    /** Код ссылки-приглашения из события invite_created; сбрасывается при смене типа партии и при старте партии. */
+    /** Code of the invitation link from the invite_created event; reset when the game type changes and when a game starts. */
     createdInviteCode: string | null;
     inviteCopied: boolean;
-    /** Ставит на доску партию целиком по снимку сервера: событие match_found или ответ HTTP (my-active, join, accept). */
+    /** Puts a whole game on the board from a server snapshot: a match_found event or an HTTP response (my-active, join, accept). */
     applyMatchFoundSnapshot: (data: any) => void;
-    /** Обновляет идущую партию по снимку хода: событие move_made или более свежий ответ my-active. */
+    /** Updates the game in progress from a move snapshot: a move_made event or a fresher my-active response. */
     applyMoveMadeSnapshot: (data: any) => void;
-    /** Публикует вызов в лобби с выбранным контролем и типом партии (WebSocket и, для надёжности, HTTP). */
+    /** Publishes a lobby challenge with the chosen control and game type (WebSocket and, for reliability, HTTP). */
     startMatchmaking: () => Promise<void>;
     cancelMatchmaking: () => Promise<void>;
-    /** Принимает чужой вызов из лобби; партия начнётся по match_found или по ответу HTTP. */
+    /** Accepts someone else's lobby challenge; the game starts on match_found or on the HTTP response. */
     acceptChallenge: (targetUserId: number) => Promise<void>;
-    /** Просит сервер создать ссылку-приглашение (create_invite); код придёт событием invite_created. */
+    /** Asks the server to create an invitation link (create_invite); the code arrives in an invite_created event. */
     handleCreatePrivateInvite: () => void;
     handleCopyInviteLink: () => void;
-    /** Просит сервер сделать игрока зрителем партии; доска переключится по событию spectate_started. */
+    /** Asks the server to make the player a spectator of a game; the board switches on the spectate_started event. */
     handleSpectateGame: (targetGameId: number) => void;
     handleSendChatMessage: () => void;
     handleSendChatPreset: (preset: ChatPresetId) => void;
@@ -164,8 +164,8 @@ export interface UseGameSocketResult {
 }
 
 /**
- * Партия с человеком, лобби, просмотр и чат для главной доски (подробности и источники данных — в начале файла).
- * Работает только для вошедшего игрока: без токена соединение не открывается, опрашиваются лишь списки лобби.
+ * Game against a human, lobby, spectating and chat for the main board (details and data sources are at the start of the file).
+ * Works only for a signed-in player: without a token the connection is not opened, only the lobby lists are polled.
  */
 export function useGameSocket({
     gameId, gameIdRef, myColorRef, spectatingGameId, stateVersionRef,
@@ -187,7 +187,7 @@ export function useGameSocket({
     const [inviteCopied, setInviteCopied] = useState(false);
     const [berserk, setBerserk] = useState<BerserkState>(NO_BERSERK);
 
-    // Обработчики WebSocket живут дольше одного рендера, поэтому актуальные значения читают из ref.
+    // WebSocket handlers outlive a single render, so current values are read from refs.
     const spectatingRef = useRef<number | null>(spectatingGameId);
     useEffect(() => {
         spectatingRef.current = spectatingGameId;
@@ -196,20 +196,20 @@ export function useGameSocket({
     useEffect(() => {
         isSearchingRef.current = isSearching;
     }, [isSearching]);
-    // Параметры текущего поиска — чтобы вернуть вызов в лобби после переподключения WebSocket.
+    // Parameters of the current search, to put the challenge back in the lobby after a WebSocket reconnect.
     const searchParamsRef = useRef<{ base_time_ms: number; increment_ms: number; rated: boolean } | null>(null);
-    // Сколько опросов подряд сервер не нашёл активной партии, хотя на экране она идёт (см. MISSING_GAME_POLLS).
+    // How many polls in a row the server found no active game although one is running on screen (see MISSING_GAME_POLLS).
     const missingActivePollsRef = useRef(0);
 
-    // Ссылка-приглашение создаётся под конкретный тип партии — после смены типа она уже не та.
+    // An invitation link is created for a specific game type: after the type changes it is no longer the right one.
     useEffect(() => {
         setCreatedInviteCode(null);
     }, [ratedChoice]);
 
     /**
-     * Событие относится к партии, которая сейчас на доске (своей или просматриваемой).
-     * Без этой проверки запоздавший game_over прошлой партии завершал бы новую (реванш),
-     * а ходы партии, которую игрок смотрел до начала своей, ложились бы на его доску.
+     * The event refers to the game currently on the board (one's own or one being watched).
+     * Without this check a late game_over of the previous game would end the new one (a rematch),
+     * and moves of a game the player was watching before starting their own would land on their board.
      */
     const isCurrentGameEvent = useCallback((data: any): boolean => {
         if (data?.game_id === undefined || data?.game_id === null) return true;
@@ -217,19 +217,19 @@ export function useGameSocket({
         return gid === gameIdRef.current || gid === spectatingRef.current;
     }, [gameIdRef]);
 
-    /** Событие относится к своей партии, а не к просматриваемой: предложения ничьей и реванша зрителю не нужны. */
+    /** The event refers to one's own game, not a watched one: draw and rematch offers are not needed by a spectator. */
     const isOwnGameEvent = useCallback((data: any): boolean => {
         if (gameIdRef.current === null) return false;
         if (data?.game_id === undefined || data?.game_id === null) return true;
         return Number(data.game_id) === gameIdRef.current;
     }, [gameIdRef]);
 
-    /** Завершает партию на экране: итог, звук и статистика — один раз на партию. */
+    /** Ends the game on screen: result, sound and statistics, once per game. */
     const concludeGame = useCallback((data: any) => {
         clearPremove();
         setPendingPromotion(null);
-        // Итог мог уже прийти (move_made с game_over, затем game_over): не озвучиваем и не
-        // считаем его второй раз. Ref обновляем сразу — эффект в компоненте сработает позже.
+        // The result may have already arrived (move_made with game_over, then game_over): we do not announce or
+        // count it a second time. The ref is updated immediately: the component's effect fires later.
         const alreadyOver = Boolean(gameOverResultRef.current);
         gameOverResultRef.current = data.result;
         setGameOverResult(data.result);
@@ -239,17 +239,17 @@ export function useGameSocket({
             playOutcomeSound(data.result);
             updateSessionStats(data.result);
         } else {
-            // Зритель: чужая партия не идёт в его статистику и не звучит как победа/поражение.
+            // Spectator: someone else's game does not go into their statistics and does not sound like a win/loss.
             playAudio('draw');
         }
     }, [clearPremove, setPendingPromotion, gameOverResultRef, setGameOverResult, setRatingInfo, gameIdRef,
         playOutcomeSound, updateSessionStats, playAudio]);
 
-    // Снимок партии целиком: новая партия (старт, реванш, принятый вызов) или восстановление своей идущей партии
-    // после перезагрузки страницы. Позиция берётся из PGN сервера (с историей ходов), при сбое разбора — из FEN.
+    // A whole-game snapshot: a new game (start, rematch, accepted challenge) or restoring one's own game in progress
+    // after a page reload. The position is taken from the server PGN (with move history), and from the FEN if parsing fails.
     const applyMatchFoundSnapshot = useCallback((data: any) => {
         if (!data || !data.game_id) return;
-        // Партия Фишера (21.3): chess.js рокировку 960 не переиграет — партия идёт на своей странице.
+        // Fischer Random game (21.3): chess.js cannot replay 960 castling, so the game runs on its own page.
         if (data.variant === 'chess960') {
             navigate('/play/960/live', {state: {match: data}});
             return;
@@ -289,7 +289,7 @@ export function useGameSocket({
         gameIdRef.current = incomingGid;
         setGameId(incomingGid);
         setIsRatedGame(data.is_rated !== false);
-        // Снимок той же партии без полей берсерка (опрос по HTTP) уже известное не стирает.
+        // A snapshot of the same game without berserk fields (an HTTP poll) does not erase what is already known.
         if (isNewMatch || data.berserk_allowed !== undefined) setBerserk(berserkFrom(data));
         if (isNewMatch || data.hourglass !== undefined) setHourglass(data.hourglass === true);
         myColorRef.current = assignedColor;
@@ -325,7 +325,7 @@ export function useGameSocket({
         setViewIndex(-1);
         moveStartTime.current = Date.now();
 
-        // Предложение ничьей, сделанное до перезагрузки страницы или обрыва связи, ещё в силе.
+        // A draw offer made before a page reload or a connection drop is still in force.
         const hasIncomingDrawOffer = data.draw_offer_from !== undefined && data.draw_offer_from !== null
             && Number(data.draw_offer_from) === Number(data.opponent_id);
 
@@ -333,7 +333,7 @@ export function useGameSocket({
             const startMessage = status(assignedColor === 'white' ? 'status.gameStartedWhite' : 'status.gameStartedBlack');
             setDrawOfferStatus(hasIncomingDrawOffer ? DRAW_OFFER_INCOMING : startMessage);
             playAudio('start');
-            // Убираем только своё сообщение: за 3 с на его месте мог появиться другой статус.
+            // We remove only our own message: within 3 s another status could have taken its place.
             setTimeout(() => setDrawOfferStatus(prev => (prev === startMessage ? null : prev)), 3000);
         } else if (hasIncomingDrawOffer) {
             setDrawOfferStatus(DRAW_OFFER_INCOMING);
@@ -342,8 +342,8 @@ export function useGameSocket({
         }
     }, [playAudio, navigate]);
 
-    // Снимок после хода (своего или соперника): версия состояния, часы обеих сторон и позиция — всё с сервера.
-    // Свой ход уже показан на доске заранее; этот снимок его подтверждает и выставляет точные часы.
+    // Snapshot after a move (one's own or the opponent's): the state version, both sides' clocks and the position all come from the server.
+    // One's own move is already shown on the board in advance; this snapshot confirms it and sets exact clocks.
     const applyMoveMadeSnapshot = useCallback((data: any) => {
         if (data.state_version !== undefined) {
             const ver = Number(data.state_version);
@@ -381,14 +381,14 @@ export function useGameSocket({
             setGame(nextGame);
             setHistory(newHistory);
             setViewIndex(-1);
-            // На завершающем ходу играет только исход (victory/defeat/draw) — звук самого
-            // хода (например, «шах» на мате) был бы лишним дублем перед фанфарой.
+            // On the final move only the outcome (victory/defeat/draw) is played: the sound of the
+            // move itself (for example, "check" on mate) would be a redundant duplicate before the fanfare.
             if (!data.game_over) {
                 playAudio(resolveMoveSound(lastSan));
             }
 
-            // Ход отвечает на предложение ничьей отказом (сервер его снимает): ход того, кому
-            // предложили. Свой ход предложившего предложение не отменяет.
+            // A move answers a draw offer with a refusal (the server withdraws it): the move of the one to whom
+            // the offer was made. The offerer's own move does not cancel the offer.
             const moverColor = nextGame.turn() === 'w' ? 'black' : 'white';
             const moverIsMe = moverColor === myColorRef.current;
             setDrawOfferStatus(prev => {
@@ -403,8 +403,8 @@ export function useGameSocket({
         }
     }, [playAudio, concludeGame]);
 
-    // Подключение к WebSocket и подписка на события сервера; при размонтировании доски подписки снимаются, а
-    // само соединение остаётся (оно одно на вкладку и нужно также уведомлениям).
+    // Connecting to the WebSocket and subscribing to server events; when the board unmounts the subscriptions are removed, but
+    // the connection itself stays (there is one per tab and notifications need it too).
     useEffect(() => {
         const token = getToken();
         if (!token) return;
@@ -429,7 +429,7 @@ export function useGameSocket({
             if (summary) setDrawOfferStatus(summary);
         };
 
-        // Берсерк (свой или соперника): новые часы и отметка у игрока.
+        // Berserk (one's own or the opponent's): new clocks and a mark on the player.
         const handleBerserkEvent = (data: any) => {
             if (!isCurrentGameEvent(data) || gameOverResultRef.current) return;
             if (data.white_time_ms !== undefined) setWhiteTimeMs(Number(data.white_time_ms));
@@ -462,8 +462,8 @@ export function useGameSocket({
             playAudio('decline');
         };
 
-        // Сервер шлёт connected при каждом (пере)подключении. При обрыве он снимает вызов игрока
-        // из лобби, а экран продолжал бы показывать «поиск» — возвращаем вызов на место.
+        // The server sends connected on every (re)connection. On a drop it removes the player's challenge
+        // from the lobby, while the screen would keep showing "searching": we put the challenge back.
         const handleConnected = () => {
             const params = searchParamsRef.current;
             if (params && isSearchingRef.current && !gameIdRef.current) {
@@ -471,7 +471,7 @@ export function useGameSocket({
             }
         };
 
-        // Сервер создал приглашение: ссылка сразу копируется в буфер обмена (если браузер разрешает).
+        // The server created an invitation: the link is copied to the clipboard at once (if the browser allows).
         const handleInviteCreated = (data: any) => {
             if (data.code) {
                 setCreatedInviteCode(data.code);
@@ -486,10 +486,10 @@ export function useGameSocket({
             }
         };
 
-        // Сервер сделал игрока зрителем и прислал снимок чужой партии: игроки, часы, позиция.
+        // The server made the player a spectator and sent a snapshot of someone else's game: players, clocks, position.
         const handleSpectateStarted = (data: any) => {
             if (gameIdRef.current && !gameOverResultRef.current) {
-                // Пока шёл ответ, началась собственная партия — зрителем не становимся.
+                // While the response was pending, one's own game started: we do not become a spectator.
                 gameSocket.send('leave_spectate', {game_id: data.game_id});
                 return;
             }
@@ -501,7 +501,7 @@ export function useGameSocket({
             setIsRatedGame(data.is_rated !== false);
             setBerserk(berserkFrom(data));
             setHourglass(data.hourglass === true);
-            // Зритель всегда смотрит со стороны белых и не наследует состояние прошлой партии.
+            // A spectator always watches from White's side and does not inherit the state of a previous game.
             myColorRef.current = 'white';
             setMyColor('white');
             setIsManualFlip(false);
@@ -538,7 +538,7 @@ export function useGameSocket({
             playAudio('start');
         };
 
-        // Сообщение чата (своё тоже приходит эхом с сервера). В памяти — последние 50; быстрая фраза хранится кодом.
+        // Chat message (one's own also comes back as an echo from the server). The last 50 are kept in memory; a quick phrase is stored as a code.
         const handleChatMessage = (data: any) => {
             if (!isCurrentGameEvent(data)) return;
             const item = chatItemFrom(data);
@@ -552,21 +552,21 @@ export function useGameSocket({
 
         const handleServerError = (data: any) => {
             console.warn('Server rejected the action:', data);
-            // Действие продублировано (WS + HTTP, повтор после переподключения), и партия уже
-            // началась по первому из запросов — «вы уже играете» здесь не ошибка.
+            // The action was duplicated (WS + HTTP, a retry after reconnect), and the game has already
+            // started from the first of the requests: "you are already playing" is not an error here.
             if (data.code === 'self_in_game' && gameIdRef.current && !gameOverResultRef.current) return;
             if (data.code) {
-                // Текст — из каталога по коду; английский текст сервера — только для незнакомого кода.
+                // The text comes from the catalog by code; the server's English text only for an unknown code.
                 const message = serverErrorMessage(data.code, data.params, data.message);
                 if (message) setDrawOfferStatus(message);
-                // Отказ матчмейкинга (уже в партии, вне диапазона рейтинга, вызов неактуален...)
-                // выводит из режима поиска; ограничения чата, предложений и частоты — нет.
+                // A matchmaking refusal (already in a game, out of rating range, stale challenge...)
+                // takes one out of search mode; chat, offer and rate restrictions do not.
                 if (!GAME_ACTION_ERROR_CODES.has(data.code)) {
                     searchParamsRef.current = null;
                     setIsSearching(false);
                 }
-                // Ход, отклонённый по лимиту частоты, приходит с актуальной позицией —
-                // её нужно вернуть на доску (ниже). Остальные отказы позицию не трогают.
+                // A move rejected by the rate limit comes with the current position:
+                // it must be put back on the board (below). Other refusals do not touch the position.
                 if (!data.fen && !data.pgn) return;
             }
             clearPremove();
@@ -624,9 +624,9 @@ export function useGameSocket({
     }, [applyMatchFoundSnapshot, applyMoveMadeSnapshot, concludeGame, isCurrentGameEvent, isOwnGameEvent,
         exitBotGame, playAudio]);
 
-    // Страница открыта по ссылке-приглашению /challenge/{код}: принимаем приглашение (accept_invite) и убираем
-    // код из адреса. Действие уходит через 450 мс после открытия страницы; уход со страницы раньше его отменяет.
-    // Гость сначала входит (окно входа открывает App.tsx); после входа доска создаётся заново и эффект срабатывает.
+    // The page was opened by an invitation link /challenge/{code}: we accept the invitation (accept_invite) and remove
+    // the code from the address. The action is sent 450 ms after the page opens; leaving the page earlier cancels it.
+    // A guest signs in first (the sign-in window is opened by App.tsx); after sign-in the board is recreated and the effect fires.
     useEffect(() => {
         if (!inviteCode || !getToken()) return;
         const timer = setTimeout(() => {
@@ -637,8 +637,8 @@ export function useGameSocket({
     }, [inviteCode, navigate]);
 
     /**
-     * Партия завершилась на сервере, а game_over до клиента не дошёл: берём итог по HTTP.
-     * Пока итог не записан в БД (status IN_PROGRESS), ничего не делаем — спросим ещё раз.
+     * The game ended on the server, but game_over did not reach the client: we take the result over HTTP.
+     * While the result is not recorded in the DB (status IN_PROGRESS), we do nothing and ask again.
      */
     const concludeMissedGame = useCallback(async (missedGameId: number) => {
         const res = await fetch(`${API_BASE_URL}/api/v1/profile/games/${missedGameId}/summary`);
@@ -653,10 +653,10 @@ export function useGameSocket({
         setDrawOfferStatus(describeGameOver(result, summary.termination));
     }, [gameIdRef, gameOverResultRef, concludeGame, setDrawOfferStatus]);
 
-    // Опрос сервера раз в 1,5 с — подстраховка WebSocket и источник списков лобби. Своя идущая партия (my-active):
-    // новая — ставится на доску, более свежая версия — догоняется, пропавшая — завершается по summary. Пока идёт
-    // партия с ботом или просмотр, my-active не опрашивается. Списки лобби и Live читаются, когда своей партии с
-    // человеком нет или она окончена.
+    // Polling the server every 1.5 s is a WebSocket safety net and the source of the lobby lists. One's own game in progress (my-active):
+    // a new one is put on the board, a fresher version is caught up with, a vanished one is finished by summary. While a
+    // bot game or spectating is in progress, my-active is not polled. The lobby and Live lists are read when one has no own game against a
+    // human or it is over.
     useEffect(() => {
         const syncLobbyAndActiveGame = async () => {
             const token = getToken();
@@ -676,9 +676,9 @@ export function useGameSocket({
                                 applyMoveMadeSnapshot(activeData);
                             }
                         } else if (gameIdRef.current && !gameOverResultRef.current) {
-                            // На экране партия идёт, а сервер её активной уже не считает: game_over
-                            // потерялся (обрыв WebSocket в момент завершения). Два ответа подряд —
-                            // чтобы не спутать с запросом, отправленным до старта партии.
+                            // The game is in progress on screen, but the server no longer considers it active: game_over
+                            // was lost (a WebSocket drop at the moment of finishing). Two answers in a row,
+                            // so as not to confuse it with a request sent before the game started.
                             missingActivePollsRef.current += 1;
                             if (missingActivePollsRef.current >= MISSING_GAME_POLLS) {
                                 await concludeMissedGame(gameIdRef.current);
@@ -689,8 +689,8 @@ export function useGameSocket({
                     }
                 }
 
-                // Лобби нужно и после завершения партии: её итог ещё на доске, но игрок уже
-                // выбирает следующего соперника.
+                // The lobby is needed after a game ends too: its result is still on the board, but the player is already
+                // choosing the next opponent.
                 if (!gameIdRef.current || gameOverResultRef.current) {
                     const [qRes, liveRes] = await Promise.all([
                         fetch(`${API_BASE_URL}/api/v1/profile/matchmaking/queue`),
@@ -717,7 +717,7 @@ export function useGameSocket({
 
     const startMatchmaking = useCallback(async () => {
         if (spectatingRef.current) {
-            // Поиск соперника завершает просмотр чужой партии: доска нужна для своей.
+            // Searching for an opponent ends spectating of someone else's game: the board is needed for one's own.
             gameSocket.send('leave_spectate', {game_id: spectatingRef.current});
             spectatingRef.current = null;
             setSpectatingGameId(null);
@@ -772,7 +772,7 @@ export function useGameSocket({
                     }
                 }
             } catch {
-                // Игнорируем ошибку, если сработал WebSocket
+                // Ignore the error if the WebSocket fired
             }
         }
     }, [
@@ -858,7 +858,7 @@ export function useGameSocket({
         if (activeGid && sendChatText(activeGid, chatInput)) setChatInput('');
     }, [gameId, spectatingGameId, chatInput]);
 
-    /** Быстрая фраза уходит кодом: каждый участник увидит её на своём языке. */
+    /** A quick phrase is sent as a code: each participant sees it in their own language. */
     const handleSendChatPreset = useCallback((preset: ChatPresetId) => {
         const activeGid = gameId || spectatingGameId;
         if (activeGid) sendChatPreset(activeGid, preset);

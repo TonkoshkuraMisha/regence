@@ -1,6 +1,7 @@
 # --- FILE: src/api/mini_games.py ---
-"""Игры тренеров (таск 19.8): список игр, ход игрока (и ответ бота) по правилам игры. Без рейтинга и без хранения:
-позицию присылает клиент, сервер проверяет ход по правилам и подводит итог."""
+"""Trainer games (task 19.8): the list of games, the player's move (and the bot's reply) by the game rules. No rating and no
+storage:
+the position is sent by the client, the server checks the move by the rules and sums up the result."""
 
 from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel, Field
@@ -55,7 +56,7 @@ async def make_move(game_id: str, payload: MoveIn):
 
 @router.post("/{game_id}/bot-first")
 async def bot_first(game_id: str, payload: BotFirstIn):
-    """Игрок за чёрных: первым ходит бот."""
+    """The player has Black: the bot moves first."""
     try:
         game = mg.get_game(game_id)
         board = mg.board_of(game, payload.fen)

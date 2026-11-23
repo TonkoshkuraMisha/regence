@@ -1,4 +1,4 @@
-// Генераторы тренажёров видения (таск 16.5): детерминированы по seed, каждый уровень решаем.
+// Vision trainer generators (task 16.5): deterministic by seed, every level is solvable.
 
 import {describe, expect, it} from 'vitest';
 import {Chess} from 'chess.js';
@@ -6,15 +6,15 @@ import {starsMove} from '../../content/basics/rules';
 import {starsSolution} from '../../content/basics/rules';
 import {forkCount, forkLevel, isSafe, knightTargets, pathLevel, pathScore, rng} from '../vision';
 
-describe('генераторы тренажёров видения', () => {
-    it('одинаковый seed — одинаковый уровень', () => {
+describe('vision trainer generators', () => {
+    it('the same seed — the same level', () => {
         expect(pathLevel('quiet', 5, 42)).toEqual(pathLevel('quiet', 5, 42));
         expect(forkLevel(3, 7)).toEqual(forkLevel(3, 7));
         expect(rng(1)()).toBe(rng(1)());
     });
 
     for (const kind of ['quiet', 'knight'] as const) {
-        it(`${kind}: уровни 1–10 решаемы, кратчайший путь проходит по правилам`, () => {
+        it(`${kind}: levels 1–10 are solvable, the shortest path follows the rules`, () => {
             for (let level = 1; level <= 10; level++) {
                 for (let seed = 1; seed <= 5; seed++) {
                     const l = pathLevel(kind, level, seed);
@@ -37,7 +37,7 @@ describe('генераторы тренажёров видения', () => {
         });
     }
 
-    it('двойной удар: ответы — ходы коня на вилку, с 4-го уровня — безопасные', () => {
+    it('double strike: answers are the knight moves to the fork, from level 4 — safe ones', () => {
         for (let level = 1; level <= 8; level++) {
             for (let seed = 1; seed <= 5; seed++) {
                 const l = forkLevel(level, seed);
@@ -51,7 +51,7 @@ describe('генераторы тренажёров видения', () => {
         }
     });
 
-    it('очки за путь', () => {
+    it('points for the path', () => {
         expect(pathScore(3, 3)).toBe(100);
         expect(pathScore(4, 3)).toBe(75);
         expect(pathScore(10, 3)).toBe(0);

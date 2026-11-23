@@ -1,15 +1,15 @@
 // --- FILE: frontend/src/components/trainers/trainerGame.ts ---
-// Общее для игр-тренажёров с уровнями (BlindGames, BoardPuzzleGames, CalcGames, MemoryGames, VisionGames): что
-// игра получает от страницы тренажёров (TrainersPage.tsx) и загрузка партий классики, из которых строятся задания.
-// Партии — content/classics.ts (loadAllClassics): отдельный кусок сборки, грузится по требованию, не по сети к API.
+// Shared by level-based trainer games (BlindGames, BoardPuzzleGames, CalcGames, MemoryGames, VisionGames): what
+// a game receives from the trainers page (TrainersPage.tsx) and loading of the classic games that tasks are built from.
+// Games come from content/classics.ts (loadAllClassics): a separate build chunk loaded on demand, not over the network from the API.
 
 import {useEffect, useState} from 'react';
 import {loadAllClassics} from '../../content/classics';
 import type {ClassicGame} from '../../content/classics';
 
 /**
- * Свойства игры-тренажёра: уровень (сложность заданий), seed (одна и та же попытка у одного seed — задания
- * детерминированы) и onFinish — итог попытки: очки и число ошибок, их сохраняет страница тренажёров.
+ * Trainer game props: level (task difficulty), seed (the same seed gives the same attempt - tasks
+ * are deterministic) and onFinish - the attempt result: score and mistake count, saved by the trainers page.
  */
 export interface TrainerGameProps {
     level: number;
@@ -17,7 +17,7 @@ export interface TrainerGameProps {
     onFinish: (score: number, mistakes: number) => void;
 }
 
-/** Партии классики для заданий; null — ещё грузятся, пустой список — загрузить не удалось. */
+/** Classic games used for tasks; null - still loading, empty list - loading failed. */
 export function useClassics(): ClassicGame[] | null {
     const [games, setGames] = useState<ClassicGame[] | null>(null);
     useEffect(() => {

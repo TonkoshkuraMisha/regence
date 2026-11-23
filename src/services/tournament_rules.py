@@ -1,23 +1,23 @@
 # --- FILE: src/services/tournament_rules.py ---
 """
-Правила турниров (таски 15.1, 15.4, 28.1) — чистые функции, без базы, сети и движка; данных не читают.
-Применяет их tournaments.py (ход турнира), time_machine.py (границы размеров) и src/services/arena.py.
+Tournament rules (tasks 15.1, 15.4, 28.1) - pure functions, without database, network or engine; they read no data.
+Applied by tournaments.py (the course of a tournament), time_machine.py (size limits) and src/services/arena.py.
 
-Номер участника (seat) — его посев: 1 — сильнейший по рейтингу на старте.
+The participant number (seat) is their seeding: 1 is the strongest by rating at the start.
 
-Круговой турнир (4, 6, 8 участников): расписание по таблицам Бергера ФИДЕ. Места: очки, затем личная встреча
-среди набравших поровну, затем коэффициент Зоннеборна–Бергера; если равно и это — выше посеянный выше.
+Round robin (4, 6, 8 participants): the schedule follows the FIDE Berger tables. Places: points, then the head-to-head result
+among those tied, then the Sonneborn-Berger coefficient; if equal on that too - the higher seed ranks higher.
 
-На выбывание (4, 8): сетка по посеву (1–8, 4–5, 2–7, 3–6 — первый и второй номера встречаются только в финале).
-Матч — одна партия, сеяный выше играет белыми. Ничья — переигровка с переменой цвета и вдвое коротким контролем;
-снова ничья — решающая партия, в которой чёрным достаточно ничьей; чёрными играет сеяный выше (награда за посев).
-Места: победитель — 1, финалист — 2, проигравшие в полуфинале делят 3-е, в четвертьфинале — 5-е.
+Knockout (4, 8): the bracket by seeding (1-8, 4-5, 2-7, 3-6 - the first and second seeds meet only in the final).
+A match is one game, the higher seed plays White. A draw means a replay with colours swapped and a time control half as long;
+another draw - a deciding game in which a draw is enough for Black; Black is played by the higher seed (a reward for seeding).
+Places: the winner is 1, the finalist 2, the semi-final losers share 3rd, the quarter-final losers 5th.
 
-Большие турниры («Машина времени», таск 28.1 — знаменитые турниры прошлого в полном составе): круговой на любое
-число участников до 28 (Карлсбад 1911: двадцать шесть мастеров и игрок; при нечётном числе каждый один тур
-свободен) и в несколько кругов с переменой цвета (round_robin_schedule); сетка на любое число участников —
-сильнейшие по посеву проходят первый круг без игры (bracket_slots). Обычные турниры игрока по-прежнему ограничены
-размерами ниже.
+Big tournaments ("Time Machine", task 28.1 - famous tournaments of the past with the full field): a round robin for any
+number of participants up to 28 (Carlsbad 1911: twenty-six masters and the player; with an odd number everyone sits out
+one round) and in several rounds with colours swapped (round_robin_schedule); a bracket for any number of participants -
+the strongest seeds skip the first round without playing (bracket_slots). The player's ordinary tournaments are still
+limited to the sizes below.
 """
 
 from dataclasses import dataclass
@@ -26,26 +26,27 @@ from typing import Literal
 Result = Literal["1-0", "0-1", "1/2-1/2"]
 Stage = Literal["main", "rematch", "armageddon"]
 
-# Допустимое число участников обычного турнира игрока (вместе с игроком).
+# Allowed number of participants of an ordinary player tournament (including the player).
 ROUND_ROBIN_SIZES = (4, 6, 8)
 KNOCKOUT_SIZES = (4, 8)
-# Швейцарская система (таск 15.4): размер → число туров.
+# Swiss system (task 15.4): size -> number of rounds.
 SWISS_SIZES = (6, 8)
 SWISS_ROUNDS = {6: 4, 8: 5}
-# Нижняя граница базового времени переигровки и решающей партии: контроль не короче минуты.
+# Lower bound of the base time for a replay and a deciding game: the control is no shorter than a minute.
 MIN_SHORTENED_BASE_MS = 60_000
-# Турниры в историческом составе: границы размера (круговой — до 28 участников, сетка — до 33) и числа кругов.
+# Tournaments with a historical field: size limits (round robin - up to 28 participants, bracket - up to 33) and number of
+# circuits.
 OPEN_ROUND_ROBIN_SIZES = range(3, 29)
 OPEN_KNOCKOUT_SIZES = range(3, 34)
 MAX_CYCLES = 6
 
 
-# --- Круговой турнир ---------------------------------------------------------------------------------
+# --- Round robin ---------------------------------------------------------------------------------
 
 def berger_rounds(n: int) -> list[list[tuple[int, int]]]:
     """
-    Туры кругового турнира по таблицам Бергера: список туров, тур — пары (белые, чёрные) номеров 1..n.
-    Последний номер «стоит на месте», остальные вращаются; цвета — как в таблицах ФИДЕ.
+    Rounds of a round robin by the Berger tables: a list of rounds, a round is pairs (white, black) of numbers 1..n.
+    The last number "stays in place", the rest rotate; colours as in the FIDE tables.
     """
     if n not in ROUND_ROBIN_SIZES:
         raise ValueError(f"round robin needs {ROUND_ROBIN_SIZES} players, got {n}")
@@ -53,7 +54,7 @@ def berger_rounds(n: int) -> list[list[tuple[int, int]]]:
 
 
 def _berger(n: int) -> list[list[tuple[int, int]]]:
-    """Таблица Бергера для любого чётного n: шаг вращения n/2 взаимно прост с n − 1, поэтому встречаются все."""
+    """A Berger table for any even n: the rotation step n/2 is coprime with n - 1, so everybody meets."""
     m = n - 1
 
     def cyc(x: int) -> int:
@@ -70,8 +71,8 @@ def _berger(n: int) -> list[list[tuple[int, int]]]:
 
 def round_robin_schedule(n: int, cycles: int = 1) -> list[list[tuple[int, int]]]:
     """
-    Расписание кругового турнира на любое число участников и кругов. При нечётном n таблица строится на n + 1:
-    кому достался несуществующий номер, в этом туре свободен. Каждый следующий круг повторяет пары с переменой цвета.
+    Schedule of a round robin for any number of participants and circuits. With odd n the table is built for n + 1:
+    whoever gets the non-existent number sits out that round. Each next circuit repeats the pairs with colours swapped.
     """
     if n not in OPEN_ROUND_ROBIN_SIZES:
         raise ValueError(f"round robin needs {OPEN_ROUND_ROBIN_SIZES.start}–{OPEN_ROUND_ROBIN_SIZES[-1]} players, got {n}")
@@ -87,7 +88,7 @@ def round_robin_schedule(n: int, cycles: int = 1) -> list[list[tuple[int, int]]]
 
 @dataclass(frozen=True)
 class GameRecord:
-    """Сыгранная партия для расчёта таблиц: номера участников за белых и чёрных и результат."""
+    """A played game for computing tables: the numbers of the participants as White and Black, and the result."""
     white: int
     black: int
     result: Result
@@ -95,19 +96,19 @@ class GameRecord:
 
 @dataclass(frozen=True)
 class Standing:
-    """Строка итоговой таблицы: очки, дополнительные показатели и место (1 — лучшее)."""
+    """A row of the final table: points, tie-break indicators and the place (1 is the best)."""
     seat: int
     points: float
-    # Очки в партиях между набравшими поровну (только круговой; в швейцарке всегда 0).
+    # Points in games among those tied (round robin only; in the Swiss always 0).
     head_to_head: float
     sonneborn_berger: float
     place: int
-    # Бухгольц — сумма очков соперников (швейцарская система).
+    # Buchholz - the sum of the opponents' points (Swiss system).
     buchholz: float = 0.0
 
 
 def _score(game: GameRecord, seat: int) -> float:
-    """Очки участника seat за партию: 1, 0,5 или 0."""
+    """Points of participant seat for a game: 1, 0.5 or 0."""
     if game.result == "1/2-1/2":
         return 0.5
     won_white = game.result == "1-0"
@@ -115,7 +116,7 @@ def _score(game: GameRecord, seat: int) -> float:
 
 
 def round_robin_standings(seats: list[int], games: list[GameRecord]) -> list[Standing]:
-    """Таблица кругового турнира по сыгранным партиям, места с учётом дополнительных показателей."""
+    """Round robin table by played games, places taking the tie-breaks into account."""
     points = {s: 0.0 for s in seats}
     for g in games:
         points[g.white] += _score(g, g.white)
@@ -138,10 +139,10 @@ def round_robin_standings(seats: list[int], games: list[GameRecord]) -> list[Sta
     ]
 
 
-# --- Швейцарская система ----------------------------------------------------------------------------
+# --- Swiss system ----------------------------------------------------------------------------
 
 def _points(seats: list[int], games: list[GameRecord]) -> dict[int, float]:
-    """Сумма очков каждого участника по сыгранным партиям."""
+    """The sum of each participant's points over the played games."""
     points = {s: 0.0 for s in seats}
     for g in games:
         points[g.white] += _score(g, g.white)
@@ -150,7 +151,7 @@ def _points(seats: list[int], games: list[GameRecord]) -> dict[int, float]:
 
 
 def swiss_standings(seats: list[int], games: list[GameRecord]) -> list[Standing]:
-    """Таблица швейцарки: очки, затем Бухгольц (сумма очков соперников), Зоннеборн–Бергер, посев."""
+    """Swiss table: points, then Buchholz (the sum of opponents' points), Sonneborn-Berger, seeding."""
     points = _points(seats, games)
     buchholz = {s: 0.0 for s in seats}
     sb = {s: 0.0 for s in seats}
@@ -166,8 +167,8 @@ def swiss_standings(seats: list[int], games: list[GameRecord]) -> list[Standing]
 
 
 def _colors(a: int, b: int, games: list[GameRecord]) -> tuple[int, int]:
-    """Белые тому, у кого меньше белых (разность белых и чёрных); при равенстве — кто прошлую партию играл чёрными,
-    затем — сеяному выше."""
+    """White goes to whoever has fewer whites (whites minus blacks); on a tie - whoever played Black last game,
+    then the higher seed."""
     def balance(seat: int) -> int:
         return sum(1 if g.white == seat else -1 for g in games if seat in (g.white, g.black))
 
@@ -184,10 +185,10 @@ def _colors(a: int, b: int, games: list[GameRecord]) -> tuple[int, int]:
 
 def swiss_pairings(seats: list[int], games: list[GameRecord]) -> list[tuple[int, int]]:
     """
-    Пары следующего тура (белые, чёрные). Первый тур — верхняя половина посева против нижней (1–4, 2–5, 3–6), цвета
-    чередуются по доскам. Дальше — по очкам: каждый, начиная с лидера, получает ближайшего по таблице соперника, с
-    которым ещё не играл (перебор с возвратом гарантирует, что пары найдутся для всех); если без повторов нельзя —
-    повтор допускается.
+    Pairs of the next round (white, black). The first round - the upper half of the seeding against the lower (1-4, 2-5,
+    3-6), colours alternate by board. Then by points: each, starting from the leader, gets the nearest opponent in the
+    table they have not played yet (backtracking guarantees that pairs are found for everybody); if it is impossible
+    without repeats - a repeat is allowed.
     """
     ordered = sorted(seats)
     if not games:
@@ -202,8 +203,8 @@ def swiss_pairings(seats: list[int], games: list[GameRecord]) -> list[tuple[int,
 
     def search(rest: list[int], allow_repeat: bool) -> list[tuple[int, int]] | None:
         """
-        Перебор с возвратом: разбивает участников на пары. allow_repeat разрешает повторные встречи — когда без них
-        пары не составить.
+        Backtracking: splits the participants into pairs. allow_repeat allows repeat meetings - when pairs
+        cannot be made without them.
         """
         if not rest:
             return []
@@ -221,10 +222,10 @@ def swiss_pairings(seats: list[int], games: list[GameRecord]) -> list[tuple[int,
     return [_colors(a, b, games) for a, b in found]
 
 
-# --- На выбывание ------------------------------------------------------------------------------------
+# --- Knockout ------------------------------------------------------------------------------------
 
 def knockout_first_round(n: int) -> list[tuple[int, int]]:
-    """Пары первого круга по посеву (сеяный выше — первым)."""
+    """Pairs of the first round by seeding (the higher seed first)."""
     if n == 4:
         return [(1, 4), (2, 3)]
     if n == 8:
@@ -233,7 +234,7 @@ def knockout_first_round(n: int) -> list[tuple[int, int]]:
 
 
 def bracket_size(n: int) -> int:
-    """Размер сетки: ближайшая степень двойки не меньше числа участников."""
+    """Bracket size: the nearest power of two not less than the number of participants."""
     size = 2
     while size < n:
         size *= 2
@@ -242,9 +243,9 @@ def bracket_size(n: int) -> int:
 
 def bracket_slots(n: int) -> list[tuple[int, int | None]]:
     """
-    Первый круг сетки на любое число участников: пары (сеяный выше, соперник) по порядку сетки. Соперника нет
-    (None) — участник проходит круг без игры; так проходят сильнейшие по посеву. Сетка — классическая: первый и
-    второй номера встречаются только в финале, для 4 и 8 совпадает с knockout_first_round.
+    The first round of a bracket for any number of participants: pairs (higher seed, opponent) in bracket order. No opponent
+    (None) - the participant passes the round without playing; this is how the strongest seeds pass. The bracket is
+    classic: the first and second numbers meet only in the final, for 4 and 8 it coincides with knockout_first_round.
     """
     if n not in OPEN_KNOCKOUT_SIZES:
         raise ValueError(f"knockout needs {OPEN_KNOCKOUT_SIZES.start}–{OPEN_KNOCKOUT_SIZES[-1]} players, got {n}")
@@ -257,7 +258,7 @@ def bracket_slots(n: int) -> list[tuple[int, int | None]]:
 
 @dataclass(frozen=True)
 class MatchGame:
-    """Партия матча на выбывание: стадия, номера игроков за белых и чёрных и признак сокращённого контроля."""
+    """A knockout match game: stage, the numbers of the players as White and Black, and the shortened-control flag."""
     stage: Stage
     white: int
     black: int
@@ -265,7 +266,7 @@ class MatchGame:
 
 
 def match_game(high: int, low: int, stage: Stage) -> MatchGame:
-    """Цвета и контроль партии матча: high — сеяный выше."""
+    """Colours and control of a match game: high - the higher seed."""
     if stage == "main":
         return MatchGame("main", white=high, black=low, shortened=False)
     if stage == "rematch":
@@ -274,21 +275,21 @@ def match_game(high: int, low: int, stage: Stage) -> MatchGame:
 
 
 def shortened_control(base_ms: int, increment_ms: int) -> tuple[int, int]:
-    """Контроль переигровки и решающей партии: вдвое короче, но не меньше минуты."""
+    """Control of a replay and a deciding game: half as long, but not less than a minute."""
     return max(MIN_SHORTENED_BASE_MS, base_ms // 2), increment_ms // 2
 
 
 @dataclass(frozen=True)
 class MatchState:
-    """Состояние матча: победитель (если определён) либо следующая партия."""
+    """Match state: the winner (if determined) or the next game."""
     winner: int | None
     next_game: MatchGame | None
 
 
 def match_state(high: int, low: int, played: list[tuple[Stage, GameRecord]]) -> MatchState:
     """
-    Итог матча по сыгранным партиям (в порядке игры): победитель или следующая партия.
-    В решающей партии ничья — победа чёрных.
+    Match result by the played games (in order of play): the winner or the next game.
+    In the deciding game a draw is a Black win.
     """
     stages: list[Stage] = ["main", "rematch", "armageddon"]
     for stage, game in played:
@@ -303,18 +304,19 @@ def match_state(high: int, low: int, played: list[tuple[Stage, GameRecord]]) -> 
 
 
 def knockout_next_round(winners: list[int]) -> list[tuple[int, int]]:
-    """Пары следующего круга: победители соседних матчей сетки; сеяный выше — первым."""
+    """Pairs of the next round: winners of neighbouring bracket matches; the higher seed first."""
     return [(min(a, b), max(a, b)) for a, b in zip(winners[::2], winners[1::2], strict=True)]
 
 
 def knockout_places(n: int, eliminated_in_round: dict[int, int], champion: int) -> dict[int, int]:
     """
-    Места: победитель — 1, проигравший финал — 2, проигравшие в полуфинале делят 3-е, в четвертьфинале — 5-е,
-    кругом раньше — 9-е и так далее. eliminated_in_round: номер участника → круг (с 1), в котором он выбыл.
+    Places: the winner is 1, the loser of the final 2, the semi-final losers share 3rd, the quarter-final losers 5th,
+    those out a round earlier 9th and so on. eliminated_in_round: participant number -> round (from 1) in which they were
+    eliminated.
     """
     rounds_total = bracket_size(n).bit_length() - 1
     places = {champion: 1}
     for seat, rnd in eliminated_in_round.items():
-        from_end = rounds_total - rnd  # 0 — финал, 1 — полуфинал, 2 — четвертьфинал
+        from_end = rounds_total - rnd  # 0 - final, 1 - semi-final, 2 - quarter-final
         places[seat] = 2 if from_end == 0 else 2 ** from_end + 1
     return places

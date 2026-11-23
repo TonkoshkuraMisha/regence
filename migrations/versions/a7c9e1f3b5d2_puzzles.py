@@ -2,8 +2,8 @@
 
 """puzzles
 
-База задач (таск 13.1): задачи, их темы по реестру, попытки решения и рейтинг решателя у пользователя.
-Сами задачи загружает scripts/import_puzzles.py из data/puzzles/ — миграция только создаёт таблицы.
+Puzzle database (task 13.1): puzzles, their themes from the registry, solve attempts and the solver rating on the user.
+The puzzles themselves are loaded by scripts/import_puzzles.py from data/puzzles/ - the migration only creates the tables.
 
 Revision ID: a7c9e1f3b5d2
 Revises: f2b8d4e6a1c3

@@ -1,5 +1,5 @@
 # --- FILE: tests/test_tournaments.py ---
-"""Турниры (таск 15.1): создание с посевом, проверки, ход кругового турнира и турнира на выбывание до мест."""
+"""Tournaments (task 15.1): creation with seeding, validation, round-robin and knockout progress up to the placings."""
 
 import pytest
 from sqlalchemy import select
@@ -25,7 +25,7 @@ def eight():
 
 
 async def play(db, tournament_id: int, outcome) -> None:
-    """Играет все текущие партии турнира: outcome(game) → результат."""
+    """Plays all current tournament games: outcome(game) -> result."""
     while True:
         tournament = await db.get(Tournament, tournament_id)
         await db.refresh(tournament)
@@ -35,14 +35,14 @@ async def play(db, tournament_id: int, outcome) -> None:
         await service.record_result(db, tournament, pending[0], outcome(pending[0]))
 
 
-# --- создание -------------------------------------------------------------------------------------
+# --- creation -------------------------------------------------------------------------------------
 
 def test_format_sizes_come_from_the_server_rules(client, token_user_1):
-    # Клиент строит выбор размера по этому ответу; без входа тоже открыто — это правила, а не данные игрока.
+    # The client builds the size choice from this response; it is open without login too - these are rules, not player data.
     sizes = client.get(f"{API}/formats").json()
     assert sizes == {fmt: list(allowed) for fmt, allowed in service.SIZES.items()}
     assert sizes["swiss"] == [6, 8]
-    # Каждый размер из ответа сервер и правда принимает.
+    # The server really accepts every size from the response.
     for size in sizes["round_robin"]:
         participants = eight()[: size - 1]
         response = client.post(API, headers=auth(token_user_1), json=body("round_robin", size, participants))
@@ -55,9 +55,9 @@ def test_round_robin_is_seeded_and_scheduled(client, token_user_1):
     t = created.json()
     assert (t["format"], t["size"], t["status"], t["current_round"]) == ("round_robin", 4, "active", 1)
     ratings = [p["rating"] for p in t["players"]]
-    assert ratings == sorted(ratings, reverse=True)  # посев по рейтингу
+    assert ratings == sorted(ratings, reverse=True)  # seeding by rating
     me = next(p for p in t["players"] if p["kind"] == "user")
-    assert t["my_seat"] == me["seat"] == 4  # игрок с 1200 слабее ботов
+    assert t["my_seat"] == me["seat"] == 4  # a 1200 player is weaker than the bots
     assert len(t["games"]) == 6 and {g["round"] for g in t["games"]} == {1, 2, 3}
     assert [(g["white_seat"], g["black_seat"]) for g in t["games"] if g["round"] == 1] == [(1, 4), (2, 3)]
     assert all(s["points"] == 0 for s in t["standings"])
@@ -93,7 +93,7 @@ def test_creation_is_validated(client, token_user_1, payload, code):
 
 
 def test_own_tournaments_run_in_parallel(client, token_user_1):
-    # Решение владельца (17.11): незаконченный свой турнир другим не мешает.
+    # Owner decision (17.11): an unfinished tournament of one's own does not block others.
     assert client.post(API, headers=auth(token_user_1), json=body()).status_code == 201
     assert client.post(API, headers=auth(token_user_1), json=body("swiss", 8, eight())).status_code == 201
     assert len(client.get(API, headers=auth(token_user_1)).json()) == 2
@@ -103,13 +103,13 @@ def test_career_blocks_only_its_own_branch(client, token_user_1):
     from src.services import tournament_career as career
 
     assert client.post(f"{API}/career/main-1", headers=auth(token_user_1)).status_code == 201
-    # Тот же этап (та же ветка — основная лестница) не начать, пока идёт.
+    # The same stage (the same branch - the main ladder) cannot be started while one is running.
     again = client.post(f"{API}/career/main-1", headers=auth(token_user_1))
     assert again.status_code == 409 and again.json()["detail"]["code"] == "tournament_active_exists"
-    # Свой турнир и «Машина времени» идут параллельно с карьерой.
+    # One's own tournament and the "Time Machine" run in parallel with the career.
     assert client.post(API, headers=auth(token_user_1), json=body()).status_code == 201
     assert client.post(f"{API}/time-machine/london_1851", json={}, headers=auth(token_user_1)).status_code == 201
-    # Ветки: основная лестница — все основные этапы; приглашение — само по себе.
+    # Branches: the main ladder - all main stages; an invitation - standalone.
     main = career.branch_of(career.STAGES_BY_KEY["main-2"])
     assert "main-1" in main and not any(key.startswith("invitational") for key in main)
     assert career.branch_of(career.STAGES_BY_KEY["invitational-1"]) == ("invitational-1",)
@@ -123,7 +123,7 @@ def test_personality_participant_is_copied(client, token_user_1):
     ])).json()
     personality = next(p for p in t["players"] if p["kind"] == "personality")
     assert personality["personality_name"] == "Romantic" and personality["rating"] == 1700
-    # Удаление персоналии не меняет турнир.
+    # Deleting a historical figure does not change the tournament.
     assert client.delete(f"/api/v1/bots/personalities/{pid}", headers=auth(token_user_1)).status_code == 204
     again = client.get(f"{API}/{t['id']}", headers=auth(token_user_1)).json()
     assert next(p for p in again["players"] if p["kind"] == "personality")["personality_name"] == "Romantic"
@@ -136,12 +136,12 @@ def test_other_players_tournament_is_hidden(client, token_user_1, token_user_2):
     assert client.get(API, headers=auth(token_user_2)).json() == []
 
 
-# --- ход турнира --------------------------------------------------------------------------------------
+# --- tournament progress --------------------------------------------------------------------------------------
 
 @pytest.mark.asyncio
 async def test_round_robin_finishes_with_places(client, db_session, token_user_1):
     t = client.post(API, headers=auth(token_user_1), json=body()).json()
-    # Выигрывает тот, у кого номер меньше (сильнее по посеву), 1 и 2 играют вничью.
+    # The one with the lower number (stronger by seeding) wins, 1 and 2 draw.
     await play(db_session, t["id"], lambda g: "1/2-1/2" if {g.white_seat, g.black_seat} == {1, 2}
                else "1-0" if g.white_seat < g.black_seat else "0-1")
 
@@ -153,7 +153,7 @@ async def test_round_robin_finishes_with_places(client, db_session, token_user_1
     assert places == {1: 1, 2: 2, 3: 3, 4: 4}
     summary = client.get(API, headers=auth(token_user_1)).json()
     assert summary[0]["status"] == "finished" and summary[0]["my_place"] == 4
-    # После завершения можно начать новый турнир.
+    # After it finishes, a new tournament can be started.
     assert client.post(API, headers=auth(token_user_1), json=body()).status_code == 201
 
 
@@ -172,9 +172,9 @@ async def test_knockout_draws_go_to_rematch_and_armageddon(client, db_session, t
     await service.record_result(db_session, tournament, rematch[0], "1/2-1/2")
     armageddon = [g for g in await service.games_of(db_session, t["id"]) if g.stage == "armageddon"][0]
     assert (armageddon.white_seat, armageddon.black_seat) == (4, 1)
-    await service.record_result(db_session, tournament, armageddon, "1/2-1/2")  # чёрным хватает ничьей
+    await service.record_result(db_session, tournament, armageddon, "1/2-1/2")  # a draw is enough for Black
 
-    # Матч 2–3 решается в основной партии; затем — финал 1–2.
+    # Match 2-3 is decided in the main game; then the final 1-2.
     await service.record_result(db_session, tournament, games[2], "0-1")
     await db_session.refresh(tournament)
     assert tournament.current_round == 2
@@ -191,7 +191,7 @@ async def test_knockout_draws_go_to_rematch_and_armageddon(client, db_session, t
 @pytest.mark.asyncio
 async def test_knockout_of_eight_runs_to_the_end(client, db_session, token_user_1):
     t = client.post(API, headers=auth(token_user_1), json=body("knockout", 8, eight())).json()
-    await play(db_session, t["id"], lambda g: "1-0" if g.white_seat < g.black_seat else "0-1")  # сильнейший проходит
+    await play(db_session, t["id"], lambda g: "1-0" if g.white_seat < g.black_seat else "0-1")  # the strongest advances
     done = client.get(f"{API}/{t['id']}", headers=auth(token_user_1)).json()
     places = {p["seat"]: p["place"] for p in done["players"]}
     assert places == {1: 1, 2: 2, 3: 3, 4: 3, 5: 5, 6: 5, 7: 5, 8: 5}
@@ -210,7 +210,7 @@ async def test_finished_game_cannot_be_recorded_twice(client, db_session, token_
     assert error.value.code == "tournament_game_closed"
 
 
-# --- навигация: «Продолжить турнир» ---------------------------------------------------------------
+# --- navigation: "Continue tournament" ---------------------------------------------------------------
 
 async def test_summary_says_when_my_game_is_ready(client, token_user_1, db_session):
     created = client.post(API, headers=auth(token_user_1), json=body()).json()
@@ -220,7 +220,7 @@ async def test_summary_says_when_my_game_is_ready(client, token_user_1, db_sessi
     tournament = await db_session.get(Tournament, created["id"])
     game = next(g for g in await service.games_of(db_session, created["id"]) if g.id == mine["id"])
     await service.record_result(db_session, tournament, game, "1/2-1/2")
-    # Своя партия тура сыграна, остальные ещё нет — ждать нечего.
+    # The player's own round game is played, the others are not yet - nothing to wait for.
     assert client.get(API, headers=auth(token_user_1)).json()[0]["my_game_ready"] is False
     client.post(f"{API}/{created['id']}/withdraw", headers=auth(token_user_1))
     assert client.get(API, headers=auth(token_user_1)).json()[0]["my_game_ready"] is False

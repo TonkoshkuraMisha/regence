@@ -9,24 +9,24 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Светлые элементы интерфейса (Самшит индийский)
+        // Light UI elements (Indian boxwood)
         boxwood: {
           light: '#F5DEB3',
           DEFAULT: '#E6C998',
           dark: '#D0A972',
         },
-        // Темные элементы интерфейса (Акация)
+        // Dark UI elements (Acacia)
         acacia: {
           light: '#7A4B31',
           DEFAULT: '#5C3A21',
           dark: '#3D2314',
         },
-        // Сбалансированные цвета самой шахматной доски (средний контраст клеток)
+        // Balanced colors of the chessboard itself (medium square contrast)
         board: {
           light: '#DFC8A2',
           dark: '#966C46',
         },
-        // Фон и элементы интерфейса (Стол/Комната)
+        // Background and UI elements (Table/Room)
         room: {
           light: '#4A3B32',
           DEFAULT: '#2C221C',

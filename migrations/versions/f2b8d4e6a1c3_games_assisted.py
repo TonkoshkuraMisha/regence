@@ -2,8 +2,8 @@
 
 """games_assisted
 
-Игра с наставником (таск 11.3): партия, в которой игрок пользовался советами или проверкой ходов, помечается
-учебной (правило 2 Части II).
+Play with a mentor (task 11.3): a game in which the player used advice or move checking is marked
+as a training game (rule 2 of Part II).
 
 Revision ID: f2b8d4e6a1c3
 Revises: e1a7c3d9b5f2

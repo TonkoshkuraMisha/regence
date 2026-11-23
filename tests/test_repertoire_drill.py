@@ -1,4 +1,4 @@
-"""Повторение репертуара (таск 20.2): SM-2, карточки-позиции, дневная норма, сессии, ответы соперника."""
+"""Repertoire review (task 20.2): SM-2, position cards, daily quota, sessions, opponent replies."""
 
 from datetime import UTC, datetime, timedelta
 
@@ -43,7 +43,7 @@ def test_session_daily_norm_and_answers(client, token_user_1, monkeypatch):
     first = client.get(f"{API}/{rep_id}/drill", headers=auth(token_user_1)).json()
     assert first["stats"] == {"total": 3, "new": 3, "learning": 0, "learned": 0, "due": 0, "new_left": 2}
     cards = first["cards"]
-    assert [c["line"] for c in cards] == [[], ["e2e4", "c7c5"]]  # короткие линии первыми, норма — 2
+    assert [c["line"] for c in cards] == [[], ["e2e4", "c7c5"]]  # short lines first, quota is 2
     assert cards[0]["answers"] == [{"uci": "e2e4", "san": "e4", "comment": ""}]
     assert cards[1]["fen"].startswith("rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w")
 
@@ -59,15 +59,15 @@ def test_session_daily_norm_and_answers(client, token_user_1, monkeypatch):
     assert bad["correct"] is False and bad["answers"][0]["san"] == "Nf3"
     retry = client.post(f"{API}/{rep_id}/drill/answer", headers=auth(token_user_1),
                         json={"position": other, "uci": "g1f3", "retry": True}).json()
-    assert retry["correct"] is True and retry["due_at"] == bad["due_at"]  # повтор не меняет расписание
+    assert retry["correct"] is True and retry["due_at"] == bad["due_at"]  # a retry does not change the schedule
 
-    # Норма на сегодня исчерпана: в повторении нет ни новых, ни просроченных.
+    # Today's quota is used up: the review has neither new nor overdue cards.
     assert client.get(f"{API}/{rep_id}/drill", headers=auth(token_user_1)).json()["cards"] == []
-    # «Учить новые» — без нормы.
+    # "Learn new" has no quota.
     learn = client.get(f"{API}/{rep_id}/drill", params={"mode": "learn"}, headers=auth(token_user_1)).json()
     assert [c["line"] for c in learn["cards"]] == [["e2e4", "e7e5"]]
 
-    # Завтра обе отвеченные карточки — к повторению.
+    # Tomorrow both answered cards are due for review.
     monkeypatch.setattr(drill, "utcnow", lambda: NOW + timedelta(days=1, hours=1))
     tomorrow = client.get(f"{API}/{rep_id}/drill", headers=auth(token_user_1)).json()
     assert tomorrow["stats"]["due"] == 2
@@ -112,6 +112,6 @@ def test_spots_shortest_line_via_transposition():
             rows.append(type("Row", (), {"id": len(rows), "position": position, "move_uci": uci, "comment": ""})())
     rep = type("Rep", (), {"color": "white"})()
     found = drill.spots(rep, repertoire.build_tree("white", rows))  # type: ignore[arg-type]
-    # Позиция перед Bc4 достижима двумя путями — карточка одна, линия к ней — первая найденная обходом в ширину.
+    # The position before Bc4 is reachable by two paths - one card, its line is the first found by breadth-first search.
     bc4 = [s for s in found.values() if s.answers[0]["san"] == "Bc4"]
     assert len(bc4) == 1 and len(bc4[0].line) == 4

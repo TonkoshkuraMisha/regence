@@ -1,16 +1,18 @@
 # --- FILE: src/services/bots/staunton.py ---
 """
-Исторический бот «Говард Стаунтон»: дебютная книга и правила стиля.
+Historical bot "Howard Staunton": opening book and style rules.
 
-Дебют — книга из партий прототипа (books/staunton.json, собирает scripts/build_opening_books.py) и несколько
-«фирменных» начал, заданных здесь (DEFAULT_STAUNTON_BOOK).
+Opening — a book from the prototype's games (books/staunton.json, built by scripts/build_opening_books.py) and several
+"signature" openings set here (DEFAULT_STAUNTON_BOOK).
 
-Стиль (STAUNTON_STYLE) — бонусы в сантипешках кандидатам движка: фланговый контроль центра пешкой «c», развитие и
-рокировка, после дебюта — профилактика и сохранение пешечной структуры. Бонусы только выбирают среди ходов, близких
-по оценке к лучшему (окно — blunder_guard_cp); оценку позиции они не меняют.
+Style (STAUNTON_STYLE) — bonuses in centipawns for engine candidates: flank control of the centre with the "c" pawn,
+development and
+castling, after the opening — prophylaxis and preserving the pawn structure. The bonuses only choose among moves close
+in evaluation to the best one (the window is blunder_guard_cp); they do not change the position evaluation.
 
-Сила: заявленный рейтинг и ограничение движка UCI_Elo — 2000; измеренная матчами — calibration.json. Порядок выбора
-хода — base.HistoricalBot; реплики бота — ключи каталога botComments.staunton.* на клиенте.
+Strength: the declared rating and the engine's UCI_Elo limit — 2000; the match-measured one — calibration.json. The move
+selection
+order is base.HistoricalBot; the bot's remarks are the botComments.staunton.* catalog keys on the client.
 """
 
 import chess
@@ -39,13 +41,16 @@ from src.services.bots.style import (
     to,
 )
 
-# Ширина окна выбора хода, сп (base.HistoricalBot._window): с опорным ходом силы бот может уступить ему не больше
-# половины этого значения, без движка — лучшему ходу не больше всего значения. Чем шире, тем больше простора стилю.
+# Width of the move selection window, cp (base.HistoricalBot._window): with a strength reference move the bot may fall short of
+# it by at most
+# half of this value, without an engine — short of the best move by at most the whole value. The wider, the more room for
+# style.
 STAUNTON_BLUNDER_GUARD_CP = 110.0
 
-# Фирменные линии: позиция (FEN без счётчиков ходов) → [(UCI, вес, ключ реплики botComments.*)]. Поверх книги из
-# books/*.json (load_bot_opening_book): ход из файла заменяет совпадающий, а фирменные ходы, которых в файле нет,
-# добавляются.
+# Signature lines: position (FEN without move counters) → [(UCI, weight, remark key botComments.*)]. On top of the book from
+# books/*.json (load_bot_opening_book): a move from the file replaces the matching one, and signature moves absent from the
+# file
+# are added.
 DEFAULT_STAUNTON_BOOK: dict[str, list[BookEntry]] = {
     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -": [
         ("e2e4", 82, "staunton.bookE4"),
@@ -90,12 +95,12 @@ STAUNTON_STYLE = Style(
         Rule(ALWAYS, pawn_structure_delta),
     ),
 )
-# Функция оценки стиля как самостоятельное имя (её импортируют тесты бота).
+# The style evaluation function as a standalone name (bot tests import it).
 evaluate_staunton_style_bonus = STAUNTON_STYLE.evaluate
 
 
 class StauntonBot(HistoricalBot):
-    """Говард Стаунтон: UCI_Elo 2000, глубина 6, уровень 7; случайный разброс ±6 сп, MultiPV 6."""
+    """Howard Staunton: UCI_Elo 2000, depth 6, level 7; random spread +-6 cp, MultiPV 6."""
 
     bot_id = "staunton"
     engine_source_name = "staunton_style_engine"

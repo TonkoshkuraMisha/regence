@@ -1,6 +1,6 @@
-// Совместный разбор, ветки сверх StudyPages.test.tsx: вход в /study (создать комнату, ввести код, материалы, отказ
-// сервера, нет входа), комната без входа и при сбое опроса, ход ведущего (законный и нет), подсветка и стрелки, позиция
-// по FEN, чат, вопрос «найти ход», ответ ученика на вопрос с вариантами, показ ответа, шаги урока, скачивание и сохранение.
+// Joint review, branches beyond StudyPages.test.tsx: entering /study (create a room, enter a code, materials, a server
+// refusal, no login), a room without login and on a polling failure, the host's move (legal and not), highlights and arrows, a position
+// by FEN, the chat, a "find the move" question, a student's answer to a multiple-choice question, revealing the answer, lesson steps, downloading and saving.
 
 import {act, fireEvent, render, screen, waitFor} from '@testing-library/react';
 import {MemoryRouter, Route, Routes} from 'react-router-dom';
@@ -39,7 +39,7 @@ function openRoom() {
 function openLobby() {
     return render(<MemoryRouter initialEntries={['/study']}><Routes>
         <Route path="/study" element={<StudyLobby/>}/>
-        <Route path="/study/:code" element={<p data-testid="in-room">комната</p>}/></Routes></MemoryRouter>);
+        <Route path="/study/:code" element={<p data-testid="in-room">room</p>}/></Routes></MemoryRouter>);
 }
 
 beforeEach(() => setToken('jwt'));
@@ -49,27 +49,27 @@ afterEach(() => {
     vi.restoreAllMocks();
 });
 
-describe('вход в совместный разбор', () => {
-    it('без входа — просьба войти', () => {
+describe('entering a joint review', () => {
+    it('without login — a request to log in', () => {
         setToken(null);
         openLobby();
         expect(screen.queryByTestId('study-lobby')).toBeNull();
-        expect(screen.getByText(/войд|вход/i)).toBeInTheDocument();
+        expect(screen.getByText(/Sign in/i)).toBeInTheDocument();
     });
 
-    it('показывает материалы клуба, создаёт комнату и переходит в неё', async () => {
+    it('shows the club materials, creates a room and goes into it', async () => {
         stub(null, (url, init) => {
-            if (url.endsWith('/materials')) return {materials: [{id: 1, title: 'Разбор Сицилианской', created_at: 'x'}]};
+            if (url.endsWith('/materials')) return {materials: [{id: 1, title: 'Sicilian review', created_at: 'x'}]};
             if (init?.method === 'POST') return room();
             return undefined;
         });
         openLobby();
-        expect(await screen.findByText('Разбор Сицилианской')).toBeInTheDocument();
+        expect(await screen.findByText('Sicilian review')).toBeInTheDocument();
         await act(async () => fireEvent.click(screen.getByTestId('study-create')));
         expect(await screen.findByTestId('in-room')).toBeInTheDocument();
     });
 
-    it('ввод кода открывает комнату; пустой код игнорируется', async () => {
+    it('entering a code opens the room; an empty code is ignored', async () => {
         stub({materials: []});
         openLobby();
         const input = await screen.findByTestId('study-code');
@@ -80,7 +80,7 @@ describe('вход в совместный разбор', () => {
         expect(await screen.findByTestId('in-room')).toBeInTheDocument();
     });
 
-    it('отказ сервера при создании комнаты показывается сообщением', async () => {
+    it('a server refusal when creating a room is shown as a message', async () => {
         vi.stubGlobal('fetch', vi.fn(async (_url: string, init?: RequestInit) => {
             if (init?.method === 'POST') throw new TypeError('offline');
             return {ok: true, status: 200, json: async () => ({materials: []})} as Response;
@@ -91,15 +91,15 @@ describe('вход в совместный разбор', () => {
     });
 });
 
-describe('комната: служебные состояния', () => {
-    it('без входа — просьба войти', () => {
+describe('room: service states', () => {
+    it('without login — a request to log in', () => {
         setToken(null);
         stub(room());
         openRoom();
         expect(screen.queryByTestId('study-room')).toBeNull();
     });
 
-    it('сбой опроса до первой загрузки показывает ошибку', async () => {
+    it('a polling failure before the first load shows an error', async () => {
         vi.stubGlobal('fetch', vi.fn(async () => {
             throw new TypeError('offline');
         }));
@@ -108,8 +108,8 @@ describe('комната: служебные состояния', () => {
     });
 });
 
-describe('комната ведущего', () => {
-    it('ход фигурой отправляет позицию, незаконный ход игнорируется', async () => {
+describe('the host\'s room', () => {
+    it('a piece move sends the position, an illegal move is ignored', async () => {
         const fetchMock = stub(room());
         openRoom();
         await screen.findByTestId('study-tools');
@@ -121,7 +121,7 @@ describe('комната ведущего', () => {
         expect(body.fen).toContain('4P3');
     });
 
-    it('светлая и тёмная подсветка, стрелка в ту же клетку не рисуется, «очистить» сбрасывает разметку', async () => {
+    it('light and dark highlighting, an arrow onto the same square is not drawn, "clear" resets the markup', async () => {
         const fetchMock = stub(room());
         openRoom();
         await screen.findByTestId('study-tools');
@@ -134,21 +134,21 @@ describe('комната ведущего', () => {
         expect(puts[1].highlights).toEqual([{square: 'd4', tone: 'dark'}]);
 
         fireEvent.click(screen.getByTestId('tool-arrow'));
-        fireEvent.click(screen.getByRole('button', {name: 'Синяя'}));
+        fireEvent.click(screen.getByRole('button', {name: 'Blue'}));
         fireEvent.click(cell('a2'));
         await act(async () => fireEvent.click(cell('a2')));
         expect(calls(fetchMock, 'PUT')).toHaveLength(2);
 
-        await act(async () => fireEvent.click(screen.getByRole('button', {name: /Убрать пометки/})));
+        await act(async () => fireEvent.click(screen.getByRole('button', {name: /Clear marks/})));
         const last = JSON.parse(String(calls(fetchMock, 'PUT').at(-1)![1].body));
         expect(last).toMatchObject({arrows: [], highlights: [], ghost: null});
     });
 
-    it('позиция по FEN отправляется, пустое поле — нет; чат отправляет сообщение', async () => {
-        const fetchMock = stub(room({chat: [{from: 'coach', text: 'привет'}]}));
+    it('a position by FEN is sent, an empty field is not; the chat sends a message', async () => {
+        const fetchMock = stub(room({chat: [{from: 'coach', text: 'hello'}]}));
         openRoom();
         const fen = await screen.findByTestId('study-fen');
-        expect(screen.getByText('привет')).toBeInTheDocument();
+        expect(screen.getByText('hello')).toBeInTheDocument();
         fireEvent.submit(fen.closest('form')!);
         expect(calls(fetchMock, 'PUT')).toHaveLength(0);
         fireEvent.change(fen, {target: {value: '8/8/8/8/8/8/8/K6k w - - 0 1'}});
@@ -158,13 +158,13 @@ describe('комната ведущего', () => {
         const chat = screen.getByTestId('chat-input');
         fireEvent.submit(chat.closest('form')!);
         expect(calls(fetchMock, 'POST', '/chat')).toHaveLength(0);
-        fireEvent.change(chat, {target: {value: 'ход e4'}});
+        fireEvent.change(chat, {target: {value: 'move e4'}});
         await act(async () => fireEvent.submit(chat.closest('form')!));
-        expect(JSON.parse(String(calls(fetchMock, 'POST', '/chat')[0][1].body))).toEqual({text: 'ход e4'});
+        expect(JSON.parse(String(calls(fetchMock, 'POST', '/chat')[0][1].body))).toEqual({text: 'move e4'});
     });
 
-    it('вопрос «найти ход»: верные ходы переводятся из SAN, лишнее отбрасывается; шаги урока, скачивание и сохранение', async () => {
-        const fetchMock = stub(room(), (url) => (url.endsWith('/materials') ? {id: 5, title: 'Занятие'} : undefined));
+    it('a "find the move" question: the right moves are converted from SAN, extras are dropped; lesson steps, downloading and saving', async () => {
+        const fetchMock = stub(room(), (url) => (url.endsWith('/materials') ? {id: 5, title: 'Session'} : undefined));
         const created: string[] = [];
         Object.assign(URL, {createObjectURL: () => 'blob:x', revokeObjectURL: vi.fn()});
         vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
@@ -175,13 +175,13 @@ describe('комната ведущего', () => {
         expect(screen.getByTestId('lesson-download')).toBeDisabled();
 
         fireEvent.change(screen.getByTestId('question-kind'), {target: {value: 'move'}});
-        fireEvent.change(screen.getByTestId('question-prompt'), {target: {value: 'Лучший ход?'}});
+        fireEvent.change(screen.getByTestId('question-prompt'), {target: {value: 'Best move?'}});
         fireEvent.change(screen.getByTestId('question-moves'), {target: {value: 'e4, d4 Zz9'}});
         await act(async () => fireEvent.click(screen.getByTestId('question-ask')));
         expect(JSON.parse(String(calls(fetchMock, 'POST', '/question')[0][1].body)))
             .toMatchObject({kind: 'move', correct: ['e2e4', 'd2d4']});
 
-        fireEvent.change(screen.getByTestId('lesson-note'), {target: {value: 'Центр'}});
+        fireEvent.change(screen.getByTestId('lesson-note'), {target: {value: 'Center'}});
         fireEvent.click(screen.getByTestId('lesson-add'));
         expect(screen.getByTestId('study-lesson')).toHaveTextContent('2');
         expect(screen.getByTestId('lesson-download')).toBeEnabled();
@@ -193,7 +193,7 @@ describe('комната ведущего', () => {
         await waitFor(() => expect(screen.getByTestId('study-lesson')).toHaveTextContent('0'));
     });
 
-    it('урок без вопроса — подсказка «нужен вопрос»; сбой сохранения показывается ошибкой', async () => {
+    it('a lesson without a question — a "question needed" hint; a save failure is shown as an error', async () => {
         const fetchMock = stub(room());
         openRoom();
         await screen.findByTestId('study-lesson');
@@ -203,30 +203,30 @@ describe('комната ведущего', () => {
         expect(fetchMock).toHaveBeenCalled();
     });
 
-    it('ведущий видит число ответов и раскрывает верный ответ', async () => {
-        const question = {id: 'q', kind: 'choice', prompt: '', options: ['А', 'Б'], deadline: Date.now() / 1000 + 60, revealed: false};
+    it('the host sees the number of answers and reveals the right answer', async () => {
+        const question = {id: 'q', kind: 'choice', prompt: '', options: ['A', 'B'], deadline: Date.now() / 1000 + 60, revealed: false};
         const fetchMock = stub(room({question, answers: {u1: {correct: true}, u2: {correct: false}}}));
         openRoom();
         expect(await screen.findByTestId('study-answers')).toBeInTheDocument();
-        await act(async () => fireEvent.click(screen.getByRole('button', {name: /Показать|Раскрыть/})));
+        await act(async () => fireEvent.click(screen.getByRole('button', {name: /Reveal/})));
         expect(calls(fetchMock, 'POST', '/reveal')).toHaveLength(1);
         expect(screen.getByTestId('option-0')).toBeDisabled();
     });
 });
 
-describe('комната ученика', () => {
-    it('отвечает на вопрос с вариантами; после ответа видно «ответ принят»', async () => {
-        const question = {id: 'q', kind: 'choice', prompt: 'Выберите', options: ['А', 'Б'], deadline: Date.now() / 1000 + 60, revealed: false};
+describe('the student\'s room', () => {
+    it('answers a multiple-choice question; after the answer "answer accepted" is visible', async () => {
+        const question = {id: 'q', kind: 'choice', prompt: 'Choose', options: ['A', 'B'], deadline: Date.now() / 1000 + 60, revealed: false};
         const fetchMock = stub(room({is_host: false, question}));
         openRoom();
-        expect(await screen.findByTestId('study-question')).toHaveTextContent('Выберите');
+        expect(await screen.findByTestId('study-question')).toHaveTextContent('Choose');
         expect(screen.queryByTestId('study-tools')).toBeNull();
         await act(async () => fireEvent.click(screen.getByTestId('option-1')));
         expect(JSON.parse(String(calls(fetchMock, 'POST', '/answer')[0][1].body))).toEqual({answer: 1});
     });
 
-    it('ответ уже дан: варианты недоступны, показано «ответ принят»', async () => {
-        const question = {id: 'q', kind: 'choice', prompt: 'Выберите', options: ['А', 'Б'], deadline: Date.now() / 1000 + 60,
+    it('the answer is already given: options are unavailable, "answer accepted" is shown', async () => {
+        const question = {id: 'q', kind: 'choice', prompt: 'Choose', options: ['A', 'B'], deadline: Date.now() / 1000 + 60,
             revealed: true, correct: 1};
         stub(room({is_host: false, question, my_answer: 0}));
         openRoom();
@@ -234,7 +234,7 @@ describe('комната ученика', () => {
         expect(screen.getByTestId('option-0')).toBeDisabled();
     });
 
-    it('ученик не двигает фигуры, когда вопроса нет', async () => {
+    it('the student does not move pieces when there is no question', async () => {
         const fetchMock = stub(room({is_host: false}));
         openRoom();
         await screen.findByTestId('study-room');

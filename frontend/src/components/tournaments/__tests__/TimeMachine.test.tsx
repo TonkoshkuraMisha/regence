@@ -1,4 +1,4 @@
-// «Машина времени» (таск 28.3): лента знаменитых турниров, вход в турнир, имена мастеров прошлого, настоящий итог.
+// "Time machine" (task 28.3): the feed of famous tournaments, entering a tournament, names of masters of the past, the real result.
 
 import {act, fireEvent, render, screen, within} from '@testing-library/react';
 import {MemoryRouter, Route, Routes} from 'react-router-dom';
@@ -68,22 +68,22 @@ function renderPage() {
 beforeEach(() => setToken('jwt'));
 afterEach(() => {
     setToken(null);
-    setLanguage('ru', {persist: false});
+    setLanguage('en', {persist: false});
     vi.unstubAllGlobals();
 });
 
-describe('имена и числа', () => {
-    it('мастер прошлого — на языке игрока, незнакомый id — как есть', () => {
-        expect(guestName('keres', t)).toBe('Пауль Керес');
-        expect(guestAbout('schlechter', t)).toMatch(/защита/);
+describe('names and numbers', () => {
+    it('a master of the past — in the player\'s language, an unknown id — as is', () => {
+        expect(guestName('keres', t)).toBe('Paul Keres');
+        expect(guestAbout('schlechter', t)).toMatch(/defence/);
         expect(guestName('nobody', t)).toBe('nobody');
         expect(guestAbout('nobody', t)).toBeNull();
-        expect(fieldName({id: 'botvinnik', kind: 'bot'}, t)).toBe('Михаил Ботвинник');
-        expect(fieldShortName({id: 'botvinnik', kind: 'bot'}, t)).toBe('Ботвинник');
-        expect(fieldShortName({id: 'fine', kind: 'guest'}, t)).toBe('Файн');
-        expect(guestShortName('lasker_edward', t)).toBe('Эд. Ласкер');
+        expect(fieldName({id: 'botvinnik', kind: 'bot'}, t)).toBe('Mikhail Botvinnik');
+        expect(fieldShortName({id: 'botvinnik', kind: 'bot'}, t)).toBe('Botvinnik');
+        expect(fieldShortName({id: 'fine', kind: 'guest'}, t)).toBe('Fine');
+        expect(guestShortName('lasker_edward', t)).toBe('Ed. Lasker');
         expect(guestShortName('nobody', t)).toBe('nobody');
-        expect(fieldName({id: 'fine', kind: 'guest'}, t)).toBe('Ройбен Файн');
+        expect(fieldName({id: 'fine', kind: 'guest'}, t)).toBe('Reuben Fine');
         setLanguage('en', {persist: false});
         expect(guestName('keres', t)).toBe('Paul Keres');
         setLanguage('uk', {persist: false});
@@ -92,61 +92,61 @@ describe('имена и числа', () => {
         expect(eventTitle('unknown_event', t)).toBe('unknown_event');
     });
 
-    it('очки записываются с половинками', () => {
+    it('scores are written with halves', () => {
         expect([16.5, 16, 0.5, 0, 3].map(scoreText)).toEqual(['16½', '16', '½', '0', '3']);
     });
 
-    it('участник турнира: мастер прошлого опознаётся по ключу', () => {
+    it('a tournament participant: a master of the past is recognised by the key', () => {
         const base = {seat: 1, user_id: null, rating: 2400, place: null, eliminated_round: null, config: null};
         const guest: TournamentPlayer = {...base, kind: 'personality', bot_key: 'guest:keres', personality_name: 'Keres, Paul'};
-        const own: TournamentPlayer = {...base, kind: 'personality', bot_key: null, personality_name: 'Мой соперник'};
+        const own: TournamentPlayer = {...base, kind: 'personality', bot_key: null, personality_name: 'My opponent'};
         expect(guestIdOf(guest)).toBe('keres');
         expect(guestIdOf(own)).toBeNull();
-        expect(participantName(guest, t)).toBe('Керес');
-        expect(participantName(own, t)).toBe('Мой соперник');
+        expect(participantName(guest, t)).toBe('Keres');
+        expect(participantName(own, t)).toBe('My opponent');
     });
 });
 
-describe('лента турниров', () => {
-    it('турнир: год, рассказ, формат, число партий игрока, сильнейшие и полный состав', async () => {
+describe('tournament feed', () => {
+    it('a tournament: the year, the story, the format, the number of the player\'s games, the strongest and the full field', async () => {
         stub(() => ({events: [LONDON, AVRO]}));
         renderPage();
         const avro = await screen.findByTestId('event-avro_1938');
         expect(within(avro).getByText('1938')).toBeInTheDocument();
-        expect(within(avro).getByRole('heading', {name: 'АВРО 1938'})).toBeInTheDocument();
-        expect(avro).toHaveTextContent('Восемь сильнейших шахматистов мира');
-        expect(avro).toHaveTextContent('Круговой · 2 круга');
-        expect(avro).toHaveTextContent('8 мастеров');
-        expect(within(avro).getByTestId('games-avro_1938')).toHaveTextContent('у вас 16 партий');
-        expect(avro).toHaveTextContent('Сильнейшие: Керес, Файн, Ботвинник');
-        // Настоящий итог: делёж первого места, очки с половинками.
+        expect(within(avro).getByRole('heading', {name: 'AVRO 1938'})).toBeInTheDocument();
+        expect(avro).toHaveTextContent('The eight strongest players in the world');
+        expect(avro).toHaveTextContent('Round robin · 2 cycles');
+        expect(avro).toHaveTextContent('8 masters');
+        expect(within(avro).getByTestId('games-avro_1938')).toHaveTextContent('you play 16 games');
+        expect(avro).toHaveTextContent('Strongest: Keres, Fine, Botvinnik');
+        // The real result: a shared first place, scores with halves.
         const rows = within(avro).getByTestId('real-table').querySelectorAll('li');
         expect(rows).toHaveLength(8);
-        expect(rows[0]).toHaveTextContent('1Пауль Керес8½');
-        expect(rows[7]).toHaveTextContent('8Сало Флор4½');
+        expect(rows[0]).toHaveTextContent('1Paul Keres8½');
+        expect(rows[7]).toHaveTextContent('8Salo Flohr4½');
 
         const london = screen.getByTestId('event-london_1851');
-        expect(within(london).getByTestId('games-london_1851')).toHaveTextContent('вы играете, пока не проиграете матч');
-        expect(london).toHaveTextContent('На выбывание');
-        expect(within(london).getByTestId('real-table')).toHaveTextContent('выбыл в 1-м круге');
+        expect(within(london).getByTestId('games-london_1851')).toHaveTextContent('you play until you lose a match');
+        expect(london).toHaveTextContent('Knockout');
+        expect(within(london).getByTestId('real-table')).toHaveTextContent('out in round 1');
     });
 
-    it('периоды ленты: год турнира относится к своему периоду, подпись — годы', () => {
+    it('feed periods: a tournament\'s year belongs to its period, the label is the years', () => {
         expect([1851, 1880, 1881, 1900, 1901, 1914, 1915, 1938, 1948].map(periodOf)).toEqual([0, 0, 1, 1, 2, 2, 3, 3, 3]);
         expect(PERIOD_STARTS.map((_, index) => periodLabel(index, 1938))).toEqual(['1851–1880', '1881–1900', '1901–1914', '1915–1938']);
-        // Последний период тянется до последнего турнира ленты.
+        // The last period extends to the last tournament of the feed.
         expect(periodLabel(3, 1946)).toBe('1915–1946');
     });
 
-    it('выбор периода оставляет в ленте только его турниры; «Все» возвращает остальные', async () => {
+    it('choosing a period leaves only its tournaments in the feed; "All" brings the rest back', async () => {
         stub(() => ({events: [LONDON, AVRO]}));
         renderPage();
         await screen.findByTestId('event-avro_1938');
         const periods = screen.getByTestId('tm-periods');
-        expect(within(periods).getByTestId('period-all')).toHaveTextContent('Все · 2');
+        expect(within(periods).getByTestId('period-all')).toHaveTextContent('All · 2');
         expect(within(periods).getByTestId('period-all')).toHaveAttribute('aria-pressed', 'true');
-        // Периоды без турниров не показаны.
-        expect(within(periods).getAllByRole('button').map((b) => b.textContent)).toEqual(['Все · 2', '1851–1880 · 1', '1915–1938 · 1']);
+        // Periods without tournaments are not shown.
+        expect(within(periods).getAllByRole('button').map((b) => b.textContent)).toEqual(['All · 2', '1851–1880 · 1', '1915–1938 · 1']);
 
         fireEvent.click(within(periods).getByTestId('period-0'));
         expect(screen.getByTestId('event-london_1851')).toBeInTheDocument();
@@ -162,14 +162,14 @@ describe('лента турниров', () => {
         expect(screen.getByTestId('event-avro_1938')).toBeInTheDocument();
     });
 
-    it('вход в турнир: выбранный контроль уходит на сервер, открывается турнир', async () => {
+    it('entering a tournament: the chosen control goes to the server, the tournament opens', async () => {
         const fetchMock = stub((_url, init) => (init?.method === 'POST' ? {status: 201, body: {id: 77}} : {events: [AVRO]}));
         renderPage();
         const start = await screen.findByTestId('start-avro_1938');
         const select = screen.getByTestId('tm-control') as HTMLSelectElement;
-        // По умолчанию — десять минут; на кнопке — выбранный контроль.
+        // By default — ten minutes; the button shows the chosen control.
         expect(select.value).toBe('rapid-10+0');
-        expect(start).toHaveTextContent(`Войти в турнир · ${select.selectedOptions[0].textContent}`);
+        expect(start).toHaveTextContent(`Enter the tournament · ${select.selectedOptions[0].textContent}`);
         fireEvent.change(select, {target: {value: 'rapid-15+10'}});
         expect(screen.getByTestId('start-avro_1938')).toHaveTextContent(select.selectedOptions[0].textContent ?? '?');
         await act(async () => fireEvent.click(screen.getByTestId('start-avro_1938')));
@@ -179,17 +179,17 @@ describe('лента турниров', () => {
         expect(await screen.findByTestId('tournament-opened')).toBeInTheDocument();
     });
 
-    it('гость видит ленту, а при входе в турнир получает подсказку войти — без запроса к серверу', async () => {
+    it('a guest sees the feed, and on entering a tournament gets a hint to log in — without a request to the server', async () => {
         setToken(null);
         const fetchMock = stub(() => ({events: [AVRO]}));
         renderPage();
         fireEvent.click(await screen.findByTestId('start-avro_1938'));
-        expect(screen.getByRole('alert')).toHaveTextContent('Войдите, чтобы стать участником турнира');
+        expect(screen.getByRole('alert')).toHaveTextContent('Sign in to enter a tournament');
         expect(posts(fetchMock)).toHaveLength(0);
         expect(screen.queryByTestId('tournament-opened')).toBeNull();
     });
 
-    it('пуля и свой контроль не предлагаются', async () => {
+    it('bullet and a custom control are not offered', async () => {
         stub(() => ({events: [AVRO]}));
         renderPage();
         const options = Array.from((await screen.findByTestId('tm-control') as HTMLSelectElement).options).map((o) => o.value);
@@ -197,48 +197,48 @@ describe('лента турниров', () => {
         expect(options.some((value) => value.startsWith('bullet') || value.endsWith('manual'))).toBe(false);
     });
 
-    it('идущий турнир продолжается, другие начинаются параллельно; лучшее место показано', async () => {
+    it('a running tournament continues, others start in parallel; the best place is shown', async () => {
         stub(() => ({events: [{...LONDON, best_place: 3, played: 2}, {...AVRO, active_id: 12}]}));
         renderPage();
         expect(await screen.findByTestId('continue-avro_1938')).toHaveAttribute('href', '/tournaments/12');
         expect(screen.queryByTestId('start-avro_1938')).toBeNull();
-        // Решение владельца (17.11): исторические турниры друг друга не блокируют.
+        // Owner decision (17.11): historical tournaments do not block each other.
         expect(screen.getByTestId('start-london_1851')).toBeEnabled();
-        expect(screen.getByTestId('tm-active')).toHaveTextContent('Вы играете: АВРО 1938. Другие турниры можно начинать параллельно.');
-        expect(screen.getByTestId('best-london_1851')).toHaveTextContent('Ваше лучшее место: 3');
-        expect(screen.getByTestId('event-london_1851')).toHaveTextContent('сыгран 2 раза');
+        expect(screen.getByTestId('tm-active')).toHaveTextContent('In progress: AVRO 1938. You can enter other tournaments at the same time.');
+        expect(screen.getByTestId('best-london_1851')).toHaveTextContent('Your best place: 3');
+        expect(screen.getByTestId('event-london_1851')).toHaveTextContent('played 2 times');
     });
 
-    it('отказ сервера показан игроку', async () => {
+    it('a server refusal is shown to the player', async () => {
         stub((_url, init) => (init?.method === 'POST'
             ? {status: 404, body: {detail: {code: 'time_machine_event_unknown', params: {}, message: '…'}}} : {events: [AVRO]}));
         renderPage();
         const start = await screen.findByTestId('start-avro_1938');
         await act(async () => fireEvent.click(start));
-        expect(screen.getByRole('alert')).toHaveTextContent('Такого исторического турнира нет');
+        expect(screen.getByRole('alert')).toHaveTextContent('There is no such historical tournament');
     });
 
-    it('чужой ответ сервера не ломает страницу', async () => {
+    it('a foreign server reply does not break the page', async () => {
         stub(() => ({stages: []}));
         renderPage();
         expect(await screen.findByTestId('time-machine')).toBeInTheDocument();
         await act(async () => undefined);
-        expect(screen.queryByText('Загрузка турниров…')).toBeNull();
+        expect(screen.queryByText('Loading tournaments…')).toBeNull();
         expect(document.querySelectorAll('[data-testid^="event-"]')).toHaveLength(0);
     });
 });
 
-describe('настоящий итог рядом с турниром', () => {
-    it('после конца турнира — раскрыт, с местом игрока', async () => {
+describe('the real result next to the tournament', () => {
+    it('after the end of the tournament — expanded, with the player\'s place', async () => {
         stub(() => ({events: [AVRO]}));
         render(<RealResult eventKey="avro_1938" finished myPlace={4}/>);
         const block = await screen.findByTestId('real-result');
         expect(block).toHaveAttribute('open');
-        expect(block).toHaveTextContent('Первое место разделили Пауль Керес и Ройбен Файн');
-        expect(screen.getByTestId('real-compare')).toHaveTextContent('Ваше место в этот раз: 4.');
+        expect(block).toHaveTextContent('First place was shared by Paul Keres and Reuben Fine');
+        expect(screen.getByTestId('real-compare')).toHaveTextContent('Your place this time: 4.');
     });
 
-    it('пока турнир идёт — свёрнут и без сравнения', async () => {
+    it('while the tournament runs — collapsed and without a comparison', async () => {
         stub(() => ({events: [AVRO]}));
         render(<RealResult eventKey="avro_1938" finished={false} myPlace={null}/>);
         const block = await screen.findByTestId('real-result');
@@ -247,7 +247,7 @@ describe('настоящий итог рядом с турниром', () => {
     });
 });
 
-// --- турнир в историческом составе --------------------------------------------------------------------------------
+// --- a tournament in a historical field --------------------------------------------------------------------------
 
 const player = (seat: number, over: Partial<TournamentPlayer>): TournamentPlayer => ({
     seat, kind: 'bot', user_id: null, bot_key: null, personality_name: null, rating: 2000, place: null,
@@ -256,7 +256,7 @@ const player = (seat: number, over: Partial<TournamentPlayer>): TournamentPlayer
 const CONFIG = {target_elo: 2400} as unknown as TournamentPlayer['config'];
 
 function doubleRoundRobin(): Tournament {
-    // Трое в два круга: игрок (место 3), Керес и Ботвинник; сыграны обе партии Керес — Ботвинник.
+    // Three in a double round: the player (place 3), Keres and Botvinnik; both Keres — Botvinnik games are played.
     const games = [
         [1, 1, 1, 2, '1-0'], [2, 1, 3, 1, null], [3, 1, 2, 3, null],
         [4, 1, 2, 1, '1/2-1/2'], [5, 1, 1, 3, null], [6, 1, 3, 2, null],
@@ -281,29 +281,29 @@ function doubleRoundRobin(): Tournament {
     };
 }
 
-describe('турнир в историческом составе', () => {
-    it('число туров — по расписанию, а не по размеру', () => {
+describe('a tournament in a historical field', () => {
+    it('the number of rounds — by the schedule, not by the size', () => {
         const tournament = doubleRoundRobin();
         expect(totalRounds(tournament)).toBe(6);
         expect(totalRounds({...tournament, format: 'knockout', size: 17, games: tournament.games.slice(0, 1)})).toBe(5);
         expect(totalRounds({...tournament, format: 'knockout', size: 8})).toBe(3);
     });
 
-    it('партия с мастером прошлого: на доске — имя на языке игрока, сохраняется под именем из турнира', () => {
+    it('a game with a master of the past: on the board — the name in the player\'s language, saved under the name from the tournament', () => {
         const tournament = doubleRoundRobin();
-        const game = tournament.games[1];  // игрок белыми против Кереса
+        const game = tournament.games[1];  // the player as White against Keres
         const start = gameStart(tournament, game, participantName(tournament.players[0], t));
         expect(start.color).toBe('white');
         expect(start.botId).toBeNull();
-        expect(start.custom).toEqual({name: 'Керес', savedName: 'Keres, Paul', config: CONFIG});
-        // Исторический бот по-прежнему запускается по id, без характера.
-        const withBot = gameStart(tournament, tournament.games[2], 'Ботвинник');
+        expect(start.custom).toEqual({name: 'Keres', savedName: 'Keres, Paul', config: CONFIG});
+        // A historical bot is still launched by id, without a character.
+        const withBot = gameStart(tournament, tournament.games[2], 'Botvinnik');
         expect(withBot.botId).toBe('botvinnik');
         expect(withBot.custom).toBeNull();
     });
 
-    it('сетка с проходами: кто не играл в первом круге, перечислен; ранний круг назван по номеру', async () => {
-        // Лондон 1851 с игроком: пятеро в сетке на восемь — играют только 4-й и 5-й номера.
+    it('a bracket with byes: those who did not play in the first round are listed; an early round is named by number', async () => {
+        // London 1851 with the player: five in a bracket of eight — only seeds 4 and 5 play.
         const base = doubleRoundRobin();
         const knockout: Tournament = {
             ...base, format: 'knockout', size: 5, event_key: 'london_1851', current_round: 1, standings: [],
@@ -324,13 +324,13 @@ describe('турнир в историческом составе', () => {
                 <Routes><Route path="/tournaments/:tournamentId" element={<TournamentView/>}/></Routes>
             </MemoryRouter>,
         );
-        expect(await screen.findByTestId('bracket-byes')).toHaveTextContent('Проходят без игры: Андерсен, Уайвилл, Стаунтон');
-        // Сетка на пятерых — три круга: первый из них четвертьфинал.
-        expect(screen.getByTestId('bracket')).toHaveTextContent('Четвертьфинал');
-        expect(screen.getByTestId('bracket')).toHaveTextContent('Маклоу');
+        expect(await screen.findByTestId('bracket-byes')).toHaveTextContent('Through without playing: Anderssen, Wyvill, Staunton');
+        // A bracket of five — three rounds: the first of them is a quarterfinal.
+        expect(screen.getByTestId('bracket')).toHaveTextContent('Quarterfinal');
+        expect(screen.getByTestId('bracket')).toHaveTextContent('Mucklow');
     });
 
-    it('страница турнира: название события, обе партии пары в таблице, ссылка на «Машину времени»', async () => {
+    it('the tournament page: the event name, both games of a pair in the table, a link to the "Time machine"', async () => {
         stub((url) => (url.includes('/time-machine') ? {events: [AVRO]}
             : url.includes('/profile/me') ? {username: 'alice'} : doubleRoundRobin()));
         render(
@@ -338,13 +338,13 @@ describe('турнир в историческом составе', () => {
                 <Routes><Route path="/tournaments/:tournamentId" element={<TournamentView/>}/></Routes>
             </MemoryRouter>,
         );
-        expect(await screen.findByTestId('tournament-title')).toHaveTextContent('АВРО 1938 · Круговой · 3');
-        expect(screen.getByRole('link', {name: 'Машина времени'})).toHaveAttribute('href', '/time-machine');
+        expect(await screen.findByTestId('tournament-title')).toHaveTextContent('AVRO 1938 · Round robin · 3');
+        expect(screen.getByRole('link', {name: 'Time machine'})).toHaveAttribute('href', '/time-machine');
         expect(screen.getByTestId('tournament-status')).toHaveTextContent('2');
         expect(screen.getByTestId('tournament-status')).toHaveTextContent('6');
         const rows = screen.getByTestId('crosstable').querySelectorAll('tbody tr');
-        // Керес против Ботвинника: победа и ничья — обе в одной клетке.
-        expect(rows[0]).toHaveTextContent('Керес');
+        // Keres against Botvinnik: a win and a draw — both in one cell.
+        expect(rows[0]).toHaveTextContent('Keres');
         expect(rows[0].querySelectorAll('td')[3]).toHaveTextContent('1 ½');
         expect(rows[1].querySelectorAll('td')[2]).toHaveTextContent('0 ½');
         expect(await screen.findByTestId('real-result')).toBeInTheDocument();

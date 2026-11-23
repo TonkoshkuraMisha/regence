@@ -1,15 +1,15 @@
 // --- FILE: frontend/src/trainers/memory.ts ---
-// Тренажёры памяти (таск 19.3). «Восстанови позицию»: позиция из настоящей партии показывается несколько секунд,
-// затем её нужно расставить по памяти; оценка — по каждому полю. «Запомни партию»: первые ходы известной партии
-// проигрываются, затем их нужно повторить на доске. Позиции — из партий классики (14.7) и эндшпилей (14.4): у
-// естественных позиций другая память, чем у случайных.
+// Memory trainers (task 19.3). "Restore the position": a position from a real game is shown for a few seconds,
+// then it must be set up from memory; scoring is per square. "Remember the game": the first moves of a known game are
+// played back, then they must be repeated on the board. Positions are from classic games (14.7) and endgames (14.4): natural
+// positions are remembered differently than random ones.
 
 import {Chess} from 'chess.js';
 import {rng} from './vision';
 
 export type Placement = Record<string, string>;
 
-/** Ступени «Восстанови позицию»: 4–6, 7–12, 13–24 фигуры; время показа убывает с 15 до 3 с. */
+/** "Restore the position" steps: 4-6, 7-12, 13-24 pieces; display time decreases from 15 to 3 s. */
 export const MEMORY_LEVELS: { min: number; max: number; seconds: number }[] = [
     {min: 3, max: 6, seconds: 15}, {min: 3, max: 6, seconds: 10}, {min: 4, max: 6, seconds: 6},
     {min: 7, max: 12, seconds: 15}, {min: 7, max: 12, seconds: 10}, {min: 7, max: 12, seconds: 6},
@@ -32,7 +32,7 @@ export function placementOfFen(fen: string): Placement {
     return result;
 }
 
-/** Все позиции партий (после каждого полухода) и позиции эндшпилей — пул для «Восстанови позицию». */
+/** All game positions (after every ply) and endgame positions - the pool for "Restore the position". */
 export function positionPool(games: { moves: string[] }[], endgames: { fen: string }[]): string[] {
     const pool: string[] = [];
     for (const game of games) {
@@ -54,7 +54,7 @@ export function pieceCount(fen: string): number {
     return Object.keys(placementOfFen(fen)).length;
 }
 
-/** Позиция для уровня: из пула — с числом фигур в диапазоне уровня; детерминированно по seed. */
+/** Position for a level: from the pool - with a piece count in the level's range; deterministic by seed. */
 export function pickPosition(pool: string[], level: number, seed: number): string | null {
     const {min, max} = memoryLevel(level);
     const fitting = pool.filter((fen) => {
@@ -66,11 +66,11 @@ export function pickPosition(pool: string[], level: number, seed: number): strin
 }
 
 export interface PlacementScore {
-    /** Поля, где фигура стоит верно. */
+    /** Squares where the piece stands correctly. */
     correct: string[];
-    /** Поля с ошибкой: не та фигура, лишняя или пропущенная. */
+    /** Squares with an error: wrong piece, extra or missing. */
     wrong: string[];
-    /** 0–100: доля верных полей среди всех занятых в исходной позиции или в ответе. */
+    /** 0-100: share of correct squares among all occupied in the original position or in the answer. */
     score: number;
 }
 
@@ -84,7 +84,7 @@ export function scorePlacement(target: Placement, answer: Placement): PlacementS
     return {correct, wrong, score: squares.size === 0 ? 100 : Math.round((correct.length / squares.size) * 100)};
 }
 
-/** «Запомни партию»: сколько полуходов показать на уровне (6–24). */
+/** "Remember the game": how many plies to show at the level (6-24). */
 export function recallPlies(level: number): number {
     return 4 + 2 * Math.min(10, Math.max(1, level));
 }

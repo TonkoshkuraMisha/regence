@@ -1,21 +1,21 @@
 # --- FILE: src/worker/tasks.py ---
 """
-Фоновые задачи Celery.
+Celery background tasks.
 
-* analyze_game — разбор только что законченной партии движком (результат — в games.analysis_json), личные задачи
-  из ошибок игроков (src/services/personal_puzzles.py) и раскладка партии в индекс позиций
-  (src/services/position_index.py), а для партии с историческим ботом — где соперник ошибается
-  (src/services/bots/memory.py, record_rival_errors). analyze_imported_game — разбор и задачи для партии с другого сайта.
-* simulate_tournament_game — партия ботов между собой в турнире; после неё в очередь ставятся следующие партии.
-* workout_reminders, arena_reminders, arena_awards, bot_selfplay, archive_move_telemetry, review_cheater_flags — плановые
-  (расписание — src/worker/celery_app.py).
+* analyze_game - the engine review of a just-finished game (the result goes to games.analysis_json), personal puzzles
+  from the players' mistakes (src/services/personal_puzzles.py) and laying the game out into the position index
+  (src/services/position_index.py), and for a game with a historical bot - where the opponent makes mistakes
+  (src/services/bots/memory.py, record_rival_errors). analyze_imported_game - review and puzzles for a game from another site.
+* simulate_tournament_game - a bot-vs-bot game in a tournament; after it the next games are queued.
+* workout_reminders, arena_reminders, arena_awards, bot_selfplay, archive_move_telemetry, review_cheater_flags - scheduled
+  (the schedule is src/worker/celery_app.py).
 
-Каждая задача запускается в своём цикле событий и создаёт своё подключение к базе (соединения asyncpg привязаны
-к циклу, в котором созданы). Задачам с движком нужен свободный процесс Stockfish из пула: если пул занят,
-разбор и партия турнира откладываются на ENGINE_BUSY_RETRY_S секунд и повторяются — не больше пяти раз
-(max_retries), после чего задача снимается (разбор тогда можно запросить со страницы партии, а партию турнира
-заново поставит в очередь открытие страницы турнира). Самоигра при занятом пуле просто пропускает запуск.
-Ставит задачи в очередь src/services/task_dispatch.py.
+Every task runs in its own event loop and creates its own database connection (asyncpg connections are bound
+to the loop they were created in). Tasks with an engine need a free Stockfish process from the pool: if the pool is busy,
+the review and the tournament game are postponed by ENGINE_BUSY_RETRY_S seconds and retried - at most five times
+(max_retries), after which the task is dropped (the review can then be requested from the game page, and the tournament game
+will be queued again by opening the tournament page). Self-play with a busy pool simply skips the run.
+Tasks are queued by src/services/task_dispatch.py.
 """
 
 import asyncio
@@ -30,9 +30,9 @@ from src.services.analysis_service import analysis_service
 from src.services.bots import memory as bot_memory
 from src.services.engine_pool import EngineBusyError, engine_work
 
-# Задача привязана к нашему приложению Celery явно. С @shared_task API-процесс, где celery_app
-# никто не импортировал, публиковал через приложение по умолчанию — в amqp://localhost:5672
-# вместо брокера Redis, и фоновый анализ до воркера не доходил.
+# The task is bound to our Celery application explicitly. With @shared_task an API process in which celery_app
+# was never imported published via the default application - to amqp://localhost:5672
+# instead of the Redis broker, and the background analysis never reached the worker.
 from src.worker.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
@@ -41,40 +41,43 @@ ENGINE_BUSY_RETRY_S = 15
 
 
 def _task_database_url() -> str:
-    """Адрес базы для задач. Отдельная функция — чтобы тесты могли подставить адрес своей базы."""
+    """The database address for tasks. A separate function - so that tests can substitute their own database address."""
     return settings.async_database_url
 
 
 async def _prewarm_game_analysis_async(game_id: int) -> dict:
     """
-    Выполняет фоновый расчёт и кэширование полного анализа партии после её завершения: сначала раскладывает партию
-    в индекс позиций, затем считает разбор (сохраняется в games.analysis_json; готовый не пересчитывается) и по
-    нему — личные задачи из ошибок игроков. Возвращает отчёт разбора.
+    Performs the background computation and caching of a full game analysis after it finishes: first lays the game out
+    into the position index, then computes the review (saved to games.analysis_json; a ready one is not recomputed) and from
+    it - personal puzzles from the players' mistakes. Returns the review report.
 
-    Каждая задача Celery запускается в собственном event loop (asyncio.run), а соединения
-    asyncpg привязаны к loop, в котором созданы. Глобальный движок приложения с пулом
-    соединений здесь использовать нельзя: со второй задачи воркер получил бы
-    «attached to a different loop». Поэтому на задачу — свой движок без пула, закрываемый в конце.
+    Each Celery task runs in its own event loop (asyncio.run), and asyncpg connections
+    are bound to the loop they were created in. The application's global engine with a connection
+    pool cannot be used here: from the second task the worker would get
+    "attached to a different loop". So each task gets its own engine without a pool, closed at the end.
     """
     engine = create_async_engine(_task_database_url(), poolclass=NullPool)
     try:
         session_factory = async_sessionmaker(engine, expire_on_commit=False)
         async with session_factory() as db:
-            # Индекс позиций (таск 16.1) не зависит от движка — до анализа: занятый движок его не откладывает.
+            # The position index (task 16.1) does not depend on the engine - before analysis: a busy engine does not postpone
+            # it.
             try:
                 await position_index.index_by_id(db, game_id)
             except Exception:
                 await db.rollback()
                 logger.exception("Position indexing failed for game %s", game_id)
             report = await analysis_service.analyze_full_game(db, game_id, force=False)
-            # Задачи из ошибок игрока (таск 13.5) — по готовому разбору; сбой здесь разбор не отменяет.
+            # Puzzles from the player's mistakes (task 13.5) - from the ready review; a failure here does not cancel the
+            # review.
             try:
                 await personal_puzzles.extract_for_game(db, game_id)
             except EngineBusyError:
                 raise
             except Exception:
                 logger.exception("Personal puzzles extraction failed for game %s", game_id)
-            # Где соперник исторического бота ошибается (32.2) — по тому же разбору; сбой разбор не отменяет.
+            # Where the opponent of a historical bot makes mistakes (32.2) - from the same review; a failure does not cancel
+            # the review.
             try:
                 await bot_memory.record_rival_errors(db, game_id)
             except Exception:
@@ -85,22 +88,23 @@ async def _prewarm_game_analysis_async(game_id: int) -> dict:
         await engine.dispose()
 
 
-# ignore_result: результат пишется в БД (Game.analysis_json), а бэкенд результатов при публикации
-# подписывается на ответ — при недоступном Redis это ~64 с переподключений, после которых
-# бэкенд ломается до перезапуска процесса («The Celery application must be restarted»).
+# ignore_result: the result is written to the DB (Game.analysis_json), while the result backend, when publishing,
+# subscribes to the reply - with Redis unavailable that is ~64 s of reconnections, after which
+# the backend breaks until the process restarts ("The Celery application must be restarted").
 @celery_app.task(name="analyze_game", bind=True, max_retries=5, ignore_result=True)
 def analyze_game_task(self, game_id: int):
     """
-    Задача Celery «analyze_game»: фоновый разбор завершённой партии (с человеком или с ботом). Её ставят
-    game_state.finish_game и POST /bots/save-game через src/services/task_dispatch.py. Время движка идёт в метрику
-    regence_engine_seconds_total с меткой analysis. Любой другой сбой только записывается в журнал: разбор
-    необязателен, его можно запросить со страницы партии.
+    The Celery task "analyze_game": the background review of a finished game (with a human or with a bot). It is queued by
+    game_state.finish_game and POST /bots/save-game via src/services/task_dispatch.py. Engine time goes into the metric
+    regence_engine_seconds_total with the label analysis. Any other failure is only written to the log: the review
+    is optional, it can be requested from the game page.
     """
     try:
         with engine_work("analysis"):
             return asyncio.run(_prewarm_game_analysis_async(game_id))
     except EngineBusyError as exc:
-        # Все движки заняты — анализ не теряем, а откладываем: до пяти попыток с паузой ENGINE_BUSY_RETRY_S.
+        # All engines are busy - we do not lose the analysis but postpone it: up to five attempts with a pause of
+        # ENGINE_BUSY_RETRY_S.
         raise self.retry(exc=exc, countdown=ENGINE_BUSY_RETRY_S) from exc
     except Exception:
         logger.exception("Background analysis task failed for game %s", game_id)
@@ -108,7 +112,7 @@ def analyze_game_task(self, game_id: int):
 
 
 async def _analyze_imported_game_async(imported_id: int) -> int:
-    """Разбор партии с другого сайта (таск 24.1) и личные задачи из неё; возвращает число новых задач."""
+    """A review of a game from another site (task 24.1) and personal puzzles from it; returns the number of new puzzles."""
     from src.models.imported_game import ImportedGame
 
     engine = create_async_engine(_task_database_url(), poolclass=NullPool)
@@ -126,8 +130,8 @@ async def _analyze_imported_game_async(imported_id: int) -> int:
 @celery_app.task(name="analyze_imported_game", bind=True, max_retries=5, ignore_result=True)
 def analyze_imported_game_task(self, imported_id: int):
     """
-    Задача Celery: разбор импортированной партии. При занятом пуле движков откладывается на ENGINE_BUSY_RETRY_S и
-    повторяется.
+    The Celery task: a review of an imported game. When the engine pool is busy it is postponed by ENGINE_BUSY_RETRY_S and
+    retried.
     """
     try:
         with engine_work("analysis"):
@@ -151,7 +155,7 @@ async def _simulate_tournament_game_async(tournament_game_id: int) -> list[int]:
 
 @celery_app.task(name="simulate_tournament_game", bind=True, max_retries=5, ignore_result=True)
 def simulate_tournament_game_task(self, tournament_game_id: int):
-    """Партия ботов между собой в турнире (таск 15.2); следующие партии тура ставятся в очередь здесь же."""
+    """A bot-vs-bot game in a tournament (task 15.2); the next games of the round are queued here too."""
     try:
         with engine_work("simulation"):
             follow_up = asyncio.run(_simulate_tournament_game_async(tournament_game_id))
@@ -177,7 +181,7 @@ async def _workout_reminders_async() -> int:
 
 @celery_app.task(name="workout_reminders", ignore_result=True)
 def workout_reminders() -> int:
-    """Напоминания о разминке (таск 22.2) — по расписанию celery beat."""
+    """Warm-up reminders (task 22.2) - on the celery beat schedule."""
     sent = asyncio.run(_workout_reminders_async())
     logger.info("Workout reminders sent: %s", sent)
     return sent
@@ -198,7 +202,7 @@ async def _arena_reminders_async() -> int:
 
 @celery_app.task(name="arena_reminders", ignore_result=True)
 def arena_reminders() -> int:
-    """Напоминания о начале арен (таск 33.4) — по расписанию celery beat, раз в минуту."""
+    """Arena start reminders (task 33.4) - on the celery beat schedule, once a minute."""
     sent = asyncio.run(_arena_reminders_async())
     if sent:
         logger.info("Arena reminders sent: %s", sent)
@@ -218,7 +222,7 @@ async def _bot_selfplay_async() -> int:
 
 @celery_app.task(name="bot_selfplay", ignore_result=True)
 def bot_selfplay() -> int:
-    """Самоигра архетипов (таск 32.3) — по расписанию celery beat, в очереди simulation (работа процессора)."""
+    """Archetype self-play (task 32.3) - on the celery beat schedule, in the simulation queue (CPU work)."""
     try:
         with engine_work("simulation"):
             played = asyncio.run(_bot_selfplay_async())
@@ -243,8 +247,8 @@ async def _archive_move_telemetry_async() -> int:
 @celery_app.task(name="archive_move_telemetry", ignore_result=True)
 def archive_move_telemetry() -> int:
     """
-    Сырые ходы moves старше срока апелляции — в сводку партии и удалить (src/services/telemetry_retention.py);
-    по расписанию celery beat раз в сутки.
+    Raw moves rows older than the appeal period - into the game summary and delete (src/services/telemetry_retention.py);
+    on the celery beat schedule once a day.
     """
     archived = asyncio.run(_archive_move_telemetry_async())
     if archived:
@@ -265,7 +269,7 @@ async def _review_flags_async() -> int:
 
 @celery_app.task(name="review_cheater_flags", ignore_result=True)
 def review_cheater_flags() -> int:
-    """Пересмотр старых флагов нечестной игры (таск 26.4, moderation.periodic_flag_review) — раз в неделю."""
+    """Review of old unfair-play flags (task 26.4, moderation.periodic_flag_review) - once a week."""
     created = asyncio.run(_review_flags_async())
     if created:
         logger.info("Periodic cheat-flag reviews queued: %s", created)
@@ -285,7 +289,7 @@ async def _arena_awards_async() -> int:
 
 @celery_app.task(name="arena_awards", ignore_result=True)
 def arena_awards() -> int:
-    """Призовые места законченных арен (таск 33.5, src/services/arena_awards.py) — по расписанию celery beat."""
+    """Prize places of finished arenas (task 33.5, src/services/arena_awards.py) - on the celery beat schedule."""
     awarded = asyncio.run(_arena_awards_async())
     if awarded:
         logger.info("Arena awards given: %s", awarded)

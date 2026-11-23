@@ -1,10 +1,10 @@
 """
-Разметка библиотеки партий (таск 27.5): пешечная структура каждой партии (src/services/pawn_structures.py) и метка
-«закончилась матом» (миниатюры 27.9).
-Импорт размечает новые партии сам; скрипт — для уже загруженных и после правки правил.
+Tagging of the game library (task 27.5): the pawn structure of each game (src/services/pawn_structures.py) and the
+"ended in mate" mark (miniatures 27.9).
+Import tags new games itself; the script is for already loaded ones and after a rule change.
 
-    python scripts/tag_library.py [--all]   # --all — пересчитать и уже размеченные
-    python scripts/tag_library.py --texts   # починить заголовки: cp1251, прочитанная как латиница, фигурки шрифтов
+    python scripts/tag_library.py [--all]   # --all - recompute the already tagged ones too
+    python scripts/tag_library.py --texts   # repair headers: cp1251 read as Latin, font figurines
 """
 
 import argparse
@@ -17,7 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 
 async def repair_texts() -> None:
-    """Исправляет повреждённую кодировку заголовков в партиях библиотеки."""
+    """Repairs the damaged encoding of headers in library games."""
     from sqlalchemy import select
     from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
     from sqlalchemy.pool import NullPool
@@ -44,7 +44,7 @@ async def repair_texts() -> None:
 
 
 async def run(recompute: bool) -> None:
-    """Проставляет теги пешечных структур и матовых финалов партиям библиотеки."""
+    """Sets pawn structure and mating-finish tags on library games."""
     import chess
     from sqlalchemy import select
     from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
@@ -78,7 +78,7 @@ async def run(recompute: bool) -> None:
 
 
 def main() -> None:
-    """Точка входа скрипта разметки и починки текста партий библиотеки."""
+    """Entry point of the script that tags and repairs the text of library games."""
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--all", action="store_true")
     parser.add_argument("--texts", action="store_true")

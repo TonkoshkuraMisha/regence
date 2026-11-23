@@ -1,8 +1,8 @@
 # --- FILE: src/models/lesson.py ---
 """
-Прогресс уроков школы (таск 14.1). Сами уроки — файлы данных клиента (frontend/src/content/lessons/*.json):
-тексты уроков на трёх языках живут там же, где остальные тексты интерфейса. Сервер хранит только, докуда игрок
-дошёл в уроке и как сдал контрольные вопросы.
+School lesson progress (task 14.1). The lessons themselves are client data files (frontend/src/content/lessons/*.json):
+the lesson texts in three languages live next to the other interface texts. The server stores only how far the player
+got in a lesson and how they passed the quiz questions.
 """
 
 from datetime import datetime
@@ -15,8 +15,8 @@ from src.models.base import Base
 
 class LessonProgress(Base):
     """
-    Прогресс игрока в одном уроке: докуда дошёл и как ответил на контрольные вопросы. Одна строка на пару «игрок —
-    урок».
+    A player's progress in one lesson: how far they got and how they answered the quiz questions. One row per "player -
+    lesson" pair.
     """
     __tablename__ = "lesson_progress"
     __table_args__ = (UniqueConstraint("user_id", "lesson_id", name="uq_lesson_progress_user_lesson"),)
@@ -24,11 +24,11 @@ class LessonProgress(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     lesson_id: Mapped[str] = mapped_column(String(64), nullable=False)
-    # Дальний пройденный шаг (номер с нуля): к нему возвращает «Продолжить».
+    # The furthest passed step (a number from zero): "Continue" returns to it.
     step: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     steps_total: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    # Лучший результат контрольных вопросов урока (верно с первой попытки) из exam_total.
+    # The best result of the lesson's quiz questions (correct on the first try) out of exam_total.
     exam_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
     exam_total: Mapped[int | None] = mapped_column(Integer, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(

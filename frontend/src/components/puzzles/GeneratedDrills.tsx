@@ -1,10 +1,10 @@
 // --- FILE: frontend/src/components/puzzles/GeneratedDrills.tsx ---
-// Упражнения-генераторы (таск 13.7): матрица «вид × фигура» и уровни 1–3. Каждый раз — новая позиция с единственным
-// верным ходом; мат в 2 — после первого хода отвечает соперник. Режим «на минуту»: счёт ведёт сервер, три ошибки —
-// конец, лучший счёт — личный рекорд для сочетания «вид.фигура.уровень».
-// После ответа (кроме забега на время) доска свободна: позицию можно доиграть за обе стороны (usePositionExplorer).
-// Данные — services/puzzles.ts (puzzlesApi.drills*, /api/v1/puzzles/drills/*; генерация и рекорды — сервер,
-// src/services/generated_drills.py). Подключается из PuzzlesPage в режиме «drills»; шапку передаёт родитель.
+// Generator exercises (task 13.7): a "kind x piece" matrix and levels 1-3. Each time a new position with the only
+// correct move; mate in 2: after the first move the opponent replies. "One minute" mode: the score is kept by the server, three mistakes end
+// it, the best score is a personal record for the "kind.piece.level" combination.
+// After the answer (except a timed run) the board is free: the position can be played out for both sides (usePositionExplorer).
+// Data is services/puzzles.ts (puzzlesApi.drills*, /api/v1/puzzles/drills/*; generation and records are the server,
+// src/services/generated_drills.py). Connected from PuzzlesPage in the "drills" mode; the header is passed by the parent.
 
 import {useCallback, useEffect, useRef, useState} from 'react';
 import type {ReactNode} from 'react';
@@ -21,25 +21,25 @@ import {solutionSan, toMove} from './puzzleNotation';
 import {SolutionReplay} from './SolutionReplay';
 import type {ReplayView} from './SolutionReplay';
 
-/** Этап упражнения: idle → loading → solving → waiting (ждём сервер или ответ соперника) → done. */
+/** Exercise stage: idle -> loading -> solving -> waiting (waiting for the server or the opponent's reply) -> done. */
 type Phase = 'idle' | 'loading' | 'solving' | 'waiting' | 'done';
 
-/** Пауза перед ответом соперника на первый ход («мат в 2»), мс. */
+/** Pause before the opponent's reply to the first move ("mate in 2"), ms. */
 const REPLY_DELAY_MS = 400;
-/** Пауза перед следующим упражнением забега после ответа, мс. */
+/** Pause before the next exercise of a run after the answer, ms. */
 const NEXT_DELAY_MS = 700;
-/** Знак фигуры по коду в ответе сервера (для подписи упражнения); «x» — любая из них. */
+/** Piece symbol by the code in the server response (for the exercise label); "x" means any of them. */
 const FIGURINES: Record<string, string> = {q: '♕', r: '♖', b: '♗', n: '♘', x: '?'};
 
 interface Props {
     header: ReactNode;
     initialKind?: DrillKind;
-    /** «Разобрать с наставником»: позиция упражнения на свободной доске. */
+    /** "Review with the coach": the exercise position on the free board. */
     onAnalyze?: (fen: string) => void;
 }
 
-/** Ошибка клиента в сообщение интерфейса: код сервера или общая сетевая ошибка. */
-/** Упражнения-генераторы: выбор вида, фигуры и уровня, одиночные позиции и забег «на минуту». */
+/** Client error to an interface message: a server code or a generic network error. */
+/** Generator exercises: choice of kind, piece and level, single positions and a "one minute" run. */
 export function GeneratedDrills({header, initialKind = 'capture', onAnalyze}: Props) {
     const {t} = useI18n();
     const [kind, setKind] = useState<DrillKind>(initialKind);
@@ -53,7 +53,7 @@ export function GeneratedDrills({header, initialKind = 'capture', onAnalyze}: Pr
     const [mark, setMark] = useState<{ square: string; ok: boolean } | null>(null);
     const [correct, setCorrect] = useState<boolean | null>(null);
     const [solution, setSolution] = useState<string | null>(null);
-    // Решение ходами (UCI) — для пошагового показа на доске (таск B.3).
+    // Solution as moves (UCI) for a step-by-step display on the board (task B.3).
     const [solutionLine, setSolutionLine] = useState<string[]>([]);
     const [replay, setReplay] = useState<ReplayView | null>(null);
     const [run, setRun] = useState<DrillRun | null>(null);
@@ -73,9 +73,9 @@ export function GeneratedDrills({header, initialKind = 'capture', onAnalyze}: Pr
         puzzlesApi.drillsRecords().then((body) => setRecords(body.records)).catch(() => undefined);
     }, []);
 
-    // Свободная доска после ответа (решение владельца 18.11): первый ход игрока после ответа начинает разбор с
-    // позиции на доске; новое упражнение его сбрасывает. В забеге на время
-    // доски для разбора нет: следующее упражнение приходит само.
+    // Free board after the answer (owner's decision 18.11): the player's first move after the answer starts a review from
+    // the position on the board; a new exercise resets it. In a timed run
+    // there is no review board: the next exercise comes by itself.
     const explorer = usePositionExplorer();
     const exploring = explorer.active && !replay;
 

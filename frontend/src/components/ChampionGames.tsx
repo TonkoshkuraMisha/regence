@@ -1,8 +1,8 @@
 // --- FILE: frontend/src/components/ChampionGames.tsx ---
-// Страница архива чемпиона (/champions/:id): список его партий из архива мастеров (сервер подгружает их при первом
-// обращении — src/db/seed.py) с датой, соперником и результатом, переход к просмотру партии и скачивание PGN.
-// Партии — GET /api/v1/profile/<id>/games (постранично, по возрастанию даты); кнопки «Угадай ход» — services/guess.ts.
-// Сведения о чемпионе — config/champions.ts. Маршрут — App.tsx.
+// Champion archive page (/champions/:id): the list of their games from the masters archive (the server loads them on the first
+// request, src/db/seed.py) with date, opponent and result, a jump to the game viewer and PGN download.
+// Games are GET /api/v1/profile/<id>/games (paged, by ascending date); the "Guess the move" buttons are services/guess.ts.
+// Champion information is config/champions.ts. Route is App.tsx.
 
 import {useState, useEffect} from 'react';
 import {useParams, Link, useNavigate} from 'react-router-dom';
@@ -21,15 +21,15 @@ import {renderUiMessage, useI18n} from '../i18n';
 import type {UiMessage} from '../i18n';
 
 /**
- * Играет ли чемпион за эту сторону: фамилия совпадает с одним из слов имени без учёта регистра
- * («Tal, Mikhail», «TAL, M.»). Поиск подстроки не годится: «tal» нашёлся бы и в «Vitaly».
+ * Whether the champion plays this side: the surname matches one of the words of the name, case-insensitive
+ * ("Tal, Mikhail", "TAL, M."). A substring search will not do: "tal" would also be found in "Vitaly".
  */
 export function isChampionName(username: string, championId: string): boolean {
     const surname = championId.toLowerCase();
     return username.toLowerCase().split(/[^\p{L}]+/u).includes(surname);
 }
 
-/** Страница архива чемпиона: шапка, постраничный список партий и переход к просмотру. */
+/** Champion archive page: header, a paged list of games and a jump to the viewer. */
 export default function ChampionGames() {
     const {t, dateLocale} = useI18n();
     const {championId} = useParams<{ championId: string }>();
@@ -39,7 +39,7 @@ export default function ChampionGames() {
     const [totalGames, setTotalGames] = useState<number>(0);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<UiMessage | null>(null);
-    // Партии страницы с отобранными моментами «Угадай ход мастера» (14.3): id партии → первая позиция.
+    // Page games with selected "Guess the master's move" moments (14.3): game id -> first position.
     const [guessStarts, setGuessStarts] = useState<Record<string, number>>({});
 
     const [page, setPage] = useState(1);
@@ -59,7 +59,7 @@ export default function ChampionGames() {
                 const ids = (data.items || []).map((g) => g.game_id);
                 setGuessStarts({});
                 if (ids.length) {
-                    guessApi.ofGames(ids).then((r) => setGuessStarts(r?.games ?? {})).catch(() => undefined);  // кнопки — не главное
+                    guessApi.ofGames(ids).then((r) => setGuessStarts(r?.games ?? {})).catch(() => undefined);  // the buttons are not the main thing
                 }
 
             } catch (err) {
@@ -268,7 +268,7 @@ export default function ChampionGames() {
                     </table>
                 </div>
 
-                {/* Панель пагинации */}
+                {/* Pagination panel */}
                 {totalGames > 0 && (
                     <div
                         className="bg-[#1A120B] p-4 border-t border-amber-900/50 flex flex-col sm:flex-row justify-between items-center gap-4">

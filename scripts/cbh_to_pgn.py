@@ -1,11 +1,11 @@
 """
-Перевод учебных баз закрытого формата в PGN (таск 27.3): все `*.cbh` папки рекурсивно → `<выход>/<та же папка>/<имя>.pgn`
-(только заголовки и главная линия). Затем PGN грузятся в библиотеку обычным импортом:
+Conversion of closed-format training databases to PGN (task 27.3): all `*.cbh` in a folder, recursively ->
+(headers and main line only). Then the PGN files are loaded into the library by the ordinary import:
 
-    python scripts/cbh_to_pgn.py <папка> <папка-для-pgn>
-    python scripts/import_library.py <папка-для-pgn> --collection "Партии мастеров"
+    python scripts/cbh_to_pgn.py <folder> <folder-for-pgn>
+    python scripts/import_library.py <folder-for-pgn> --collection "Master games"
 
-Базы-архивы (`.cbv`) и базы другой программы (`.cib`) не читаются — о них печатается список. Разбор — в
+Archive databases (`.cbv`) and databases of another program (`.cib`) are not read - a list of them is printed. Parsing is in
 src/services/cbh_reader.py.
 """
 
@@ -19,7 +19,7 @@ from src.services.cbh_reader import Database, DecodeError  # noqa: E402
 
 
 def convert(source: Path, target: Path) -> None:
-    """Конвертирует одну базу формата .cbh в PGN (заголовки и главная линия)."""
+    """Converts one .cbh database to PGN (headers and main line)."""
     converted = failed = 0
     for cbh in sorted(source.rglob("*")):
         if cbh.suffix.lower() != ".cbh" or not cbh.with_suffix(".cbg").exists():
@@ -51,7 +51,7 @@ def convert(source: Path, target: Path) -> None:
 
 
 def main() -> None:
-    """Рекурсивно обходит папку с базами .cbh и переводит их в файлы PGN."""
+    """Walks a folder of .cbh databases recursively and converts them to PGN files."""
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("source", type=Path)
     parser.add_argument("target", type=Path)

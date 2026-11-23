@@ -1,7 +1,7 @@
 # --- FILE: tests/test_move_rules.py ---
 """
-Правила ходов на сервере (GameEngine.process_move — проверка каждого хода партии): особые ходы, запрещённые ходы,
-ввод в разных записях и мусор, все виды окончания партии. Сервер — единственный судья: клиенту верить нельзя.
+Move rules on the server (GameEngine.process_move, the check of every game move): special moves, forbidden moves,
+input in different notations and garbage, all kinds of game endings. The server is the only judge: never trust the client.
 """
 
 import chess
@@ -26,7 +26,7 @@ def _board(data: dict) -> chess.Board:
     return chess.Board(data["new_fen"])
 
 
-# --- особые ходы ---------------------------------------------------------------------------------------------
+# --- special moves ---------------------------------------------------------------------------------------------
 
 @pytest.mark.parametrize(("fen", "uci", "san", "king", "rook"), [
     (CASTLING, "e1g1", "O-O", "g1", "f1"),
@@ -83,42 +83,42 @@ def test_check_is_marked_in_san():
     assert _play("4k3/8/8/8/8/8/8/R3K3 w - - 0 1", "a1a8")["san"] == "Ra8+"
 
 
-# --- запрещённые ходы ----------------------------------------------------------------------------------------
+# --- forbidden moves ----------------------------------------------------------------------------------------
 
 @pytest.mark.parametrize(("fen", "move", "why"), [
-    ("r3k2r/8/8/8/8/5r2/8/R3K2R w KQkq - 0 1", "e1g1", "рокировка через битое поле"),
-    ("r3k2r/8/8/8/8/6r1/8/R3K2R w KQkq - 0 1", "e1g1", "рокировка на битое поле"),
-    ("r3k2r/8/8/8/8/4r3/8/R3K2R w KQkq - 0 1", "e1g1", "рокировка из-под шаха"),
-    ("r3k2r/8/8/8/8/8/8/R3K2R w kq - 0 1", "e1g1", "права на рокировку утрачены"),
-    ("r3k2r/8/8/8/8/8/8/RN2K2R w KQkq - 0 1", "e1c1", "фигура между королём и ладьёй"),
-    ("rnbqkbnr/ppp1pppp/8/3pP3/8/8/PPPP1PPP/RNBQKBNR w KQkq - 0 3", "e5d6", "взятие на проходе — только сразу"),
-    ("4k3/4r3/8/8/8/8/4B3/4K3 w - - 0 1", "e2d3", "связанная фигура уходит с линии"),
-    ("4k3/8/8/8/8/8/3r4/4K3 w - - 0 1", "e1e2", "король под шах"),
-    ("4k3/8/8/8/8/8/8/r3K2N w - - 0 1", "h1g3", "шах не отражён"),
-    (PROMOTION, "a7a8", "превращение без фигуры"),
-    (PROMOTION, "a7a8k", "превращение в короля"),
-    (PROMOTION, "a7a8p", "превращение в пешку"),
-    (START, "e2e5", "пешка на три поля"),
-    (START, "e3e4", "с пустого поля"),
-    (START, "e7e5", "ход чужой фигурой"),
-    (START, "g1g3", "конь ходит не буквой Г"),
-    (START, "d1d3", "ферзь сквозь свою пешку"),
-    (START, "e2d3", "пешка бьёт пустое поле"),
+    ("r3k2r/8/8/8/8/5r2/8/R3K2R w KQkq - 0 1", "e1g1", "castling through an attacked square"),
+    ("r3k2r/8/8/8/8/6r1/8/R3K2R w KQkq - 0 1", "e1g1", "castling onto an attacked square"),
+    ("r3k2r/8/8/8/8/4r3/8/R3K2R w KQkq - 0 1", "e1g1", "castling out of check"),
+    ("r3k2r/8/8/8/8/8/8/R3K2R w kq - 0 1", "e1g1", "castling rights lost"),
+    ("r3k2r/8/8/8/8/8/8/RN2K2R w KQkq - 0 1", "e1c1", "a piece between the king and the rook"),
+    ("rnbqkbnr/ppp1pppp/8/3pP3/8/8/PPPP1PPP/RNBQKBNR w KQkq - 0 3", "e5d6", "en passant only immediately"),
+    ("4k3/4r3/8/8/8/8/4B3/4K3 w - - 0 1", "e2d3", "a pinned piece leaves the line"),
+    ("4k3/8/8/8/8/8/3r4/4K3 w - - 0 1", "e1e2", "king moves into check"),
+    ("4k3/8/8/8/8/8/8/r3K2N w - - 0 1", "h1g3", "check not parried"),
+    (PROMOTION, "a7a8", "promotion without a piece"),
+    (PROMOTION, "a7a8k", "promotion to a king"),
+    (PROMOTION, "a7a8p", "promotion to a pawn"),
+    (START, "e2e5", "pawn moves three squares"),
+    (START, "e3e4", "from an empty square"),
+    (START, "e7e5", "moving the opponent's piece"),
+    (START, "g1g3", "knight does not move in an L-shape"),
+    (START, "d1d3", "queen through its own pawn"),
+    (START, "e2d3", "pawn captures an empty square"),
 ])
 def test_illegal_moves_are_rejected(fen, move, why):
     board = chess.Board(fen)
     try:
-        assert chess.Move.from_uci(move) not in board.legal_moves, f"тестовые данные: ход легален ({why})"
+        assert chess.Move.from_uci(move) not in board.legal_moves, f"test data: the move is legal ({why})"
     except chess.InvalidMoveError:
         pass
     assert _play(fen, move) is None, why
 
 
 @pytest.mark.parametrize(("fen", "move", "why"), [
-    ("4k3/8/8/8/8/8/8/4K2r w - - 0 1", "e1f2", "уход от шаха с линии ладьи"),
-    ("4k3/8/8/8/8/8/4p3/4K3 w - - 0 1", "e1e2", "король берёт незащищённую пешку"),
-    ("4k3/4r3/8/8/8/8/4B3/4K3 w - - 0 1", "e2e1", "связанная фигура? нет — слон не ходит по вертикали"),
-    ("4k3/4r3/8/8/8/8/4R3/4K3 w - - 0 1", "e2e7", "связанная ладья бьёт вдоль линии связки"),
+    ("4k3/8/8/8/8/8/8/4K2r w - - 0 1", "e1f2", "escaping check off the rook's line"),
+    ("4k3/8/8/8/8/8/4p3/4K3 w - - 0 1", "e1e2", "king captures an unprotected pawn"),
+    ("4k3/4r3/8/8/8/8/4B3/4K3 w - - 0 1", "e2e1", "pinned piece? no: a bishop does not move along a file"),
+    ("4k3/4r3/8/8/8/8/4R3/4K3 w - - 0 1", "e2e7", "a pinned rook captures along the pin line"),
 ])
 def test_legal_neighbours_of_forbidden_moves_are_accepted(fen, move, why):
     board = chess.Board(fen)
@@ -142,7 +142,7 @@ def test_invalid_fen_is_rejected_not_crashing():
     assert engine.process_move("not a fen", "e2e4") == (False, None)
 
 
-# --- окончание партии ----------------------------------------------------------------------------------------
+# --- end of the game ----------------------------------------------------------------------------------------
 
 @pytest.mark.parametrize(("fen", "move", "result", "termination"), [
     ("rnbqkbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR b KQkq - 0 2", "d8h4", "0-1", "checkmate"),
@@ -164,13 +164,13 @@ def test_ordinary_move_does_not_end_the_game():
 
 
 def test_obvious_flag_only_with_a_single_legal_move():
-    only = "7k/8/8/8/8/8/6q1/7K w - - 0 1"  # единственный ход — король берёт ферзя
+    only = "7k/8/8/8/8/8/6q1/7K w - - 0 1"  # the only move: the king captures the queen
     assert chess.Board(only).legal_moves.count() == 1
     assert _play(only, "h1g2")["is_obvious"]
     assert not _play(START, "e2e4")["is_obvious"]
 
 
-# --- PGN ведётся вместе с позицией ---------------------------------------------------------------------------
+# --- PGN is kept together with the position ---------------------------------------------------------------------------
 
 def test_pgn_numbering_through_a_game():
     fen, pgn = START, ""

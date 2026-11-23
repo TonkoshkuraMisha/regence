@@ -1,10 +1,10 @@
 // --- FILE: frontend/src/components/social/Civility.tsx ---
-// Уважительное общение (таск 30.3): страница «Правила общения», предупреждение фильтра оскорблений с выбором
-// «переформулировать / отправить на проверку», жалоба на сообщение, публикацию или комментарий в один шаг.
-// Данные: жалобы на текст уходят через moderationApi.reportText (services/moderation.ts, очередь модератора); признак
-// «текст не принят фильтром» — код serverErrors.text_flagged, который сервер отдаёт на публикацию, комментарий и личное
-// сообщение (src/services/civility.py). Тексты — каталоги civil.* и moderation.reasons.*. Используют FeedPage.tsx и
-// MessagesPage.tsx; страницу правил (/rules) подключает App.tsx.
+// Respectful communication (task 30.3): the "Communication rules" page, the insult-filter warning with the choice
+// "rephrase / send for review", a report on a message, post or comment in one step.
+// Data: text reports go through moderationApi.reportText (services/moderation.ts, the moderator queue); the sign
+// "the text was not accepted by the filter" is the code serverErrors.text_flagged, which the server returns for a post, a comment and a direct
+// message (src/services/civility.py). Texts - catalogs civil.* and moderation.reasons.*. Used by FeedPage.tsx and
+// MessagesPage.tsx; the rules page (/rules) is mounted by App.tsx.
 
 import {useState} from 'react';
 import {Link} from 'react-router-dom';
@@ -14,17 +14,17 @@ import {errorMessage} from '../../services/apiErrors';
 import {moderationApi} from '../../services/moderation';
 import type {ReportReason} from '../../services/moderation';
 
-// Причины жалобы на текст (без «читерства», оно относится к партии) и пункты страницы правил (ключи civil.rules.*).
+// Report reasons for a text (without "cheating", it belongs to a game) and the items of the rules page (keys civil.rules.*).
 const REASONS: ReportReason[] = ['abuse', 'spam', 'other'];
 const RULES = ['respect', 'noInsults', 'noSpam', 'fairPlay', 'privacy', 'illegal', 'accounts', 'reports'] as const;
 
-/** Сервер не принял текст фильтром оскорблений — предложить переписать или отправить на проверку. */
+/** The server did not accept the text by the insult filter - offer to rewrite or send for review. */
 export function isTextFlagged(err: unknown): boolean {
     const message = errorMessage(err, 'common.networkError');
     return 'key' in message && message.key === 'serverErrors.text_flagged';
 }
 
-/** Предупреждение фильтра: «переформулировать» или «отправить на проверку модератору» (sendAnyway: сообщение будет придержано). */
+/** Filter warning: "rephrase" or "send for review to a moderator" (sendAnyway: the message will be held). */
 export function FlaggedNotice({onRephrase, onSendAnyway}: { onRephrase: () => void; onSendAnyway: () => void }) {
     const {t} = useI18n();
     return (
@@ -42,13 +42,13 @@ export function FlaggedNotice({onRephrase, onSendAnyway}: { onRephrase: () => vo
     );
 }
 
-/** Пометка «придержано до проверки» у текста, который автор отправил, несмотря на предупреждение фильтра. */
+/** A mark "held until review" on a text the author sent despite the filter warning. */
 export function HeldNote() {
     const {t} = useI18n();
     return <span className="text-[11px] text-amber-300" data-testid="held-note">{t('civil.held')}</span>;
 }
 
-/** Ссылка на страницу «Правила общения». */
+/** A link to the "Communication rules" page. */
 export function RulesLink() {
     const {t} = useI18n();
     return (
@@ -58,7 +58,7 @@ export function RulesLink() {
     );
 }
 
-/** Жалоба на текст: флажок → причина одним нажатием → отправлено. subject: «dm:12», «post:5», «comment:7». */
+/** A report on a text: flag -> reason in one click -> sent. subject: "dm:12", "post:5", "comment:7". */
 export function TextReportButton({subject}: { subject: string }) {
     const {t} = useI18n();
     const [open, setOpen] = useState(false);
@@ -84,7 +84,7 @@ export function TextReportButton({subject}: { subject: string }) {
     );
 }
 
-/** Страница /rules: правила общения и как работают фильтр, лимиты и решения модераторов. */
+/** The /rules page: communication rules and how the filter, limits and moderator decisions work. */
 export function CommunityRulesPage() {
     const {t} = useI18n();
     return (

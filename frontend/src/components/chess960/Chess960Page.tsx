@@ -1,9 +1,9 @@
-// Шахматы Фишера (таск 21.3): /play/960 — партия против бота из случайной расстановки (или по номеру 0–959).
-// Правила и ход бота — на сервере (python-chess в режиме 960, Stockfish с UCI_Chess960, src/services/chess960.py):
-// клиентская шахматная библиотека правил 960 не знает, поэтому доска только рисует позицию и передаёт щелчки.
-// Рокировка — щелчок по королю, затем по своей ладье. Без рейтинга. Данные — /api/v1/chess960 (src/api/chess960.py):
-// позиция и ходы каждый раз присылаются целиком (сервер без состояния партии). Маршрут — App.tsx; чистые функции
-// piecesOf/clickMove общие с партией против человека (Chess960LiveGame.tsx).
+// // Fischer Random chess (task 21.3): /play/960 is a game against a bot from a random setup (or by number 0-959).
+// // Rules and the bot's move are on the server (python-chess in 960 mode, Stockfish with UCI_Chess960, src/services/chess960.py):
+// // the client chess library does not know the 960 rules, so the board only draws the position and relays clicks.
+// // Castling is a click on the king, then on one's own rook. No rating. Data comes from /api/v1/chess960 (src/api/chess960.py):
+// // the position and moves are sent in full each time (the server keeps no game state). Route is in App.tsx; the pure functions
+// piecesOf/clickMove // piecesOf/clickMove are shared with the human game (Chess960LiveGame.tsx).
 
 import {useCallback, useEffect, useState} from 'react';
 import {Link} from 'react-router-dom';
@@ -16,18 +16,18 @@ import type {State960} from '../../services/chess960';
 import {PuzzleBoard} from '../puzzles/PuzzleBoard';
 import {numberedMoves} from '../../services/moveNumbers';
 
-/** Ответ сервера по партии против бота: номер расстановки, позиция, ходы (UCI и SAN), итог и ход бота. */
-// Уровни бота 1–5 (сервер сопоставляет каждому Elo и время на ход, chess960.LEVELS); названия — каталог chess960.levels.
-// Причины окончания, для которых есть тексты в каталоге chess960.terminations.
+/** /** Server response for a game against a bot: setup number, position, moves (UCI and SAN), result and the bot's move. */
+// // Bot levels 1-5 (the server maps each to an Elo and a time per move, chess960.LEVELS); names come from the chess960.levels catalog.
+// // Termination reasons that have texts in the chess960.terminations catalog.
 const LEVELS = [1, 2, 3, 4, 5] as const;
 const TERMINATIONS = ['checkmate', 'stalemate', 'insufficient_material', 'threefold_repetition', 'fifty_moves',
     'fivefold_repetition', 'seventyfive_moves'] as const;
 
-// Запросы к серверу — services/chess960.ts; тип состояния переэкспортируется для тестов и партии с человеком.
+// // Requests to the server are in services/chess960.ts; the state type is re-exported for tests and the human game.
 const call = chess960Call;
 export type {State960};
 
-/** Фигуры позиции по полям: «e1» → «K» (белые — заглавные). */
+/** /** Pieces of a position by square: "e1" -> "K" (white ones are uppercase). */
 export function piecesOf(fen: string): Map<string, string> {
     const pieces = new Map<string, string>();
     fen.split(' ')[0].split('/').forEach((row, index) => {
@@ -44,7 +44,7 @@ export function piecesOf(fen: string): Map<string, string> {
     return pieces;
 }
 
-/** Ход по двум щелчкам: король на свою ладью — рокировка (UCI 960), пешка на последнюю горизонталь — ферзь. */
+/** /** Move by two clicks: king onto own rook is castling (UCI 960), pawn onto the last rank is a queen. */
 export function clickMove(fen: string, from: string, to: string): string | null {
     const pieces = piecesOf(fen);
     const mover = pieces.get(from);
@@ -57,15 +57,15 @@ export function clickMove(fen: string, from: string, to: string): string | null 
     return `${from}${to}${promotion}`;
 }
 
-/** Итог щелчка по полю при ходе двумя щелчками: новое выбранное поле и готовый ход UCI (null — хода ещё нет). */
+/** /** Outcome of a click on a square in two-click moves: the new selected square and the ready UCI move (null means no move yet). */
 export interface ClickStep {
     from: string | null;
     move: string | null;
 }
 
 /**
- * Щелчок по полю, когда ходит color: первый щелчок выбирает свою фигуру, повторный по ней — снимает выбор,
- * щелчок по другому полю — ход (clickMove); невозможный ход переносит выбор на свою фигуру или снимает его.
+ *  * Click on a square when color is to move: the first click selects one's own piece, a second click on it clears the selection,
+ *  * a click on another square is a move (clickMove); an impossible move moves the selection to one's own piece or clears it.
  */
 export function clickStep(fen: string, color: 'white' | 'black', from: string | null, square: string): ClickStep {
     const piece = piecesOf(fen).get(square);
@@ -78,13 +78,13 @@ export function clickStep(fen: string, color: 'white' | 'black', from: string | 
 }
 
 /**
- * Страница партии против бота. Старт и «Новая партия» идут через start(): за чёрных сразу запрашивается ход бота.
- * Ход игрока собирается из двух щелчков (onSquare → clickMove) и уходит на сервер вместе со всеми ходами партии.
+ *  * Game page against a bot. Start and "New game" go through start(): when playing black the bot's move is requested immediately.
+ *  * The player's move is assembled from two clicks (onSquare -> clickMove) and goes to the server together with all the game's moves.
  */
 export function Chess960Page() {
     const {t} = useI18n();
     const [color, setColor] = useState<'white' | 'black'>('white');
-    // Сторона идущей партии: выбор в списке применяется к следующей новой партии.
+    //     // Side of the current game: a choice in the list applies to the next new game.
     const [side, setSide] = useState<'white' | 'black'>('white');
     const [level, setLevel] = useState(2);
     const [numberText, setNumberText] = useState('');

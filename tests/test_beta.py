@@ -1,5 +1,5 @@
 # --- FILE: tests/test_beta.py ---
-"""Программа беты (таск 24.4): закрытая регистрация по приглашениям, «Сообщить о проблеме», сводка за неделю."""
+"""Beta programme (task 24.4): invite-only registration, "Report a problem", weekly digest."""
 
 from datetime import UTC, datetime, timedelta
 
@@ -39,7 +39,7 @@ async def moderator(db_session):
 
 @pytest.fixture(autouse=True)
 def default_beta_settings(monkeypatch):
-    """Настройки беты — по умолчанию, что бы ни стояло в локальном .env (там бывает задан адрес канала)."""
+    """Beta settings use their defaults whatever the local .env says (it may set a channel address)."""
     monkeypatch.setattr(settings, "REGISTRATION_INVITE_ONLY", False)
     monkeypatch.setattr(settings, "COMMUNITY_URL", "")
 
@@ -47,11 +47,11 @@ def default_beta_settings(monkeypatch):
 @pytest.fixture
 def invite_only(monkeypatch):
     monkeypatch.setattr(settings, "REGISTRATION_INVITE_ONLY", True)
-    # Регистраций в тесте больше, чем разрешает лимит на адрес.
+    # The test performs more registrations than the per-address limit allows.
     monkeypatch.setattr(settings, "RATE_LIMIT_REGISTER_PER_IP", 100)
 
 
-# --- настройки сайта ----------------------------------------------------------------------------------------------
+# --- site settings ----------------------------------------------------------------------------------------------
 
 def test_config_defaults_open_registration_and_no_community_link(client):
     assert client.get(f"{API}/config").json() == {
@@ -61,7 +61,7 @@ def test_config_defaults_open_registration_and_no_community_link(client):
 @pytest.mark.parametrize(("value", "shown"), [
     ("https://t.me/example", "https://t.me/example"),
     ("  https://t.me/example  ", "https://t.me/example"),
-    ("javascript:alert(1)", None),  # ссылкой считается только адрес http(s)
+    ("javascript:alert(1)", None),  # only an http(s) address counts as a link
     ("t.me/example", None),
     ("", None),
 ])
@@ -70,7 +70,7 @@ def test_community_link_comes_from_settings(client, monkeypatch, value, shown):
     assert client.get(f"{API}/config").json()["community_url"] == shown
 
 
-# --- приглашения --------------------------------------------------------------------------------------------------
+# --- invites --------------------------------------------------------------------------------------------------
 
 def test_only_moderator_manages_invites(client, token_user_1, moderator):
     assert client.get(f"{API}/invites").status_code == 401
@@ -84,13 +84,13 @@ def test_only_moderator_manages_invites(client, token_user_1, moderator):
 
 def test_open_registration_needs_no_code_but_counts_a_valid_one(client, moderator):
     _, mod_token = moderator
-    invite = client.post(f"{API}/invites", json={"note": "  клуб   в школе "}, headers=auth(mod_token)).json()
-    assert invite["note"] == "клуб в школе" and invite["state"] == "active" and invite["max_uses"] is None
+    invite = client.post(f"{API}/invites", json={"note": "  school   club "}, headers=auth(mod_token)).json()
+    assert invite["note"] == "school club" and invite["state"] == "active" and invite["max_uses"] is None
     assert len(invite["code"]) == beta.CODE_LENGTH and set(invite["code"]) <= set(beta.CODE_ALPHABET)
 
     assert register(client, "NoCode").status_code == 201
-    assert register(client, "WrongCode", "NOSUCHCODE").status_code == 201  # недействительный код не мешает
-    assert register(client, "WithCode", f" {invite['code'].lower()} ").status_code == 201  # регистр и пробелы — не важны
+    assert register(client, "WrongCode", "NOSUCHCODE").status_code == 201  # an invalid code does not get in the way
+    assert register(client, "WithCode", f" {invite['code'].lower()} ").status_code == 201  # case and spaces do not matter
     listed = client.get(f"{API}/invites", headers=auth(mod_token)).json()
     assert listed["invite_only"] is False
     assert [(item["code"], item["uses"]) for item in listed["invites"]] == [(invite["code"], 1)]
@@ -102,14 +102,14 @@ def test_invite_only_registration(client, moderator, invite_only):
     assert without.status_code == 403 and without.json()["detail"]["code"] == "registration_invite_required"
     wrong = register(client, "Stranger", "NOSUCHCODE")
     assert wrong.status_code == 403 and wrong.json()["detail"]["code"] == "registration_invite_invalid"
-    # Без приглашения занятость имени не раскрывается: ответ тот же, что и для свободного имени.
+    # Without an invite the fact that a name is taken is not revealed: the response is the same as for a free name.
     assert register(client, "mod").json()["detail"]["code"] == "registration_invite_required"
 
     code = client.post(f"{API}/invites", json={"max_uses": 2}, headers=auth(mod_token)).json()["code"]
     assert client.get(f"{API}/invites/check", params={"code": code}).json() == {"valid": True}
     assert client.get(f"{API}/invites/check", params={"code": "NOSUCHCODE"}).json() == {"valid": False}
     assert register(client, "First", code).status_code == 201
-    # Имя занято — регистрация не состоялась, и код при этом не потрачен.
+    # The name is taken: registration did not happen, and the code was not spent.
     taken = register(client, "first", code)
     assert taken.status_code == 400 and taken.json()["detail"]["code"] == "username_taken"
     assert register(client, "Second", code).status_code == 201
@@ -152,16 +152,17 @@ def test_invite_check_is_rate_limited(client, monkeypatch, freeze_rate_limit_win
     assert blocked.status_code == 429 and blocked.json()["detail"]["code"] == "too_many_invite_checks"
 
 
-# --- сообщения о проблемах ----------------------------------------------------------------------------------------
+# --- problem reports ----------------------------------------------------------------------------------------
 
-REPORT = {"message": "Не открывается задача\nпосле второго хода", "page": "/puzzles/42?theme=fork", "language": "uk",
+REPORT = {"message": "Puzzle does not open\nafter the second move", "page": "/puzzles/42?theme=fork", "language": "uk",
           "screen": "390x844"}
 
 
 async def test_guest_and_player_report_a_problem(client, db_session, token_user_1, moderator):
     _, mod_token = moderator
     assert client.post(f"{API}/feedback", json=REPORT).status_code == 201
-    mine = client.post(f"{API}/feedback", json={"message": "  Часы спешат  ", "language": "xx"}, headers=auth(token_user_1))
+    mine = client.post(f"{API}/feedback", json={"message": "  Clock runs fast  ", "language": "xx"},
+                       headers=auth(token_user_1))
     assert mine.status_code == 201
 
     assert client.get(f"{API}/feedback").status_code == 401
@@ -173,13 +174,14 @@ async def test_guest_and_player_report_a_problem(client, db_session, token_user_
         "id": first["id"], "message": REPORT["message"], "page": REPORT["page"], "app_version": settings.VERSION,
         "language": "uk", "screen": "390x844", "status": "new", "author": None, "created_at": first["created_at"],
         "updated_at": None}
-    assert (second["author"], second["message"], second["language"], second["page"]) == ("player1", "Часы спешат", None, None)
+    assert (second["author"], second["message"], second["language"], second["page"]) == (
+        "player1", "Clock runs fast", None, None)
 
 
 def test_feedback_statuses(client, token_user_1, moderator):
     _, mod_token = moderator
     first = client.post(f"{API}/feedback", json=REPORT).json()["id"]
-    second = client.post(f"{API}/feedback", json={**REPORT, "message": "Второе сообщение"}).json()["id"]
+    second = client.post(f"{API}/feedback", json={**REPORT, "message": "Second message"}).json()["id"]
     url = f"{API}/feedback/{first}/status"
     assert client.post(url, json={"status": "done"}, headers=auth(token_user_1)).status_code == 403
     assert client.post(url, json={"status": "fixed"}, headers=auth(mod_token)).status_code == 422
@@ -190,7 +192,7 @@ def test_feedback_statuses(client, token_user_1, moderator):
     assert started.json() == {"id": first, "status": "in_progress"}
     closed = client.post(f"{API}/feedback/{second}/status", json={"status": "rejected"}, headers=auth(mod_token))
     assert closed.status_code == 200
-    # Очередь по умолчанию — неразобранное; закрытое видно по своему статусу.
+    # The default queue is the untriaged items; closed ones are visible by their own status.
     queue = client.get(f"{API}/feedback", headers=auth(mod_token)).json()
     assert [item["id"] for item in queue["items"]] == [first]
     assert queue["counts"] == {"new": 0, "in_progress": 1, "done": 0, "rejected": 1}
@@ -200,10 +202,10 @@ def test_feedback_statuses(client, token_user_1, moderator):
 
 
 @pytest.mark.parametrize("body", [
-    {"message": "мало"},  # короче 5 знаков
+    {"message": "few"},  # shorter than 5 characters
     {"message": "x" * 2001},
-    {"message": "Обычный текст", "screen": "wide"},
-    {"message": "Обычный текст", "page": "/" + "p" * 200},
+    {"message": "Ordinary text", "screen": "wide"},
+    {"message": "Ordinary text", "page": "/" + "p" * 200},
     {},
 ])
 def test_feedback_is_validated(client, body):
@@ -224,7 +226,7 @@ def test_feedback_is_rate_limited(client, monkeypatch, freeze_rate_limit_window)
     assert blocked.json()["detail"]["params"]["retry_after"] > 0
 
 
-# --- сводка за неделю ---------------------------------------------------------------------------------------------
+# --- weekly digest ---------------------------------------------------------------------------------------------
 
 @pytest.mark.parametrize(("page", "section"), [
     ("/puzzles/42?theme=fork", "/puzzles"), ("/", "/"), ("/learn/course#top", "/learn"), (None, "?"), ("puzzles", "?"),
@@ -240,16 +242,16 @@ async def test_weekly_digest(db_session, test_user_1):
     since = until - timedelta(days=7)
 
     def item(days_ago: float, message: str, status: str = "new", page: str | None = "/puzzles/1", user_id: int | None = None):
-        return Feedback(message=message, status=status, page=page, user_id=user_id, app_version="1.2.2", language="ru",
+        return Feedback(message=message, status=status, page=page, user_id=user_id, app_version="1.2.2", language="uk",
                         screen="390x844", created_at=until - timedelta(days=days_ago))
 
     db_session.add_all([
-        item(1, "Задача не засчитана\nхотя ход верный", user_id=test_user_1.id),
-        item(2, "Часы спешат", status="done", page="/"),
-        item(3, "Не грузится доска", status="in_progress", page="/puzzles/7?x=1"),
-        item(6.5, "Спам", status="rejected", page=None),
-        item(9, "Старое, но не разобрано"),          # раньше периода — только в остатке
-        item(-1, "Из следующей недели"),             # позже периода
+        item(1, "Puzzle not counted\nalthough the move is right", user_id=test_user_1.id),
+        item(2, "Clock runs fast", status="done", page="/"),
+        item(3, "Board does not load", status="in_progress", page="/puzzles/7?x=1"),
+        item(6.5, "Spam", status="rejected", page=None),
+        item(9, "Old but not triaged"),          # before the period: counted only in the backlog
+        item(-1, "From next week"),             # after the period
         Invite(code="AAAAAAAAAA", uses=3, max_uses=5),
         Invite(code="BBBBBBBBBB", uses=2, revoked_at=until),
     ])
@@ -257,21 +259,22 @@ async def test_weekly_digest(db_session, test_user_1):
 
     digest = await beta.build_digest(db_session, since, until)
     assert [entry.message.split("\n")[0] for entry in digest.items] == [
-        "Спам", "Не грузится доска", "Часы спешат", "Задача не засчитана"]
+        "Spam", "Board does not load", "Clock runs fast", "Puzzle not counted"]
     assert digest.by_status == {"new": 1, "in_progress": 1, "done": 1, "rejected": 1}
     assert digest.by_page == [("/puzzles", 2), ("/", 1), ("?", 1)]
     assert (digest.backlog, digest.invited, digest.active_invites) == (3, 5, 1)
 
     text = render(digest)
-    assert text.startswith("### Отзывы беты: 09.11 – 15.11.2026")
-    assert "* Пришло 4: новых 1, в работе 1, сделано 1, отклонено 1. Неразобранных всего: 3." in text
-    assert "* По разделам: `/puzzles` — 2, `/` — 1, без страницы — 1." in text
-    assert "* Приглашения: по кодам пришло 5, действующих кодов 1." in text
-    # Открытые сообщения — пунктами с галочкой, текст в одну строку; закрытые — отдельным списком.
+    assert text.startswith("### Beta feedback: 09.11 – 15.11.2026")
+    assert "* Received 4: new 1, in progress 1, done 1, rejected 1. Unreviewed in total: 3." in text
+    assert "* By section: `/puzzles` — 2, `/` — 1, no page — 1." in text
+    assert "* Invitations: 5 arrived by codes, 1 active codes." in text
+    # Open reports are checkbox items with the text on one line; closed ones form a separate list.
     newest = digest.items[3].id
-    assert f"- [ ] #{newest} `/puzzles/1` — Задача не засчитана / хотя ход верный (player1, ru, 390x844, v1.2.2)" in text
-    assert f"- [x] #{digest.items[2].id} `/` — Часы спешат" in text
-    assert "Спам" in text and "Старое" not in text and "следующей" not in text
+    assert (f"- [ ] #{newest} `/puzzles/1` — Puzzle not counted / although the move is right "
+            "(player1, uk, 390x844, v1.2.2)") in text
+    assert f"- [x] #{digest.items[2].id} `/` — Clock runs fast" in text
+    assert "Spam" in text and "Old but" not in text and "next week" not in text
 
 
 async def test_empty_digest(db_session):
@@ -279,11 +282,11 @@ async def test_empty_digest(db_session):
 
     until = datetime(2026, 11, 16, tzinfo=UTC)
     text = render(await beta.build_digest(db_session, until - timedelta(days=7), until))
-    assert "* Сообщений за неделю не было." in text
+    assert "* No messages this week." in text
 
 
 def test_personal_friend_invite_is_stable_and_counts_registrations(client, token_user_1):
-    """«Пригласить друга» (26.2): личный код создаётся один раз, регистрация по нему увеличивает счётчик."""
+    """"Invite a friend" (26.2): the personal code is created once, and registering with it increments the counter."""
     assert client.get(f"{API}/my-invite").status_code == 401
     first = client.get(f"{API}/my-invite", headers=auth(token_user_1)).json()
     assert len(first["code"]) == beta.CODE_LENGTH and first["uses"] == 0

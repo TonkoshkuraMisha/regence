@@ -1,10 +1,10 @@
 // --- FILE: frontend/src/components/chessboard/CoachCards.tsx ---
-// «Клубный тренер» в итоге партии (план владельца 18.11, задача 5): до трёх карточек действия в один клик —
-// «Исправь свой зевок» (личная задача из самой дорогой ошибки решается прямо здесь, ответ — POST
-// /puzzles/personal/{id}/answer, как в «Ваших ошибках»), «Дебютное отклонение» (строка DeviationItem из просмотра
-// партии) и «Урок по теме ошибки» (модуль Большого курса — lessonModuleFor). Данные — services/coachCards.ts;
-// пока разбор готов, а задачи ещё нет, карточки переспрашиваются (POLL_ATTEMPTS раз через POLL_DELAY_MS).
-// Нет ни одной карточки — блок не показывается.
+// "Club coach" at the end of a game (owner's plan 18.11, task 5): up to three one-click action cards:
+// "Fix your blunder" (a personal puzzle from the costliest mistake is solved right here, the answer goes by POST
+// /puzzles/personal/{id}/answer, as in "Your mistakes"), "Opening deviation" (a DeviationItem row from the game
+// viewer) and "Lesson on the mistake's theme" (a Great Course module, lessonModuleFor). Data comes from services/coachCards.ts;
+// while the review is ready but the puzzle is not yet, the cards are re-requested (POLL_ATTEMPTS times every POLL_DELAY_MS).
+// With no cards at all the block is not shown.
 
 import {useEffect, useState} from 'react';
 import {Link} from 'react-router-dom';
@@ -29,8 +29,8 @@ export function CoachCards({gameId}: { gameId: number }) {
     const [solving, setSolving] = useState(false);
     const [answer, setAnswer] = useState<PersonalAnswer | null>(null);
 
-    // Карточки — после появления панели; пока задача из партии не готова, ещё POLL_ATTEMPTS вопроса. Ошибка
-    // сети карточки просто не показывает: итог партии от них не зависит.
+    // Cards appear after the panel does; while the puzzle from the game is not ready, up to POLL_ATTEMPTS more requests. A network
+    // error simply means the cards are not shown: the game result does not depend on them.
     useEffect(() => {
         let alive = true;
         let timer: ReturnType<typeof setTimeout> | undefined;
@@ -52,7 +52,7 @@ export function CoachCards({gameId}: { gameId: number }) {
     }, [gameId]);
 
     if (!cards) return null;
-    // Ответ сервера другой версии может не содержать полей — карточки тогда просто не показываются.
+    // A server response of another version may lack fields: the cards are then simply not shown.
     const lesson = lessonModuleFor(cards.lesson_themes ?? []);
     if (!cards.puzzle && !cards.deviation && !lesson) return null;
     const deviation = cards.deviation ?? null;

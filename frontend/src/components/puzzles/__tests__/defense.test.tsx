@@ -1,5 +1,5 @@
-// Защитные упражнения (таск 13.6): «Что грозит?» (показать угрозу, затем защититься), «Не зевни» (выбор из трёх),
-// переход из тренировки по приёмам и «Единственная защита».
+// Defence exercises (task 13.6): "What is threatened?" (show the threat, then defend), "Don't blunder" (a choice of three),
+// moving over from the motif training and "Only defence".
 
 import {act, fireEvent, render, screen, waitFor} from '@testing-library/react';
 import {MemoryRouter} from 'react-router-dom';
@@ -8,7 +8,7 @@ import PuzzlesPage from '../PuzzlesPage';
 import {resetThemeRegistryCache} from '../../../services/themes';
 import {setToken} from '../../../services/authToken';
 
-// Белые; чёрный ферзь h4 грозит взять f2. Защита — конь f3 бьёт ферзя.
+// White; the black queen h4 threatens to take f2. The defence — the knight f3 attacks the queen.
 const THREAT = {
     id: 4, kind: 'threat', theme: 'find_the_threat', color: 'white', rating: 1300, stage: 2, choices: [],
     fen: 'r1b1k2r/pppp1ppp/2n5/2b1p3/2B1P2q/5N2/PPPP1PPP/RNBQ1RK1 w kq - 0 1',
@@ -62,8 +62,8 @@ afterEach(() => {
     localStorage.clear();
 });
 
-describe('«Что грозит?»', () => {
-    it('сначала угроза — щелчком по полю, затем защита ходом; прогресс темы', async () => {
+describe('"What is threatened?"', () => {
+    it('first the threat — a click on a square, then the defence by a move; theme progress', async () => {
         const calls = stub({
             '/defense/next': THREAT,
             '/threat': {correct: true, threat: 'h4f2', motifs: ['fork']},
@@ -73,16 +73,16 @@ describe('«Что грозит?»', () => {
         await act(async () => {
             fireEvent.click(screen.getByTestId('defense-next'));
         });
-        expect(screen.getByTestId('defense-status').textContent).toContain('Что он сыграет?');
+        expect(screen.getByTestId('defense-status').textContent).toContain('What would they play?');
 
         await act(async () => {
             fireEvent.click(square('f2'));
         });
         expect(calls.find((c) => c.url.includes('/threat'))?.body).toEqual({square: 'f2'});
-        expect(screen.getByTestId('defense-threat-result').textContent).toContain('угроза найдена: ♛xf2+');
+        expect(screen.getByTestId('defense-threat-result').textContent).toContain('you found the threat: ♛xf2+');
         expect(screen.getByTestId('puzzle-hint-h4')).toBeTruthy();
-        expect(screen.getByTestId('defense-motifs').textContent).toContain('Вилка');
-        expect(screen.getByTestId('defense-status').textContent).toContain('Теперь защититесь');
+        expect(screen.getByTestId('defense-motifs').textContent).toContain('Fork');
+        expect(screen.getByTestId('defense-status').textContent).toContain('Now defend');
 
         await act(async () => {
             fireEvent.click(square('f3'));
@@ -91,10 +91,10 @@ describe('«Что грозит?»', () => {
             fireEvent.click(square('h4'));
         });
         expect(calls.find((c) => c.url.includes('/answer'))?.body).toEqual({move: 'f3h4'});
-        expect(screen.getByTestId('defense-outcome').textContent).toBe('Верно!');
-        expect(screen.getByTestId('defense-progress').textContent).toContain('Ступень 2');
+        expect(screen.getByTestId('defense-outcome').textContent).toBe('Correct!');
+        expect(screen.getByTestId('defense-progress').textContent).toContain('Stage 2');
 
-        // После ответа доска свободна (решение владельца 18.11): ход за чёрных начинает разбор.
+        // After the answer the board is free (owner decision 18.11): a move for Black starts the review.
         expect(screen.queryByTestId('explorer-controls')).toBeNull();
         await act(async () => {
             fireEvent.click(square('a7'));
@@ -106,7 +106,7 @@ describe('«Что грозит?»', () => {
         expect(screen.getByTestId('explorer-controls')).toBeTruthy();
     });
 
-    it('пропущенная угроза показывается, неверная защита — с ходами, которые держат', async () => {
+    it('a missed threat is shown, a wrong defence — with the moves that hold', async () => {
         stub({
             '/defense/next': THREAT,
             '/threat': {correct: false, threat: 'h4f2', motifs: []},
@@ -119,21 +119,21 @@ describe('«Что грозит?»', () => {
         await act(async () => {
             fireEvent.click(square('a7'));
         });
-        expect(screen.getByTestId('defense-threat-result').textContent).toContain('Соперник грозит ♛xf2+');
+        expect(screen.getByTestId('defense-threat-result').textContent).toContain('Your opponent threatens ♛xf2+');
         await act(async () => {
             fireEvent.click(square('a2'));
         });
         await act(async () => {
             fireEvent.click(square('a3'));
         });
-        // Неверная защита не обязательно проигрывает — она не отражает угрозу.
-        expect(screen.getByTestId('defense-outcome').textContent).toBe('Этот ход не отражает угрозу.');
+        // A wrong defence does not necessarily lose — it does not parry the threat.
+        expect(screen.getByTestId('defense-outcome').textContent).toBe('This move does not stop the threat.');
         expect(screen.getByTestId('defense-good').textContent).toContain('♘xh4');
     });
 });
 
-describe('«Не зевни»', () => {
-    it('три хода на выбор; проигрывающий — с опровержением, безопасный подсвечен', async () => {
+describe('"Don\'t blunder"', () => {
+    it('three moves to choose from; the losing one — with a refutation, the safe one is highlighted', async () => {
         const calls = stub({
             '/defense/next': BLUNDER,
             '/answer': {correct: false, clean: false, good: ['f1c4'], threat: null, motifs: ['hanging_piece'],
@@ -143,39 +143,39 @@ describe('«Не зевни»', () => {
         await act(async () => {
             fireEvent.click(screen.getByTestId('defense-kind-blunder'));
         });
-        expect(screen.getByTestId('defense-status').textContent).toContain('Какой из трёх ходов не проигрывает?');
+        expect(screen.getByTestId('defense-status').textContent).toContain('Which of the three moves does not lose?');
         expect(screen.getByTestId('defense-choices').textContent).toBe('♗c4♘xe5d4');
 
         await act(async () => {
             fireEvent.click(screen.getByTestId('defense-choice-f3e5'));
         });
         expect(calls.find((c) => c.url.includes('/answer'))?.body).toEqual({move: 'f3e5'});
-        expect(screen.getByTestId('defense-outcome').textContent).toBe('Этот ход проигрывает.');
+        expect(screen.getByTestId('defense-outcome').textContent).toBe('This move loses.');
         expect(screen.getByTestId('defense-choice-f1c4').className).toContain('emerald');
         expect(screen.getByTestId('defense-choice-f3e5').className).toContain('rose');
-        expect(screen.getByTestId('defense-refutation-f3e5').textContent).toBe('На ♘xe5 соперник отвечает ♞xe5.');
+        expect(screen.getByTestId('defense-refutation-f3e5').textContent).toBe('After ♘xe5 your opponent replies ♞xe5.');
 
-        // Разбор на доске (таск B.3): опровержение по шагам со стрелкой следующего хода.
+        // Review on the board (task B.3): the refutation step by step with an arrow for the next move.
         fireEvent.click(screen.getByTestId('replay-line-refutation-f3e5'));
-        expect(screen.getByTestId('replay-step').textContent).toBe('Ход 0 из 2');
+        expect(screen.getByTestId('replay-step').textContent).toBe('Move 0 of 2');
         expect(square('f3').querySelector('img')).not.toBeNull();
         fireEvent.click(screen.getByTestId('replay-forward'));
         expect(square('e5').querySelector('img')?.getAttribute('alt')).toBe('wn');
         fireEvent.click(screen.getByTestId('replay-forward'));
-        expect(screen.getByTestId('replay-step').textContent).toBe('Ход 2 из 2');
+        expect(screen.getByTestId('replay-step').textContent).toBe('Move 2 of 2');
         expect(square('e5').querySelector('img')?.getAttribute('alt')).toBe('bn');
         expect(square('c6').querySelector('img')).toBeNull();
-        // Верный ход — отдельная линия; повторный щелчок возвращает позицию упражнения.
+        // The right move is a separate line; a repeated click returns the exercise position.
         fireEvent.click(screen.getByTestId('replay-line-good'));
-        expect(screen.getByTestId('replay-step').textContent).toBe('Ход 0 из 1');
+        expect(screen.getByTestId('replay-step').textContent).toBe('Move 0 of 1');
         fireEvent.click(screen.getByTestId('replay-line-good'));
         expect(screen.queryByTestId('replay-step')).toBeNull();
         expect(screen.getByTestId('replay-analyze')).toBeTruthy();
     });
 });
 
-describe('переходы', () => {
-    it('тема «Найди угрозу» в приёмах ведёт в защитные упражнения, без показа на доске', async () => {
+describe('transitions', () => {
+    it('the "Find the threat" theme in the motifs leads to defence exercises, without showing on the board', async () => {
         const calls = stub({'/defense/next': THREAT});
         render(<MemoryRouter><PuzzlesPage/></MemoryRouter>);
         await act(async () => {
@@ -190,7 +190,7 @@ describe('переходы', () => {
         expect(calls.some((c) => c.url.includes('/train?'))).toBe(false);
     });
 
-    it('«Единственная защита» — тренировка темы defensive_move', async () => {
+    it('"Only defence" — training of the defensive_move theme', async () => {
         const calls = stub({'/train': {
             id: 7, fen: THREAT.fen, first_move: 'a7a6', rating: 1200, themes: ['defensive_move'], color: 'black',
             solution_length: 1, stage: 1,
@@ -200,6 +200,6 @@ describe('переходы', () => {
             fireEvent.click(screen.getByTestId('defense-kind-defensive'));
         });
         await waitFor(() => expect(calls.some((c) => c.url.includes('/train?theme=defensive_move'))).toBe(true));
-        expect(screen.getByTestId('training-target').textContent).toContain('Единственная защита');
+        expect(screen.getByTestId('training-target').textContent).toContain('The only defence');
     });
 });

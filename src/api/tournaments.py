@@ -1,7 +1,7 @@
 # --- FILE: src/api/tournaments.py ---
 """
-Турниры с историческими мастерами (таск 15.1): создание, список своих и состояние турнира. Результаты партий
-сюда не присылаются — их приносят сохранение партии игрока (15.3) и симуляция партий ботов (15.2).
+Tournaments with historical masters (task 15.1): creation, the list of one's own and the tournament state. Game results
+are not sent here - they are brought by saving the player's game (15.3) and by simulating bot games (15.2).
 """
 
 import json
@@ -29,20 +29,20 @@ from src.services.task_dispatch import schedule_tournament_simulations_in_backgr
 
 router = APIRouter()
 
-# Ошибки, которые означают конфликт с состоянием, а не неверный запрос.
+# Errors that mean a conflict with the state rather than an invalid request.
 _CONFLICTS = {"tournament_active_exists", "tournament_game_closed"}
 
 
 class ParticipantIn(BaseModel):
     kind: Literal["bot", "archetype", "personality"]
-    id: str | int = Field(..., description="id бота, id архетипа или id персоналии игрока")
+    id: str | int = Field(..., description="Bot id, archetype id or the player's personality id")
 
 
 class TournamentCreate(BaseModel):
     format: Literal["round_robin", "knockout", "swiss"]
     size: int = Field(..., ge=4, le=8)
     participants: list[ParticipantIn] = Field(default_factory=list, max_length=7)
-    # Случайные соперники из диапазона силы (таск 15.4) вместо выбранных: participants тогда не нужен.
+    # Random opponents from a strength range (task 15.4) instead of the chosen ones: participants is then not needed.
     random: Literal["my_level", "stronger", "weaker"] | None = None
     base_time_ms: int = Field(300_000, ge=60_000, le=3_600_000)
     increment_ms: int = Field(0, ge=0, le=60_000)
@@ -50,8 +50,9 @@ class TournamentCreate(BaseModel):
 
 class PlayerOut(BaseModel):
     """
-    Участник турнира для клиента: номер посева, кто это (игрок, бот, персоналия), рейтинг, место и настройки характера
-    соперника мастерской.
+    A tournament participant for the client: the seed number, who it is (a player, a bot, a personality), rating, place and the
+    character settings
+    of a workshop opponent.
     """
     seat: int
     kind: str
@@ -61,12 +62,12 @@ class PlayerOut(BaseModel):
     rating: int
     place: int | None
     eliminated_round: int | None
-    # Характер соперника из мастерской (архетип или персоналия) — им клиент играет через /bots/custom-move.
+    # The character of a workshop opponent (an archetype or a personality) - the client plays with it via /bots/custom-move.
     config: dict | None = None
 
 
 class GameOut(BaseModel):
-    """Партия турнира для клиента: тур, доска, стадия, участники по номерам посева, контроль и результат."""
+    """A tournament game for the client: round, board, stage, participants by seed numbers, time control and result."""
     id: int
     round: int
     board: int
@@ -89,7 +90,7 @@ class StandingOut(BaseModel):
 
 
 class TournamentOut(BaseModel):
-    """Турнир целиком: параметры, участники, партии, таблица и место игрока."""
+    """The whole tournament: parameters, participants, games, the table and the player's place."""
     id: int
     format: str
     size: int
@@ -100,10 +101,10 @@ class TournamentOut(BaseModel):
     created_at: str
     finished_at: str | None
     my_seat: int | None
-    # Игрок сдал турнир (таск A.3): боты доигрывают, сам он больше не играет.
+    # The player withdrew from the tournament (task A.3): bots finish playing, the player no longer plays.
     withdrawn: bool = False
     career_stage: str | None = None
-    # «Машина времени»: ключ знаменитого турнира и число кругов.
+    # "Time Machine": the key of the famous tournament and the number of rounds.
     event_key: str | None = None
     players: list[PlayerOut]
     games: list[GameOut]
@@ -112,8 +113,8 @@ class TournamentOut(BaseModel):
 
 class TournamentSummary(BaseModel):
     """
-    Строка списка турниров игрока: формат, статус, место, этап карьеры или историческое событие и готова ли его партия
-    текущего тура.
+    A row of the player's tournament list: format, status, place, career stage or historical event and whether their game
+    of the current round is ready.
     """
     id: int
     format: str
@@ -123,7 +124,8 @@ class TournamentSummary(BaseModel):
     my_place: int | None
     career_stage: str | None = None
     event_key: str | None = None
-    # Навигация по турнирам: текущий тур и готова ли партия игрока в нём («Продолжить турнир» на главной).
+    # Tournament navigation: the current round and whether the player's game in it is ready ("Continue tournament" on the main
+    # page).
     current_round: int = 1
     my_game_ready: bool = False
 
@@ -149,7 +151,7 @@ def _game(g: TournamentGame) -> GameOut:
 
 async def view(db: AsyncSession, tournament: Tournament, user: User) -> TournamentOut:
     """
-    Собирает турнир для клиента: участники, партии и таблица (для кругового и швейцарки — по правилам
+    Builds a tournament for the client: participants, games and the table (for round-robin and Swiss - by the rules
     tournament_rules).
     """
     await bot_selfplay.refresh(db)
@@ -184,8 +186,9 @@ async def create_tournament(
         payload: TournamentCreate, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user),
 ):
     """
-    Создаёт турнир игрока: соперники заданы списком или подбираются случайно около его рейтинга; партии ботов первого
-    тура сразу ставятся в очередь симуляции.
+    Creates the player's tournament: the opponents are given as a list or chosen randomly near their rating; the bot games of
+    the first
+    round are queued for simulation at once.
     """
     try:
         if payload.random is not None:
@@ -204,14 +207,15 @@ async def create_tournament(
 
 @router.get("", response_model=list[TournamentSummary])
 async def list_tournaments(db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
-    """Турниры игрока, новые первыми, с отметкой, где его партия текущего тура ждёт хода."""
+    """The player's tournaments, new first, with a mark of where their game of the current round waits for a move."""
     rows = (await db.execute(
         select(Tournament, TournamentPlayer.place)
         .join(TournamentPlayer, (TournamentPlayer.tournament_id == Tournament.id) & (TournamentPlayer.user_id == user.id))
         .where(Tournament.owner_id == user.id)
         .order_by(Tournament.id.desc())
     )).all()
-    # Турниры, где партия игрока текущего тура ещё не сыграна (та же логика, что myPendingGame на клиенте).
+    # Tournaments where the player's game of the current round has not been played yet (the same logic as myPendingGame on the
+    # client).
     me = TournamentPlayer
     ready = set((await db.execute(
         select(TournamentGame.tournament_id)
@@ -232,22 +236,23 @@ async def list_tournaments(db: AsyncSession = Depends(get_db), user: User = Depe
 @router.get("/formats")
 async def tournament_formats() -> dict[str, list[int]]:
     """
-    Допустимые размеры турнира игрока по форматам (service.SIZES, вместе с игроком). Клиент строит по ним выбор размера,
-    чтобы не держать свой список. Открыто без входа: это правила, а не данные игрока.
+    Allowed tournament sizes of the player by format (service.SIZES, including the player). The client builds the size choice
+    from them
+    so as not to keep its own list. Open without login: these are rules, not the player's data.
     """
     return {fmt: list(sizes) for fmt, sizes in service.SIZES.items()}
 
 
 @router.get("/career")
 async def career_overview(db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
-    """Карьера (таск 15.4): этапы лестницы — открыт ли, лучшее место; скрытые приглашения без подробностей."""
+    """Career (task 15.4): the ladder stages - whether open, the best place; hidden invitations without details."""
     return {"stages": await career.overview(db, user)}
 
 
 @router.post("/career/{stage_key}", response_model=TournamentOut, status_code=status.HTTP_201_CREATED)
 async def start_career_stage(stage_key: str, db: AsyncSession = Depends(get_db),
                              user: User = Depends(get_current_user)):
-    """Начинает турнир этапа карьеры; закрытый этап — 403, неизвестный — 404."""
+    """Starts a career stage tournament; a closed stage - 403, an unknown one - 404."""
     try:
         tournament = await career.start_stage(db, user, stage_key)
     except DomainError as exc:
@@ -266,8 +271,9 @@ class TimeMachineStart(BaseModel):
 @router.get("/time-machine")
 async def time_machine_overview(request: Request, db: AsyncSession = Depends(get_db)):
     """
-    «Машина времени» (таск 28.2): знаменитые турниры по годам — состав, настоящий итог. Лента открыта и гостю;
-    вошедшему игроку добавляется его история (идущий турнир, лучшее место). Войти в турнир может только игрок.
+    "Time Machine" (task 28.2): famous tournaments by year - the line-up, the real result. The feed is open to a guest too;
+    for a logged-in player their history is added (a tournament in progress, the best place). Only a player can enter a
+    tournament.
     """
     return {"events": await time_machine.overview(db, await optional_user_id(request, db))}
 
@@ -275,7 +281,8 @@ async def time_machine_overview(request: Request, db: AsyncSession = Depends(get
 @router.post("/time-machine/{event_key}", response_model=TournamentOut, status_code=status.HTTP_201_CREATED)
 async def start_time_machine(event_key: str, payload: TimeMachineStart, db: AsyncSession = Depends(get_db),
                              user: User = Depends(get_current_user)):
-    """Игрок входит в турнир в полном историческом составе; партии мастеров между собой разыгрывает сервер."""
+    """The player enters a tournament with the full historical line-up; games of masters between themselves are played by the
+    server."""
     try:
         tournament = await time_machine.start(db, user, event_key, payload.base_time_ms, payload.increment_ms)
     except DomainError as exc:
@@ -289,13 +296,13 @@ async def start_time_machine(event_key: str, payload: TimeMachineStart, db: Asyn
 @router.get("/{tournament_id}", response_model=TournamentOut)
 async def get_tournament(tournament_id: int, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
     tournament = await owned(db, tournament_id, user)
-    # Партии ботов, которые никто не считает (брокер был недоступен, воркер упал), ставятся снова.
+    # Bot games that nobody is counting (the broker was unavailable, the worker crashed) are queued again.
     await _schedule_bot_games(db, tournament)
     return await view(db, tournament, user)
 
 
 async def _schedule_bot_games(db: AsyncSession, tournament: Tournament) -> None:
-    # Только не начатые и давно (или ни разу) не поставленные — см. service.mark_for_queue (таск A.1).
+    # Only not started ones and those not queued for a long time (or never) - see service.mark_for_queue (task A.1).
     schedule_tournament_simulations_in_background(await service.mark_for_queue(db, tournament))
 
 
@@ -309,8 +316,8 @@ async def start_my_game(
         tournament_id: int, game_id: int, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user),
 ):
     """
-    Начать свою партию турнира (таск A.2). Повторный старт уже начатой партии — поражение: проигрываемую партию
-    нельзя бросить и переиграть.
+    Start one's own tournament game (task A.2). A repeated start of an already started game is a loss: a game being lost
+    cannot be abandoned and replayed.
     """
     await owned(db, tournament_id, user)
     try:
@@ -330,7 +337,7 @@ async def start_my_game(
 async def withdraw_from_tournament(
         tournament_id: int, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user),
 ):
-    """Сдать турнир (таск A.3): несыгранные партии игрока — поражения, боты доигрывают свои партии."""
+    """Withdraw from the tournament (task A.3): the player's unplayed games are losses, bots finish their games."""
     tournament = await owned(db, tournament_id, user)
     try:
         await service.withdraw(db, user, tournament)

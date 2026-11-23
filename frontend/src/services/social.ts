@@ -1,25 +1,25 @@
 // --- FILE: frontend/src/services/social.ts ---
-// Игроки и уведомления (таск 17.1): поиск, подписки и «друзья», кто в сети, прямой вызов, центр уведомлений.
-// Все запросы — к /api/v1/social и только с входом (маршруты src/api/social.py; уведомления —
-// src/services/notifications.py). Новое уведомление сервер, кроме записи в базу, доставляет в открытые вкладки по
-// WebSocket — список здесь нужен для первой загрузки и на случай, если событие не дошло.
+// Players and notifications (task 17.1): search, follows and "friends", who is online, direct challenge, notification center.
+// All requests go to /api/v1/social and require sign-in (routes in src/api/social.py; notifications —
+// src/services/notifications.py). Besides writing a new notification to the database, the server delivers it to open tabs over
+// WebSocket — the list here is needed for the first load and in case an event did not arrive.
 
 import {apiRequest} from './http';
 
-/** Игрок в результатах поиска и в списке подписок. */
+/** A player in search results and in the follow list. */
 export interface PlayerCard {
     username: string;
     online: boolean;
     blitz_rating: number;
     rapid_rating: number;
-    /** Взаимная подписка; поле есть только в списке подписок (GET /social/following). */
+    /** Mutual follow; the field is present only in the follow list (GET /social/following). */
     friend?: boolean;
 }
 
-/** Отношение смотрящего к игроку: подписан ли он, подписан ли игрок на него; вместе — «друзья». */
+/** The viewer's relation to a player: whether they follow, whether the player follows them; together — "friends". */
 export interface Relation {
     username: string;
-    /** Это сам смотрящий. */
+    /** This is the viewer themselves. */
     self: boolean;
     following: boolean;
     followed_by: boolean;
@@ -27,11 +27,11 @@ export interface Relation {
     online: boolean;
 }
 
-/** Виды уведомлений; текст собирается на клиенте из каталога по виду и полям payload. */
+/** Notification kinds; the text is assembled on the client from the catalog by kind and payload fields. */
 export type NotificationKind = 'challenge' | 'rematch' | 'tournament_round' | 'report_answer' | 'workout_reminder' | 'post_comment'
     | 'arena_reminder' | 'arena_podium';
 
-/** Уведомление центра уведомлений (таблица notifications). Поля payload зависят от вида — см. notificationLink. */
+/** A notification-center notification (notifications table). The payload fields depend on the kind — see notificationLink. */
 export interface AppNotification {
     id: number;
     kind: NotificationKind;
@@ -40,18 +40,18 @@ export interface AppNotification {
     read: boolean;
 }
 
-/** Список уведомлений и число непрочитанных. */
+/** The notification list and the unread count. */
 export interface Inbox {
     unread: number;
     items: AppNotification[];
 }
 
-/** Запрос к /api/v1/social через общую обёртку http.ts (токен, JSON, ошибки). */
+/** Request to /api/v1/social through the shared http.ts wrapper (token, JSON, errors). */
 const call = <T>(path: string, init: RequestInit = {}) => apiRequest<T>(`/social${path}`, init);
 
 const user = (name: string) => encodeURIComponent(name);
 
-/** Достижение в ответе сервера: код (ключ каталога), цель и прогресс, дата получения (null — не открыто), метка «новое». */
+/** Achievement in the server response: code (catalog key), goal and progress, date earned (null — not unlocked), "new" flag. */
 export interface AchievementItem {
     code: string;
     target: number;
@@ -60,15 +60,15 @@ export interface AchievementItem {
     new: boolean;
 }
 
-/** Ответ GET /profile/{имя}/achievements: звание клуба (ключ каталога achievements.titles.*) и достижения. */
+/** Response of GET /profile/{name}/achievements: club title (catalog key achievements.titles.*) and achievements. */
 export interface AchievementsData {
     title: string;
     achievements: AchievementItem[];
 }
 
 /**
- * Достижения игрока (GET /api/v1/profile/{имя}/achievements, src/api/profile.py; открыты без входа).
- * Любой отказ (сервер, сеть, неверная форма ответа) — null: блок профиля просто не рисуется.
+ * Player achievements (GET /api/v1/profile/{name}/achievements, src/api/profile.py; open without sign-in).
+ * Any failure (server, network, wrong response shape) — null: the profile block is simply not rendered.
  */
 export async function fetchAchievements(username: string): Promise<AchievementsData | null> {
     const data = await apiRequest<AchievementsData>(`/profile/${encodeURIComponent(username)}/achievements`).catch(() => null);
@@ -76,26 +76,26 @@ export async function fetchAchievements(username: string): Promise<AchievementsD
 }
 
 export const socialApi = {
-    /** Игроки, чьё имя начинается с q (без учёта регистра); точное совпадение — первым. */
+    /** Players whose name starts with q (case-insensitive); an exact match first. */
     search: (q: string) => call<{ players: PlayerCard[] }>(`/search?q=${encodeURIComponent(q)}`),
     relation: (name: string) => call<Relation>(`/relation/${user(name)}`),
     follow: (name: string) => call<Relation>(`/follow/${user(name)}`, {method: 'POST'}),
     unfollow: (name: string) => call<Relation>(`/follow/${user(name)}`, {method: 'DELETE'}),
-    /** На кого подписан игрок; сначала те, кто в сети. */
+    /** Whom the player follows; those who are online first. */
     following: () => call<{ players: PlayerCard[] }>('/following'),
     /**
-     * Прямой вызов: code — код приватного приглашения, которое игрок уже создал на главной доске (действие
-     * WebSocket create_invite); сервер превращает его в уведомление сопернику со ссылкой /challenge/<код>.
+     * Direct challenge: code — the code of a private invite the player has already created on the main board (WebSocket
+     * action create_invite); the server turns it into a notification to the opponent with a link /challenge/<code>.
      */
     challenge: (name: string, code: string) => call<{ sent: boolean; online: boolean }>(`/challenge/${user(name)}`, {
         method: 'POST', body: JSON.stringify({code}),
     }),
     notifications: () => call<Inbox>('/notifications'),
-    /** Отметить прочитанными указанные уведомления; без ids — все. */
+    /** Mark the given notifications as read; without ids — all. */
     markRead: (ids?: number[]) => call<Inbox>('/notifications/read', {method: 'POST', body: JSON.stringify({ids: ids ?? null})}),
 };
 
-/** Куда ведёт уведомление; виды без своей страницы (реванш, ответ на жалобу, разминка) ведут на главную. */
+/** Where a notification leads; kinds without a page of their own (rematch, complaint reply, warm-up) lead to the home page. */
 export function notificationLink(n: AppNotification): string {
     if (n.kind === 'challenge') return `/challenge/${n.payload.code}`;
     if (n.kind === 'tournament_round') return `/tournaments/${n.payload.tournament_id}`;

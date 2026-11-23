@@ -1,13 +1,13 @@
 """
-Кандидаты в позиции урока (таск 27.7): задачи базы по теме реестра, где каждый ход решающего — единственный (лучший
-ход движка с отрывом от второго ≥ --gap сп или мат). Печатает позицию после хода соперника, решение в UCI и SAN,
-рейтинг — из них автор выбирает позиции урока и пишет тексты. Дальше урок сверяет scripts/verify_lessons.py.
+Lesson position candidates (task 27.7): database puzzles of a registry theme where each solver move is the only one
+(the best engine move leading the second by >= --gap cp, or a mate). Prints the position after the opponent's move, the
+solution in UCI and SAN and the rating - the author picks lesson positions and writes the texts; verify_lessons.py checks it.
 
     python scripts/dev/lesson_candidates.py intermezzo --min 1100 --max 1700 --count 6
-    python scripts/dev/lesson_candidates.py clearance --csv data/puzzles/lichess_subset.csv.gz   # без базы
+    python scripts/dev/lesson_candidates.py clearance --csv data/puzzles/lichess_subset.csv.gz   # without the database
 
-С --csv задачи читаются из файла в формате Lichess (PuzzleId, FEN, Moves, Rating, …, Themes), тема — имя Lichess
-(clearance, interference, quietMove…); база не нужна.
+With --csv the puzzles are read from a Lichess-format file (PuzzleId, FEN, Moves, Rating, ..., Themes), the theme is a
+Lichess name (clearance, interference, quietMove...); the database is not needed.
 """
 
 import argparse
@@ -25,7 +25,7 @@ MATE = 100_000
 
 
 async def _puzzles(theme: str, low: int, high: int, max_plies: int) -> list[tuple[str, str, str, int]]:
-    """Выбирает из БД задачи заданной темы и диапазона рейтинга."""
+    """Selects from the DB the puzzles of the given theme and rating range."""
     from sqlalchemy import func, select
     from sqlalchemy.ext.asyncio import create_async_engine
     from sqlalchemy.pool import NullPool
@@ -46,7 +46,7 @@ async def _puzzles(theme: str, low: int, high: int, max_plies: int) -> list[tupl
 
 def _puzzles_from_csv(path: Path, theme: str, low: int, high: int, max_plies: int,
                       seed: int) -> list[tuple[str, str, str, int]]:
-    """Читает подходящие задачи напрямую из локальных CSV-архивов выборки."""
+    """Reads suitable puzzles directly from the local CSV archives of the selection."""
     import csv
     import gzip
     import random
@@ -64,12 +64,12 @@ def _puzzles_from_csv(path: Path, theme: str, low: int, high: int, max_plies: in
 
 
 def _unique_line(engine, fen: str, moves: list[str], limit, gap: int) -> bool:
-    """Проверяет движком, что каждый ход решения единственен с запасом по оценке."""
+    """Uses the engine to check that every solution move is unique with an evaluation margin."""
     board = chess.Board(fen)
     board.push_uci(moves[0])
     for index, uci in enumerate(moves[1:]):
         move = chess.Move.from_uci(uci)
-        if index % 2 == 0:  # ход решающего
+        if index % 2 == 0:  # the solver's move
             infos = engine.analyse(board, limit, multipv=2)
             if not infos or infos[0]["pv"][0] != move:
                 after = board.copy()
@@ -87,24 +87,24 @@ def _unique_line(engine, fen: str, moves: list[str], limit, gap: int) -> bool:
 
 
 def main() -> None:
-    """Ищет задачи с однозначным решением для составления новых уроков."""
+    """Looks for puzzles with an unambiguous solution for composing new lessons."""
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("theme")
     parser.add_argument("--min", type=int, default=1000)
     parser.add_argument("--max", type=int, default=1800)
     parser.add_argument("--count", type=int, default=6)
-    parser.add_argument("--plies", type=int, default=6, help="Длина решения в базе (с ходом соперника), не больше")
+    parser.add_argument("--plies", type=int, default=6, help="Solution length in the database (with opp. move), at most")
     parser.add_argument("--gap", type=int, default=150)
     parser.add_argument("--time", type=float, default=0.7)
-    parser.add_argument("--csv", type=Path, default=None, help="Файл задач в формате Lichess вместо базы")
-    parser.add_argument("--seed", type=int, default=1, help="Порядок задач из файла (воспроизводимо)")
+    parser.add_argument("--csv", type=Path, default=None, help="Puzzle file in Lichess format instead of the database")
+    parser.add_argument("--seed", type=int, default=1, help="Order of puzzles from the file (reproducible)")
     args = parser.parse_args()
 
     from src.services.bots.base import resolve_stockfish_path
 
     path = resolve_stockfish_path()
     if not path:
-        raise SystemExit("Stockfish не найден: python scripts/setup_stockfish.py")
+        raise SystemExit("Stockfish not found: python scripts/setup_stockfish.py")
     found = 0
     with chess.engine.SimpleEngine.popen_uci(path) as engine:
         puzzles = (_puzzles_from_csv(args.csv, args.theme, args.min, args.max, args.plies, args.seed) if args.csv

@@ -1,12 +1,12 @@
 # --- FILE: scripts/e2e_arena.py ---
 """
-Арена для сквозного теста в браузере (frontend/e2e/social-arena.e2e.ts): разовая блиц-арена 3+2, которая уже идёт
-(начало — минуту назад, конец — через ARENA_MINUTES минут). Расписание конференций такую арену не трогает: у неё нет
-schedule_key. Печатает номер арены — CI кладёт его в переменную E2E_ARENA_ID.
+An arena for the end-to-end browser test (frontend/e2e/social-arena.e2e.ts): a one-off 3+2 blitz arena that is already running
+(it started a minute ago and ends in ARENA_MINUTES minutes). The conference schedule does not touch such an arena: it has no
+schedule_key. Prints the arena number - CI puts it into the E2E_ARENA_ID variable.
 
     python scripts/e2e_arena.py
 
-Только для одноразового стенда CI: на рабочем сервере не запускать (появится лишняя арена в списке).
+Only for a throwaway CI stand: do not run on a working server (an extra arena would appear in the list).
 """
 
 import asyncio
@@ -16,14 +16,14 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-# Длительность арены: с запасом на весь прогон E2E.
+# Arena duration: with a margin for the whole E2E run.
 ARENA_MINUTES = 60
-# Контроль арены (блиц 3+2, как у арен расписания).
+# Arena control (3+2 blitz, as for the scheduled arenas).
 BASE_MS, INCREMENT_MS = 180_000, 2_000
 
 
 async def main() -> None:
-    """Создаёт идущую арену и печатает её номер."""
+    """Creates a running arena and prints its number."""
     from src.db.session import AsyncSessionLocal
     from src.models.arena import Arena
 

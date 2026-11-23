@@ -1,7 +1,8 @@
 """
-Чтение учебных баз закрытого формата (таск 27.3). Настоящих баз в репозитории нет (чужие издания), поэтому тест
-собирает маленькую базу сам: кодировщик ниже — обратная операция к разбору, по тем же таблицам. Разбор настоящих
-баз владельца проверен отдельно (все ходы легальны, совпадение с PGN тех же партий).
+Reading instructional databases in a closed format (task 27.3). The repository has no real databases (third-party
+editions), so the test
+builds a small database itself: the encoder below is the inverse of parsing, using the same tables. Parsing of the owner's
+real databases was verified separately (all moves legal, matching the PGN of the same games).
 """
 
 import struct
@@ -15,7 +16,7 @@ INVERSE_TWO_BYTE = {value: index for index, value in enumerate(cbh.TWO_BYTE_TABL
 
 
 class Encoder:
-    """Партия → байты .cbg (без 4 байт заголовка): главная линия и варианты."""
+    """Game -> .cbg bytes (without the 4-byte header): the main line and variations."""
 
     def __init__(self) -> None:
         self.counter = 0
@@ -75,7 +76,7 @@ def encode(main: str, variation_at: int | None = None, variation: str = "", null
     if null_after:
         enc.special(cbh.NULL_MOVE)
         enc.counter += 1
-        enc.line(board, order, "Ke2")  # после нулевого хода партия обрывается
+        enc.line(board, order, "Ke2")  # after a null move the game is cut off
     enc.special(cbh.VARIATION_END)
     return bytes(enc.out)
 
@@ -90,8 +91,8 @@ def sans(moves: list[chess.Move]) -> str:
 
 
 def test_castling_en_passant_capture_renumbering():
-    # Взятие на проходе (exd6); белый конь №0 (b1) погибает на d5 — ходит бывший №1 (g1), теперь он №0; у чёрных
-    # погибает конь №0 (b8) — дальше ходит бывший №1; обе рокировки.
+    # En passant (exd6); white knight #0 (b1) dies on d5, so the former #1 (g1) moves and is now #0; for Black
+    # knight #0 (b8) dies and the former #1 moves on; both castlings.
     line = "e4 Nf6 e5 d5 exd6 Nc6 Nc3 Nd4 Nd5 Nxd5 Nf3 Nxf3+ Qxf3 Nb4 Bc4 Be6 O-O Qxd6 d3 O-O-O a3 Nc6 Bxe6+ fxe6 Qf7 g6"
     moves = cbh.decode_moves(encode(line))
     assert sans(moves) == chess.Board().variation_san([m for m in _parse(line)])
@@ -111,7 +112,7 @@ def test_variations_are_skipped_but_counted():
 def test_null_move_ends_the_line_and_garbage_raises():
     assert len(cbh.decode_moves(encode("e4 e5", null_after=True))) == 2
     with pytest.raises(cbh.DecodeError):
-        cbh.decode_moves(bytes([0x58]))  # конь b1 «прыгает» на d2, где своя пешка
+        cbh.decode_moves(bytes([0x58]))  # the b1 knight "jumps" to d2, where its own pawn stands
 
 
 def test_guess_encoding():
@@ -151,11 +152,11 @@ def test_database_headers_and_skips(tmp_path):
         offset = len(games)
         games += struct.pack(">I", flags_game | (len(body) + 4)) + body
         index += _record(offset, 0, 1, 0, 1934, 2 if moves == "e4 e5 Nf3" else 1, record_flags)
-    base = tmp_path / "уч. шахм. окончаний"  # точки в имени — как у настоящих баз
+    base = tmp_path / "уч. шахм. окончаний"  # dots in the name, as in real databases
     base.with_name(base.name + ".cbh").write_bytes(bytes(index))
     base.with_name(base.name + ".cbg").write_bytes(bytes(games))
     base.with_name(base.name + ".cbp").write_bytes(_names([("Ботвинник".encode("cp1251"), "Михаил".encode("cp1251")),
-                                                 ("Эйве".encode("cp1251"), b"")], cbh.PLAYER_RECORD, ((9, 39), (39, 59))))
+                                                 ("Ласкер".encode("cp1251"), b"")], cbh.PLAYER_RECORD, ((9, 39), (39, 59))))
     base.with_name(base.name + ".cbt").write_bytes(_names([("Гастингс".encode("cp1251"), b"Hastings")], cbh.TOURNAMENT_RECORD,
                                                 ((9, 49), (49, 79))))
     db = cbh.Database.open(base.with_name(base.name + ".cbh"))
@@ -163,25 +164,25 @@ def test_database_headers_and_skips(tmp_path):
     assert db.encoding == "cp1251"
     assert [g.headers["Result"] for g in found] == ["1-0", "1/2-1/2"]
     first = found[0]
-    assert (first.headers["White"], first.headers["Black"]) == ("Ботвинник, Михаил", "Эйве")
+    assert (first.headers["White"], first.headers["Black"]) == ("Ботвинник, Михаил", "Ласкер")
     assert (first.headers["Event"], first.headers["Site"], first.headers["Date"]) == ("Гастингс", "Hastings", "1934.05.17")
     assert (first.headers["Round"], first.headers["WhiteElo"], "BlackElo" in first.headers) == ("3", "2600", False)
     assert sans(list(first.mainline_moves())) == "1. e4 e5 2. Nf3"
     assert (db.stats.games, db.stats.not_initial, db.stats.deleted) == (2, 1, 1)
 
 
-# --- Дополнительное покрытие: ошибки разбора, версии файлов имён, пропуски записей ---
+# --- Extra coverage: parse errors, name-file versions, skipped records ---
 
 
 def test_unknown_code_and_truncated_two_byte_move_raise():
     with pytest.raises(cbh.DecodeError, match="unknown move code"):
-        cbh.decode_moves(bytes([3]))  # код, которого нет в таблице ходов
+        cbh.decode_moves(bytes([3]))  # a code that is not in the move table
     with pytest.raises(cbh.DecodeError, match="truncated"):
         cbh.decode_moves(bytes([cbh.TWO_BYTE, 0]))
 
 
 def test_black_pawn_one_byte_move_is_mirrored():
-    # Чёрная пешка c5 — №2, ходит однобайтовым кодом: сдвиг зеркалится относительно белых.
+    # The black pawn on c5 is #2 and moves with a one-byte code: the shift is mirrored relative to White.
     moves = cbh.decode_moves(encode("e4 c5 d3 b6"))
     assert sans(moves) == "1. e4 c5 2. d3 b6"
 
@@ -191,9 +192,9 @@ def test_piece_order_errors_and_promotion_reuses_free_slot():
     with pytest.raises(cbh.DecodeError, match="no piece"):
         order.square_of(chess.WHITE, chess.KNIGHT, 5)
     with pytest.raises(cbh.DecodeError, match="no piece on"):
-        order.apply(chess.Board(), chess.Move(chess.E4, chess.E5))  # на e4 в учёте никого нет
+        order.apply(chess.Board(), chess.Move(chess.E4, chess.E5))  # nobody is tracked on e4
     order.slots[(chess.WHITE, chess.PAWN)][0] = chess.A7
-    order.slots[(chess.WHITE, chess.QUEEN)] = [None]  # ферзь взят: слот свободен
+    order.slots[(chess.WHITE, chess.QUEEN)] = [None]  # the queen is captured: the slot is free
     board = chess.Board("1k6/P7/8/8/8/8/8/K7 w - - 0 1")
     order.apply(board, chess.Move(chess.A7, chess.A8, promotion=chess.QUEEN))
     assert order.slots[(chess.WHITE, chess.QUEEN)] == [chess.A8]
@@ -215,7 +216,7 @@ def test_record_base_unknown_version_raises():
 
 def _memory_database(records: list[bytes], games: bytes) -> cbh.Database:
     index = bytes(cbh.RECORD) + b"".join(records)
-    names = bytes(28)  # файл версии 0 без записей: имена читаются из пустого места
+    names = bytes(28)  # a version-0 file without records: names are read from empty space
     return cbh.Database(base=None, index=index, games=games, players=names + bytes(cbh.PLAYER_RECORD * 2),  # type: ignore[arg-type]
                         tournaments=names + bytes(cbh.TOURNAMENT_RECORD * 2))
 
@@ -223,8 +224,8 @@ def _memory_database(records: list[bytes], games: bytes) -> cbh.Database:
 def test_database_counts_errors_unsupported_and_empty_games():
     games = bytearray()
     records = []
-    # 0: хорошая партия с рейтингом чёрных; 1: ход вне базы (ошибка); 2: неподдерживаемая кодировка; 3: пустая;
-    # 4: смещение за пределами файла партий.
+    # 0: a good game with Black's rating; 1: a move outside the database (error); 2: unsupported encoding; 3: empty;
+    # 4: an offset outside the games file.
     for flags, body in ((0, encode("e4 e5")), (0, bytes([cbh.TWO_BYTE, 0])), (cbh.CHESS960, b"\x00"), (0, b"")):
         offset = len(games)
         games += struct.pack(">I", flags | (len(body) + 4)) + body

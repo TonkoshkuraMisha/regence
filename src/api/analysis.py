@@ -1,23 +1,23 @@
 # --- FILE: src/api/analysis.py ---
 """
-Движок и наставник по запросу (/analysis): оценка позиции, эндшпильные таблицы, «найти мат», справочник дебютов,
-совет, подсказка по ступеням, проверка хода в игре с наставником, полный разбор партии.
+Engine and mentor on request (/analysis): position evaluation, endgame tablebases, "find mate", opening explorer,
+advice, tiered hint, move check in a game with the mentor, full game review.
 
-Всё, что работает с произвольной позицией, — помощь в партии, поэтому эти эндпоинты (/position, /tablebase,
-/find-mate, /opening-explorer, /advice, /hint, /check-move) закрыты правилом честной игры
-(src/api/fair_play.forbid_engine_help_during_game): во время своей партии с человеком игрок получает отказ, а
-запрос во время партии лестницы или турнира отмечается в её сессии (note_ladder_analysis) — партия лестницы не
-засчитывается, партия турнира считается проигранной. Разбор партии по id (/game/{id}) этой зависимостью не закрыт:
-его защищает другое правило — разбирается только законченная партия, идущая даёт 409. «Не согласен» (/dispute)
-движок не вызывает.
+Everything that works with an arbitrary position is help during a game, so these endpoints (/position, /tablebase,
+/find-mate, /opening-explorer, /advice, /hint, /check-move) are closed by the fair-play rule
+(src/api/fair_play.forbid_engine_help_during_game): during one's own game with a human the player gets a refusal, and
+a request during a ladder or tournament game is noted in its session (note_ladder_analysis) - a ladder game is not
+counted, a tournament game is counted as lost. Reviewing a game by id (/game/{id}) is not closed by this dependency:
+it is protected by another rule - only a finished game is reviewed, a game in progress gets 409. "Disagree" (/dispute)
+does not call the engine.
 
-Нагрузка ограничена: у каждого эндпоинта свой лимит запросов в минуту (настройки RATE_LIMIT_*, гостям — меньше),
-при занятом пуле движков — ответ 503 engine_busy, одну партию одновременно разбирает один запрос
-(_game_analysis_lock — в пределах одного процесса API). При FREE_TIER_LIMITS действуют дневные квоты на разбор
-партий и на наставника. Все эндпоинты доступны и без входа.
+The load is limited: every endpoint has its own requests-per-minute limit (settings RATE_LIMIT_*, lower for guests),
+when the engine pool is busy the answer is 503 engine_busy, one request at a time reviews a single game
+(_game_analysis_lock - within one API process). With FREE_TIER_LIMITS there are daily quotas for game review
+and for the mentor. All endpoints are available without logging in.
 
-Расчёты — src/services/analysis_service.py, move_check.py, coach.py, tablebase.py, mate_finder.py,
-opening_explorer.py; формат ответов — src/schemas/analysis.py. Готовый разбор хранится в games.analysis_json.
+Calculations - src/services/analysis_service.py, move_check.py, coach.py, tablebase.py, mate_finder.py,
+opening_explorer.py; response format - src/schemas/analysis.py. The finished review is stored in games.analysis_json.
 """
 
 import asyncio
@@ -66,25 +66,26 @@ class TablebaseRequest(BaseModel):
 
 class FindMateRequest(BaseModel):
     fen: str = Field(..., max_length=120)
-    moves: int = Field(3, ge=1, le=mate_finder.MAX_MOVES, description="Искать мат не длиннее стольких ходов")
+    moves: int = Field(3, ge=1, le=mate_finder.MAX_MOVES, description="Look for a mate no longer than this many moves")
 
 
 class OpeningExplorerRequest(BaseModel):
     moves: list[str] = Field(default_factory=list, max_length=opening_explorer.MAX_MOVES,
-                             description="Ходы из начальной позиции в UCI")
+                             description="Moves from the starting position in UCI")
 
-# game_id -> [lock, число запросов, ожидающих или держащих лок]. Запись удаляется, когда
-# счётчик падает до нуля, поэтому словарь не растёт с каждой когда-либо анализированной партией.
+# game_id -> [lock, number of requests waiting for or holding the lock]. The entry is deleted when
+# the counter drops to zero, so the dictionary does not grow with every game ever analysed.
 _ANALYSIS_LOCKS: dict[int | str, list] = {}
 
 
 @asynccontextmanager
 async def _game_analysis_lock(game_id: int | str):
     """
-    Замок на разбор одной партии: второй запрос на ту же партию ждёт первый и (без force) получает уже готовый
-    разбор из базы, а не занимает второй движок. Замок живёт в памяти процесса — между процессами uvicorn он не
-    действует.
-    Ключ — id партии или строка «imported:<id>» для импортированной (src/api/game_import.py).
+    Lock for reviewing one game: a second request for the same game waits for the first and (without force) gets the already
+    finished
+    review from the database instead of occupying a second engine. The lock lives in process memory - it does not work
+    between uvicorn processes.
+    The key is the game id or the string "imported:<id>" for an imported one (src/api/game_import.py).
     """
     entry = _ANALYSIS_LOCKS.setdefault(game_id, [asyncio.Lock(), 0])
     entry[1] += 1
@@ -97,13 +98,13 @@ async def _game_analysis_lock(game_id: int | str):
             _ANALYSIS_LOCKS.pop(game_id, None)
 
 
-# Дневные квоты бесплатного тарифа (таск 23.3): выключены, пока не включён FREE_TIER_LIMITS.
+# Daily quotas of the free tier (task 23.3): off until FREE_TIER_LIMITS is enabled.
 GAME_ANALYSIS_QUOTA = DailyQuota("game_analysis", "FREE_GAME_ANALYSES_PER_DAY")
 COACH_QUOTA = DailyQuota("coach", "FREE_COACH_REQUESTS_PER_DAY")
 
 
 def _engine_busy() -> HTTPException:
-    """503 engine_busy: все движки пула заняты; заголовок Retry-After советует повторить через 5 секунд."""
+    """503 engine_busy: all pool engines are busy; the Retry-After header advises to retry in 5 seconds."""
     return ApiError(status.HTTP_503_SERVICE_UNAVAILABLE, "engine_busy", headers={"Retry-After": "5"})
 
 
@@ -122,9 +123,9 @@ async def analyze_game_position(
         db: AsyncSession = Depends(get_db),
 ):
     """
-    Возвращает оценку позиции Stockfish для заданного массива ходов (от обычной расстановки или от start_fen).
-    Недоступно, пока у запрашивающего идёт партия с человеком — рейтинговая или товарищеская
-    (см. src/api/fair_play.py). Доступно и без входа — гостю с меньшим лимитом запросов.
+    Returns the Stockfish evaluation of the position for the given array of moves (from the standard setup or from start_fen).
+    Unavailable while the requester has a game with a human in progress - rated or casual
+    (see src/api/fair_play.py). Available without login too - for a guest with a lower request limit.
     """
     try:
         with engine_work("analysis"):
@@ -147,9 +148,11 @@ async def analyze_game_position(
 )
 async def probe_tablebase(request: TablebaseRequest):
     """
-    Эндшпильный тренажёр (таск 14.4): результат позиции по таблицам и лучший ход стороны, которая ходит (им отвечает
-    «идеальный защитник»). Это точная оценка — под правилом честной игры, как анализ. Сервер таблиц недоступен —
-    отвечает Stockfish из пула (source="engine", см. src/services/tablebase.py); все движки заняты — 503 engine_busy.
+    Endgame trainer (task 14.4): the result of the position by tablebase and the best move of the side to move (the "ideal
+    defender"
+    answers with it). This is an exact evaluation - under the fair-play rule, like analysis. If the tablebase server is
+    unavailable -
+    Stockfish from the pool answers (source="engine", see src/services/tablebase.py); all engines busy - 503 engine_busy.
     """
     try:
         board = board_from_start_fen(request.fen)
@@ -174,7 +177,8 @@ async def probe_tablebase(request: TablebaseRequest):
     ],
 )
 async def find_mate(request: FindMateRequest):
-    """«Найти мат» (таск 16.4): мат не длиннее moves ходов и его линия; это движок — под правилом честной игры."""
+    """"Find mate" (task 16.4): a mate no longer than moves moves and its line; this is the engine - under the fair-play
+    rule."""
     try:
         with engine_work("analysis"):
             return await mate_finder.find_mate(request.fen, request.moves)
@@ -196,8 +200,8 @@ async def find_mate(request: FindMateRequest):
 )
 async def explore_opening(request: OpeningExplorerRequest, db: AsyncSession = Depends(get_db)):
     """
-    Справочник дебютов (таск 16.2): ходы из позиции со статистикой партий, название дебюта и партии мастеров.
-    Это помощь в партии — под правилом честной игры, как анализ.
+    Opening explorer (task 16.2): moves from the position with game statistics, the opening name and master games.
+    This is help during a game - under the fair-play rule, like analysis.
     """
     try:
         return await opening_explorer.explore(db, request.moves)
@@ -217,9 +221,9 @@ async def explore_opening(request: OpeningExplorerRequest, db: AsyncSession = De
 )
 async def get_position_advice(request: AdviceRequest, http: Request):
     """
-    Совет наставника по позиции (таск 11.2): угроза соперника, своя возможность, идея лучшего хода и стрелки.
-    Это подсказка движка: недоступна во время партии с человеком, в партии лестницы делает её незасчитанной.
-    Текст собирает клиент по ключам каталога coach.
+    Mentor advice for the position (task 11.2): the opponent's threat, own opportunity, the idea of the best move and arrows.
+    This is an engine hint: unavailable during a game with a human, in a ladder game it makes the game uncounted.
+    The text is assembled by the client from the keys of the coach catalogue.
     """
     try:
         with engine_work("coach"):
@@ -244,8 +248,8 @@ async def get_position_advice(request: AdviceRequest, http: Request):
 )
 async def graded_hint(request: HintRequest, http: Request):
     """
-    Подсказка по ступеням (таск 11.4): 1 — намёк словами, 2 — какой фигурой ходить, 3 — ход со стрелкой и
-    объяснением. Ход раскрывается только на последней ступени. Правила честной игры — как у совета.
+    Tiered hint (task 11.4): 1 - a hint in words, 2 - which piece to move, 3 - the move with an arrow and
+    an explanation. The move is revealed only on the last tier. Fair-play rules are the same as for advice.
     """
     try:
         with engine_work("coach"):
@@ -265,7 +269,7 @@ async def graded_hint(request: HintRequest, http: Request):
     dependencies=[Depends(rate_limit("analysis_dispute", "RATE_LIMIT_ADVICE", "RATE_LIMIT_ADVICE_GUEST"))],
 )
 async def dispute_coach_warning(payload: DisputeRequest, request: Request, db: AsyncSession = Depends(get_db)):
-    """«Не согласен» с предупреждением наставника: позиция уходит в очередь спорных оценок для проверки."""
+    """"Disagree" with a mentor warning: the position goes to the queue of disputed evaluations for review."""
     try:
         await move_check.record_dispute(payload.fen, payload.move, payload.cp_loss, await optional_user_id(request, db))
     except DomainValueError as exc:
@@ -286,9 +290,9 @@ async def dispute_coach_warning(payload: DisputeRequest, request: Request, db: A
 )
 async def check_player_move(request: MoveCheckRequest, http: Request):
     """
-    Игра с наставником (таск 11.3): оценка хода игрока — потеря, классификация, лучший ход, ответ соперника,
-    пропущенный удар и объяснение наставника. Это подсказка движка: недоступна в партии с человеком, в партии
-    лестницы делает её незасчитанной.
+    Game with the mentor (task 11.3): evaluation of the player's move - loss, classification, best move, the opponent's reply,
+    the missed capture and the mentor's explanation. This is an engine hint: unavailable in a game with a human, in a ladder
+    game it makes the game uncounted.
     """
     try:
         with engine_work("coach"):
@@ -307,9 +311,10 @@ async def get_cached_game_analysis(
         db: AsyncSession = Depends(get_db),
 ):
     """
-    Возвращает уже сохранённый компьютерный анализ завершённой партии из БД (games.analysis_json), если он есть;
-    движок не вызывается. null — разбора ещё нет или он устарел (другая версия формата либо не совпадает с записью
-    партии). Идущая партия — 409. Доступно без входа; итог партии (summary) досчитывается при ответе.
+    Returns an already saved computer analysis of a finished game from the DB (games.analysis_json), if there is one;
+    the engine is not called. null - there is no review yet or it is outdated (a different format version or it does not match
+    the game
+    record). A game in progress - 409. Available without login; the game summary (summary) is completed when answering.
     """
     game = await db.get(Game, game_id)
     if not game:
@@ -324,7 +329,7 @@ async def get_cached_game_analysis(
         data = json.loads(game.analysis_json)
     except ValueError:
         return None
-    # Разбор старого формата (без комментариев наставника) не отдаём: клиент предложит пересчитать.
+    # A review in the old format (without mentor comments) is not served: the client will offer to recompute it.
     if not game.pgn or not is_current_analysis(data, game.pgn):
         return None
     data["game_id"] = game_id
@@ -340,16 +345,17 @@ async def get_cached_game_analysis(
 async def analyze_full_game_endpoint(
         game_id: int,
         http: Request,
-        force: bool = Query(default=False, description="Принудительно пересчитать анализ"),
+        force: bool = Query(default=False, description="Force recomputing the analysis"),
         db: AsyncSession = Depends(get_db),
 ):
     """
-    Выполняет полный разбор завершённой партии с расчётом точности и классификацией зевков.
-    Идущие партии не анализируются (409). Параллельные запросы на одну партию сериализуются,
-    чтобы не занимать несколько движков пула одной и той же работой.
-    Готовый разбор берётся из games.analysis_json, пересчёт — при force=true или устаревшем формате; результат
-    сохраняется туда же. Лимит — RATE_LIMIT_GAME_ANALYSIS в минуту (общий для игроков и гостей), при
-    FREE_TIER_LIMITS — ещё и дневная квота, в которую засчитывается только выполненный запрос.
+    Performs a full review of a finished game with accuracy calculation and blunder classification.
+    Games in progress are not analysed (409). Parallel requests for one game are serialised
+    so that several pool engines are not occupied by the same work.
+    The finished review is taken from games.analysis_json, recomputation happens with force=true or an outdated format; the
+    result
+    is saved there too. The limit is RATE_LIMIT_GAME_ANALYSIS per minute (shared by players and guests), with
+    FREE_TIER_LIMITS there is also a daily quota, to which only an executed request counts.
     """
     async with _game_analysis_lock(game_id):
         try:

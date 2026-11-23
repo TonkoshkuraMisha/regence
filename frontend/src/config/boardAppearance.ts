@@ -1,7 +1,7 @@
 // --- FILE: frontend/src/config/boardAppearance.ts ---
-// Оформление доски: темы (цвета клеток, рамка, текстура, цвет подсветки последнего хода) и наборы фигур с автором и
-// лицензией каждого набора — они показываются на странице «О проекте» и записаны в ATTRIBUTION.md. Выбор игрока
-// хранится в браузере.
+// Board appearance: themes (square colours, frame, texture, last-move highlight colour) and piece sets with the author and
+// licence of each set - they are shown on the "About" page and recorded in ATTRIBUTION.md. The player's choice
+// is stored in the browser.
 
 import {t} from '../i18n';
 
@@ -13,27 +13,27 @@ export interface BoardTheme {
     coordLight: string;
     coordDark: string;
     border: string;
-    /** Процедурная текстура (таск 18.1) поверх цвета: рамки и клеток, с режимом наложения. */
+    /** Procedural texture (task 18.1) over the colour: of the frame and the squares, with a blend mode. */
     texture?: BoardTexture;
-    /** Подсветка последнего хода под эту доску; по умолчанию — янтарная. */
+    /** Last-move highlight for this board; amber by default. */
     lastMove?: string;
     isDarkBoard?: boolean;
 }
 
 export interface BoardTexture {
-    /** Файл в /assets/textures (собственная работа проекта, ATTRIBUTION.md). */
+    /** File in /assets/textures (the project's own work, ATTRIBUTION.md). */
     file: string;
-    /** Непрозрачность на рамке и на клетках (0 — не накладывать). */
+    /** Opacity on the frame and on the squares (0 - do not overlay). */
     frame: number;
     square: number;
     blend: 'multiply' | 'screen';
-    /** Только на тёмных полях (штриховка газетной диаграммы). */
+    /** Dark squares only (hatching of a newspaper diagram). */
     darkOnly?: boolean;
 }
 
 export const DEFAULT_LAST_MOVE = 'rgba(252, 211, 77, 0.38)';
 
-/** Стиль слоя текстуры клетки или рамки; null — слой не нужен. */
+/** Style of a square or frame texture layer; null - no layer needed. */
 export function textureLayerStyle(theme: BoardTheme, where: 'frame' | 'square', isDark = false): {
     backgroundImage: string; opacity: number; mixBlendMode: 'multiply' | 'screen'
 } | null {
@@ -55,7 +55,7 @@ export interface PieceSetConfig {
     folder: string;
     scalePercent: number;
     description: string;
-    /** Автор и лицензия набора — показываются на странице «О проекте» (см. ATTRIBUTION.md). */
+    /** Author and licence of the set - shown on the "About" page (see ATTRIBUTION.md). */
     author: string;
     license: string;
 }
@@ -346,13 +346,13 @@ export const BOARD_THEMES: Record<string, BoardTheme> = {
         lastMove: 'rgba(90, 160, 255, 0.35)',
         isDarkBoard: false
     },
-    // Таск 31.1 (идея владельца): осенний парк и клуб пятидесятых. Цвета — свои, текстура дерева — та же, что у «Ореха».
+    // Task 31.1 (owner's idea): autumn park and a fifties club. Colours are our own, the wood texture is the same as "Walnut".
     autumn: {
         id: 'autumn',
         get name() {
             return t('appearance.themes.autumn');
         },
-        // Золото липы и ржавчина кленового листа; рамка — каштан.
+        // Linden gold and maple-leaf rust; the frame is chestnut.
         light: '#EFD79A',
         dark: '#A4552B',
         coordLight: '#7A3D1C',
@@ -366,7 +366,7 @@ export const BOARD_THEMES: Record<string, BoardTheme> = {
         get name() {
             return t('appearance.themes.club50');
         },
-        // Клубная доска середины века: кремовые поля и бутылочно-зелёное сукно в ореховой раме.
+        // Mid-century club board: cream squares and bottle-green baize in a walnut frame.
         light: '#EADFC4',
         dark: '#4F6B53',
         coordLight: '#3A5240',
@@ -377,8 +377,8 @@ export const BOARD_THEMES: Record<string, BoardTheme> = {
     },
 };
 
-// Только наборы со свободной лицензией, допускающей любое использование. Список должен совпадать
-// с scripts/setup_piece_sets.py и ATTRIBUTION.md — это проверяет tests/test_assets_licensing.py.
+// Only sets with a free licence permitting any use. The list must match
+// scripts/setup_piece_sets.py and ATTRIBUTION.md - this is checked by tests/test_assets_licensing.py.
 export const PIECE_SETS: Record<string, PieceSetConfig> = {
     merida: {
         id: 'merida',
@@ -638,7 +638,7 @@ export const PIECE_SETS: Record<string, PieceSetConfig> = {
         author: 'usolando',
         license: 'AGPL-3.0-or-later'
     },
-    // Собственный набор проекта (таск 18.2): по мотивам льюисских шахмат XII века, scripts/build_lewis_pieces.py.
+    // The project's own set (task 18.2): inspired by the 12th-century Lewis chessmen, scripts/build_lewis_pieces.py.
     lewis: {
         id: 'lewis',
         get name() {
@@ -657,7 +657,7 @@ export const PIECE_SETS: Record<string, PieceSetConfig> = {
     }
 };
 
-/** Наборы, убранные из-за лицензии, — сохранённый выбор игрока переводится на близкий свободный. */
+/** Sets removed because of licensing - a player's saved choice is switched to a similar free one. */
 const RETIRED_PIECE_SETS: Record<string, string> = {
     cardinal: 'outline',
     maestro: 'fantasy',
@@ -681,7 +681,7 @@ export function getSavedPieceSetKey(): string {
     return 'merida';
 }
 
-// Отдельная тема для разбора партий (таск 18.3): своя доска и фигуры в просмотре партии; без записи — как в игре.
+// A separate theme for game review (task 18.3): its own board and pieces in the game viewer; unset - as in the game.
 const ANALYSIS_BOARD_KEY = 'regence_analysis_board_theme';
 const ANALYSIS_PIECES_KEY = 'regence_analysis_piece_set';
 
@@ -708,7 +708,7 @@ export function getAnalysisPieceSetKey(): string {
     return pieces && PIECE_SETS[pieces] && hasAnalysisAppearance() ? pieces : getSavedPieceSetKey();
 }
 
-/** Задать тему разбора (или null — как в игре). */
+/** Set the review theme (or null - as in the game). */
 export function setAnalysisAppearance(board: string | null, pieces: string | null): void {
     try {
         if (board && pieces) {
@@ -719,7 +719,7 @@ export function setAnalysisAppearance(board: string | null, pieces: string | nul
             localStorage.removeItem(ANALYSIS_PIECES_KEY);
         }
     } catch {
-        // Хранилище недоступно — разбор показывается в теме игры.
+        // Storage unavailable - the review is shown in the game theme.
     }
 }
 

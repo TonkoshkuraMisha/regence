@@ -1,8 +1,8 @@
 # --- FILE: tests/test_mini_game_rooms.py ---
 """
-Игры тренеров с человеком по сети (таск 19.8): комната на двоих через настоящие запросы клиента — создание с цветом,
-вход по ссылке, очередь хода и версия, ход не по правилам, конец по правилам игры, сдача, «ещё раз» со сменой цветов,
-посторонний и третий игрок.
+Trainer games against a human over the network (task 19.8): a two-player room through real client requests:
+creation with a color, joining by link, turn order and version, an illegal move, game end by the game's rules,
+resignation, "again" with colors swapped, an outsider and a third player.
 """
 
 from src.models.user import User
@@ -23,7 +23,7 @@ async def test_friendly_mini_game_through_the_client(client, db_session, test_us
     code = room["code"]
     assert (room["you"], room["waiting"], room["white"], room["black"]) == ("white", True, test_user_1.username, None)
 
-    # Соперника нет — ходить рано; гость видит комнату, но он не игрок.
+    # No opponent yet, so it is too early to move; a guest sees the room but is not a player.
     early = client.post(f"{API}/{code}/move", headers=auth(token_user_1), json={"move": "e2e4", "version": 0})
     assert early.status_code == 409 and early.json()["detail"]["code"] == "mini_room_waiting"
     assert client.get(f"{API}/{code}").json()["you"] is None
@@ -39,17 +39,17 @@ async def test_friendly_mini_game_through_the_client(client, db_session, test_us
     assert (moved["moves"], moved["version"]) == (["e2e4"], 1)
     stale = client.post(f"{API}/{code}/move", headers=auth(token_user_1), json={"move": "d2d4", "version": 0})
     assert stale.json()["detail"]["code"] == "mini_room_stale"
-    # Соперник видит ход, опрашивая комнату.
+    # The opponent sees the move by polling the room.
     assert client.get(f"{API}/{code}", headers=auth(token_user_2)).json()["moves"] == ["e2e4"]
 
-    # Третий игрок не войдёт, посторонний не сдастся.
+    # A third player cannot join, an outsider cannot resign.
     third = User(username="third_player", hashed_password="x")
     db_session.add(third)
     await db_session.commit()
     assert (await _refused(rooms.join(third, code))) == "mini_room_full"
     assert (await _refused(rooms.resign(third, code))) == "mini_room_not_player"
 
-    # Сдача — победа соперника; «ещё раз» — новая комната со сменой цветов, старая ведёт в неё.
+    # Resignation is a win for the opponent; "again" creates a new room with colors swapped, and the old one links to it.
     resigned = client.post(f"{API}/{code}/resign", headers=auth(token_user_2)).json()
     assert (resigned["result"], resigned["reason"]) == ("1-0", "resign")
     again = client.post(f"{API}/{code}/rematch", headers=auth(token_user_2)).json()
@@ -62,7 +62,7 @@ async def test_friendly_mini_game_through_the_client(client, db_session, test_us
 async def test_game_ends_by_its_rules(client, test_user_1, test_user_2, token_user_1, token_user_2):
     code = client.post(API, headers=auth(token_user_1), json={"game_id": "pawn_war", "color": "white"}).json()["code"]
     client.post(f"{API}/{code}/join", headers=auth(token_user_2))
-    # Позиция перед проходом белой пешки: проведённая пешка — победа по правилам пешечного боя.
+    # Position before the white pawn's run: a promoted pawn wins by the pawn-battle rules.
     room = await rooms._load(code)
     room["fen"] = "8/P6p/8/8/8/8/7P/8 w - - 0 1"
     await rooms._save(room)

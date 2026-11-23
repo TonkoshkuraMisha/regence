@@ -1,7 +1,7 @@
 // --- FILE: frontend/public/offline.js ---
-// Офлайн-страница (таск 24.2): язык — как выбран на сайте (regence_language), иначе английский. Каталоги
-// приложения лежат в сборке и без сети недоступны, поэтому три коротких текста — здесь, на тех же трёх языках.
-// Отдельным файлом, а не в offline.html: CSP запрещает встроенные скрипты.
+// Offline page (task 24.2): the language is the one chosen on the site (regence_language), otherwise English. The app
+// catalogs are inside the build and unavailable without a network, so three short texts are here, in the same three languages.
+// A separate file rather than in offline.html: the CSP forbids inline scripts.
 
 (function () {
     var TEXTS = {
@@ -15,11 +15,6 @@
             text: 'regence працює з інтернетом: партії, задачі й розбір живуть на сервері. Перевірте з’єднання і спробуйте ще раз.',
             retry: 'Спробувати ще раз',
         },
-        ru: {
-            title: 'Нет связи',
-            text: 'regence работает с интернетом: партии, задачи и разбор живут на сервере. Проверьте соединение и попробуйте ещё раз.',
-            retry: 'Попробовать ещё раз',
-        },
     };
 
     function language() {
@@ -30,7 +25,7 @@
             saved = null;
         }
         if (saved && TEXTS[saved]) return saved;
-        return 'en';  // по умолчанию английский (решение владельца 22.11); выбранный на сайте язык — выше
+        return 'en';  // English by default (owner's decision 22.11); the language chosen on the site is above
     }
 
     var lang = language();
@@ -43,7 +38,7 @@
     retry.addEventListener('click', function () {
         window.location.reload();
     });
-    // Связь вернулась — сразу на ту страницу, которую открывали.
+    // The connection is back: straight to the page that was open.
     window.addEventListener('online', function () {
         window.location.reload();
     });

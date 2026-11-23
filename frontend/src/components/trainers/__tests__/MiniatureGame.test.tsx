@@ -1,4 +1,4 @@
-// «Миниатюры» (таск 27.9): засчитывается любой мат, неверный ход показывает ход партии, итог после последнего.
+// "Miniatures" (task 27.9): any mate counts, a wrong move shows the game move, the result after the last one.
 
 import {act, render, screen} from '@testing-library/react';
 import {MemoryRouter} from 'react-router-dom';
@@ -22,33 +22,33 @@ const BEFORE_MATE = 'r1bqkb1r/pppp1ppp/2n2n2/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQ
 const ITEM = {id: 7, white: 'A', black: 'B', event: '', site: '', date: '', year: 1900, result: '1-0', eco: 'C20', opening: '',
     plies: 7, structure: null, fen: BEFORE_MATE, moves: ['e2e4', 'e7e5', 'd1h5', 'b8c6', 'f1c4', 'g8f6'], answer: 'h5f7'};
 
-describe('Миниатюры', () => {
-    it('мат проверяется по позиции', () => {
+describe('Miniatures', () => {
+    it('mate is checked by the position', () => {
         expect(isMate(BEFORE_MATE, 'h5f7')).toBe(true);
         expect(isMate(BEFORE_MATE, 'h5e5')).toBe(false);
-        expect(isMate(BEFORE_MATE, 'a1a8')).toBe(false);  // нелегальный ход
+        expect(isMate(BEFORE_MATE, 'a1a8')).toBe(false);  // an illegal move
     });
 
-    it('верный и неверный ответ, итог', async () => {
+    it('a right and a wrong answer, the result', async () => {
         vi.stubGlobal('fetch', vi.fn(async () => ({ok: true, json: async () => ({miniatures: [ITEM, ITEM]})}) as Response));
         const onFinish = vi.fn();
         await act(async () => render(<MemoryRouter><MiniatureGame seed={1} onFinish={onFinish}/></MemoryRouter>));
         expect(screen.getByTestId('miniature-players')).toHaveTextContent('A — B, 1900');
         act(() => boardMove!('h5f7'));
-        expect(screen.getByTestId('miniature-verdict')).toHaveTextContent('Мат!');
+        expect(screen.getByTestId('miniature-verdict')).toHaveTextContent('Mate!');
         expect(screen.getByTestId('miniature-game-link')).toHaveAttribute('href', '/library/game/7');
         act(() => screen.getByTestId('quiz-next').click());
         act(() => boardMove!('h5e5'));
-        expect(screen.getByTestId('miniature-verdict')).toHaveTextContent('Не мат');
+        expect(screen.getByTestId('miniature-verdict')).toHaveTextContent('Not mate');
         act(() => screen.getByTestId('quiz-next').click());
         expect(onFinish).toHaveBeenCalledWith(10, 1);
     });
 
-    it('после ответа доска свободна: ход стоит на доске, позицию можно доиграть и вернуть', async () => {
+    it('after the answer the board is free: the move stands on the board, the position can be played out and returned', async () => {
         vi.stubGlobal('fetch', vi.fn(async () => ({ok: true, json: async () => ({miniatures: [ITEM, ITEM]})}) as Response));
         await act(async () => render(<MemoryRouter><MiniatureGame seed={1} onFinish={vi.fn()}/></MemoryRouter>));
         const board = () => screen.getByTestId('board');
-        // Верный мат — ферзь стоит на f7, стрелки нет, доска по-прежнему откликается.
+        // A right mate — the queen stands on f7, no arrow, the board still responds.
         act(() => boardMove!('h5f7'));
         expect(board().dataset.fen).toContain('r1bqkb1r/pppp1Qpp/');
         expect(board().dataset.interactive).toBe('true');
@@ -56,7 +56,7 @@ describe('Миниатюры', () => {
         act(() => screen.getByTestId('explorer-reset').click());
         expect(board().dataset.fen).toBe(BEFORE_MATE);
 
-        // Неверный ответ — позиция задачи и стрелка хода партии; её можно сыграть самому и вернуть назад.
+        // A wrong answer — the puzzle position and the game move's arrow; it can be played out yourself and taken back.
         act(() => screen.getByTestId('quiz-next').click());
         act(() => boardMove!('h5e5'));
         expect(board().dataset.fen).toBe(BEFORE_MATE);
@@ -64,7 +64,7 @@ describe('Миниатюры', () => {
         act(() => boardMove!('h5f7'));
         expect(board().dataset.fen).toContain('pppp1Qpp');
         expect(board().dataset.arrows).toBe('');
-        expect(screen.getByTestId('miniature-verdict')).toHaveTextContent('Не мат');  // засчитан первый ответ
+        expect(screen.getByTestId('miniature-verdict')).toHaveTextContent('Not mate');  // the first answer is counted
         act(() => screen.getByTestId('explorer-back').click());
         expect(board().dataset.fen).toBe(BEFORE_MATE);
     });

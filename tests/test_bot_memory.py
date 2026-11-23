@@ -1,7 +1,7 @@
 # --- FILE: tests/test_bot_memory.py ---
 """
-Память ботов (таск 32.1): опыт дебютных вариантов, рейтинг по партиям с людьми, поправка силы; память о
-сопернике (32.2) — по итогам и по ошибкам из разбора партии.
+Bot memory (task 32.1): opening-variation experience, rating from games with humans, strength correction; memory of
+the opponent (32.2), from results and from mistakes found in game analysis.
 """
 
 import json
@@ -40,14 +40,14 @@ def _after(*moves: str) -> str:
 
 
 def _morphy_line() -> list[str]:
-    """1.e4 и первый ответ Морфи из его книги, затем ход вне книги."""
+    """1.e4 and Morphy's first reply from his book, then a move outside the book."""
     book = BOT_INSTANCES["morphy"].opening_book
     reply = str(book[_after("e2e4")][0][0])
     return ["e2e4", reply, "a2a3"]
 
 
 def test_book_factor_rewards_and_punishes_within_bounds():
-    assert memory.book_factor("x", START_KEY, "e2e4") == 1.0                     # опыта нет
+    assert memory.book_factor("x", START_KEY, "e2e4") == 1.0                     # no experience yet
     memory._book["x"] = {(START_KEY, "e2e4"): (40, 40.0), (START_KEY, "d2d4"): (40, 0.0), (START_KEY, "c2c4"): (2, 1.0)}
     win, loss, even = (memory.book_factor("x", START_KEY, u) for u in ("e2e4", "d2d4", "c2c4"))
     assert memory.FACTOR_MIN < loss < 1.0 == even < win < memory.FACTOR_MAX
@@ -57,7 +57,7 @@ def test_book_moves_played_stop_when_leaving_the_book():
     book = {START_KEY: [("e2e4", 5, 1)], _after("e2e4", "e7e5"): [("g1f3", 5, 1)]}
     assert memory.book_moves_played(book, ["e2e4", "e7e5", "g1f3", "b8c6", "f1c4"], chess.WHITE) == [
         (START_KEY, "e2e4"), (_after("e2e4", "e7e5"), "g1f3")]
-    # Бот сыграл не по книге — дальше не считаем, даже если позже книга снова совпала бы.
+    # The bot played out of book: we stop counting, even if the book would match again later.
     assert memory.book_moves_played(book, ["d2d4", "e7e5"], chess.WHITE) == []
 
 
@@ -70,7 +70,7 @@ def test_experience_shifts_the_book_choice():
     random.seed(7)
     memory._book["probe"] = {(START_KEY, "e2e4"): (60, 0.0), (START_KEY, "d2d4"): (60, 60.0)}
     picks = Counter(bot._book_move(chess.Board())[0].uci() for _ in range(600))
-    assert picks["d2d4"] > 2 * picks["e2e4"] > 0                                # проигранная линия — реже, но не никогда
+    assert picks["d2d4"] > 2 * picks["e2e4"] > 0                                # a lost line: played less often, not never
 
 
 async def test_saved_game_teaches_the_bot(client, token_user_1, db_session):
@@ -79,13 +79,13 @@ async def test_saved_game_teaches_the_bot(client, token_user_1, db_session):
         "bot_id": "morphy", "player_color": "white", "result": "1-0", "moves_uci": line, "termination": "resignation",
     })
     assert saved.status_code == 200, saved.text
-    first = memory.bot_points(saved.json()["result"], chess.BLACK)            # итог по сдаче выводит сервер
+    first = memory.bot_points(saved.json()["result"], chess.BLACK)            # the server derives the result of a resignation
     [stat] = (await db_session.execute(select(BotOpeningStat).where(BotOpeningStat.bot_id == "morphy"))).scalars().all()
     assert (stat.fen_key, stat.uci, stat.games, stat.points) == (_after("e2e4"), line[1], 1, first)
     rating = await db_session.get(BotRating, "morphy")
     assert rating.games == 1 and rating.offset == 0
 
-    # Вслепую — опыт дебюта есть, рейтинг не меняется.
+    # Blindfold: opening experience is recorded, the rating does not change.
     second = client.post("/api/v1/bots/save-game", headers=auth(token_user_1), json={
         "bot_id": "morphy", "player_color": "white", "result": "0-1", "moves_uci": line, "termination": "resignation",
         "blindfold": 2, "peeks": 0,
@@ -103,14 +103,14 @@ async def test_saved_game_teaches_the_bot(client, token_user_1, db_session):
 async def test_strength_offset_pulls_back_to_declared(db_session, monkeypatch):
     monkeypatch.setattr(memory, "OFFSET_MIN_GAMES", 4)
     monkeypatch.setattr(memory, "OFFSET_EVERY", 2)
-    # Бот заявлен 1500, а люди 1500 у него всё время выигрывают — значит, играет слабее: поправка вверх.
+    # The bot is rated 1500 but 1500-rated humans keep beating it, so it plays weaker: correct upward.
     for _ in range(24):
         row = await memory.record_rating(db_session, "probe", 1500, 1500, 0.0)
     assert row.games == 24 and row.rating < 1400
     assert 0 < row.offset <= memory.MAX_OFFSET
     assert memory.strength_offset("probe") == row.offset
-    assert memory.next_offset(0, 1480, 1500) == 0                                # расхождение мало — без поправки
-    assert memory.next_offset(140, 1000, 1500) == memory.MAX_OFFSET              # не дальше предела
+    assert memory.next_offset(0, 1480, 1500) == 0                                # the discrepancy is small: no correction
+    assert memory.next_offset(140, 1000, 1500) == memory.MAX_OFFSET              # not beyond the limit
 
 
 async def test_tournament_games_teach_openings(db_session):
@@ -120,15 +120,15 @@ async def test_tournament_games_teach_openings(db_session):
     await tournament_simulation._remember_openings(db_session, human, morphy, line, "1/2-1/2")
     [stat] = (await db_session.execute(select(BotOpeningStat))).scalars().all()
     assert (stat.bot_id, stat.uci, stat.points) == ("morphy", line[1], 0.5)
-    assert await db_session.get(BotRating, "morphy") is None                    # турнир ботов на рейтинг не влияет
+    assert await db_session.get(BotRating, "morphy") is None                    # a bot tournament does not affect the rating
 
 
-# --- память о сопернике (таск 32.2) ---------------------------------------------------------------
+# --- opponent memory (task 32.2) ---------------------------------------------------------------
 
 def test_rival_factor_prefers_lines_where_the_player_struggles():
     rival = memory.Rival("probe", 3, {
-        (START_KEY, "e2e4"): (2, 2.0, False),     # игрок дважды проиграл — бот идёт туда охотнее
-        (START_KEY, "d2d4"): (1, 0.0, True),      # с этим ходом бот проиграл ему в последний раз
+        (START_KEY, "e2e4"): (2, 2.0, False),     # the player lost twice: the bot heads there more readily
+        (START_KEY, "d2d4"): (1, 0.0, True),      # the bot lost to him with this move last time
     })
     good, lost, unknown = (memory.rival_factor(rival, START_KEY, u) for u in ("e2e4", "d2d4", "c2c4"))
     assert lost < 0.1 < unknown == 1.0 < good <= memory.RIVAL_MAX
@@ -136,9 +136,9 @@ def test_rival_factor_prefers_lines_where_the_player_struggles():
 
 def test_rival_only_for_its_bot_and_regular_opponent():
     memory.use_rival(memory.Rival("probe", 1, {(START_KEY, "d2d4"): (1, 0.0, True)}))
-    assert memory.book_factor("probe", START_KEY, "d2d4") == 1.0           # одна партия — ещё не постоянный соперник
+    assert memory.book_factor("probe", START_KEY, "d2d4") == 1.0           # one game is not yet a regular opponent
     memory.use_rival(memory.Rival("probe", 2, {(START_KEY, "d2d4"): (1, 0.0, True)}))
-    assert memory.book_factor("other", START_KEY, "d2d4") == 1.0           # чужой бот этого игрока не помнит
+    assert memory.book_factor("other", START_KEY, "d2d4") == 1.0           # another bot does not remember this player
     assert memory.book_factor("probe", START_KEY, "d2d4") < 0.1
     memory.use_rival(None)
 
@@ -151,7 +151,7 @@ async def test_bot_remembers_its_rival_through_the_api(client, token_user_1, tes
             "termination": "resignation",
         })
         assert response.status_code == 200, response.text
-    # С помощью наставника партия о сопернике ничего не говорит.
+    # With the mentor's help the game says nothing about the opponent.
     client.post("/api/v1/bots/save-game", headers=auth(token_user_1), json={
         "bot_id": "morphy", "player_color": "white", "result": "1-0", "moves_uci": line, "termination": "resignation",
         "assisted": True,
@@ -181,14 +181,14 @@ async def test_move_request_passes_the_rival_into_the_move_thread(client, token_
     monkeypatch.setattr(BOT_INSTANCES["morphy"], "choose_move", fake_choose)
     fen = chess.Board().fen().replace(" w ", " b ")
     client.post("/api/v1/bots/move", headers=auth(token_user_1), json={"bot_id": "morphy", "fen": fen})
-    client.post("/api/v1/bots/move", json={"bot_id": "morphy", "fen": fen})          # гость — соперника нет
+    client.post("/api/v1/bots/move", json={"bot_id": "morphy", "fen": fen})          # a guest: there is no opponent
     assert [r.games if r else None for r in seen] == [3, None]
 
 
-# --- где соперник ошибается: по разбору партии (32.2) ----------------------------------------------
+# --- where the opponent errs: from game analysis (32.2) ----------------------------------------------
 
 def _report(moves: list[str], errors: dict[int, str]) -> list[dict]:
-    """Ходы разбора (analysis_json): у хода с номером из errors — этот класс, у остальных — Best."""
+    """Analysis moves (analysis_json): a move whose number is in errors gets this class, the others get Best."""
     return [{"ply": i + 1, "uci": uci, "color": "white" if i % 2 == 0 else "black",
              "classification": errors.get(i + 1, "Best")} for i, uci in enumerate(moves)]
 
@@ -197,10 +197,10 @@ def test_erred_after_counts_only_player_errors_inside_the_window():
     book = [(2, "k2", "m2"), (4, "k4", "m4")]
     moves = [f"m{i}" for i in range(1, 30)]
     window = memory.ERROR_WINDOW
-    # Ошибка белых на 5-м полуходе — после обоих ходов бота; неточность и ошибка самого бота не считаются.
+    # White's mistake on ply 5 comes after both bot moves; inaccuracies and the bot's own mistakes do not count.
     assert memory.erred_after(book, _report(moves, {5: "Mistake", 3: "Inaccuracy", 6: "Blunder"}), "white") == {
         ("k2", "m2"), ("k4", "m4")}
-    # Ошибка дальше окна от первого хода бота — только второму.
+    # A mistake beyond the window from the bot's first move counts only for the second.
     assert memory.erred_after(book, _report(moves, {3 + window: "Blunder"}), "white") == {("k4", "m4")}
     assert memory.erred_after(book, _report(moves, {}), "white") == set()
 
@@ -224,14 +224,14 @@ async def test_analysed_game_teaches_the_bot_where_its_rival_errs(client, token_
         })
         assert response.status_code == 200, response.text
         game_ids.append(response.json()["game_id"])
-    # Разбор первой партии: после ответа Морфи из книги игрок зевнул (3-й полуход).
+    # Analysis of the first game: after Morphy's book reply the player blundered (ply 3).
     game = await db_session.get(Game, game_ids[0])
     game.analysis_json = json.dumps({"moves": _report(line, {3: "Blunder"})})
     await db_session.commit()
     assert await memory.record_rival_errors(db_session, game_ids[0]) == 1
-    assert await memory.record_rival_errors(db_session, game_ids[0]) == 0          # повторный разбор не удваивает
+    assert await memory.record_rival_errors(db_session, game_ids[0]) == 0          # repeated analysis does not double-count
     rival = await memory.load_rival(db_session, "morphy", test_user_1.id)
     assert rival is not None and rival.errors == {(_after("e2e4"), line[1]): 1}
-    # Без разбора и для неизвестной партии — ничего.
+    # Without analysis, and for an unknown game, nothing is recorded.
     assert await memory.record_rival_errors(db_session, game_ids[1]) == 0
     assert await memory.record_rival_errors(db_session, 10 ** 9) == 0

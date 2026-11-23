@@ -1,4 +1,4 @@
-# Контекст сборки образа бэкенда: только то, что нужно для запуска API и воркера.
+# Backend image build context: only what is needed to run the API and the worker.
 .git
 .github
 .idea
@@ -7,7 +7,7 @@
 **/*.py[cod]
 .pytest_cache
 
-# Окружения и секреты
+# Environments and secrets
 .venv
 venv
 env
@@ -15,13 +15,13 @@ env
 .env.*
 !.env.example
 
-# Фронтенд собирается своим образом (frontend/Dockerfile)
+# The frontend is built by its own image (frontend/Dockerfile)
 frontend
 
-# Windows-бинарники Stockfish: в образ движок ставится из пакетов Debian
+# Windows Stockfish binaries: the engine is installed into the image from Debian packages
 bin
 
-# Локальные данные и служебные файлы
+# Local data and service files
 src/db/data/pgns
 _project_snapshot
 make_snapshot.py

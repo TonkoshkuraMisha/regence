@@ -1,7 +1,7 @@
 # --- FILE: tests/test_ws_rate_limit.py ---
 """
-Ограничение частоты сообщений WebSocket: чат и предложения нельзя использовать для спама,
-поток мусора закрывает соединение, а отклонённый по лимиту ход возвращает клиенту позицию.
+WebSocket message rate limiting: chat and offers cannot be used for spam,
+a stream of garbage closes the connection, and a move rejected by the limit returns the position to the client.
 """
 
 import asyncio
@@ -58,7 +58,7 @@ class QueueSocket:
 
 
 async def _run(user: User, messages: list, *, close: bool = True) -> QueueSocket:
-    """Прогоняет сообщения через эндпоинт и дожидается, пока он их обработает."""
+    """Runs messages through the endpoint and waits until it has processed them."""
     socket = QueueSocket()
     for message in messages:
         socket.incoming.put_nowait(message)
@@ -81,7 +81,7 @@ async def game():
 
 
 async def test_chat_flood_is_cut_off(game):
-    chat = {"action": "chat_message", "game_id": game, "text": "спам"}
+    chat = {"action": "chat_message", "game_id": game, "text": "spam"}
     socket = await _run(_user(901), [chat] * 7)
 
     assert len(socket.events("chat_message")) == ws_module.WS_RATE_LIMITS["chat"][0]
@@ -91,7 +91,7 @@ async def test_chat_flood_is_cut_off(game):
 
 
 async def test_limit_is_shared_between_tabs_of_one_user(game):
-    chat = {"action": "chat_message", "game_id": game, "text": "привет"}
+    chat = {"action": "chat_message", "game_id": game, "text": "hello"}
     first_tab = await _run(_user(901), [chat] * 5)
     second_tab = await _run(_user(901), [chat])
 
@@ -107,7 +107,7 @@ async def test_rate_limited_move_returns_current_position(game, monkeypatch):
     assert len(socket.events("move_made")) == 1
     error = socket.events("error")[0]
     assert error["code"] == "rate_limited"
-    # Клиент уже нарисовал d2d4 — сервер возвращает позицию после e2e4, чтобы доска синхронизировалась.
+    # The client already drew d2d4 - the server returns the position after e2e4 so the board syncs.
     assert "e4" in error["pgn"] and "d4" not in error["pgn"]
     assert error["state_version"] == 1
 
@@ -120,13 +120,13 @@ async def test_oversized_message_is_rejected():
 
 async def test_garbage_does_not_break_the_connection():
     socket = await _run(_user(904), ["not json", "[1, 2]", {"action": "leave_queue"}])
-    assert socket.events("queue_left")  # соединение живо, следующее действие выполнено
+    assert socket.events("queue_left")  # the connection is alive, the next action was executed
     assert socket.closed_with is None
 
 
 async def test_flooding_connection_is_closed(monkeypatch):
     monkeypatch.setattr(ws_module, "WS_MAX_STRIKES", 5)
-    socket = await _run(_user(905), ["garbage"] * 5, close=False)  # эндпоинт завершается сам
+    socket = await _run(_user(905), ["garbage"] * 5, close=False)  # the endpoint finishes on its own
     assert socket.closed_with == ws_module.WS_CLOSE_FLOOD
 
 
@@ -135,12 +135,12 @@ async def test_draw_can_be_offered_once_per_move(game):
     socket = await _run(_user(901), [offer, offer])
     assert socket.events("error")[0]["code"] == "draw_offer_too_soon"
 
-    # Соперник отклонил, позиция не изменилась — повторить нельзя.
+    # The opponent declined, the position did not change - cannot repeat.
     await state_manager.update_game_state(game, {"draw_offer": ""})
     socket = await _run(_user(901), [offer])
     assert socket.events("error")[0]["code"] == "draw_offer_too_soon"
 
-    # После хода — снова можно.
+    # After a move - possible again.
     await state_manager.update_game_state(game, {"state_version": "2"})
     socket = await _run(_user(901), [offer])
     assert not socket.events("error")
@@ -149,7 +149,7 @@ async def test_draw_can_be_offered_once_per_move(game):
 
 
 async def test_chat_preset_is_relayed_as_a_code(game):
-    """Быстрая фраза уходит кодом: каждый увидит её на своём языке."""
+    """A quick phrase goes as a code: everyone sees it in their own language."""
     socket = await _run(_user(901), [{"action": "chat_message", "game_id": game, "preset": "good_luck"}])
     (message,) = socket.events("chat_message")
     assert message["preset"] == "good_luck" and message["text"] == ""
@@ -157,15 +157,15 @@ async def test_chat_preset_is_relayed_as_a_code(game):
 
 @pytest.mark.parametrize("preset", ["unknown", "", 5, None])
 async def test_unknown_chat_preset_is_ignored(game, preset):
-    """Неизвестный код — не сообщение; None без текста — тоже пустое сообщение."""
+    """Unknown code - not a message; None without text - also an empty message."""
     socket = await _run(_user(901), [{"action": "chat_message", "game_id": game, "preset": preset}])
     assert socket.events("chat_message") == []
 
 
 
 async def test_ws_error_is_a_code_with_params_and_english_message(game):
-    """Отказ действия — код из реестра: текст на языке игрока соберёт клиент."""
-    socket = await _run(_user(950), [{"action": "chat_message", "game_id": game, "text": "привет"}])
+    """An action refusal is a code from the registry: the client builds the text in the player's language."""
+    socket = await _run(_user(950), [{"action": "chat_message", "game_id": game, "text": "hello"}])
     (error,) = socket.events("error")
     assert error == {
         "event": "error", "code": "chat_forbidden", "params": {},
@@ -174,7 +174,7 @@ async def test_ws_error_is_a_code_with_params_and_english_message(game):
 
 
 async def test_rejected_move_has_no_code_but_returns_the_position(game):
-    """Отказ в ходе — без кода (клиент не показывает текст), но с позицией для синхронизации доски."""
+    """A move refusal has no code (the client shows no text), but carries the position to sync the board."""
     socket = await _run(_user(902), [{"action": "make_move", "game_id": game, "move": "e7e5", "state_version": 0}])
     (error,) = socket.events("error")
     assert "code" not in error

@@ -1,11 +1,11 @@
 // --- FILE: frontend/src/components/xray/XrayOverlay.tsx ---
-// Слой «рентгена» поверх доски (таск 12.1). Каждый режим отличается не только цветом: контроль — штриховкой и числом
-// перевеса, фигуры под ударом — треугольником, перегрузка — пунктиром к обязанностям, связки — пунктирной линией и
-// кольцом, взятия — толщиной стрелки, мат — толстой стрелкой и пунктирной рамкой поля, пешки — значками.
-// Данные — из services/xray/xrayUtils.ts (xrayFor, destinationSafety): всё считается в браузере по FEN, без сервера
-// и движка. Слой кладётся поверх доски (SVG 100×100, клик не перехватывает); подключают Chessboard.tsx, GameViewer.tsx
-// и chessboard/AuxBoard.tsx. Включённые режимы — из useXraySettings.
-// Без включённых режимов слой ничего не рисует; отчёт пересчитывается при смене позиции или стороны.
+// "X-ray" layer over the board (task 12.1). Each mode differs not only by colour: control - by hatching and the number
+// of surplus attackers, pieces under attack - by a triangle, overload - by a dashed line to the duties, pins - by a dashed line and
+// a ring, captures - by arrow thickness, mate - by a thick arrow and a dashed square border, pawns - by badges.
+// Data comes from services/xray/xrayUtils.ts (xrayFor, destinationSafety): everything is computed in the browser from FEN, without a server
+// or engine. The layer sits over the board (SVG 100x100, does not intercept clicks); used by Chessboard.tsx, GameViewer.tsx
+// and chessboard/AuxBoard.tsx. Enabled modes come from useXraySettings.
+// With no modes enabled the layer draws nothing; the report is recomputed when the position or side changes.
 
 import {useMemo} from 'react';
 import {squareCenter} from '../chessboard/CoachArrowsOverlay';
@@ -13,18 +13,18 @@ import {destinationSafety, xrayFor} from '../../services/xray/xrayUtils';
 import type {Color} from '../../services/xray/xrayUtils';
 import type {XrayMode} from './useXraySettings';
 
-/** Параметры слоя: позиция, сторона просмотра, включённые режимы и ориентация доски. */
+/** Layer parameters: position, viewing side, enabled modes and board orientation. */
 interface Props {
     fen: string;
-    /** За какую сторону смотреть. */
+    /** Which side to look from. */
     side: Color;
     modes: Set<XrayMode>;
     flipped: boolean;
-    /** Выбранная фигура — для безопасных и опасных полей. */
+    /** Selected piece - for safe and dangerous squares. */
     selectedSquare?: string | null;
 }
 
-/** Цвета режимов (rgba): по ним же строятся наконечники стрелок xray-head-<имя>; white/black — заливка контроля. */
+/** Mode colours (rgba): arrowheads xray-head-<name> are built from them too; white/black - control fill. */
 const COLORS = {
     white: 'rgba(56, 189, 248, 0.32)',
     black: 'rgba(244, 63, 94, 0.30)',
@@ -36,10 +36,10 @@ const COLORS = {
     hanging: 'rgba(250, 204, 21, 0.95)',
 };
 
-/** Сторона поля в координатах SVG (100 / 8). */
+/** Square side in SVG coordinates (100 / 8). */
 const SQUARE = 12.5;
 
-/** Параметры стрелки слоя: ключ marker выбирает наконечник из defs. */
+/** Arrow parameters of the layer: the marker key picks the arrowhead from defs. */
 interface ArrowProps {
     from: string;
     to: string;
@@ -51,7 +51,7 @@ interface ArrowProps {
     testId?: string;
 }
 
-/** Линия от поля from к полю to с наконечником; для поля вне доски ничего не рисует. */
+/** Line from square from to square to with an arrowhead; draws nothing for a square off the board. */
 function Arrow({from, to, flipped, color, width, marker, dashed, testId}: ArrowProps) {
     const start = squareCenter(from, flipped);
     const end = squareCenter(to, flipped);

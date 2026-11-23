@@ -1,7 +1,8 @@
 # --- FILE: tests/test_defense_drills.py ---
 """
-Защитные упражнения (таск 13.6): критерии отбора, готовая выборка data/puzzles/defense_drills.csv.gz и API
-«Что грозит соперник?» / «Не зевни» — угроза и верные ходы не уходят клиенту до ответа, прогресс темы считается.
+Defense drills (task 13.6): selection criteria, the ready sample data/puzzles/defense_drills.csv.gz and the API
+"What does the opponent threaten?" / "Don't blunder" - the threat and correct moves are withheld until an answer,
+topic progress is counted.
 """
 
 import itertools
@@ -34,10 +35,10 @@ def _auth(token: str) -> dict:
     return {"Authorization": f"Bearer {token}"}
 
 
-# --- критерии отбора на поддельной оценке ----------------------------------------------------------------------
+# --- selection criteria on a fake evaluation -------------------------------------------------------------------
 
 def _fake_analyse(table: dict[str, dict[str, int]]) -> drills.Analyse:
-    """Оценки по позиции (fen без счётчиков) — как движок: лучшие multipv ходов, только среди moves, если заданы."""
+    """Evaluations per position (fen without counters) - like an engine: the best multipv moves, only among moves if given."""
 
     def analyse(board: chess.Board, multipv: int, moves: list[str] | None) -> drills.MoveScores:
         scores = table[board.board_fen() + (" w" if board.turn else " b")]
@@ -80,10 +81,10 @@ def test_threat_rejected_when_any_move_defends_or_threat_is_weak():
     legal = [m.uci() for m in defender.legal_moves]
     everything_defends = {_key(attacker): {moves[1]: 500}, _key(defender): {uci: 0 for uci in legal}}
     assert drills.threat_drill(row["FEN"], moves, _fake_analyse(everything_defends)) is None
-    # «Ничего не делать» почти не хуже лучшей защиты — угрозы нет.
+    # "Doing nothing" is barely worse than the best defence - there is no threat.
     weak = {_key(attacker): {moves[1]: 100}, _key(defender): {legal[0]: 0, **{u: -500 for u in legal[1:]}}}
     assert drills.threat_drill(row["FEN"], moves, _fake_analyse(weak)) is None
-    # Тактика задачи — не лучший ход соперника: угроза не определена однозначно.
+    # The puzzle tactic is not the opponent's best move: the threat is not defined unambiguously.
     other_best = {_key(attacker): {moves[1]: 300, "x1": 600}, _key(defender): {legal[0]: 0}}
     assert drills.threat_drill(row["FEN"], moves, _fake_analyse(other_best)) is None
 
@@ -99,20 +100,20 @@ def test_blunder_drill_offers_safe_blunder_and_natural_trap():
     drill = drills.blunder_drill(row["FEN"], row["Moves"].split(), _fake_analyse({_key(board): deep}),
                                  _fake_analyse({_key(board): looks}), seed="x")
     assert drill is not None
-    assert sorted(drill["choices"]) == sorted([safe, blunder, trap])  # ход-нелепица не предлагается
+    assert sorted(drill["choices"]) == sorted([safe, blunder, trap])  # a nonsense move is not offered
     assert drill["good"] == [safe]
     assert set(drill["refutations"]) == {blunder, trap}
-    # Зевок на самом деле не проигрывает — упражнения нет.
+    # The blunder does not actually lose - no drill.
     mild = {**deep, blunder: -100}
     assert drills.blunder_drill(row["FEN"], row["Moves"].split(), _fake_analyse({_key(board): mild}),
                                 _fake_analyse({_key(board): looks}), seed="x") is None
-    # «Ловушка» хуже лучшего на 300, но всё ещё выигрывает (+3): это не зевок — упражнения нет.
+    # The "trap" is 300 worse than the best but still wins (+3): it is not a blunder - no drill.
     still_winning = {safe: 600, blunder: -400, trap: 300, absurd: -900}
     assert drills.blunder_drill(row["FEN"], row["Moves"].split(), _fake_analyse({_key(board): still_winning}),
                                 _fake_analyse({_key(board): looks}), seed="x") is None
 
 
-# --- готовая выборка -----------------------------------------------------------------------------------------
+# --- ready sample --------------------------------------------------------------------------------------------
 
 def test_dataset_size_coverage_and_validity():
     assert len(ROWS) >= 500
@@ -121,7 +122,7 @@ def test_dataset_size_coverage_and_validity():
             assert sum(1 for r in ROWS if r["Kind"] == kind and int(r["Stage"]) == stage) >= 50, (kind, stage)
     invalid = [row["SourceId"] for row in ROWS if not drills.validate_drill_row(row)]
     assert invalid == []
-    # Упражнения построены из задач выборки, без повторов внутри вида.
+    # Drills are built from the sample puzzles, with no repeats within a kind.
     assert all(row["SourceId"] in SUBSET for row in ROWS)
     keys = [(row["Kind"], row["SourceId"]) for row in ROWS]
     assert len(keys) == len(set(keys))
@@ -129,13 +130,14 @@ def test_dataset_size_coverage_and_validity():
 
 @pytest.mark.skipif(resolve_stockfish_path() is None, reason="Stockfish binary not available")
 def test_sample_rechecked_by_engine():
-    """Выборочная перепроверка движком той же проверкой, что и при сборке: верный ход лучше неверных."""
+    """Spot re-check by the engine with the same check as at build time: the correct move is better than the wrong ones."""
     sample = [*itertools.islice((r for r in ROWS if r["Kind"] == "blunder"), 0, 400, 100),
               *itertools.islice((r for r in ROWS if r["Kind"] == "threat"), 0, 400, 100)]
     with chess.engine.SimpleEngine.popen_uci(resolve_stockfish_path()) as engine:
         score_after = make_score_after(engine, depth=16)
-        # Допуски вдвое мягче сборки: у другой версии Stockfish (в CI — из пакетов) пограничные оценки расходятся,
-        # а грубую ошибку («проигрывающий» ход на деле выигрывает) проверка всё равно ловит.
+        # Tolerances are twice as lenient as the build: another Stockfish version (in CI - from packages)
+        # diverges on borderline evaluations,
+        # but a gross error (a "losing" move that actually wins) is still caught by the check.
         failed = [row["SourceId"] for row in sample if not drills.verify_drill(
             row, score_after, margin=drills.VERIFY_MARGIN // 2, losing=drills.LOSING // 2)]
     assert failed == []
@@ -175,7 +177,7 @@ async def test_threat_drill_found_and_defended_counts_clean(client, token_user_1
                        headers=_auth(token_user_1)).json()
     assert body["correct"] and body["clean"]
     assert body["training"]["theme"] == "find_the_threat" and body["training"]["recent"] == "1"
-    # Упражнение закончено — ответы по нему больше не принимаются.
+    # The drill is finished - answers to it are no longer accepted.
     again = client.post(f"{API}/defense/{view['id']}/answer", json={"move": row["Good"].split()[0]},
                         headers=_auth(token_user_1))
     assert again.status_code == 409 and again.json()["detail"]["code"] == "drill_not_active"
@@ -184,7 +186,7 @@ async def test_threat_drill_found_and_defended_counts_clean(client, token_user_1
 async def test_missed_threat_makes_the_attempt_not_clean(client, token_user_1, seeded):
     row = seeded["threat"]
     view = _next(client, token_user_1, "threat")
-    # Сначала — угроза: защищаться до неё нельзя.
+    # The threat comes first: defending before it is not allowed.
     early = client.post(f"{API}/defense/{view['id']}/answer", json={"move": row["Good"].split()[0]},
                         headers=_auth(token_user_1))
     assert early.status_code == 409 and early.json()["detail"]["code"] == "drill_wrong_step"
@@ -232,7 +234,7 @@ async def test_import_is_idempotent(db_session, seeded):
 
 
 async def test_import_syncs_with_the_dataset(db_session, seeded):
-    """Изменённое упражнение обновляется, выпавшее из выборки (забраковано перепроверкой) — удаляется."""
+    """A changed drill is updated, one that dropped out of the sample (rejected by the re-check) is deleted."""
     from sqlalchemy import select
 
     from src.models.puzzle import DefenseDrill
@@ -245,14 +247,14 @@ async def test_import_syncs_with_the_dataset(db_session, seeded):
     assert [(d.kind, d.rating) for d in stored] == [("threat", 2222)]
 
 
-# --- Дополнительное покрытие: отказы отбора, файл выборки, проверка строк, выдача и ответы -------------------------
+# --- Extra coverage: selection refusals, the sample file, row validation, serving and answers ----------------------
 
 
 
 
 
 def _scripted(table: dict[str, dict[str, tuple[int, str | None]]]) -> drills.Analyse:
-    """Оценки с произвольным ответом соперника (в том числе None) — для проверки отказов."""
+    """Evaluations with an arbitrary opponent reply (including None) - for checking refusals."""
 
     def analyse(board: chess.Board, multipv: int, moves: list[str] | None) -> drills.MoveScores:
         scores = table.get(_key(board), {})
@@ -263,9 +265,9 @@ def _scripted(table: dict[str, dict[str, tuple[int, str | None]]]) -> drills.Ana
 
 
 def test_defender_position_refuses_checks_and_cramped_defender():
-    # Ошибка даёт шах — «что грозит соперник» не построить.
+    # The mistake gives check - "what does the opponent threaten" cannot be built.
     assert drills.defender_position("4k3/8/8/8/8/8/4R3/4K3 w - - 0 1", ["e2e7"]) is None
-    # После пустого хода у обороняющегося единственный легальный ход — выбирать не из чего.
+    # After a null move the defender has a single legal move - nothing to choose from.
     assert drills.defender_position("k7/8/8/8/8/P5q1/8/7K w - - 0 1", ["a3a4"]) is None
 
 
@@ -276,18 +278,18 @@ def test_threat_drill_refusals_and_threat_outside_top():
     legal = [m.uci() for m in defender.legal_moves]
     good_defense = {legal[0]: (20, None), **{uci: (-600, None) for uci in legal[1:]}}
     fen = row["FEN"]
-    assert drills.threat_drill(fen, moves, _scripted({})) is None  # движок молчит об атаке
-    # Угрозы нет среди лучших ходов, и отдельная оценка её не даёт.
+    assert drills.threat_drill(fen, moves, _scripted({})) is None  # the engine is silent about the attack
+    # The threat is not among the best moves, and a separate evaluation does not provide it.
     assert drills.threat_drill(fen, moves, _scripted({_key(attacker): {"x1": (500, None)}})) is None
 
-    # Угроза вне лучших ходов, но оценивается отдельно, — упражнение строится.
+    # The threat is outside the best moves, but is evaluated separately - the drill is built.
     def with_separate_threat(board, multipv, only):
         if board.fen() == attacker.fen() and only == [threat]:
             return {threat: (500, None)}
         return _scripted({_key(attacker): {"x1": (500, None)}, _key(defender): good_defense})(board, multipv, only)
 
     assert drills.threat_drill(fen, moves, with_separate_threat)["threat"] == threat
-    # Нет оценки защит / позиция уже проиграна / защит слишком много.
+    # No defence evaluation / position already lost / too many defences.
     attack_only = {_key(attacker): {threat: (500, None)}}
     assert drills.threat_drill(fen, moves, _scripted(attack_only)) is None
     lost = {**attack_only, _key(defender): {uci: (-900, None) for uci in legal}}
@@ -310,14 +312,14 @@ def test_blunder_drill_refusals():
     def run(deep_table, looks_table):
         return drills.blunder_drill(row["FEN"], moves, _scripted({key: deep_table}), _scripted({key: looks_table}), "s")
 
-    assert run({}, looks) is None  # нет оценки
-    assert run({blunder: (50, None)}, looks) is None  # лучший ход и есть зевок
-    assert run({safe: (-900, None)}, looks) is None  # позиция уже проиграна
-    assert run(deep, {}) is None  # мелкий поиск пуст
-    assert run(deep, {safe: (30, None), blunder: (40, None)}) is None  # естественной ловушки нет
-    assert run({safe: (50, None), trap: (-350, "a1a2")}, looks) is None  # зевок не оценён глубоко
-    assert run({safe: (50, None), blunder: (-400, "a1a2"), trap: (0, None)}, looks) is None  # ловушка не проигрывает
-    assert run({**deep, trap: (-350, None)}, looks) is None  # нет опровержения
+    assert run({}, looks) is None  # no evaluation
+    assert run({blunder: (50, None)}, looks) is None  # the best move is the blunder
+    assert run({safe: (-900, None)}, looks) is None  # position already lost
+    assert run(deep, {}) is None  # shallow search is empty
+    assert run(deep, {safe: (30, None), blunder: (40, None)}) is None  # no natural trap
+    assert run({safe: (50, None), trap: (-350, "a1a2")}, looks) is None  # blunder not evaluated deeply
+    assert run({safe: (50, None), blunder: (-400, "a1a2"), trap: (0, None)}, looks) is None  # the trap does not lose
+    assert run({**deep, trap: (-350, None)}, looks) is None  # no refutation
 
 
 def test_write_and_read_drills_roundtrip(tmp_path: pathlib.Path):
@@ -332,10 +334,10 @@ def test_validate_drill_row_rejections():
     assert not drills.validate_drill_row({**threat, "Kind": "other"})
     assert not drills.validate_drill_row({**threat, "FEN": "not a fen"})
     assert not drills.validate_drill_row({**threat, "Good": ""})
-    assert not drills.validate_drill_row({**threat, "Threat": "a1a1"})  # угроза нелегальна для соперника
+    assert not drills.validate_drill_row({**threat, "Threat": "a1a1"})  # the threat is illegal for the opponent
     assert not drills.validate_drill_row({**blunder, "Choices": blunder["Choices"].split()[0]})
-    assert not drills.validate_drill_row({k: v for k, v in threat.items() if k != "Good"})  # нет столбца
-    assert not drills.validate_drill_row({**blunder, "Refutations": "a1a2"})  # пара без разделителя
+    assert not drills.validate_drill_row({k: v for k, v in threat.items() if k != "Good"})  # no column
+    assert not drills.validate_drill_row({**blunder, "Refutations": "a1a2"})  # a pair without a separator
 
 
 async def test_import_without_prune_and_duplicate_rows(db_session, seeded):
@@ -350,9 +352,9 @@ async def test_pick_falls_back_to_other_stage_and_reports_empty_base(db_session,
     assert empty.value.status == 404
     await drills.import_drills(db_session, [_first("threat")])
     first = await drills.pick(db_session, test_user_1, "threat")
-    again = await drills.pick(db_session, test_user_1, "threat")  # недавнее исключено, но других нет — повтор
+    again = await drills.pick(db_session, test_user_1, "threat")  # recent excluded, but there are no others - repeat
     assert first.id == again.id
-    # На своей ступени упражнений нет — берётся любое этого вида.
+    # No drills at their own level - any of this kind is taken.
     first.stage = first.stage % 4 + 1
     await db_session.commit()
     assert (await drills.pick(db_session, test_user_1, "threat")).id == first.id
@@ -367,7 +369,7 @@ async def test_answer_and_threat_input_errors(client, db_session, token_user_1, 
     for move in ("zzzz", "a1a1"):
         response = client.post(f"{API}/defense/{view['id']}/answer", json={"move": move}, headers=_auth(token_user_1))
         assert response.status_code in (400, 422)
-    # Упражнение удалено, пока игрок его решал: запись об активном упражнении сбрасывается.
+    # The drill was deleted while the player was solving it: the record of the active drill is reset.
     await db_session.execute(DefenseDrill.__table__.delete())
     await db_session.commit()
     with pytest.raises(PuzzleError):

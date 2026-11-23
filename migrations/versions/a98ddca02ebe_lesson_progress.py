@@ -2,8 +2,8 @@
 
 """lesson_progress
 
-Школа (таск 14.1): прогресс уроков игрока — дальний шаг, завершение и лучший результат контрольных вопросов.
-Сами уроки — данные клиента (frontend/src/content/lessons).
+School (task 14.1): a player's lesson progress - furthest step, completion and the best result of the quiz questions.
+The lessons themselves are client data (frontend/src/content/lessons).
 
 Revision ID: a98ddca02ebe
 Revises: a2c4e6f8b0d1

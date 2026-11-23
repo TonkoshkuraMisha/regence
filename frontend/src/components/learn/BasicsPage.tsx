@@ -1,10 +1,10 @@
 // --- FILE: frontend/src/components/learn/BasicsPage.tsx ---
-// Азбука (таск 14.5): /learn/basics — разделы с прогрессом, /learn/basics/:sectionId — уровни раздела по порядку.
-// Крупная доска, без таймеров. Прогресс раздела хранится на сервере как прогресс урока «basics-…» (вошедшим), лучшие
-// оценки уровней (1–3 звезды) — в браузере.
-// Данные: уровни и правила — content/basics/levels.ts и rules.ts (чистые правила, без сети); прогресс — services/lessonProgress.ts
-// (урок «basics-<раздел>»; шаг = число пройденных уровней, сервер хранит наибольший), оценки — localStorage (RATINGS_KEY).
-// Страницы подключены в App.tsx.
+// ABC (task 14.5): /learn/basics shows sections with progress, /learn/basics/:sectionId shows the section's levels in order.
+// A large board, no timers. Section progress is stored on the server as the progress of a "basics-..." lesson (for signed-in users), the best
+// level ratings (1-3 stars) in the browser.
+// Data: levels and rules are content/basics/levels.ts and rules.ts (pure rules, no network); progress is services/lessonProgress.ts
+// (lesson "basics-<section>"; step = number of completed levels, the server keeps the largest), ratings are localStorage (RATINGS_KEY).
+// The pages are wired in App.tsx.
 
 import {useEffect, useMemo, useState} from 'react';
 import {Link, useParams} from 'react-router-dom';
@@ -21,14 +21,14 @@ import {boardState, goalMove, rating, starsMove, starsPar} from '../../content/b
 import type {BoardState, Level} from '../../content/basics/rules';
 import {PuzzleBoard} from '../puzzles/PuzzleBoard';
 
-/** localStorage: лучшая оценка (1–3 звезды) по ключу «раздел:номер уровня»; только в этом браузере, сервер оценок не знает. */
+/** localStorage: best rating (1-3 stars) by the key "section:level number"; only in this browser, the server knows nothing of ratings. */
 const RATINGS_KEY = 'regence.basics.ratings';
-/** Сколько показывать неверный ход на доске (мс), прежде чем вернуть позицию задания. */
+/** How long to show a wrong move on the board (ms) before restoring the task position. */
 const WRONG_MOVE_SHOW_MS = 900;
-/** Варианты ответа в уровнях «определи состояние доски»; порядок — порядок кнопок. */
+/** Answer options in "identify the board state" levels; the order is the button order. */
 const STATES: BoardState[] = ['check', 'mate', 'stalemate', 'none'];
 
-/** Оценки уровней из localStorage; недоступное или повреждённое хранилище даёт пустой объект. */
+/** Level ratings from localStorage; unavailable or corrupted storage gives an empty object. */
 function loadRatings(): Record<string, number> {
     try {
         return JSON.parse(localStorage.getItem(RATINGS_KEY) ?? '{}') as Record<string, number>;
@@ -37,18 +37,18 @@ function loadRatings(): Record<string, number> {
     }
 }
 
-/** Запоминает оценку уровня, только если она лучше прежней: оценка не снижается при повторном прохождении. */
+/** Remembers a level rating only if it is better than the previous one: the rating does not drop on a repeat run. */
 function saveRating(key: string, value: number) {
     try {
         const all = loadRatings();
         all[key] = Math.max(all[key] ?? 0, value);
         localStorage.setItem(RATINGS_KEY, JSON.stringify(all));
     } catch {
-        // хранилище недоступно — оценка просто не запомнится
+        // storage unavailable: the rating is simply not remembered
     }
 }
 
-/** Прогресс уроков вошедшего по lesson_id; гость — пустой объект, запроса нет. */
+/** Lesson progress of a signed-in user by lesson_id; a guest gets an empty object, no request. */
 function useBasicsProgress(): Record<string, LessonProgress> {
     const [progress, setProgress] = useState<Record<string, LessonProgress>>({});
     useEffect(() => {
@@ -65,13 +65,13 @@ function useBasicsProgress(): Record<string, LessonProgress> {
     return progress;
 }
 
-/** Сколько уровней раздела пройдено: у завершённого — все (сервер хранит у него step = последний), иначе значение step. */
+/** How many levels of a section are completed: for a finished one, all (the server keeps step = the last one), otherwise the step value. */
 function levelsDone(saved: LessonProgress | undefined): number {
     if (!saved) return 0;
     return saved.completed ? saved.steps_total : saved.step;
 }
 
-/** Список разделов азбуки: пройдено N из M и сумма звёзд; когда пройдены все — ссылка к задачам по темам. */
+/** List of ABC sections: N of M completed and the sum of stars; when all are completed, a link to puzzles by theme. */
 export function BasicsPage() {
     const {t} = useI18n();
     const progress = useBasicsProgress();
@@ -109,13 +109,13 @@ export function BasicsPage() {
     );
 }
 
-/** Сообщение под доской: ключ каталога и признак «верно» (определяет цвет). */
+/** Message under the board: a catalog key and a "correct" flag (determines the colour). */
 type Feedback = { key: MessageKey; ok: boolean } | null;
 
 /**
- * Один уровень азбуки. Виды (level.kind): stars — взять фигурой все отмеченные поля, оценка по числу ходов против par;
- * goal — достичь цели (мат, пат и т. п.) одним ходом; question — определить состояние доски по кнопке. Состояние сбрасывается
- * сменой key у родителя.
+ * One ABC level. Kinds (level.kind): stars means capture all marked squares with a piece, rated by the number of moves against par;
+ * goal means reach a goal (mate, stalemate etc.) in one move; question means identify the board state with a button. The state is reset
+ * by changing key in the parent.
  */
 function LevelPlayer({level, onSolved}: { level: Level; onSolved: (stars: 1 | 2 | 3) => void }) {
     const {t} = useI18n();
@@ -225,15 +225,15 @@ function LevelPlayer({level, onSolved}: { level: Level; onSolved: (stars: 1 | 2 
     );
 }
 
-/** Уровень про взятие: на звёздах стоят фигуры соперника. */
+/** Capture level: the opponent's pieces stand on the stars. */
 function isCaptureLevel(level: Extract<Level, { kind: 'stars' }>): boolean {
     const game = new Chess(level.fen);
     return level.stars.some((square) => game.get(square as Square));
 }
 
 /**
- * Уровни одного раздела по порядку. Каждый решённый уровень сохраняет оценку в браузере и прогресс на сервере
- * (последний уровень закрывает раздел); незнакомый sectionId — «не найдено».
+ * Levels of one section in order. Each solved level saves its rating in the browser and progress on the server
+ * (the last level closes the section); an unknown sectionId gives "not found".
  */
 export function BasicsSectionPage() {
     const {t} = useI18n();

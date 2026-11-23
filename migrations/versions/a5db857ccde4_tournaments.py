@@ -2,8 +2,8 @@
 
 """tournaments
 
-Турниры с историческими мастерами (таск 15.1): турнир (формат, размер, контроль, текущий круг), участники с
-посевом (игрок, исторический бот, архетип или копия персоналии мастерской) и партии турнира со стадией матча.
+Tournaments with historical masters (task 15.1): a tournament (format, size, time control, current round), participants with
+a seed (player, historical bot, archetype or a copy of a workshop personality) and tournament games with a match stage.
 
 Revision ID: a5db857ccde4
 Revises: a98ddca02ebe

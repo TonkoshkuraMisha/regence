@@ -1,19 +1,19 @@
 // --- FILE: frontend/src/services/openingExplorer.ts ---
-// Справочник дебютов (таск 16.2): POST /analysis/opening-explorer — ходы из позиции со статистикой партий, название
-// дебюта и партии мастеров из архива и библиотеки. Под правилом честной игры: во время партии с человеком сервер
-// отвечает 409.
-// Маршрут — src/api/analysis.py, расчёт — src/services/opening_explorer.py: статистика берётся из индекса позиций
-// сыгранных партий (таблицы position_stats и position_games), название — из открытой таблицы дебютов.
+// Opening explorer (task 16.2): POST /analysis/opening-explorer — moves from a position with game statistics, the opening
+// name and master games from the archive and the library. Under the fair play rule: during a game against a human the server
+// answers 409.
+// Route — src/api/analysis.py, computation — src/services/opening_explorer.py: statistics come from the position index
+// of played games (tables position_stats and position_games), the name — from the open openings table.
 
 import {apiRequest} from './http';
 
-/** Дебют по таблице дебютов: код ECO и английское название (имя собственное, не переводится). */
+/** Opening by the openings table: ECO code and English name (a proper noun, not translated). */
 export interface ExplorerOpening {
     eco: string;
     name: string;
 }
 
-/** Ход из позиции и итоги партий, в которых он встретился. */
+/** Move from a position and the results of games in which it occurred. */
 export interface ExplorerMove {
     uci: string;
     san: string;
@@ -21,14 +21,14 @@ export interface ExplorerMove {
     white_wins: number;
     draws: number;
     black_wins: number;
-    /** Название дебюта после этого хода, если оно другое. */
+    /** Opening name after this move, if it is different. */
     opening: ExplorerOpening | null;
 }
 
 /**
- * Партия мастеров, прошедшая через позицию: из архива чемпионов (id — партия сайта, просмотр /game/{id}) или из
- * публичной коллекции библиотеки (id — партия библиотеки, /library/game/{id}). Повтор одной партии в обоих местах
- * сервер показывает один раз — партией библиотеки (src/services/opening_explorer.merge_examples).
+ * Master game that passed through the position: from the champions' archive (id — site game, view /game/{id}) or from the
+ * public library collection (id — library game, /library/game/{id}). A repeat of one game in both places is
+ * shown by the server once — as the library game (src/services/opening_explorer.merge_examples).
  */
 export interface ExplorerGame {
     id: number;
@@ -38,25 +38,25 @@ export interface ExplorerGame {
     result: string | null;
     eco: string | null;
     source: 'archive' | 'library';
-    /** Только у партий библиотеки: есть объяснения, которые видит игрок. */
+    /** Only for library games: there are explanations the player can see. */
     annotated?: boolean;
 }
 
-/** Ответ справочника по позиции после присланных ходов. */
+/** Explorer response for a position after the sent moves. */
 export interface ExplorerResult {
     fen: string;
-    /** Дебют текущей позиции; null — позиции в таблице дебютов нет. */
+    /** Opening of the current position; null — the position is not in the openings table. */
     opening: ExplorerOpening | null;
     moves: ExplorerMove[];
     games: ExplorerGame[];
 }
 
-/** Справочник по позиции: moves — ходы от начальной позиции в UCI. Отказ сервера — UiError с текстом по коду. */
+/** Explorer for a position: moves — moves from the initial position in UCI. A server refusal — UiError with text by code. */
 export function exploreOpening(moves: string[]): Promise<ExplorerResult> {
     return apiRequest<ExplorerResult>('/analysis/opening-explorer', {method: 'POST', body: JSON.stringify({moves})});
 }
 
-/** Доли побед белых, ничьих и побед чёрных в процентах (сумма — 100: ничьим достаётся остаток от округления). */
+/** Shares of White wins, draws and Black wins in percent (the sum is 100: draws get the rounding remainder). */
 export function shares(move: Pick<ExplorerMove, 'games' | 'white_wins' | 'draws' | 'black_wins'>): [number, number, number] {
     if (!move.games) return [0, 0, 0];
     const white = Math.round((move.white_wins / move.games) * 100);

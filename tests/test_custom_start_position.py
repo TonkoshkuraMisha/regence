@@ -1,7 +1,7 @@
 # --- FILE: tests/test_custom_start_position.py ---
 """
-Партия с ботом и анализ с произвольной начальной позиции: ходы проверяются от неё, PGN получает
-заголовки SetUp/FEN, разбор партии нумерует ходы по доске, невозможные позиции отклоняются.
+A bot game and analysis from an arbitrary starting position: moves are validated from it, the PGN gets
+SetUp/FEN headers, game review numbers moves by the board, impossible positions are rejected.
 """
 
 import io
@@ -22,9 +22,9 @@ from src.services.game_engine import (
 )
 
 API = "/api/v1"
-# Король и ферзь против короля, ход белых: Qa7# — мат в один ход.
+# King and queen against king, white to move: Qa7# is mate in one.
 KQ_VS_K = "k7/7Q/1K6/8/8/8/8/8 w - - 0 1"
-# Та же идея с ходом чёрных и номером хода 40: партия начинается «с середины».
+# The same idea with black to move and move number 40: the game starts "from the middle".
 BLACK_TO_MOVE = "6k1/5ppp/8/8/8/8/5PPP/3R2K1 b - - 0 40"
 
 
@@ -37,7 +37,7 @@ def _save(client, token, **body):
     return client.post(f"{API}/bots/save-game", json=payload, headers=_auth(token))
 
 
-# --- доска из FEN -------------------------------------------------------------------------
+# --- board from FEN -----------------------------------------------------------------------
 
 
 @pytest.mark.parametrize("fen", [None, "", "   ", STARTING_FEN])
@@ -48,9 +48,9 @@ def test_missing_or_standard_fen_gives_the_usual_setup(fen):
 
 @pytest.mark.parametrize("fen", [
     "not a fen",
-    "8/8/8/8/8/8/8/8 w - - 0 1",        # нет королей
-    "kK6/8/8/8/8/8/8/8 w - - 0 1",      # короли рядом
-    "4k3/8/8/8/8/8/8/r3K3 b - - 0 1",   # белый король под шахом, а ход чёрных
+    "8/8/8/8/8/8/8/8 w - - 0 1",        # no kings
+    "kK6/8/8/8/8/8/8/8 w - - 0 1",      # kings adjacent
+    "4k3/8/8/8/8/8/8/r3K3 b - - 0 1",   # white king in check, but black to move
 ])
 def test_impossible_positions_are_rejected(fen):
     with pytest.raises(InvalidStartPositionError):
@@ -62,26 +62,26 @@ def test_legal_position_with_black_to_move_is_accepted():
     assert board.turn == chess.BLACK and board.fullmove_number == 40 and not is_standard_start(board)
 
 
-# --- сохранение партии с ботом --------------------------------------------------------------
+# --- saving a bot game ----------------------------------------------------------------------
 
 
 async def test_bot_game_from_a_position_is_saved_with_setup_headers(client, db_session, token_user_1):
     response = _save(client, token_user_1, moves_uci=["h7a7"], start_fen=KQ_VS_K)
 
     assert response.status_code == 200
-    assert response.json()["result"] == "1-0"  # мат найден сервером от заданной позиции
+    assert response.json()["result"] == "1-0"  # mate found by the server from the given position
 
     game = await db_session.get(Game, response.json()["game_id"])
     parsed = chess.pgn.read_game(io.StringIO(game.pgn))
     assert parsed.headers["SetUp"] == "1" and parsed.headers["FEN"] == KQ_VS_K
-    assert "ECO" not in parsed.headers and game.eco is None  # у позиции «с середины» дебюта нет
+    assert "ECO" not in parsed.headers and game.eco is None  # a "from the middle" position has no opening
     assert parsed.board().fen() == KQ_VS_K
     assert parsed.end().board().is_checkmate()
     assert game.board_fen == parsed.end().board().fen()
 
 
 async def test_moves_are_validated_from_the_given_position(client, token_user_1):
-    # e2e4 легален в обычной расстановке, но не в позиции «король и ферзь против короля».
+    # e2e4 is legal in the standard setup, but not in the "king and queen against king" position.
     response = _save(client, token_user_1, moves_uci=["e2e4"], start_fen=KQ_VS_K, termination="resignation")
     assert response.status_code == 400
     assert response.json()["detail"]["code"] == "illegal_history_move"
@@ -109,7 +109,7 @@ async def test_game_without_start_fen_is_unchanged(client, db_session, token_use
     assert response.json()["result"] == "0-1" and "[SetUp" not in game.pgn
 
 
-# --- анализ ---------------------------------------------------------------------------------
+# --- analysis -------------------------------------------------------------------------------
 
 
 def test_position_analysis_accepts_a_start_position(client):
@@ -131,7 +131,7 @@ def test_position_analysis_without_start_fen_still_starts_from_the_usual_setup(c
 
 
 def test_full_game_analysis_numbers_moves_from_the_board(monkeypatch):
-    """Партия с хода чёрных на 40-м ходу: первый полуход — «40... чёрные», а не «1. белые»."""
+    """A game starting with black to move at move 40: the first ply is "40... black", not "1. white"."""
     monkeypatch.setattr("src.services.analysis_service.resolve_stockfish_path", lambda: None)
     board = chess.Board(BLACK_TO_MOVE)
     game = chess.pgn.Game()
@@ -148,7 +148,7 @@ def test_full_game_analysis_numbers_moves_from_the_board(monkeypatch):
     assert [m["ply"] for m in report["moves"]] == [1, 2, 3]
 
 
-# --- validate_start_fen и restore_board -------------------------------------------------------
+# --- validate_start_fen and restore_board -----------------------------------------------------
 
 
 def test_validate_start_fen_returns_canonical_fen():
@@ -172,7 +172,7 @@ def test_restore_board_replays_movetext_from_the_start_position():
     board = restore_board(final.fen(), "40... Kf8 41. Rd8+", start_fen=BLACK_TO_MOVE)
 
     assert board.fen() == final.fen()
-    assert len(board.move_stack) == 2  # история есть — нужна правилам повторения
+    assert len(board.move_stack) == 2  # history exists - needed by the repetition rules
 
 
 def test_restore_board_reads_a_pgn_document_with_setup_headers():
@@ -187,14 +187,14 @@ def test_restore_board_reads_a_pgn_document_with_setup_headers():
 
 def test_restore_board_falls_back_to_the_fen_when_history_does_not_fit():
     final = _board_after(BLACK_TO_MOVE, "Kf8")
-    # Без start_fen ходы переигрываются от обычной расстановки — Kf8 там невозможен.
+    # Without start_fen the moves are replayed from the standard setup - Kf8 is impossible there.
     board = restore_board(final.fen(), "40... Kf8")
     assert board.fen() == final.fen() and board.move_stack == []
 
 
-# --- итог партии с ботом с произвольной позиции ----------------------------------------------
+# --- result of a bot game from an arbitrary position -----------------------------------------
 
-# Ферзь против голого короля: после тихого хода Qh6 партия продолжается.
+# Queen against a bare king: after the quiet move Qh6 the game continues.
 QUIET_MOVE = ["h7h6"]
 
 
@@ -209,7 +209,7 @@ async def test_resignation_from_a_position(client, db_session, token_user_1):
 
 
 async def test_flag_against_a_bare_king_is_a_draw(client, db_session, token_user_1):
-    """У белых упал флаг, но у чёрных один король — мат невозможен, значит ничья (ФИДЕ 6.9)."""
+    """White's flag fell, but black has only a king - mate is impossible, so a draw (FIDE 6.9)."""
     response = _save(client, token_user_1, moves_uci=QUIET_MOVE, start_fen=KQ_VS_K,
                      termination="timeout", result="0-1")
 
@@ -232,11 +232,11 @@ def test_too_long_start_fen_is_rejected_by_the_schema(client):
     assert response.status_code == 422
 
 
-# --- полный разбор партии с произвольной позиции ----------------------------------------------
+# --- full game review from an arbitrary position ----------------------------------------------
 
 
 async def test_full_game_analysis_endpoint_numbers_moves_from_the_position(client, db_session, monkeypatch):
-    """Партия с хода чёрных на 25-м ходу: первый полуход — 25-й ход чёрных, точность считается."""
+    """A game starting with black to move at move 25: the first ply is black's 25th move, accuracy is computed."""
     from src.models.user import User
 
     monkeypatch.setattr("src.services.analysis_service.resolve_stockfish_path", lambda: None)

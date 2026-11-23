@@ -1,7 +1,7 @@
 # --- FILE: tests/test_masters_catalog.py ---
 """
-Каталог мастеров прошлого (таск 28.5): список участников исторических турниров, характер мастера для
-отдельной партии и сохранение такой партии вне турнира.
+Catalog of past masters (task 28.5): the list of historical tournament participants, the master's character for
+a standalone game, and saving such a game outside a tournament.
 """
 
 from src.services.bots.guests import GUESTS, GUESTS_BY_ID, SIGNATURE_OPENINGS
@@ -21,15 +21,15 @@ def test_catalog_lists_every_master_with_tournaments_and_openings(client):
     for row in guests:
         guest = GUESTS_BY_ID[row["id"]]
         assert (row["pgn_name"], row["era"], row["rating"]) == (guest.pgn_name, guest.era, guest.rating)
-        # Мастер прошлого попадает в реестр только вместе с турниром, в котором играл.
+        # A past master enters the registry only together with the tournament he played in.
         assert row["events"] and all(row["id"] in {e.id for e in EVENTS_BY_KEY[key].field} for key in row["events"])
         white, black = SIGNATURE_OPENINGS.get(row["id"], ((), ()))
         assert row["openings"] == {"white": list(white), "black": list(black)}
-        # Только ключи и числа: текста для игрока в ответе нет (имя и строка о мастере — в каталогах клиента).
+        # Only keys and numbers: no player-facing text (the name and blurb live in the client catalogs).
         assert set(row) == {"id", "pgn_name", "era", "rating", "events", "openings"}
     keres = next(g for g in guests if g["id"] == "keres")
     assert "avro_1938" in keres["events"]
-    # Турниры мастера идут по годам.
+    # The master's tournaments are ordered by year.
     for row in guests:
         years = [EVENTS_BY_KEY[key].year for key in row["events"]]
         assert years == sorted(years), row["id"]

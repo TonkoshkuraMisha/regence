@@ -1,9 +1,9 @@
 // --- FILE: frontend/src/services/botCatalog.ts ---
 
 /**
- * Каталог ботов с сервера (GET /api/v1/bots/catalog): архетипы мастерской и сила ботов —
- * заявленная или измеренная матчами с якорями Stockfish (scripts/calibrate_bots.py).
- * Источник правды по архетипам — сервер: по ним же строится клубная лестница.
+ * Bot catalog from the server (GET /api/v1/bots/catalog): workshop archetypes and bot strength —
+ * declared or measured by matches against Stockfish anchors (scripts/calibrate_bots.py).
+ * The source of truth for archetypes is the server: the club ladder is built from them as well.
  */
 
 import {API_BASE_URL} from '../config/api';
@@ -13,30 +13,30 @@ import {UiError} from './apiErrors';
 import {isArchetypeId} from '../config/archetypes';
 import type {ArchetypeId} from '../config/archetypes';
 
-/** Сила бота из src/services/bots/calibration.json (её читает сервер, bot_calibration.strength_of). */
+/** Bot strength from src/services/bots/calibration.json (the server reads it, bot_calibration.strength_of). */
 export interface BotStrength {
-    /** Заявленный рейтинг — тот, на который бот настроен. */
+    /** Declared rating — the one the bot is tuned to. */
     declared_rating: number;
-    /** Рейтинг для показа: измеренный, если калибровка была (measured), иначе равен заявленному. */
+    /** Rating to display: the measured one if calibration was done (measured), otherwise equal to the declared one. */
     rating: number;
     measured: boolean;
-    /** Число партий калибровки и погрешность измеренного рейтинга: ± ci95 пунктов (95 %); null — не измерен. */
+    /** Number of calibration games and the measured rating's error: ± ci95 points (95 %); null — not measured. */
     games: number;
     ci95: number | null;
-    /** Исторические боты (таск 32.1): рейтинг по партиям с людьми, их число и поправка силы движка. */
+    /** Historical bots (task 32.1): rating from games with humans, their count and the engine strength correction. */
     live?: { rating: number; games: number; offset: number } | null;
 }
 
-/** Архетип мастерской: имя и описание на языке игрока — в каталоге (archetypes.<id>). */
+/** Workshop archetype: name and description in the player's language — in the catalog (archetypes.<id>). */
 export interface CatalogArchetype extends BotStrength {
     id: ArchetypeId;
-    /** Ползунки характера; ползунки силы уже подстроены самоигрой (src/services/bots/selfplay.py, таск 32.3). */
+    /** Character sliders; the strength sliders are already tuned by self-play (src/services/bots/selfplay.py, task 32.3). */
     config: PersonalityConfig;
 }
 
-/** Ответ GET /api/v1/bots/catalog. */
+/** Response of GET /api/v1/bots/catalog. */
 export interface BotCatalog {
-    /** Когда и на скольких партиях проведена последняя калибровка; null — её ещё не было. */
+    /** When and on how many games the last calibration was run; null — there has been none. */
     calibration: { date: string; games: number } | null;
     historical: (BotStrength & { id: string })[];
     archetypes: CatalogArchetype[];
@@ -44,7 +44,7 @@ export interface BotCatalog {
 
 let cached: Promise<BotCatalog> | null = null;
 
-/** Каталог ботов: один запрос на вкладку (результат кэшируется), после ошибки следующий вызов идёт в сеть заново. */
+/** Bot catalog: one request per tab (the result is cached), after an error the next call goes to the network again. */
 export function fetchBotCatalog(): Promise<BotCatalog> {
     if (!cached) {
         cached = fetch(`${API_BASE_URL}/api/v1/bots/catalog`)
@@ -54,44 +54,44 @@ export function fetchBotCatalog(): Promise<BotCatalog> {
             })
             .then((catalog) => ({
                 ...catalog,
-                // Архетип, которого клиент ещё не знает (сервер обновился раньше), не показываем без имени.
+                // An archetype the client does not know yet (the server updated earlier) is not shown without a name.
                 archetypes: catalog.archetypes.filter((a) => isArchetypeId(a.id)),
             }))
             .catch((err) => {
-                cached = null; // следующая попытка — снова в сеть
+                cached = null; // the next attempt goes to the network again
                 throw err;
             });
     }
     return cached;
 }
 
-/** Для тестов: сбросить закэшированный каталог. */
+/** For tests: reset the cached catalog. */
 export function resetBotCatalogCache(): void {
     cached = null;
 }
 
-/** «1720 (изм.)» — измеренная сила; иначе — заявленная. */
+/** «1720 (meas.)» — measured strength; otherwise — declared. */
 export function strengthLabel(s: Pick<BotStrength, 'rating' | 'measured'>): string {
     return s.measured ? t('common.measuredShort', {rating: s.rating}) : String(s.rating);
 }
 
-/** Кого из исторических ботов игрок уже знает (таск 32.2): партий с ним и очков бота в них. */
+/** Which historical bots the player already knows (task 32.2): games with them and the bot's points in them. */
 export interface BotRival {
     bot_id: string;
     games: number;
     bot_points: number;
-    /** Постоянный соперник: бот учитывает партии с игроком при выборе дебюта. */
+    /** Permanent opponent: the bot takes games with the player into account when choosing an opening. */
     remembers: boolean;
 }
 
-/** GET /api/v1/bots/rivalry — счёт игрока с историческими ботами; при любой ошибке сервера — пустой список. */
+/** GET /api/v1/bots/rivalry — the player's score against historical bots; on any server error — an empty list. */
 export async function fetchRivalry(token: string): Promise<BotRival[]> {
     const res = await fetch(`${API_BASE_URL}/api/v1/bots/rivalry`, {headers: {Authorization: `Bearer ${token}`}});
     if (!res.ok) return [];
     return ((await res.json()) as { rivals: BotRival[] }).rivals;
 }
 
-/** Очки в счёте: 2.5 → «2½», 0.5 → «½». */
+/** Points in a score: 2.5 → «2½», 0.5 → «½». */
 export function scorePoints(points: number): string {
     const whole = Math.floor(points);
     const half = points - whole >= 0.5;

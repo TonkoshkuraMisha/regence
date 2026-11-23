@@ -1,11 +1,11 @@
 // --- FILE: frontend/src/components/chessboard/CoachArrowsOverlay.tsx ---
-// Стрелки наставника поверх доски: зелёная — лучший ход, красная — угроза соперника, синяя — идея хода. Стрелки и
-// поля для подсветки присылает сервер в ответе наставника (поле coach ответов /analysis/check-move, /analysis/hint,
-// разбора партии); из ответа их достают coachArrows и coachHighlights (services/coach.ts).
+// Coach arrows over the board: green is the best move, red is the opponent's threat, blue is the idea of a move. The arrows and
+// squares to highlight are sent by the server in the coach response (the coach field of the /analysis/check-move, /analysis/hint
+// responses and the game review); coachArrows and coachHighlights (services/coach.ts) extract them from the response.
 
 import type {CoachArrow, CoachArrowKind} from '../../services/coach';
 
-/** Цвет стрелки по её виду; виды задаёт сервер. */
+/** Arrow colour by its kind; the kinds are set by the server. */
 export const COACH_ARROW_COLORS: Record<CoachArrowKind, string> = {
     best: 'rgba(16, 185, 129, 0.88)',
     threat: 'rgba(244, 63, 94, 0.88)',
@@ -13,8 +13,8 @@ export const COACH_ARROW_COLORS: Record<CoachArrowKind, string> = {
 };
 
 /**
- * Центр поля в координатах 0..100 с учётом переворота доски; null — не поле. Общая функция всех слоёв поверх
- * доски (пометки игрока, стрелка последнего хода, рентген, анимация хода).
+ * Centre of a square in 0..100 coordinates, taking board flipping into account; null means not a square. A function shared by all layers over
+ * the board (player marks, last-move arrow, x-ray, move animation).
  */
 export function squareCenter(square: string, flipped: boolean): { x: number; y: number } | null {
     if (!/^[a-h][1-8]$/.test(square)) return null;
@@ -27,14 +27,14 @@ export function squareCenter(square: string, flipped: boolean): { x: number; y: 
 
 interface Props {
     arrows: CoachArrow[];
-    /** Поля, на которые наставник обращает внимание (фигура, которой ходить; цель удара). */
+    /** Squares the coach draws attention to (the piece to move; the target of an attack). */
     highlights?: string[];
     flipped: boolean;
-    /** Префикс id маркеров: на странице может быть несколько досок. */
+    /** Marker id prefix: a page may have several boards. */
     idPrefix?: string;
 }
 
-/** Слой стрелок и подсвеченных полей наставника; клики не перехватывает, без стрелок и полей не рисуется. */
+/** Layer of coach arrows and highlighted squares; it does not intercept clicks, and is not drawn without arrows and squares. */
 export function CoachArrowsOverlay({arrows, highlights = [], flipped, idPrefix = 'coach'}: Props) {
     if (arrows.length === 0 && highlights.length === 0) return null;
     return (

@@ -1,11 +1,11 @@
 // --- FILE: frontend/src/content/basics/rules.ts ---
-// Азбука (таск 14.5): правила уровней. Ход проверяет chess.js, как в настоящей партии, поэтому уровни не могут
-// «разрешить» невозможное. Виды уровней:
-// * stars — одна фигура игрока (hero) обходит звёзды; вставать под бой нельзя, бить нельзя, кроме звёзд-фигур
-//   соперника (уровни про взятие). После каждого хода очередь снова у белых — соперник не отвечает.
-//   Минимум ходов (par) считается поиском в ширину, в данных его нет — он всегда верен.
-// * goal — один ход с целью: шах, мат, рокировка, взятие на проходе, превращение.
-// * question — «что на доске?»: шах, мат, пат или ничего; ответ тоже считает chess.js.
+// Basics (task 14.5): level rules. chess.js validates moves as in a real game, so levels cannot
+// "allow" the impossible. Level kinds:
+// * stars - one player piece (hero) collects stars; stepping under attack is forbidden, capturing is forbidden except star-pieces
+//   of the opponent (capture levels). After every move it is White's turn again - the opponent does not reply.
+//   The minimum number of moves (par) is computed by breadth-first search and is not stored in the data, so it is always correct.
+// * goal - one move with a goal: check, mate, castling, en passant, promotion.
+// * question - "what is on the board?": check, mate, stalemate or nothing; chess.js computes the answer too.
 
 import {Chess} from 'chess.js';
 import type {Square} from 'chess.js';
@@ -25,7 +25,7 @@ export interface BasicsSection {
     levels: Level[];
 }
 
-/** Позиция с ходом белых и без взятия на проходе: в уровнях «звёзд» ходит только игрок. */
+/** Position with White to move and no en passant: in "stars" levels only the player moves. */
 export function whiteToMove(fen: string): string {
     const parts = fen.split(' ');
     parts[1] = 'w';
@@ -37,7 +37,7 @@ export type StarsVerdict =
     | { ok: true; fen: string; to: string }
     | { ok: false; reason: 'wrongPiece' | 'noCapture' | 'danger' | 'illegal' };
 
-/** Ход фигуры игрока на уровне «звёзд»: targets — ещё не взятые звёзды (взять можно только фигуру на звезде). */
+/** Move of the player's piece in a "stars" level: targets are stars not yet taken (only a piece standing on a star may be captured). */
 export function starsMove(fen: string, hero: string, uci: string, targets: ReadonlySet<string>): StarsVerdict {
     const from = uci.slice(0, 2);
     const to = uci.slice(2, 4);
@@ -51,9 +51,9 @@ export function starsMove(fen: string, hero: string, uci: string, targets: Reado
     return {ok: true, fen: whiteToMove(game.fen()), to};
 }
 
-// Поиск минимума — на своём лёгком генераторе ходов: фигуры соперника на уровне неподвижны, ходит только hero, поэтому
-// бьющиеся поля зависят лишь от того, какие звёзды-фигуры уже взяты. Тест переигрывает найденный путь через chess.js
-// (starsMove) — так минимум проверен настоящими правилами.
+// The minimum is searched with our own light move generator: opponent pieces are immobile in a level and only hero moves, so
+// attacked squares depend only on which star-pieces are already taken. The test replays the found path through chess.js
+// (starsMove), so the minimum is verified by the real rules.
 
 const KNIGHT_STEPS = [[1, 2], [2, 1], [2, -1], [1, -2], [-1, -2], [-2, -1], [-2, 1], [-1, 2]];
 const KING_STEPS = [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]];
@@ -75,7 +75,7 @@ function placement(fen: string): Map<string, string> {
     return pieces;
 }
 
-/** Поля, куда фигура type (буква, регистр — цвет) с поля from ходит или бьёт на доске occupied. */
+/** Squares a piece of type (letter, case is the colour) moves to or captures on from square from on board occupied. */
 function reach(type: string, from: string, occupied: (square: string) => boolean): string[] {
     const file = from.charCodeAt(0) - 97;
     const rank = Number(from[1]) - 1;
@@ -96,7 +96,7 @@ function reach(type: string, from: string, occupied: (square: string) => boolean
     return result;
 }
 
-/** Наименьшее число ходов, чтобы собрать все звёзды; null — уровень нерешаем. path — сами ходы (UCI). */
+/** Smallest number of moves to collect all stars; null - the level is unsolvable. path is the moves themselves (UCI). */
 export function starsSolution(level: { fen: string; hero: string; stars: string[] }): { par: number; path: string[] } | null {
     const pieces = placement(level.fen);
     const heroStart = pieces.get(level.hero)!;
@@ -116,7 +116,7 @@ export function starsSolution(level: { fen: string; hero: string; stars: string[
                 const f = square.charCodeAt(0) - 97, r = Number(square[1]) - 1;
                 for (const df of [-1, 1]) if (onBoard(f + df, r - 1)) set.add(sq(f + df, r - 1));
             } else {
-                // Фигура игрока поле под собой не прикрывает, поэтому линии считаются без неё.
+                // The player's piece does not cover the square beneath it, so lines are computed without it.
                 for (const target of reach(piece, square, (s) => present(s, mask))) set.add(target);
             }
         }
@@ -163,7 +163,7 @@ export function starsPar(level: { fen: string; hero: string; stars: string[] }):
     return starsSolution(level)?.par ?? null;
 }
 
-/** Оценка прохождения: 3 звезды — за минимум ходов, 2 — до двух лишних, иначе 1. */
+/** Grade for a run: 3 stars for the minimum number of moves, 2 for up to two extra, otherwise 1. */
 export function rating(moves: number, par: number): 1 | 2 | 3 {
     if (moves <= par) return 3;
     return moves <= par + 2 ? 2 : 1;
@@ -171,7 +171,7 @@ export function rating(moves: number, par: number): 1 | 2 | 3 {
 
 export type GoalVerdict = { ok: true; fen: string } | { ok: false; reason: 'illegal' | 'stalemate' | 'notGoal'; fen?: string };
 
-/** Ход на уровне с целью. */
+/** Move in a goal level. */
 export function goalMove(fen: string, goal: Goal, uci: string): GoalVerdict {
     const game = new Chess(fen);
     let move;
@@ -191,12 +191,12 @@ export function goalMove(fen: string, goal: Goal, uci: string): GoalVerdict {
     return {ok: false, reason: game.isStalemate() ? 'stalemate' : 'notGoal', fen: game.fen()};
 }
 
-/** Есть ли в позиции ход, достигающий цели (проверка данных уровня). */
+/** Whether the position has a move reaching the goal (level data check). */
 export function goalReachable(fen: string, goal: Goal): boolean {
     return new Chess(fen).moves({verbose: true}).some((m) => goalMove(fen, goal, m.from + m.to + (m.promotion ?? '')).ok);
 }
 
-/** Что на доске для стороны, которая ходит. */
+/** What is on the board for the side to move. */
 export function boardState(fen: string): BoardState {
     const game = new Chess(fen);
     if (game.isCheckmate()) return 'mate';

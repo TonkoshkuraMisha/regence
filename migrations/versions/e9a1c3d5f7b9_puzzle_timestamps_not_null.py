@@ -2,11 +2,11 @@
 
 """puzzle_timestamps_not_null
 
-Колонки времени в таблицах задач созданы миграциями a7c9e1f3b5d2, c5e7a9b1d3f6 и d7f9b1c3e5a8
-без NOT NULL, а в моделях они обязательные — alembic check в CI находил расхождение.
-Исходные миграции не правим: на уже развёрнутых базах они применены, и расхождение там
-осталось бы. Пустые значения (их не должно быть — у колонок server_default now()) сначала
-заполняются текущим временем.
+The time columns in the puzzle tables were created by migrations a7c9e1f3b5d2, c5e7a9b1d3f6 and d7f9b1c3e5a8
+without NOT NULL, while in the models they are required - alembic check in CI found the mismatch.
+The original migrations are not edited: they are already applied on deployed databases, and the mismatch there
+would remain. Empty values (there should be none - the columns have server_default now()) are first
+filled with the current time.
 
 Revision ID: e9a1c3d5f7b9
 Revises: d7f9b1c3e5a8

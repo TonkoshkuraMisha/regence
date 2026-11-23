@@ -1,5 +1,5 @@
-// Импорт партий, дополнительные пути: фоновый разбор (список перечитывается, пока есть неразобранные партии),
-// успешная вставка PGN, «ничего не добавлено» и пропущенные, постраничный список, отказ в удалении.
+// Game import, extra paths: background analysis (the list is re-read while there are unanalysed games),
+// successful PGN paste, "nothing added" and skipped games, a paged list, a refused deletion.
 
 import {act, fireEvent, render, screen, waitFor} from '@testing-library/react';
 import {MemoryRouter} from 'react-router-dom';
@@ -39,24 +39,24 @@ afterEach(() => {
     vi.restoreAllMocks();
 });
 
-describe('Импорт партий: список', () => {
-    it('неразобранная партия помечена, список перечитывается через 8 секунд, пока разбор не закончится', async () => {
+describe('Game import: list', () => {
+    it('an unanalysed game is marked, the list is re-read after 8 seconds until analysis finishes', async () => {
         vi.useFakeTimers({shouldAdvanceTime: true});
         let analyzed = false;
         const calls = stub((url) => url.includes('/imports/games')
             ? {body: {total: 1, max: 300, games: [game(1, {analyzed})]}} : undefined);
         renderPage();
-        expect(await screen.findByTestId('imported-status')).toHaveTextContent('Разбираем');
+        expect(await screen.findByTestId('imported-status')).toHaveTextContent('Being analysed');
         const before = calls.filter((c) => c.url.includes('/imports/games')).length;
         analyzed = true;
         await act(async () => {
             await vi.advanceTimersByTimeAsync(8100);
         });
         await waitFor(() => expect(calls.filter((c) => c.url.includes('/imports/games')).length).toBeGreaterThan(before));
-        await waitFor(() => expect(screen.getByTestId('imported-status')).not.toHaveTextContent('Разбираем'));
+        await waitFor(() => expect(screen.getByTestId('imported-status')).not.toHaveTextContent('Being analysed'));
     });
 
-    it('длинный список листается: «назад» неактивна на первой странице, «вперёд» запрашивает следующую', async () => {
+    it('a long list is paged: "back" is disabled on the first page, "forward" requests the next', async () => {
         const calls = stub((url) => {
             if (!url.includes('/imports/games')) return undefined;
             const offset = Number(new URL(url, 'http://x').searchParams.get('offset') ?? 0);
@@ -64,30 +64,30 @@ describe('Импорт партий: список', () => {
         });
         renderPage();
         await screen.findByTestId('imported-game');
-        const [prev, next] = [screen.getByRole('button', {name: 'Назад'}), screen.getByRole('button', {name: 'Дальше'})];
+        const [prev, next] = [screen.getByRole('button', {name: 'Back'}), screen.getByRole('button', {name: 'Further'})];
         expect(prev).toBeDisabled();
         fireEvent.click(next);
         await waitFor(() => expect(calls.some((c) => c.url.includes(`offset=${IMPORT_PAGE}`))).toBe(true));
-        await waitFor(() => expect(screen.getByRole('button', {name: 'Дальше'})).toBeDisabled());
-        fireEvent.click(screen.getByRole('button', {name: 'Назад'}));
-        await waitFor(() => expect(screen.getByRole('button', {name: 'Назад'})).toBeDisabled());
+        await waitFor(() => expect(screen.getByRole('button', {name: 'Further'})).toBeDisabled());
+        fireEvent.click(screen.getByRole('button', {name: 'Back'}));
+        await waitFor(() => expect(screen.getByRole('button', {name: 'Back'})).toBeDisabled());
     });
 });
 
-describe('Импорт партий: форма', () => {
-    it('PGN принят: поле очищено, показан итог с пропущенными', async () => {
+describe('Game import: form', () => {
+    it('PGN accepted: the field is cleared, a result with skipped games is shown', async () => {
         stub((url) => url.endsWith('/imports/pgn') ? {body: {added: [game(5)], duplicates: 0, skipped: 2}} : undefined);
         renderPage();
         fireEvent.click(screen.getByTestId('import-tab-pgn'));
         fireEvent.change(screen.getByTestId('import-pgn'), {target: {value: '1. e4 e5'}});
         fireEvent.click(screen.getByTestId('import-submit'));
         const result = await screen.findByTestId('import-result');
-        expect(result).toHaveTextContent('Добавлена 1 партия');
+        expect(result).toHaveTextContent('Added 1 game');
         expect(result.textContent).toMatch(/2/);
         expect(screen.getByTestId('import-pgn')).toHaveValue('');
     });
 
-    it('ничего нового не нашлось — понятная подпись, PGN остаётся в поле', async () => {
+    it('nothing new found — a clear label, the PGN stays in the field', async () => {
         stub((url) => url.endsWith('/imports/pgn') ? {body: {added: [], duplicates: 3, skipped: 0}} : undefined);
         renderPage();
         fireEvent.click(screen.getByTestId('import-tab-pgn'));
@@ -97,7 +97,7 @@ describe('Импорт партий: форма', () => {
         expect(screen.getByTestId('import-pgn')).toHaveValue('1. e4 e5');
     });
 
-    it('сеть недоступна при импорте — сообщение об ошибке', async () => {
+    it('network unavailable during import — an error message', async () => {
         vi.stubGlobal('fetch', vi.fn(async (url: string) => {
             if (String(url).includes('/imports/games')) return {ok: true, status: 200, json: async () => ({total: 0, max: 300, games: []})} as Response;
             throw new TypeError('Failed to fetch');
@@ -109,8 +109,8 @@ describe('Импорт партий: форма', () => {
     });
 });
 
-describe('Импорт партий: удаление', () => {
-    it('отказ в подтверждении ничего не удаляет', async () => {
+describe('Game import: deletion', () => {
+    it('refusing the confirmation deletes nothing', async () => {
         const calls = stub((url) => url.includes('/imports/games') ? {body: {total: 1, max: 300, games: [game(3)]}} : undefined);
         vi.stubGlobal('confirm', () => false);
         renderPage();
@@ -118,7 +118,7 @@ describe('Импорт партий: удаление', () => {
         expect(calls.some((c) => c.init?.method === 'DELETE')).toBe(false);
     });
 
-    it('сервер отказал в удалении — сообщение об ошибке, партия остаётся', async () => {
+    it('the server refused the deletion — an error message, the game stays', async () => {
         stub((url, init) => {
             if (init?.method === 'DELETE') return {status: 500, body: {detail: {code: 'internal_error', params: {}, message: ''}}};
             return url.includes('/imports/games') ? {body: {total: 1, max: 300, games: [game(3)]}} : undefined;

@@ -1,4 +1,4 @@
-// Реестр тактических приёмов на клиенте (таск 13.0).
+// The tactical motif registry on the client (task 13.0).
 
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import {makeI18n} from '../../i18n';
@@ -22,8 +22,8 @@ afterEach(() => {
     resetThemeRegistryCache();
 });
 
-describe('реестр тем', () => {
-    it('загружается один раз; темы без текстов у клиента не показываются', async () => {
+describe('theme registry', () => {
+    it('loads once; themes without client texts are not shown', async () => {
         const fetchMock = vi.fn(async () => ({ok: true, status: 200, json: async () => REGISTRY}) as Response);
         vi.stubGlobal('fetch', fetchMock);
         const registry = await fetchThemeRegistry();
@@ -34,7 +34,7 @@ describe('реестр тем', () => {
         expect(childThemes(registry, 'fork').map((t) => t.code)).toEqual(['fork_knight']);
     });
 
-    it('ошибка сети — повторная попытка снова идёт в сеть', async () => {
+    it('a network error — a retry goes to the network again', async () => {
         const fetchMock = vi.fn(async () => ({ok: false, status: 503, json: async () => ({})}) as Response);
         vi.stubGlobal('fetch', fetchMock);
         await expect(fetchThemeRegistry()).rejects.toBeTruthy();
@@ -42,15 +42,13 @@ describe('реестр тем', () => {
         expect(fetchMock).toHaveBeenCalledTimes(2);
     });
 
-    it('тексты на трёх языках, неизвестная тема — код', () => {
-        const ru = makeI18n('ru').t;
+    it('texts in both languages, an unknown theme — the code', () => {
         const en = makeI18n('en').t;
         const uk = makeI18n('uk').t;
-        expect(themeText('fork_knight', 'name', ru)).toBe('Вилка конём');
         expect(themeText('fork_knight', 'name', en)).toBe('Knight fork');
         expect(themeText('fork_knight', 'name', uk)).toBe('Вилка конем');
         expect(themeText('pin', 'explain', uk)).toContain('зв’язана');
-        expect(themeText('mystery', 'name', ru)).toBe('mystery');
+        expect(themeText('mystery', 'name', en)).toBe('mystery');
         expect(isKnownTheme('mate_in_3')).toBe(true);
         expect(isKnownTheme('Bad Code')).toBe(false);
     });

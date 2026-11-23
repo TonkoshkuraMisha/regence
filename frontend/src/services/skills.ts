@@ -1,12 +1,12 @@
 // --- FILE: frontend/src/services/skills.ts ---
-// Карта навыков игрока: сводка по разделам задач, ошибкам, дебютам, курсам и диагностическому экзамену.
-// Эндпоинт GET /api/v1/skills (src/api/skills.py) — только с входом. Используют SkillMap.tsx (профиль).
-// Запрос и ошибки — apiRequest (http.ts).
+// Player skill map: a summary of puzzle sections, mistakes, openings, courses and the diagnostic exam.
+// Endpoint GET /api/v1/skills (src/api/skills.py) — sign-in only. Used by SkillMap.tsx (profile).
+// The request and errors go through apiRequest (http.ts).
 
 import {apiRequest} from './http';
 import {getToken} from './authToken';
 
-/** Ответ GET /skills: сводка по разделам задач, ошибкам, дебютам, курсам и диагностическому экзамену. */
+/** Response of GET /skills: a summary of puzzle sections, mistakes, openings, courses and the diagnostic exam. */
 export interface SkillMapData {
     username: string;
     puzzle_rating: number;
@@ -17,11 +17,11 @@ export interface SkillMapData {
     openings: { repertoires: number; new: number; learning: number; learned: number };
     endgames: { done: number; total: number };
     mates: { done: number; total: number };
-    /** Диагностический экзамен (22.0). */
+    /** Diagnostic exam (22.0). */
     exam?: { overall: number | null; level: string | null; passed: number; of: number };
 }
 
-/** Карта навыков текущего игрока; без токена или при любом отказе (сервер, сеть) — null: блок просто не рисуется. */
+/** Skill map of the current player; without a token or on any failure (server, network) — null: the block is simply not rendered. */
 export async function fetchSkillMap(): Promise<SkillMapData | null> {
     if (!getToken()) return null;
     return apiRequest<SkillMapData>('/skills').catch(() => null);

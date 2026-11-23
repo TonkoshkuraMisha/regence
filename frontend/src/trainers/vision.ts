@@ -1,11 +1,11 @@
 // --- FILE: frontend/src/trainers/vision.ts ---
-// Тренажёры видения доски (таск 16.5), генераторы уровней. Детерминированы по seed; каждый уровень решаем — это
-// проверяет поиск (starsSolution из азбуки) или перебор, а не надежда на случай.
+// Board vision trainers (task 16.5), level generators. Deterministic by seed; every level is solvable - this is
+// verified by search (starsSolution from the primer) or enumeration, not left to chance.
 //
-// * «Тихая тропа» — провести фигуру к цели, не вставая под бой: чем выше уровень, тем больше сторожей и фигуры другие.
-// * «Маршрут коня» — то же для коня, но засчитывается только кратчайший путь.
-// * «Двойной удар» — за минуту находить поле, с которого конь бьёт сразу две ценные фигуры (с 4-го уровня — поле должно
-//   быть безопасным).
+// * "Quiet path" - lead a piece to the target without stepping under attack: the higher the level, the more guards and the pieces differ.
+// * "Knight route" - the same for a knight, but only the shortest path counts.
+// * "Double attack" - within a minute find a square from which the knight attacks two valuable pieces at once (from level 4 the square must
+//   be safe).
 
 import {Chess} from 'chess.js';
 import type {Square} from 'chess.js';
@@ -50,7 +50,7 @@ function free(pieces: Record<string, string>, random: () => number): string {
     }
 }
 
-/** Позиция корректна для chess.js и ни один король не под шахом (ход белых, чёрные не под шахом). */
+/** Position is valid for chess.js and no king is in check (White to move, Black not in check). */
 function legal(fen: string): boolean {
     try {
         const game = new Chess(fen);
@@ -61,7 +61,7 @@ function legal(fen: string): boolean {
     }
 }
 
-/** Кратчайший путь проходит по настоящим правилам (связки и шах своему королю учитывает chess.js). */
+/** The shortest path goes by the real rules (pins and check to one's own king are handled by chess.js). */
 function replays(fen: string, hero: string, target: string, path: string[]): boolean {
     let position = fen;
     let square = hero;
@@ -89,7 +89,7 @@ function heroFor(kind: 'quiet' | 'knight', level: number, random: () => number):
 
 const GUARDS = ['p', 'n', 'b', 'r', 'q'];
 
-/** Уровень «Тихой тропы» или «Маршрута коня». */
+/** Level of "Quiet path" or "Knight route". */
 export function pathLevel(kind: 'quiet' | 'knight', level: number, seed: number): PathLevel {
     const random = rng(seed * 1009 + level);
     const guards = Math.min(1 + Math.floor(level / 2), 7);
@@ -121,7 +121,7 @@ export function pathLevel(kind: 'quiet' | 'knight', level: number, seed: number)
 export interface ForkLevel {
     fen: string;
     knight: string;
-    /** Поля вилки (ход коня отсюда бьёт две ценные фигуры; на уровнях с 4-го — только безопасные). */
+    /** Fork squares (a knight move from here attacks two valuable pieces; on levels from 4 - only safe ones). */
     answers: string[];
     safeOnly: boolean;
 }
@@ -135,7 +135,7 @@ export function knightTargets(square: string): string[] {
         .map(([x, y]) => `${FILES[x]}${y + 1}`);
 }
 
-/** Сколько ценных фигур чёрных бьёт конь с поля square. */
+/** How many valuable black pieces the knight attacks from square square. */
 export function forkCount(fen: string, square: string): number {
     const game = new Chess(fen, {skipValidation: true});
     return knightTargets(square).filter((s) => {
@@ -148,7 +148,7 @@ export function isSafe(fen: string, square: string): boolean {
     return !new Chess(fen, {skipValidation: true}).isAttacked(square as Square, 'b');
 }
 
-/** Уровень «Двойного удара»: белый конь, ходом которого можно поставить вилку. */
+/** "Double attack" level: a white knight whose move can set up a fork. */
 export function forkLevel(level: number, seed: number): ForkLevel {
     const random = rng(seed * 7919 + level);
     const safeOnly = level >= 4;
@@ -179,7 +179,7 @@ export function forkLevel(level: number, seed: number): ForkLevel {
     throw new Error(`no fork level ${level} for seed ${seed}`);
 }
 
-/** Очки за путь: кратчайший — 100, каждый лишний ход — минус 25. */
+/** Points for a path: the shortest - 100, each extra move - minus 25. */
 export function pathScore(moves: number, par: number): number {
     return Math.max(0, 100 - 25 * Math.max(0, moves - par));
 }

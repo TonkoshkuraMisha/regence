@@ -1,5 +1,5 @@
 # --- FILE: tests/test_guess_api.py ---
-"""«Угадай ход мастера» (таск 14.3): выдача позиций, баллы за ответ, моменты партии, серии."""
+""""Guess the master's move" (task 14.3): position delivery, points per answer, game moments, series."""
 
 import chess
 import chess.pgn
@@ -46,9 +46,9 @@ async def seeded(db_session, test_user_1, test_user_2):
 def test_score_rules():
     position = GuessPosition(move_uci="f3e5", best_cp=300, gap_cp=200, lines=[["f3e5", 300], ["c3d5", 280], ["h2h3", 100]])
     assert score_answer(position, "f3e5") == (100, 0)
-    assert score_answer(position, "c3d5") == (80, 20)            # не хуже лучшего на 30 сп
-    assert score_answer(position, "h2h3") == (46, 200)           # 80 − (200 − 30) / 5
-    assert score_answer(position, "a2a3") == (36, 250)           # вне строк: отрыв + запас
+    assert score_answer(position, "c3d5") == (80, 20)            # no worse than the best by 30 cp
+    assert score_answer(position, "h2h3") == (46, 200)           # 80 - (200 - 30) / 5
+    assert score_answer(position, "a2a3") == (36, 250)           # outside the lines: gap + margin
     worst = GuessPosition(move_uci="f3e5", best_cp=300, gap_cp=600, lines=[["f3e5", 300]])
     assert score_answer(worst, "a2a3")[0] == 0
 
@@ -66,13 +66,13 @@ async def test_next_position_with_game_context(client, seeded):
 async def test_candidates_only_on_request_with_the_master_move_among_them(client, seeded):
     _game, first, second = seeded
     plain = client.get(f"/api/v1/guess/position/{first.id}").json()
-    assert "candidates" not in plain  # в обычном режиме варианты не подсказываются
+    assert "candidates" not in plain  # in normal mode the candidates are not hinted
     body = client.get(f"/api/v1/guess/position/{first.id}", params={"candidates": "true"}).json()
     assert sorted(c["uci"] for c in body["candidates"]) == ["c3d5", "f3e5", "h2h3"]
     assert {c["san"] for c in body["candidates"]} == {"Nxe5", "Nd5", "h3"}
     again = client.get(f"/api/v1/guess/position/{first.id}", params={"candidates": "true"}).json()
-    assert again["candidates"] == body["candidates"]  # порядок у позиции один и тот же
-    # Строк меньше трёх — вариантов столько, сколько есть, ход мастера среди них.
+    assert again["candidates"] == body["candidates"]  # the order is the same for a given position
+    # Fewer than three lines: as many candidates as there are, with the master's move among them.
     short = client.get(f"/api/v1/guess/position/{second.id}", params={"candidates": "true"}).json()
     assert sorted(c["uci"] for c in short["candidates"]) == ["c4f7", "e5g4"]
     nxt = client.get("/api/v1/guess/next", params={"candidates": "true"}).json()["position"]
@@ -107,10 +107,10 @@ async def test_answer_returns_themes(client, seeded, db_session):
 
 
 def test_position_rating_moves_like_a_puzzle():
-    assert rating_after(1500, 1500, plays=0, solved=True) == 1484    # нашли ход — позиция легче
-    assert rating_after(1500, 1500, plays=0, solved=False) == 1516   # не нашли — труднее
-    assert rating_after(1500, 1500, plays=50, solved=True) == 1494   # устоявшаяся меняется медленнее
-    assert rating_after(610, 600, plays=0, solved=True) == 600       # не ниже минимума
+    assert rating_after(1500, 1500, plays=0, solved=True) == 1484    # move found: the position is easier
+    assert rating_after(1500, 1500, plays=0, solved=False) == 1516   # not found: harder
+    assert rating_after(1500, 1500, plays=50, solved=True) == 1494   # an established one changes more slowly
+    assert rating_after(610, 600, plays=0, solved=True) == 600       # not below the minimum
 
 
 async def test_answer_of_a_signed_in_player_changes_position_rating(client, seeded, db_session, token_user_1):
@@ -120,20 +120,21 @@ async def test_answer_of_a_signed_in_player_changes_position_rating(client, seed
     await db_session.refresh(first)
     assert first.difficulty > 1500
     before = first.difficulty
-    client.post(f"/api/v1/guess/position/{first.id}/answer", json={"move": "h2h3"})  # гость — без изменений
+    client.post(f"/api/v1/guess/position/{first.id}/answer", json={"move": "h2h3"})  # guest: no change
     await db_session.refresh(first)
     assert first.difficulty == before and first.plays == 2
 
 
 async def test_refilter_drops_book_positions_and_tags_the_rest(seeded, db_session):
     game, first, second = seeded
-    # Партия Легаля: позиция 8 — ещё дебют (до порога) и удаляется; 10 (Bxf7+) — уже нет и остаётся. Без линии
-    # движка у одного хода Bxf7+ тем нет (мат в 2 виден только с продолжением — см. test_guess_selection).
+    # Legal's game: position 8 is still the opening (below threshold) and is removed; 10 (Bxf7+) is not and stays.
+    # Without an engine line, the single move Bxf7+ has no themes (mate in 2 is only visible with the continuation;
+    # see test_guess_selection).
     removed, tagged = await refilter(db_session)
     assert (removed, tagged) == (1, 0)
     rest = (await db_session.execute(select(GuessPosition).where(GuessPosition.game_id == game.id))).scalars().all()
     assert [p.ply for p in rest] == [10]
-    assert rest[0].series_id is None and rest[0].series_index == 0  # от серии остался один ход
+    assert rest[0].series_id is None and rest[0].series_index == 0  # only one move is left of the series
 
 
 async def test_refilter_tags_kept_positions_and_dissolves_short_series(db_session, test_user_1, test_user_2):
@@ -159,7 +160,7 @@ async def test_refilter_tags_kept_positions_and_dissolves_short_series(db_sessio
     removed, _ = await refilter(db_session)
     assert removed == 1
     await db_session.refresh(kept)
-    assert kept.series_id is None and kept.series_index == 0  # от серии остался один ход — это уже не серия
+    assert kept.series_id is None and kept.series_index == 0  # only one move is left of the series: no longer a series
 
 
 async def test_errors(client, seeded):
@@ -180,7 +181,7 @@ async def test_positions_of_a_game(client, seeded):
 async def test_games_with_positions_for_the_champion_list(client, seeded):
     game, first, _ = seeded
     body = client.get("/api/v1/guess/games", params={"ids": f"{game.id},424242,x"}).json()
-    assert body == {"games": {str(game.id): first.id}}  # первая позиция по полуходу; без моментов — нет в ответе
+    assert body == {"games": {str(game.id): first.id}}  # first position by ply; without moments: absent from the response
 
 
 def test_empty_pool(client):
@@ -188,15 +189,15 @@ def test_empty_pool(client):
 
 
 async def test_three_attempts_with_hints(client, seeded):
-    """Режим «три попытки»: ошибка до последней попытки — «ещё раз» без итога; штрафы за подсказки и попытки."""
+    """"Three attempts" mode: an error before the last attempt gives "try again"; penalties for hints and attempts."""
     _game, first, _second = seeded
     url = f"/api/v1/guess/position/{first.id}/answer"
     retry = client.post(url, json={"move": "h2h3", "attempt": 1}).json()
     assert retry == {"retry": True, "attempts_left": 2, "loss_cp": 200}
-    # Вторая попытка — ход мастера с одной подсказкой: 100 − 10 (подсказка) − 10 (попытка).
+    # Second attempt is the master's move with one hint: 100 - 10 (hint) - 10 (attempt).
     final = client.post(url, json={"move": "f3e5", "attempt": 2, "hints": 1}).json()
     assert final["score"] == 80 and final["master_move"] == "f3e5"
-    # Последняя попытка с ошибкой уже итоговая (баллы за потерю минус штраф попытки).
+    # A last attempt with an error is final (points for the loss minus the attempt penalty).
     last = client.post(url, json={"move": "h2h3", "attempt": 3}).json()
     assert "retry" not in last and last["score"] == 46 - 20
 
@@ -219,11 +220,11 @@ def test_quiz_rules_are_pure_and_deterministic():
     assert plies_and_mate(PGN) == (13, True)
     questions, answers = build_quiz(3, "1-0", True, [(8, 200), (10, 500)], 13)
     assert [q["id"] for q in questions] == ["winner", "key_moment", "mate"]
-    assert answers == {"winner": "white", "key_moment": "6w", "mate": "yes"}   # ключевой — отрыв 500 на полуходе 10
+    assert answers == {"winner": "white", "key_moment": "6w", "mate": "yes"}   # key moment is the 500 swing on ply 10
     assert answers["key_moment"] in questions[1]["options"] and len(questions[1]["options"]) == 3
     assert build_quiz(3, "1-0", True, [(8, 200), (10, 500)], 13) == (questions, answers)
     one, _ = build_quiz(3, "0-1", False, [(8, 200)], 13)
-    assert [q["id"] for q in one] == ["winner", "mate"]                          # с одним моментом вопроса про ключевой нет
+    assert [q["id"] for q in one] == ["winner", "mate"]                          # one moment: no key-moment question
     checked = check_quiz({"winner": "white", "mate": "no"}, answers)
     assert checked["score"] == 1 and checked["results"] == {"winner": True, "key_moment": False, "mate": False}
 

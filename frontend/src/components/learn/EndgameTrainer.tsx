@@ -1,10 +1,10 @@
 // --- FILE: frontend/src/components/learn/EndgameTrainer.tsx ---
-// Эндшпильный тренажёр (таск 14.4): /learn/endgames — упражнения из content/endgames.json (с «обязательными позициями» и этюдами 27.9), /learn/endgames/:id — игра против идеальной
-// защиты по эндшпильным таблицам (POST /analysis/tablebase). Цели: мат (счётчик ходов против оптимума по таблицам),
-// провести пешку или реализовать перевес не упустив выигрыш, удержать ничью заданное число ходов. После каждого хода
-// игрока таблицы проверяют, не упущен ли результат (trainerVerdict в services/tablebase.ts). Сервер таблиц недоступен —
-// отвечает оценка движка (source: 'engine'): тренажёр продолжает работать и показывает об этом пометку.
-// Прогресс — урок «endgame-<id>» (progressId; по нему же считает автозачёт services/courseProgress.ts). Страницы подключены в App.tsx.
+// Endgame trainer (task 14.4): /learn/endgames has exercises from content/endgames.json (with "must-know positions" and studies 27.9), /learn/endgames/:id is a game against perfect
+// defence by endgame tablebases (POST /analysis/tablebase). Goals: mate (a move counter against the tablebase optimum),
+// promote a pawn or convert an advantage without losing the win, hold a draw for a given number of moves. After every move
+// of the player the tablebases check whether the result was lost (trainerVerdict in services/tablebase.ts). If the tablebase server is unavailable,
+// an engine evaluation answers (source: 'engine'): the trainer keeps working and shows a mark about it.
+// Progress is the lesson "endgame-<id>" (progressId; services/courseProgress.ts also counts auto-credit by it). The pages are wired in App.tsx.
 
 import {useEffect, useRef, useState} from 'react';
 import {Link, useParams} from 'react-router-dom';
@@ -21,12 +21,12 @@ import {MUST_KNOW} from '../../content/mustKnow';
 import {PuzzleBoard} from '../puzzles/PuzzleBoard';
 
 /**
- * Цель упражнения: mate — поставить мат; promote — провести пешку; convert — реализовать перевес (у соперника остаётся один
- * король); draw — удержать ничью.
+ * Exercise goal: mate means deliver mate; promote means advance a pawn to promotion; convert means convert an advantage (the opponent is left with only a
+ * king); draw means hold a draw.
  */
 export type EndgameGoal = 'mate' | 'promote' | 'convert' | 'draw';
 
-/** Упражнение: стартовая позиция, цель и сторона игрока; limit — сколько ходов игрока даётся, optimum — оптимум по таблицам (null — не задан). */
+/** Exercise: starting position, goal and the player's side; limit is how many player moves are allowed, optimum is the tablebase optimum (null means not set). */
 export interface EndgameExercise {
     id: string;
     fen: string;
@@ -36,22 +36,22 @@ export interface EndgameExercise {
     side: 'white' | 'black';
 }
 
-/** Каталог упражнений из content/endgames.json. */
+/** Catalogue of exercises from content/endgames.json. */
 export const EXERCISES = exercisesData as EndgameExercise[];
-/** Порядок групп целей на странице списка. */
+/** Order of goal groups on the list page. */
 const GOALS: EndgameGoal[] = ['mate', 'promote', 'convert', 'draw'];
 
-/** Идентификатор урока для прогресса упражнения: «endgame-<id>», подчёркивания заменены дефисами. */
+/** Lesson identifier for exercise progress: "endgame-<id>", underscores replaced with hyphens. */
 export function progressId(id: string): string {
     return `endgame-${id.replace(/_/g, '-')}`;
 }
 
-/** Осталась ли у стороны color только королевская фигура. */
+/** Whether side color has only a king left. */
 function loneKing(game: Chess, color: 'w' | 'b'): boolean {
     return game.board().flat().filter((p) => p && p.color === color).length === 1;
 }
 
-/** Список упражнений по целям, блок «обязательных позиций» (MUST_KNOW) и галочки у решённых (вошедшим). */
+/** List of exercises by goal, a "must-know positions" block (MUST_KNOW) and checkmarks next to solved ones (for signed-in users). */
 export function EndgamesPage() {
     const {t} = useI18n();
     const [done, setDone] = useState<Set<string>>(new Set());
@@ -104,12 +104,12 @@ export function EndgamesPage() {
     );
 }
 
-/** Статус попытки: playing — ход игрока; thinking — ждём ответ таблиц; success / failed — итог. */
+/** Attempt status: playing is the player's move; thinking means waiting for the tablebase answer; success / failed is the outcome. */
 type Status = 'playing' | 'thinking' | 'success' | 'failed';
 
 /**
- * Одно упражнение: после хода игрока таблицы оценивают позицию (trainerVerdict) и отвечают лучшим ходом защитника.
- * Сетевая ошибка откатывает ход; успех пишется в прогресс; busy защищает от второго хода во время запроса.
+ * One exercise: after the player's move the tablebases evaluate the position (trainerVerdict) and answer with the defender's best move.
+ * A network error rolls the move back; success is written to progress; busy guards against a second move during a request.
  */
 export function EndgameTrainerPage() {
     const {t} = useI18n();
@@ -171,7 +171,7 @@ export function EndgameTrainerPage() {
         try {
             const probe = await probeTablebase(game.fen());
             setEngineFallback(probe.source === 'engine');
-            // Оценка — для соперника (он ходит): для выигрыша у соперника должен быть проигрыш, для ничьей — не выигрыш.
+            // The evaluation is for the opponent (who is to move): for a win, the opponent must have a loss; for a draw, not a win.
             const verdict = trainerVerdict(probe, winning);
             if (verdict !== 'continue') return finish(false, `endgames.result.${verdict}`);
             const promoted = uci.length === 5 || (game.history({verbose: true}).at(-1)?.promotion ?? null) !== null;

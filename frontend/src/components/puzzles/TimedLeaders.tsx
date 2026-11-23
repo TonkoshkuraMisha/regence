@@ -1,8 +1,8 @@
 // --- FILE: frontend/src/components/puzzles/TimedLeaders.tsx ---
-// Таблица лидеров забегов на время (таск 26.1): неделя (понедельник — понедельник, UTC) и рекорды за всё время, отдельно
-// для забегов на 3 и 5 минут. Данные — GET /puzzles/timed/leaders (src/services/puzzle_leaders.py): топ-20 и своя
-// строка, если игрок ниже топа. Показывается на экране выбора забега и после него; refreshKey меняется, когда забег
-// закончился, чтобы новый счёт сразу попал в таблицу.
+// Timed run leaderboard (task 26.1): a week (Monday to Monday, UTC) and all-time records, separately
+// for 3- and 5-minute runs. Data is GET /puzzles/timed/leaders (src/services/puzzle_leaders.py): the top 20 and one's own
+// row if the player is below the top. Shown on the run choice screen and after it; refreshKey changes when a run
+// has ended, so that the new score gets into the table at once.
 
 import {useEffect, useState} from 'react';
 import {useI18n} from '../../i18n';

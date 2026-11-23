@@ -1,13 +1,13 @@
 # --- FILE: src/api/personalities.py ---
 """
-Мастерская соперников: персоналии, собранные игроком (таск 10.2).
+Opponent workshop: personalities built by a player (task 10.2).
 
-Один источник правды — сервер. Гость хранит персоналии в localStorage браузера, а после входа
-переносит их сюда одним запросом POST /bots/personalities/import (дальше они живут только здесь).
+One source of truth - the server. A guest keeps personalities in the browser's localStorage, and after login
+transfers them here with one request POST /bots/personalities/import (afterwards they live only here).
 
-Имя персоналии подчиняется правилам имён пользователей: оно попадает в PGN и архив партий,
-поэтому имена исторических ботов и чемпионов зарезервированы — нельзя «сыграть с Морфи», которого
-на самом деле собрал игрок.
+A personality name obeys the user name rules: it ends up in the PGN and the game archive,
+so the names of historical bots and champions are reserved - one cannot "play against Morphy" who
+was actually built by a player.
 """
 
 from fastapi import APIRouter, Depends, Response, status
@@ -72,7 +72,8 @@ class PersonalityImport(BaseModel):
 
 
 class SkippedPersonality(BaseModel):
-    """Не перенесённая персоналия: причина — код ошибки из реестра src/core/errors.py и его параметры."""
+    """A personality that was not transferred: the reason is an error code from the registry src/core/errors.py and its
+    parameters."""
     name: str
     reason: str
     params: dict[str, int | str] = Field(default_factory=dict)
@@ -109,7 +110,7 @@ async def _name_taken(db: AsyncSession, owner_id: int, name: str, except_id: int
 
 
 async def get_owned_personality(db: AsyncSession, owner_id: int, personality_id: int) -> BotPersonality:
-    """Персоналия владельца или 404 (чужая неотличима от несуществующей)."""
+    """The owner's personality or 404 (someone else's is indistinguishable from a non-existent one)."""
     personality = await db.get(BotPersonality, personality_id)
     if personality is None or personality.owner_id != owner_id:
         raise ApiError(status.HTTP_404_NOT_FOUND, "personality_not_found")
@@ -142,8 +143,8 @@ async def create_personality(
         payload: PersonalityIn, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user),
 ):
     """
-    Сохраняет соперника, собранного в мастерской. Ограничения: не больше MAX_PERSONALITIES_PER_USER на игрока, имя не
-    повторяется среди его соперников.
+    Saves an opponent built in the workshop. Restrictions: at most MAX_PERSONALITIES_PER_USER per player, the name is not
+    repeated among their opponents.
     """
     if await _count(db, user.id) >= MAX_PERSONALITIES_PER_USER:
         raise ApiError(status.HTTP_409_CONFLICT, "personality_limit", max=MAX_PERSONALITIES_PER_USER)
@@ -153,7 +154,7 @@ async def create_personality(
     db.add(personality)
     try:
         await db.commit()
-    except IntegrityError:  # гонка двух одинаковых запросов
+    except IntegrityError:  # a race of two identical requests
         await db.rollback()
         raise ApiError(status.HTTP_409_CONFLICT, "personality_duplicate") from None
     await db.refresh(personality)
@@ -165,8 +166,8 @@ async def import_personalities(
         payload: PersonalityImport, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user),
 ):
     """
-    Перенос гостевых персоналий из localStorage после входа. Совпадающие по имени и не
-    поместившиеся в лимит пропускаются с причиной — клиент показывает их игроку.
+    Transfer of guest personalities from localStorage after login. Those that match by name and those that did not
+    fit into the limit are skipped with a reason - the client shows them to the player.
     """
     free = MAX_PERSONALITIES_PER_USER - await _count(db, user.id)
     created: list[BotPersonality] = []
@@ -199,7 +200,7 @@ async def update_personality(
         db: AsyncSession = Depends(get_db),
         user: User = Depends(get_current_user),
 ):
-    """Меняет имя и/или настройки сохранённого соперника (только своего)."""
+    """Changes the name and/or settings of a saved opponent (only one's own)."""
     personality = await get_owned_personality(db, user.id, personality_id)
     if payload.name is not None:
         if await _name_taken(db, user.id, payload.name, except_id=personality.id):

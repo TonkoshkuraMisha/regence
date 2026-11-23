@@ -1,8 +1,8 @@
 // --- FILE: frontend/src/components/TransparencyPage.tsx ---
-// «Как мы измеряем силу ботов» и открытые данные (таск 24.3): методика калибровки, таблица «заявлено / измерено ±95 %»
-// по каждому боту, журналы прогонов как есть, выгрузка своих партий в PGN и описание открытого API только для чтения.
-// Данные — services/botCatalog.ts (силы ботов) и services/transparency.ts (прогоны калибровки, журнал подстройки,
-// описание публичного API, выгрузка PGN). Страница видна и без входа; выгрузка — только со входом. Маршрут — App.tsx.
+// "How we measure bot strength" and open data (task 24.3): the calibration methodology, a "declared / measured +/-95%" table
+// for each bot, run logs as they are, export of one's own games to PGN and a description of the read-only open API.
+// Data is services/botCatalog.ts (bot strengths) and services/transparency.ts (calibration runs, the tuning log,
+// the public API description, PGN export). The page is visible without sign-in; export only when signed in. Route is App.tsx.
 
 import {useEffect, useState} from 'react';
 import {Link} from 'react-router-dom';
@@ -17,30 +17,30 @@ import type {BotStrength} from '../services/botCatalog';
 import {downloadMyGamesPgn, runUrl, transparencyApi} from '../services/transparency';
 import type {CalibrationMeta, CalibrationRun, PublicApiInfo, TuningLog} from '../services/transparency';
 
-/** Строка таблицы силы: бот каталога и ключ каталога имён (для архетипов ключ с префиксом archetype:). */
+/** Strength table row: a catalog bot and a name catalog key (for archetypes the key with the archetype: prefix). */
 interface Row extends BotStrength {
     key: string;
     nameKey: string;
 }
 
-// Общие классы секций и заголовков.
+// Shared section and heading classes.
 const sectionClass = 'bg-acacia p-4 rounded-lg border-2 border-acacia-dark flex flex-col gap-3';
 const headingClass = 'text-lg font-bold text-amber-200 flex items-center gap-2';
-// Шаги методики калибровки; тексты — transparency.method.<шаг>.
+// Calibration methodology steps; texts are transparency.method.<step>.
 const METHOD_STEPS = ['anchors', 'pairs', 'fit', 'scale'] as const;
-// Пояснение к адресу API — по его последней части; неизвестный серверу клиенту адрес показывается без пояснения.
+// Explanation of an API address by its last part; an address unknown to the client is shown without an explanation.
 const ENDPOINT_NOTES: [RegExp, string][] = [
     [/\/public$/, 'index'], [/\/players\/\{username\}$/, 'player'], [/\/games\.pgn$/, 'playerPgn'],
     [/\/players\/\{username\}\/games$/, 'playerGames'], [/\/rating-history$/, 'ratingHistory'],
     [/\/games\/\{id\}\.pgn$/, 'gamePgn'], [/\/games\/\{id\}$/, 'game'], [/\/leaderboard$/, 'leaderboard'], [/\/bots$/, 'bots'],
 ];
 
-/** Имя бота на текущем языке; если перевода нет — ключ. */
+/** Bot name in the current language; if there is no translation, the key. */
 function botName(row: Row, t: (key: MessageKey) => string): string {
     return hasMessage(row.nameKey) ? t(row.nameKey as MessageKey) : row.key;
 }
 
-/** Страница прозрачности; username нужен только для имени файла выгрузки партий. */
+/** Transparency page; username is needed only for the game export file name. */
 export function TransparencyPage({username = null}: { username?: string | null }) {
     const {t, dateLocale} = useI18n();
     const [rows, setRows] = useState<Row[]>([]);

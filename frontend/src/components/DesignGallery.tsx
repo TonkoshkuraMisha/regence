@@ -1,18 +1,18 @@
 // --- FILE: frontend/src/components/DesignGallery.tsx ---
-// Витрина общих компонентов дизайна (/design, в меню нет): владелец и разработчики видят все компоненты разом, на
-// тех же текстах, что в разделах, — чтобы согласовать вид до перевода страниц. Компоненты — components/ui, правила —
-// docs/design-system.md. Надписи витрины — каталог design.*, примеры карточек — тексты настоящих разделов.
-// Данных с сервера нет: числа в примерах (прогресс, счётчики) выдуманы для показа. Маршрут — App.tsx.
+// Showcase of shared design components (/design, not in the menu): the owner and developers see all components at once, on
+// the same texts as in the sections, to agree on the look before porting the pages. Components are components/ui, rules are
+// docs/design-system.md. Showcase labels are the design.* catalog, card examples are texts of the real sections.
+// There is no server data: numbers in the examples (progress, counters) are made up for display. Route is App.tsx.
 
 import {useState} from 'react';
 import {BookOpen, Crown, GraduationCap, Layers, Puzzle, Swords, Trophy} from 'lucide-react';
 import {useI18n} from '../i18n';
 import {Badge, Button, ButtonLink, Card, CardGrid, EmptyState, Page, PageHeader, ProgressBar, Section, SegmentedControl} from './ui';
 
-// Вкладки примера SegmentedControl.
+// Tabs of the SegmentedControl example.
 type Demo = 'rated' | 'themes' | 'daily';
 
-/** Страница-витрина: кнопки, вкладки, карточки, индикаторы и пустое состояние. */
+/** Showcase page: buttons, tabs, cards, indicators and an empty state. */
 export function DesignGallery() {
     const {t} = useI18n();
     const [tab, setTab] = useState<Demo>('rated');

@@ -1,7 +1,7 @@
 # --- FILE: tests/test_auth_hardening.py ---
 """
-Вход и регистрация: лимиты попыток (подбор пароля), правила имени пользователя,
-уникальность и вход без учёта регистра, зарезервированные имена.
+Login and registration: attempt limits (password guessing), username rules,
+uniqueness and case-insensitive login, reserved names.
 """
 
 import pytest
@@ -24,7 +24,7 @@ def _login(client, username: str, password: str = PASSWORD):
     return client.post(LOGIN, data={"username": username, "password": password})
 
 
-# --- Имя пользователя ----------------------------------------------------------------------
+# --- Username ----------------------------------------------------------------------
 
 def test_register_response_hides_trust_factor(client):
     res = _register(client, "Misha")
@@ -35,26 +35,26 @@ def test_register_response_hides_trust_factor(client):
 
 
 @pytest.mark.parametrize("name", [
-    "ab",                  # короче 3 символов
-    "a" * 31,              # длиннее 30
-    "Misha K",             # пробел
-    " Misha",              # пробел по краю
-    "Мorphy",              # кириллическая «М» + латиница — подделка под бота/игрока
-    "misha​",         # невидимый символ
+    "ab",                  # shorter than 3 characters
+    "a" * 31,              # longer than 30
+    "Misha K",             # space
+    " Misha",              # leading space
+    "Мorphy",              # Cyrillic "М" + Latin letters: spoofs a bot/player name
+    "misha​",         # invisible character
     "misha!",
-    "12345",               # без единой буквы
+    "12345",               # no letters at all
     "--__--",
 ])
 def test_invalid_usernames_are_rejected(client, name):
     assert _register(client, name).status_code == 422
 
 
-@pytest.mark.parametrize("name", ["Misha_K", "misha-2006", "Пётр", "ёжик_1"])
+@pytest.mark.parametrize("name", ["Misha_K", "misha-2006", "Петро", "їжак_1"])
 def test_valid_usernames_are_accepted(client, name):
     assert _register(client, name).status_code == 201
 
 
-# («me» короче трёх символов — его отсекает уже правило длины.)
+# ("me" is shorter than three characters, so the length rule already rejects it.)
 @pytest.mark.parametrize("name", ["games", "Leaderboard", "ADMIN", "morphy", "Steinitz", "Capablanca"])
 def test_reserved_usernames_are_rejected(client, name):
     res = _register(client, name)
@@ -62,7 +62,7 @@ def test_reserved_usernames_are_rejected(client, name):
     assert res.json()["detail"]["code"] == "username_reserved"
 
 
-@pytest.mark.parametrize("first, second", [("Misha", "misha"), ("Пётр", "пётр"), ("ёжик", "ЁЖИК")])
+@pytest.mark.parametrize("first, second", [("Misha", "misha"), ("Петро", "петро"), ("їжак", "ЇЖАК")])
 def test_usernames_are_unique_regardless_of_case(client, first, second):
     assert _register(client, first).status_code == 201
     res = _register(client, second)
@@ -71,12 +71,12 @@ def test_usernames_are_unique_regardless_of_case(client, first, second):
 
 
 async def test_registered_user_gets_username_key(client, db_session):
-    assert _register(client, "Пётр").status_code == 201
-    user = (await db_session.execute(select(User).where(User.username == "Пётр"))).scalars().one()
-    assert user.username_key == "пётр"
+    assert _register(client, "Петро").status_code == 201
+    user = (await db_session.execute(select(User).where(User.username == "Петро"))).scalars().one()
+    assert user.username_key == "петро"
 
 
-# --- Вход ----------------------------------------------------------------------------------
+# --- Login ----------------------------------------------------------------------------------
 
 def test_login_is_case_insensitive_and_opens_the_canonical_account(client):
     assert _register(client, "Misha").status_code == 201
@@ -87,7 +87,7 @@ def test_login_is_case_insensitive_and_opens_the_canonical_account(client):
 
 
 def test_unknown_user_still_runs_password_check(client, monkeypatch):
-    """Ответ для несуществующего аккаунта не должен быть быстрее: по времени узнали бы, есть ли он."""
+    """The response for a non-existent account must not be faster: timing would reveal whether it exists."""
     checked: list[str] = []
 
     def spy_verify(plain, hashed):
@@ -107,12 +107,12 @@ def test_failed_logins_lock_the_account_temporarily(client, monkeypatch, freeze_
     for _ in range(3):
         assert _login(client, "victim", "wrong-password").status_code == 401
 
-    # Даже верный пароль не проверяется, пока не истечёт окно: подбор остановлен.
+    # Even the correct password is not checked until the window expires: guessing is stopped.
     locked = _login(client, "VICTIM")
     assert locked.status_code == 429
     assert int(locked.headers["Retry-After"]) > 0
 
-    assert _login(client, "bystander").status_code == 200  # другие аккаунты не затронуты
+    assert _login(client, "bystander").status_code == 200  # other accounts are not affected
 
 
 def test_successful_logins_do_not_count_as_failures(client, monkeypatch):

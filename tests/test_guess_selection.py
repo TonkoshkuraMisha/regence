@@ -1,5 +1,5 @@
 # --- FILE: tests/test_guess_selection.py ---
-"""«Угадай ход мастера» (таск 14.3): отбор позиций на подменённом выводе движка."""
+""""Guess the master's move" (task 14.3): position selection on stubbed engine output."""
 
 import chess
 import pytest
@@ -14,7 +14,7 @@ from src.services.guess_selection import (
     qualifies,
 )
 
-# Спокойная позиция 15-го хода (вне дебюта): у белых тихий ход Rd1, взятия не очевидны.
+# A quiet position at move 15 (outside the opening): White has the quiet move Rd1, captures are not obvious.
 FEN = "r4rk1/pp3ppp/2n1b3/3q4/3P4/2N2N2/PP3PPP/R2Q1RK1 w - - 0 15"
 BOARD = chess.Board(FEN)
 QUIET, OTHER, THIRD = (BOARD.parse_san(s) for s in ("Re1", "a3", "h3"))
@@ -30,17 +30,17 @@ def test_master_move_with_a_clear_gap_qualifies():
 
 
 def test_only_move_that_keeps_the_result_qualifies():
-    # Выигрыш только этим ходом: остальные — к равенству, хотя отрыв меньше 150.
+    # Winning only with this move: the others lead to equality, although the gap is below 150.
     assert qualifies(BOARD, QUIET, lines((QUIET, 160), (OTHER, 40))).reason == "only_move"
-    # Равенство только этим ходом: остальные проигрывают.
+    # Equality only with this move: the others lose.
     assert qualifies(BOARD, QUIET, lines((QUIET, -40), (OTHER, -160))).reason == "only_move"
 
 
 @pytest.mark.parametrize("pairs", [
-    ((QUIET, 60), (OTHER, 20)),       # малый отрыв — ход угадывается, а не находится
-    ((OTHER, 300), (QUIET, 50)),      # ход мастера не лучший
-    ((QUIET, 1200), (OTHER, 900)),    # и так всё решено: выигрывает что угодно
-    ((QUIET, -900), (OTHER, -1200)),  # и так проиграно
+    ((QUIET, 60), (OTHER, 20)),       # small gap: the move is guessed, not found
+    ((OTHER, 300), (QUIET, 50)),      # the master's move is not the best
+    ((QUIET, 1200), (OTHER, 900)),    # already decided: anything wins
+    ((QUIET, -900), (OTHER, -1200)),  # already lost
 ])
 def test_rejected(pairs):
     assert qualifies(BOARD, QUIET, lines(*pairs)) is None
@@ -62,19 +62,19 @@ def test_recapture_is_obvious():
 def test_taking_a_hanging_piece_is_obvious_but_a_defended_one_is_not():
     hanging = chess.Board("4k3/8/8/3n4/8/8/B7/4K3 w - - 0 30")
     assert is_obvious(hanging, hanging.parse_san("Bxd5"))
-    guarded = chess.Board("4k3/8/2p5/3n4/8/8/B7/4K3 w - - 0 30")  # пешка c6 защищает коня
+    guarded = chess.Board("4k3/8/2p5/3n4/8/8/B7/4K3 w - - 0 30")  # pawn c6 protects the knight
     assert not is_obvious(guarded, guarded.parse_san("Bxd5"))
 
 
 def test_single_legal_move_is_obvious():
-    board = chess.Board("7k/8/8/8/8/8/6q1/7K w - - 0 40")  # шах ферзём, единственный ход — взять его
+    board = chess.Board("7k/8/8/8/8/8/6q1/7K w - - 0 40")  # queen check, the only move is to capture it
     assert board.legal_moves.count() == 1
     assert is_obvious(board, next(iter(board.legal_moves)))
 
 
 def test_series_break_on_opponent_error_and_length_limits():
     assert build_series([21, 23, 25, 31, 33], opponent_errors={24}) == [[21, 23], [31, 33]]
-    assert build_series([21, 25], opponent_errors=set()) == []  # не подряд
+    assert build_series([21, 25], opponent_errors=set()) == []  # not consecutive
     assert build_series(list(range(21, 35, 2)), opponent_errors=set()) == [[21, 23, 25, 27, 29, 31]]
 
 
@@ -102,8 +102,8 @@ def _play(sans):
 def test_book_by_opening_table_not_by_ply_count():
     board, moves = _play(RUY_LOPEZ)
     book = book_plies(moves)
-    assert book == 20  # главная линия испанской есть в таблице 16.1 целиком
-    position, _ = _play(RUY_LOPEZ[:14])  # 8-й ход белых, полуход 14 — дальше порога, но ещё книга
+    assert book == 20  # the main Ruy Lopez line is in table 16.1 in full
+    position, _ = _play(RUY_LOPEZ[:14])  # White's 8th move, ply 14: beyond the threshold but still book
     move = position.parse_san("c3")
     assert in_opening(position, book)
     assert qualifies(position, move, lines((move, 300), (position.parse_san("a4"), 0)), book) is None
@@ -113,11 +113,11 @@ def test_book_by_opening_table_not_by_ply_count():
 def test_side_line_out_of_the_table_still_waits_for_the_floor():
     board, moves = _play(["a3", "h6", "a4", "h5", "a5"])
     assert book_plies(moves) <= 2
-    assert in_opening(board, book_plies(moves))  # 5 полуходов: всё равно дебют
+    assert in_opening(board, book_plies(moves))  # 5 plies: still the opening
 
 
 def test_technical_endgame_is_skipped():
-    board = chess.Board("8/5k2/8/3K4/8/2R5/5p2/8 w - - 0 50")  # 4 фигуры — ответ знают таблицы
+    board = chess.Board("8/5k2/8/3K4/8/2R5/5p2/8 w - - 0 50")  # 4 pieces: the tablebases know the answer
     move = board.parse_san("Rf3+")
     assert qualifies(board, move, lines((move, 900), (board.parse_san("Rc1"), 0))) is None
 
@@ -127,7 +127,7 @@ def test_position_themes_like_a_puzzle():
     board.push_san("Qc6")
     fork = board.parse_san("Ne7+")
     assert {"fork", "fork_knight"} <= set(position_themes(board, fork, [fork]))
-    assert position_themes(chess.Board(), chess.Move.from_uci("e2e4"), []) == []  # нет предыдущего хода
+    assert position_themes(chess.Board(), chess.Move.from_uci("e2e4"), []) == []  # no previous move
 
 
 def test_forced_mate_in_the_engine_line_is_a_theme():

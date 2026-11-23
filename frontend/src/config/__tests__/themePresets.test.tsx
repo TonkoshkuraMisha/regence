@@ -1,4 +1,4 @@
-// Темы-комплекты (таск 18.3): части существуют, применение пишет все настройки, предпросмотр рисует позицию.
+// Theme sets (task 18.3): the parts exist, applying writes all settings, the preview draws a position.
 
 import {render, screen} from '@testing-library/react';
 import {afterEach, describe, expect, it} from 'vitest';
@@ -14,8 +14,8 @@ afterEach(() => {
     document.body.removeAttribute('style');
 });
 
-describe('темы-комплекты', () => {
-    it('девять комплектов, разные, все части существуют', () => {
+describe('theme sets', () => {
+    it('nine sets, different, all parts exist', () => {
         expect(THEME_PRESETS).toHaveLength(9);
         expect(new Set(THEME_PRESETS.map((p) => p.id)).size).toBe(9);
         for (const preset of THEME_PRESETS) {
@@ -24,7 +24,7 @@ describe('темы-комплекты', () => {
         }
     });
 
-    it('применение выставляет доску, фигуры, фон, звуки и запоминает комплект', () => {
+    it('applying sets the board, pieces, background, sounds and remembers the set', () => {
         applyPreset(findPreset('study')!);
         expect(getSavedBoardThemeKey()).toBe('leather');
         expect(getSavedPieceSetKey()).toBe('mpchess');
@@ -38,7 +38,7 @@ describe('темы-комплекты', () => {
         expect(findPreset('nope')).toBeUndefined();
     });
 
-    it('осенний парк, клуб 1950-х и шахматная школа: свои доска, узор и палитра (таск 31.1)', () => {
+    it('autumn park, a 1950s club and a chess school: their own board, pattern and palette (task 31.1)', () => {
         applyPreset(findPreset('autumn_park')!);
         expect([getSavedBoardThemeKey(), getSavedPagePattern(), getSavedPagePalette()]).toEqual(['autumn', 'leaves', 'autumn']);
         expect(document.body.style.backgroundImage).toContain('/assets/patterns/leaves.svg');
@@ -48,7 +48,7 @@ describe('темы-комплекты', () => {
         expect([getSavedBoardThemeKey(), getSavedPagePattern(), getSavedPagePalette()]).toEqual(['chalkboard', 'notebook', 'ink']);
     });
 
-    it('предпросмотр — живая позиция: 32 поля с фигурами из набора комплекта', () => {
+    it('the preview is a live position: 32 squares with pieces from the set\'s piece set', () => {
         render(<ThemePreview preset={findPreset('kids')!}/>);
         const images = screen.getByTestId('preview-kids').querySelectorAll('img');
         expect(images.length).toBe(32);

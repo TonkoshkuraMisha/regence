@@ -1,5 +1,5 @@
 # --- FILE: tests/test_trainers.py ---
-"""Каркас тренажёров (таск 19.1): запись результата, личный рекорд уровня, рекорды и история для графика."""
+"""Trainer framework (task 19.1): recording a result, the level's personal record, records and history for the chart."""
 
 API = "/api/v1/trainers"
 
@@ -45,7 +45,7 @@ def test_validation(client, token_user_1):
 
 
 def test_coordinate_trainers_accepted(client, token_user_1):
-    """Таск 19.2: тренажёры координат; уровень 1–8 — сочетание настроек попытки."""
+    """Task 19.2: coordinate trainers; level 1-8 is a combination of attempt settings."""
     for trainer in ("coord_find", "coord_name", "coord_color", "coord_diagonal", "memory_position", "memory_game",
                     "board_placement", "knight_tour", "blind_move", "blind_where",
                     "calc_checks", "calc_exchange", "calc_distance", "calc_square", "calc_eval"):

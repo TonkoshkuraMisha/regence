@@ -1,8 +1,8 @@
 # --- FILE: tests/test_arena_groups.py ---
 """
-Вход в арену и деления. Решение владельца (17.11.2026): никакого деления игроков по силе — в любую арену входит
-любой зарегистрированный игрок, закрыт вход только игроку с флагом нечестной игры. Деления (33.2) остаются: это
-вместимость одной таблицы, а не отбор.
+Joining an arena and divisions. Owner decision (17.11.2026): no splitting of players by strength — any
+registered player may join any arena, only a player flagged for unfair play is barred. Divisions (33.2) remain: they are
+the capacity of one table, not a selection.
 """
 
 from datetime import UTC, datetime, timedelta
@@ -28,11 +28,11 @@ def blitz(now: datetime, **extra) -> Arena:
 
 async def test_any_registered_player_may_enter(client, db_session, test_user_1, test_user_2, token_user_1,
                                                token_user_2):
-    """Новичок без единой партии и сильнейший игрок входят в одну и ту же арену — настоящими запросами клиента."""
+    """A newcomer with no games and the strongest player join the same arena — through real client requests."""
     item = blitz(datetime.now(UTC))
     db_session.add(item)
-    test_user_1.blitz_rating, test_user_1.blitz_games_played = 700, 0          # только что зарегистрировался
-    test_user_2.blitz_rating, test_user_2.blitz_games_played = 2750, 4000      # сильнейший на площадке
+    test_user_1.blitz_rating, test_user_1.blitz_games_played = 700, 0          # just registered
+    test_user_2.blitz_rating, test_user_2.blitz_games_played = 2750, 4000      # the strongest on the platform
     await db_session.commit()
 
     for token in (token_user_1, token_user_2):
@@ -40,9 +40,9 @@ async def test_any_registered_player_may_enter(client, db_session, test_user_1, 
         assert joined.status_code == 200 and joined.json() == {"joined": True, "arena_id": item.id}
     table = client.get(f"{API}/{item.id}").json()
     assert {row["username"]: row["rating"] for row in table["standings"]} == {"player1": 700, "player2": 2750}
-    assert "max_rating" not in table                                            # арен с потолком рейтинга больше нет
+    assert "max_rating" not in table                                            # there are no more arenas with a rating cap
 
-    # И они могут встретиться за доской: пара создаётся из тех, кто ждёт.
+    # And they can meet over the board: a pair is created from those waiting.
     assert client.post(f"{API}/{item.id}/ready", headers=auth(token_user_1)).json() == {"waiting": True}
     assert "game_id" in client.post(f"{API}/{item.id}/ready", headers=auth(token_user_2)).json()
 
@@ -57,7 +57,7 @@ async def test_only_the_fair_play_flag_closes_the_entry(client, db_session, test
     test_user_1.is_cheater = False
     await db_session.commit()
     assert client.post(f"{API}/{item.id}/join", headers=auth(token_user_1)).status_code == 200
-    assert client.post(f"{API}/{item.id}/join").status_code == 401             # без входа — никак
+    assert client.post(f"{API}/{item.id}/join").status_code == 401             # without login — no way
 
 
 def test_schedule_has_no_rating_restricted_arenas():
@@ -80,8 +80,8 @@ async def test_overflow_opens_a_new_division(client, db_session, test_user_1, to
     assert second != item.id
     division = await db_session.get(Arena, second)
     assert (division.parent_id, division.division) == (item.id, 2)
-    assert arena._aware(division.ends_at) == arena._aware(item.ends_at)                # те же время и правила
-    # Повторный вход — то же место; со страницы первой арены клиент узнаёт, где игрок.
+    assert arena._aware(division.ends_at) == arena._aware(item.ends_at)                # same time and rules
+    # Joining again — the same place; from the first arena's page the client learns where the player is.
     assert client.post(f"{API}/{item.id}/join", headers=auth(token_user_1)).json()["arena_id"] == second
     me = client.get(f"{API}/{item.id}", headers=auth(token_user_1)).json()["me"]
     assert (me["joined"], me["division_arena_id"]) == (False, second)

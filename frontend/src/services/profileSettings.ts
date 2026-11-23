@@ -1,26 +1,26 @@
 // --- FILE: frontend/src/services/profileSettings.ts ---
-// Настройки профиля на сервере (таск 17.7): язык интерфейса, режим «помощник перевода», тема-комплект и аватар —
-// PATCH /api/v1/profile/me/settings (src/api/profile.py, поля таблицы users). Читаются они вместе с профилем
-// (GET /profile/me в App.tsx). Флаг режима перевода — маленькое общее хранилище: его выставляет App по профилю и
-// переключает страница настроек.
+// Profile settings on the server (task 17.7): interface language, "translation helper" mode, theme preset and avatar —
+// PATCH /api/v1/profile/me/settings (src/api/profile.py, columns of the users table). They are read together with the profile
+// (GET /profile/me in App.tsx). The translation-mode flag is a small shared store: App sets it from the profile and
+// the settings page toggles it.
 
 import {API_BASE_URL} from '../config/api';
 import type {Language} from '../i18n';
 import {getToken} from './authToken';
 
-/** Настройки профиля, как их возвращает сервер после сохранения. */
+/** Profile settings as the server returns them after saving. */
 export interface ProfileSettings {
     language: Language | null;
     translation_helper: boolean;
-    /** Ключ темы-комплекта (config/themePresets.ts). */
+    /** Theme preset key (config/themePresets.ts). */
     theme_preset: string | null;
-    /** Аватар — код фигуры и номер фона вида «wN-3» (сервер проверяет формат). */
+    /** Avatar — piece code and background number of the form "wN-3" (the server validates the format). */
     avatar: string | null;
 }
 
 /**
- * Сохранить часть настроек: сервер меняет только присланные поля и возвращает все четыре. null — игрок не вошёл или
- * сервер отказал (причина отказа не разбирается).
+ * Save part of the settings: the server changes only the fields sent and returns all four. null — the player is not signed in or
+ * the server refused (the reason for refusal is not parsed).
  */
 export async function saveProfileSettings(body: Partial<ProfileSettings>): Promise<ProfileSettings | null> {
     const token = getToken();
@@ -36,19 +36,19 @@ export async function saveProfileSettings(body: Partial<ProfileSettings>): Promi
 let helperOn = false;
 const listeners = new Set<() => void>();
 
-/** Включён ли режим «помощник перевода» (значение в памяти страницы, не в localStorage). */
+/** Whether the "translation helper" mode is on (in-page memory value, not localStorage). */
 export function isTranslationHelperOn(): boolean {
     return helperOn;
 }
 
-/** Переключить режим и оповестить подписчиков; на сервер значение отправляет вызывающий (saveProfileSettings). */
+/** Toggle the mode and notify subscribers; the caller sends the value to the server (saveProfileSettings). */
 export function setTranslationHelper(value: boolean): void {
     if (helperOn === value) return;
     helperOn = value;
     listeners.forEach((listener) => listener());
 }
 
-/** Подписка на переключение режима (для useSyncExternalStore); возвращает функцию отписки. */
+/** Subscribe to mode toggling (for useSyncExternalStore); returns the unsubscribe function. */
 export function subscribeTranslationHelper(listener: () => void): () => void {
     listeners.add(listener);
     return () => listeners.delete(listener);

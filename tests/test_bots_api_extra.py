@@ -1,5 +1,5 @@
 # --- FILE: tests/test_bots_api_extra.py ---
-"""API ботов: каталог мастеров прошлого, отказы ответа на ничью и итоги сохранения партии (сдача, флаг, ошибки)."""
+"""Bots API: the catalog of past masters, refused draw offers and game-saving outcomes (resignation, flag, errors)."""
 
 import pytest
 
@@ -53,7 +53,7 @@ def test_save_game_resignation_is_a_loss_for_the_player(client, token_user_1):
 
 @pytest.mark.parametrize("result", ["1-0", "0-1"])
 def test_save_game_timeout_follows_the_standing_flag(client, token_user_1, result):
-    # Флаг упал у проигравшей стороны, у победителя хватает материала для мата — итог совпадает с присланным.
+    # The losing side's flag fell and the winner has enough material to mate, so the result matches the submitted one.
     saved = _save(client, token_user_1, termination="timeout", result=result)
     assert saved.status_code == 200, saved.text
     assert saved.json()["result"] == result

@@ -1,17 +1,17 @@
-// Общие шаги E2E-сценариев.
+// Shared steps of the E2E scenarios.
 
 import {expect} from '@playwright/test';
 import type {APIRequestContext, Page} from '@playwright/test';
 
 export const PASSWORD = 'e2e-pass-12345';
-// На продакшен-стеке API на том же адресе (nginx); против dev-серверов (Vite + uvicorn) — свой адрес: E2E_API_URL.
+// On the production stack the API is at the same address (nginx); against dev servers (Vite + uvicorn) it has its own address: E2E_API_URL.
 export const API = process.env.E2E_API_URL ?? '';
 
 /**
- * Игрок для сценария: регистрация и вход до загрузки страницы. Вход — через page.request: он делит cookie с
- * браузерным контекстом страницы, и refresh-cookie (таск 17.5) восстанавливает вход при загрузке. Регистрация
- * ограничена 5 аккаунтами в час с адреса, поэтому сценарии одного прогона (один воркер) делят одного игрока.
- * Возвращает access-токен — для запросов к API из самого сценария.
+ * A player for a scenario: registration and login before the page loads. Login goes through page.request: it shares the cookie with
+ * the page's browser context, and the refresh cookie (task 17.5) restores the session on load. Registration
+ * is limited to 5 accounts per hour from one address, so the scenarios of one run (one worker) share a single player.
+ * Returns the access token — for API requests from the scenario itself.
  */
 const players = new Map<string, string>();
 
@@ -32,8 +32,8 @@ export async function loginNewPlayer(page: Page, request: APIRequestContext, pre
 }
 
 /**
- * Окно «Новая партия» игрового зала (схема владельца 18.11) на шаге «Начать»: соперник — человек или бот, контроль
- * времени — какой выбран. С первого шага, чтобы не зависеть от выбора, запомненного прошлой партией.
+ * The "New game" dialog of the game hall (owner's scheme 18.11) at the "Start" step: the opponent is a person or a bot, the time
+ * control is whichever is selected. From the first step, so as not to depend on the choice remembered by the previous game.
  */
 export async function openNewGame(page: Page, who: 'human' | 'bot'): Promise<void> {
     await page.getByTestId('new-game-open').click();

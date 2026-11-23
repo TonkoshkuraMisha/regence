@@ -1,9 +1,9 @@
 // --- FILE: frontend/src/trainers/tail.ts ---
-// «Хвост» (таск 16.5): своя фигура (голова) собирает чёрные пешки; за каждой съеденной вырастает хвост из её копий,
-// который тянется по пройденным полям. Вставать на свой хвост нельзя, дальнобойные фигуры сквозь хвост не ходят.
-// Каждые SPAWN_EVERY ходов появляется фигура соперника (не нападающая на голову в момент появления): если она бьёт
-// голову — игра окончена, если бьёт поле хвоста — откусывает хвост с этого места. Вставать под бой нельзя (ход не
-// принимается). Всё — чистые функции с генератором по seed, без chess.js: на доске нет королей.
+// "Tail" (task 16.5): one's own piece (the head) collects black pawns; for each one eaten a tail of its copies grows,
+// stretching along the squares passed. Stepping on one's own tail is forbidden, sliding pieces do not move through the tail.
+// Every SPAWN_EVERY moves an opponent piece appears (not attacking the head at the moment of appearing): if it attacks the
+// head - game over, if it attacks a tail square - it bites off the tail from that place. Stepping under attack is forbidden (the move is not
+// accepted). All pure functions with a seeded generator, without chess.js: there are no kings on the board.
 
 import {rng} from './vision';
 
@@ -13,7 +13,7 @@ export type EnemyPiece = 'n' | 'b' | 'r';
 export interface TailState {
     hero: HeroPiece;
     head: string;
-    /** Хвост: от поля сразу за головой к кончику. */
+    /** Tail: from the square right behind the head to the tip. */
     tail: string[];
     food: string;
     enemies: Record<string, EnemyPiece>;
@@ -49,7 +49,7 @@ function occupied(state: TailState): Set<string> {
     return new Set([state.head, ...state.tail, ...Object.keys(state.enemies)]);
 }
 
-/** Поля, куда бьёт (или ходит) фигура piece с поля from; blockers — что останавливает дальнобойную фигуру. */
+/** Squares attacked (or moved to) by piece piece from square from; blockers - what stops a sliding piece. */
 function reach(piece: string, from: string, blockers: Set<string>): string[] {
     const [x, y] = xy(from);
     const kind = piece.toLowerCase();
@@ -65,7 +65,7 @@ function reach(piece: string, from: string, blockers: Set<string>): string[] {
     return result;
 }
 
-/** Поля, которые бьют фигуры соперника (голова, хвост и пешка-еда их останавливают). */
+/** Squares attacked by opponent pieces (the head, tail and food pawn stop them). */
 export function attacked(state: TailState): Set<string> {
     const blockers = new Set([...occupied(state), state.food]);
     const result = new Set<string>();
@@ -75,7 +75,7 @@ export function attacked(state: TailState): Set<string> {
     return result;
 }
 
-/** Ходы головы: не на хвост и не на фигуры соперника, не под бой. */
+/** Head moves: not onto the tail or opponent pieces, not under attack. */
 export function legalMoves(state: TailState): string[] {
     if (state.over) return [];
     const blockers = new Set([...state.tail, ...Object.keys(state.enemies), state.food]);
@@ -99,7 +99,7 @@ export function newGame(level: number, seed: number): TailState {
     return state;
 }
 
-/** Ход головы на поле to; null — ход невозможен (состояние не меняется). */
+/** Head move to square to; null - the move is impossible (state does not change). */
 export function step(state: TailState, to: string): TailState | null {
     if (!legalMoves(state).includes(to)) return null;
     const random = rng(state.seed * 131 + state.moves * 7 + state.level);
@@ -125,21 +125,21 @@ function spawn(state: TailState, random: () => number): void {
         if (!square) return;
         const piece = types[Math.floor(random() * types.length)];
         const blockers = new Set([...occupied(state), state.food]);
-        // Появившаяся фигура не нападает на голову: поражение — только из-за собственного хода игрока.
+        // The piece that appeared does not attack the head: a loss only because of the player's own move.
         if (reach(piece, square, blockers).includes(state.head)) continue;
         state.enemies[square] = piece;
         return;
     }
 }
 
-/** Фигуры соперника откусывают хвост с ближайшего к голове побитого поля. */
+/** Opponent pieces bite off the tail from the attacked square nearest to the head. */
 function bite(state: TailState): void {
     const danger = attacked(state);
     const cut = state.tail.findIndex((square) => danger.has(square));
     if (cut >= 0) state.tail = state.tail.slice(0, cut);
 }
 
-/** Позиция для показа на доске: голова и хвост — фигуры игрока, еда — пешка, соперники — чёрные фигуры. */
+/** Position for display on the board: head and tail are the player's pieces, food is a pawn, opponents are black pieces. */
 export function boardFen(state: TailState): string {
     const pieces: Record<string, string> = {[state.head]: state.hero, ...state.enemies};
     for (const square of state.tail) pieces[square] = state.hero;

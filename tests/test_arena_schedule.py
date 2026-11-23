@@ -1,5 +1,5 @@
 # --- FILE: tests/test_arena_schedule.py ---
-"""Расписание арен по конференциям, анонс в лобби и напоминания о начале (таск 33.4)."""
+"""Arena schedule by conferences, the lobby announcement and start reminders (task 33.4)."""
 
 from datetime import UTC, date, datetime, timedelta
 from zoneinfo import ZoneInfo
@@ -15,7 +15,7 @@ from src.services import arena_schedule as plan
 from src.services import conference_match_rules as match_rules
 
 API = "/api/v1/arenas"
-NOW = datetime(2026, 11, 18, 17, 30, tzinfo=UTC)          # среда, 19:30 в Киеве
+NOW = datetime(2026, 11, 18, 17, 30, tzinfo=UTC)          # Wednesday, 19:30 in Kyiv
 
 
 def auth(token: str) -> dict:
@@ -23,7 +23,7 @@ def auth(token: str) -> dict:
 
 
 def _home_hours(conference: str, day: date) -> dict[str, list[int]]:
-    """Турниры дня конференции: слот → часы начала по её местному времени."""
+    """Tournaments of a conference day: slot -> start hours in its local time."""
     zone = ZoneInfo(plan.CONFERENCE_ZONES[conference])
     hours: dict[str, list[int]] = {}
     for starts_at, slot in plan.day_events(conference, day):
@@ -31,38 +31,38 @@ def _home_hours(conference: str, day: date) -> dict[str, list[int]]:
     return hours
 
 
-# --- Расписание ----------------------------------------------------------------------------------------------
+# --- Schedule ------------------------------------------------------------------------------------------------
 
 
 @pytest.mark.parametrize("conference", list(plan.CONFERENCE_ZONES))
 def test_day_plan_is_the_same_in_every_home_zone(conference):
-    """Вечером по местному времени — блиц каждый час, пуля и вечерняя 5+3; в остальное время — блиц раз в три часа."""
+    """In the evening local time — blitz every hour, bullet and an evening 5+3; otherwise — blitz once every three hours."""
     assert _home_hours(conference, date(2026, 11, 18)) == {
         "blitz-3+2": [0, 3, 6, 9, 12, 15, 18, 19, 20, 21, 22],
         "bullet-2+1": [18, 22],
         "evening-5+3": [20],
         "swiss-10+5": [15],
     }
-    assert _home_hours(conference, date(2026, 11, 22))["swiss-15+10"] == [11]   # воскресенье — швейцарка 15+10
+    assert _home_hours(conference, date(2026, 11, 22))["swiss-15+10"] == [11]   # Sunday — Swiss 15+10
 
 
 def test_evening_arena_follows_the_home_clock():
     def evening(conference: str, day: date) -> list[datetime]:
         return [starts_at for starts_at, slot in plan.day_events(conference, day) if slot is plan.EVENING]
 
-    assert evening("central", date(2026, 11, 18)) == [datetime(2026, 11, 18, 18, 0, tzinfo=UTC)]   # 20:00 в Киеве зимой
-    assert evening("central", date(2026, 7, 15)) == [datetime(2026, 7, 15, 17, 0, tzinfo=UTC)]     # и летом
-    assert evening("northern", date(2026, 11, 18)) == [datetime(2026, 11, 18, 19, 0, tzinfo=UTC)]  # Берлин
-    assert evening("southern", date(2026, 11, 18)) == [datetime(2026, 11, 18, 17, 0, tzinfo=UTC)]  # Стамбул
-    assert evening("western", date(2026, 11, 18)) == [datetime(2026, 11, 19, 1, 0, tzinfo=UTC)]    # Нью-Йорк
-    assert evening("eastern", date(2026, 11, 18)) == [datetime(2026, 11, 18, 14, 30, tzinfo=UTC)]  # Дели
+    assert evening("central", date(2026, 11, 18)) == [datetime(2026, 11, 18, 18, 0, tzinfo=UTC)]   # 20:00 in Kyiv in winter
+    assert evening("central", date(2026, 7, 15)) == [datetime(2026, 7, 15, 17, 0, tzinfo=UTC)]     # and in summer
+    assert evening("northern", date(2026, 11, 18)) == [datetime(2026, 11, 18, 19, 0, tzinfo=UTC)]  # Berlin
+    assert evening("southern", date(2026, 11, 18)) == [datetime(2026, 11, 18, 17, 0, tzinfo=UTC)]  # Istanbul
+    assert evening("western", date(2026, 11, 18)) == [datetime(2026, 11, 19, 1, 0, tzinfo=UTC)]    # New York
+    assert evening("eastern", date(2026, 11, 18)) == [datetime(2026, 11, 18, 14, 30, tzinfo=UTC)]  # Delhi
 
 
 @pytest.mark.parametrize("conference", list(plan.CONFERENCE_ZONES))
 @pytest.mark.parametrize("first_day", [date(2026, 11, 15), date(2026, 3, 6), date(2026, 3, 27), date(2026, 10, 23),
                                        date(2026, 10, 30)])
 def test_never_more_than_two_tournaments_at_once_in_a_conference(conference, first_day):
-    """Неделя расписания, в том числе недели перевода часов в Европе и Америке."""
+    """A schedule week, including the weeks of daylight-saving changes in Europe and America."""
     events = [event for offset in range(9) for event in plan.day_events(conference, first_day + timedelta(days=offset))]
     assert len(events) > 100
     for starts_at, _slot in events:
@@ -75,14 +75,14 @@ def test_planned_window_keys_and_active_conferences(monkeypatch):
     assert {item.conference for item in items} == set(plan.CONFERENCE_ZONES)
     assert all(item.starts_at < NOW + timedelta(hours=6) and item.ends_at > NOW for item in items)
     central = {(item.schedule_key, item.starts_at.hour) for item in items if item.conference == "central"}
-    # Киев, 19:30: идёт блиц, начатый в 19:00; впереди вечерняя 5+3 в 20:00, блиц каждый час и пуля в 22:00.
+    # Kyiv, 19:30: the blitz started at 19:00 is running; ahead: evening 5+3 at 20:00, blitz every hour, bullet at 22:00.
     assert central == {("central:blitz-3+2", 17), ("central:blitz-3+2", 18), ("central:evening-5+3", 18),
                        ("central:blitz-3+2", 19), ("central:blitz-3+2", 20), ("central:bullet-2+1", 20),
                        ("central:blitz-3+2", 22)}
     assert len({(item.schedule_key, item.starts_at) for item in items}) == len(items)
 
-    assert max(len(item.schedule_key) for item in items) <= 32                 # длина поля arenas.schedule_key
-    # Арен «только до такого-то рейтинга» в расписании нет: ключ — «конференция:слот», без потолка.
+    assert max(len(item.schedule_key) for item in items) <= 32                 # length of the arenas.schedule_key field
+    # The schedule has no arenas "up to such-and-such rating": the key is "conference:slot", with no cap.
     assert all(item.schedule_key == f"{item.conference}:{item.slot.key}" for item in items)
 
     monkeypatch.setattr(settings, "ARENA_CONFERENCES", "central, eastern, unknown")
@@ -93,7 +93,7 @@ async def test_schedule_is_created_once_with_its_conference(db_session):
     await arena.ensure_schedule(db_session, NOW)
     first = await db_session.scalar(select(func.count()).select_from(Arena))
     await arena.ensure_schedule(db_session, NOW)
-    # Арены на LOOKAHEAD вперёд и матчи конференций — на неделю с лишним (match_rules.MATCH_LOOKAHEAD).
+    # Arenas LOOKAHEAD ahead and conference matches a week and a bit ahead (match_rules.MATCH_LOOKAHEAD).
     assert await db_session.scalar(select(func.count()).select_from(Arena)) == first == len(
         plan.planned(NOW, arena.LOOKAHEAD)) + len(match_rules.planned_matches(NOW, match_rules.MATCH_LOOKAHEAD))
     evening = (await db_session.execute(select(Arena).where(Arena.schedule_key == "central:evening-5+3"))).scalar_one()
@@ -110,7 +110,7 @@ async def test_retired_empty_arenas_are_removed_but_joined_ones_stay(db_session,
         return Arena(schedule_key=key, base_time_ms=60_000, increment_ms=0, starts_at=NOW + starts_in,
                      ends_at=NOW + starts_in + timedelta(minutes=30))
 
-    # Арены прежнего расписания (до 33.4): пустая будущая, будущая с участником, уже идущая; и разовая арена.
+    # Arenas of the former schedule (before 33.4): empty future, future with a participant, already running; and a one-off.
     empty, joined, running, one_off = (old("bullet-1+0", timedelta(hours=1)), old("rapid-10+0", timedelta(hours=2)),
                                        old("blitz-3+2", timedelta(minutes=-10)), old(None, timedelta(hours=1)))
     db_session.add_all([empty, joined, running, one_off])
@@ -124,7 +124,7 @@ async def test_retired_empty_arenas_are_removed_but_joined_ones_stay(db_session,
     assert empty.id not in left and {joined.id, running.id, one_off.id} <= left
     assert await db_session.scalar(select(func.count()).select_from(ArenaReminder)) == 0
 
-    # Конференцию отключили: её будущие пустые арены уходят, уже идущие доигрываются.
+    # The conference was disabled: its future empty arenas go away, those already running are played out.
     monkeypatch.setattr(settings, "ARENA_CONFERENCES", "central")
     await arena.ensure_schedule(db_session, NOW)
     rows = (await db_session.execute(select(Arena.conference, Arena.starts_at).where(
@@ -134,11 +134,11 @@ async def test_retired_empty_arenas_are_removed_but_joined_ones_stay(db_session,
     assert {conference for conference, _ in rows} > {"central"}
 
 
-# --- Список и анонс в лобби ----------------------------------------------------------------------------------
+# --- List and lobby announcement -----------------------------------------------------------------------------
 
 
 async def test_lobby_banner_points_to_an_arena_one_can_play_in(client, db_session, test_user_1, monkeypatch):
-    monkeypatch.setattr(settings, "ARENA_CONFERENCES", "")                      # только арены этого теста
+    monkeypatch.setattr(settings, "ARENA_CONFERENCES", "")                      # only the arenas of this test
     now = datetime.now(UTC)
 
     def blitz(started: timedelta, left: timedelta) -> Arena:
@@ -155,7 +155,7 @@ async def test_lobby_banner_points_to_an_arena_one_can_play_in(client, db_sessio
     db_session.add(ArenaPlayer(arena_id=finished_played.id, user_id=test_user_1.id, rating=1500))
     await db_session.commit()
 
-    # Последний старт идущей арены прошёл — анонс ведёт к ближайшей будущей, с её временем начала для таймера.
+    # The running arena's last start has passed — the announcement leads to the nearest future one, with its start time.
     current = client.get(f"{API}/current").json()["arena"]
     assert (current["id"], current["status"], current["conference"]) == (upcoming.id, "scheduled", "central")
     assert datetime.fromisoformat(current["starts_at"]) == upcoming.starts_at
@@ -168,13 +168,13 @@ async def test_lobby_banner_points_to_an_arena_one_can_play_in(client, db_sessio
     current = client.get(f"{API}/current").json()["arena"]
     assert (current["id"], current["players"], current["status"]) == (busy.id, 1, "running")
 
-    # Список: законченная арена без участников не показывается, сыгранная — остаётся.
+    # List: a finished arena without participants is not shown, a played one stays.
     listed = {item["id"]: item for item in client.get(API).json()["arenas"]}
     assert set(listed) == {closing.id, upcoming.id, finished_played.id, quiet.id, busy.id}
     assert (listed[busy.id]["players"], listed[finished_played.id]["status"]) == (1, "finished")
 
 
-# --- Напоминания ---------------------------------------------------------------------------------------------
+# --- Reminders -----------------------------------------------------------------------------------------------
 
 
 async def test_reminder_through_the_real_client_path(client, db_session, test_user_1, token_user_1, monkeypatch):
@@ -194,9 +194,9 @@ async def test_reminder_through_the_real_client_path(client, db_session, test_us
     await db_session.commit()
     headers = auth(token_user_1)
 
-    assert client.post(f"{API}/{soon.id}/remind").status_code == 401            # без входа напоминать некому
+    assert client.post(f"{API}/{soon.id}/remind").status_code == 401            # without login — nobody to remind
     assert client.get(f"{API}/{soon.id}", headers=headers).json()["me"]["reminder"] is False
-    for _ in range(2):                                                          # повтор не создаёт второе напоминание
+    for _ in range(2):                                                          # a repeat does not create a second reminder
         assert client.post(f"{API}/{soon.id}/remind", headers=headers).json() == {"reminder": True}
     assert await db_session.scalar(select(func.count()).select_from(ArenaReminder)) == 1
     assert client.get(f"{API}/{soon.id}", headers=headers).json()["me"]["reminder"] is True
@@ -204,7 +204,7 @@ async def test_reminder_through_the_real_client_path(client, db_session, test_us
     assert late.status_code == 409 and late.json()["detail"]["code"] == "arena_reminder_too_late"
     assert client.post(f"{API}/999999/remind", headers=headers).status_code == 404
 
-    # До старта 20 минут — рано; за 5 минут — уведомление, и только одно.
+    # 20 minutes before the start — too early; 5 minutes before — a notification, and only one.
     assert await arena.send_reminders(db_session, now) == 0
     assert await arena.send_reminders(db_session, soon.starts_at - arena.REMIND_BEFORE) == 1
     assert await arena.send_reminders(db_session, soon.starts_at - timedelta(minutes=1)) == 0
@@ -213,7 +213,7 @@ async def test_reminder_through_the_real_client_path(client, db_session, test_us
     bell = client.get("/api/v1/social/notifications", headers=headers).json()
     assert (bell["unread"], [item["kind"] for item in bell["items"]]) == (1, ["arena_reminder"])
 
-    # «Не напоминать» убирает напоминание; арена кончилась — запоздавшее напоминание уже не уходит.
+    # "Do not remind" removes the reminder; the arena ended — a late reminder no longer goes out.
     assert client.delete(f"{API}/{soon.id}/remind", headers=headers).json() == {"reminder": False}
     assert client.get(f"{API}/{soon.id}", headers=headers).json()["me"]["reminder"] is False
     db_session.add(ArenaReminder(arena_id=soon.id, user_id=test_user_1.id))

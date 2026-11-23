@@ -1,5 +1,5 @@
-// Студия разбора партии: загрузка PGN, навигация по ходам (кнопки и клавиатура), переворот
-// доски, кэшированный и запрошенный анализ движком, ошибки загрузки и анализа.
+// The game review studio: loading a PGN, navigating by moves (buttons and keyboard), flipping
+// the board, a cached and a requested engine analysis, loading and analysis errors.
 
 import {act, fireEvent, render, screen, waitFor} from '@testing-library/react';
 import {MemoryRouter, Route, Routes} from 'react-router-dom';
@@ -70,8 +70,8 @@ const pieceOn = (square: string) =>
     document.querySelector(`[data-square="${square}"] img`)?.getAttribute('alt') ?? null;
 
 /**
- * Позиция на доске после действия. Ждём, а не проверяем сразу: под нагрузкой (CI, замер покрытия) рендер
- * может отстать от клика, и мгновенная проверка изредка падала, хотя компонент работал верно.
+ * The position on the board after an action. We wait instead of checking at once: under load (CI, coverage measurement) the render
+ * may lag behind the click, and an instant check occasionally failed although the component worked correctly.
  */
 const expectPiece = (square: string, piece: string | null) =>
     waitFor(() => expect(pieceOn(square)).toBe(piece));
@@ -105,7 +105,7 @@ afterEach(() => {
 });
 
 describe('GameViewer', () => {
-    it('режим библиотеки: PGN из библиотеки, без разбора движком и запросов про партии игроков', async () => {
+    it('library mode: a PGN from the library, no engine review and no requests about players\' games', async () => {
         const fetchMock = stubApi({pgn: {ok: true, text: FOOLS_MATE_PGN}});
         render(
             <MemoryRouter initialEntries={['/library/game/7']}>
@@ -118,10 +118,10 @@ describe('GameViewer', () => {
         const urls = fetchMock.mock.calls.map(([url]) => url.toString());
         expect(urls.some((u) => u.endsWith('/api/v1/library/games/7/pgn'))).toBe(true);
         expect(urls.some((u) => u.includes('/analysis/game/') || u.includes('/guess/game/') || u.includes('/profile/games/'))).toBe(false);
-        expect(screen.queryByRole('button', {name: 'Компьютерный анализ'})).toBeNull();
+        expect(screen.queryByRole('button', {name: 'Computer analysis'})).toBeNull();
     });
 
-    it('партия с другого сайта (24.1): PGN, разбор и значки задач из /imports с токеном, без запросов про партии сайта', async () => {
+    it('a game from another site (24.1): the PGN, the review and puzzle badges from /imports with a token, no requests about the site\'s games', async () => {
         setToken('tok');
         const fetchMock = vi.fn(async (input: string | URL | Request, _init?: RequestInit) => {
             const url = input.toString();
@@ -151,7 +151,7 @@ describe('GameViewer', () => {
         }
     });
 
-    it('показывает игроков из PGN и финальную позицию', async () => {
+    it('shows the players from the PGN and the final position', async () => {
         stubApi({pgn: {ok: true, text: FOOLS_MATE_PGN}});
         renderViewer();
 
@@ -159,34 +159,34 @@ describe('GameViewer', () => {
         expect(screen.getAllByText('bob').length).toBeGreaterThan(0);
         expect(pieceOn('h4')).toBe('b q');
         expect(pieceOn('d8')).toBeNull();
-        // Доступность (таск 26.3): клетки подписаны словами, доска — описанием позиции.
-        expect(document.querySelector('[data-square="h4"]')).toHaveAttribute('aria-label', 'h4, чёрный ферзь');
-        expect(document.querySelector('[data-square="d8"]')).toHaveAttribute('aria-label', 'd8, пусто');
-        expect(screen.getByRole('group', {name: /ферзь/})).toBeInTheDocument();
-        expect(screen.getByRole('button', {name: 'Компьютерный анализ'})).toBeInTheDocument();
+        // Accessibility (task 26.3): squares are labelled with words, the board with a description of the position.
+        expect(document.querySelector('[data-square="h4"]')).toHaveAttribute('aria-label', 'h4, black queen');
+        expect(document.querySelector('[data-square="d8"]')).toHaveAttribute('aria-label', 'd8, empty');
+        expect(screen.getByRole('group', {name: /queen/})).toBeInTheDocument();
+        expect(screen.getByRole('button', {name: 'Computer analysis'})).toBeInTheDocument();
     });
 
-    it('кнопки навигации: начало, вперёд, назад, конец', async () => {
+    it('navigation buttons: start, forward, back, end', async () => {
         stubApi({pgn: {ok: true, text: FOOLS_MATE_PGN}});
         renderViewer();
         await waitFor(() => expect(pieceOn('h4')).toBe('b q'));
 
-        fireEvent.click(screen.getByTitle('Начало партии'));
+        fireEvent.click(screen.getByTitle('Start of the game'));
         await expectPiece('d8', 'b q');
         await expectPiece('f2', 'w p');
 
-        fireEvent.click(screen.getByTitle('Ход вперёд'));
+        fireEvent.click(screen.getByTitle('Move forward'));
         await expectPiece('f3', 'w p');
         await expectPiece('f2', null);
 
-        fireEvent.click(screen.getByTitle('Конец партии'));
+        fireEvent.click(screen.getByTitle('End of the game'));
         await expectPiece('h4', 'b q');
-        fireEvent.click(screen.getByTitle('Ход назад'));
+        fireEvent.click(screen.getByTitle('Move back'));
         await expectPiece('d8', 'b q');
         await expectPiece('g4', 'w p');
     });
 
-    it('стрелки клавиатуры листают ходы', async () => {
+    it('keyboard arrows page through the moves', async () => {
         stubApi({pgn: {ok: true, text: FOOLS_MATE_PGN}});
         renderViewer();
         await waitFor(() => expect(pieceOn('h4')).toBe('b q'));
@@ -203,28 +203,28 @@ describe('GameViewer', () => {
         await expectPiece('h4', 'b q');
     });
 
-    it('листание стрелками не двигает страницу: прокручивается только окно списка ходов', async () => {
-        // Раньше текущий ход подводился через scrollIntoView, и вместе со списком ехала вся страница с доской.
+    it('paging with arrows does not move the page: only the move list window scrolls', async () => {
+        // Earlier the current move was brought into view with scrollIntoView, and the whole page with the board moved along with the list.
         const intoView = vi.spyOn(Element.prototype, 'scrollIntoView');
         stubApi({pgn: {ok: true, text: FOOLS_MATE_PGN}});
         renderViewer();
         await waitFor(() => expect(pieceOn('h4')).toBe('b q'));
 
         for (const key of ['ArrowUp', 'ArrowRight', 'ArrowRight', 'ArrowDown', 'ArrowLeft']) {
-            // Клавиша обработана: браузер не прокручивает страницу сам.
+            // The key is handled: the browser does not scroll the page itself.
             expect(fireEvent.keyDown(window, {key})).toBe(false);
         }
         await expectPiece('h4', null);
         expect(intoView).not.toHaveBeenCalled();
-        // Список ходов — окно со своей прокруткой и ограниченной высотой.
+        // The move list is a window with its own scroll and a limited height.
         expect(screen.getByTestId('move-list').className).toMatch(/max-h-\[50dvh\]/);
         expect(screen.getByTestId('move-list').querySelector('.overflow-y-auto .active-move')).not.toBeNull();
         intoView.mockRestore();
     });
 
-    it('обработчик клавиш регистрируется один раз и видит загруженную партию без перерегистрации', async () => {
-        // Раньше обработчик перерегистрировался после каждого рендера и читал историю из замыкания:
-        // нажатие между отрисовкой загруженной партии и запуском эффекта видело пустую историю и терялось.
+    it('the key handler is registered once and sees the loaded game without re-registration', async () => {
+        // Earlier the handler was re-registered after every render and read the history from the closure:
+        // a key press between rendering the loaded game and running the effect saw an empty history and was lost.
         const addListener = vi.spyOn(window, 'addEventListener');
         stubApi({pgn: {ok: true, text: FOOLS_MATE_PGN}});
         renderViewer();
@@ -240,7 +240,7 @@ describe('GameViewer', () => {
         addListener.mockRestore();
     });
 
-    it('пометки правой кнопкой — общий слой: цвет модификатором, листание их не снимает, Escape снимает', async () => {
+    it('right-button marks — a shared layer: colour by modifier, paging does not clear them, Escape clears them', async () => {
         stubApi({pgn: {ok: true, text: FOOLS_MATE_PGN}});
         renderViewer();
         await waitFor(() => expect(pieceOn('h4')).toBe('b q'));
@@ -265,13 +265,13 @@ describe('GameViewer', () => {
         await waitFor(() => expect(screen.queryByTestId('board-annotations')).toBeNull());
     });
 
-    it('«Угадай ход мастера»: кнопка ведёт к первому отобранному моменту партии, без моментов — кнопки нет', async () => {
+    it('"Guess the master\'s move": the button leads to the first selected moment of the game, without moments — no button', async () => {
         stubApi({pgn: {ok: true, text: FOOLS_MATE_PGN}, guess: {ok: true, body: {positions: [{id: 77, ply: 22, series_id: null}]}}});
         renderViewer();
-        expect(await screen.findByTestId('guess-from-game')).toHaveAttribute('href', '/guess/77?whole=1');  // партия целиком
+        expect(await screen.findByTestId('guess-from-game')).toHaveAttribute('href', '/guess/77?whole=1');  // the whole game
     });
 
-    it('справочник дебютов открывается кнопкой и запрашивает ходы до показанной позиции', async () => {
+    it('the opening explorer opens by a button and requests the moves up to the shown position', async () => {
         stubApi({pgn: {ok: true, text: FOOLS_MATE_PGN}});
         renderViewer();
         await waitFor(() => expect(pieceOn('h4')).toBe('b q'));
@@ -282,25 +282,25 @@ describe('GameViewer', () => {
         expect(JSON.parse(String(call[1].body)).moves).toEqual(['f2f3', 'e7e5', 'g2g4', 'd8h4']);
     });
 
-    it('без отобранных моментов кнопки «Угадай ход» нет', async () => {
+    it('without selected moments there is no "Guess the move" button', async () => {
         stubApi({pgn: {ok: true, text: FOOLS_MATE_PGN}, guess: {ok: true, body: {positions: []}}});
         renderViewer();
         await waitFor(() => expect(pieceOn('h4')).toBe('b q'));
         expect(screen.queryByTestId('guess-from-game')).toBeNull();
     });
 
-    it('переворот доски меняет порядок клеток', async () => {
+    it('flipping the board changes the order of the squares', async () => {
         stubApi({pgn: {ok: true, text: FOOLS_MATE_PGN}});
         renderViewer();
         await waitFor(() => expect(pieceOn('h4')).toBe('b q'));
 
         const firstSquare = () => document.querySelector('[data-square]')?.getAttribute('data-square');
         expect(firstSquare()).toBe('a8');
-        fireEvent.click(screen.getByTitle('Перевернуть доску'));
+        fireEvent.click(screen.getByTitle('Flip the board'));
         expect(firstSquare()).toBe('h1');
     });
 
-    it('ходы, из которых сделаны задачи «Ваши ошибки», отмечены значком', async () => {
+    it('moves from which "Your mistakes" puzzles were made are marked with a badge', async () => {
         setToken('jwt');
         stubApi({pgn: {ok: true, text: FOOLS_MATE_PGN}, personal: {ok: true, body: {game_id: 42, plies: [3]}}});
         renderViewer();
@@ -309,18 +309,18 @@ describe('GameViewer', () => {
         clearToken();
     });
 
-    it('кэшированный анализ показывается сразу, без запуска движка', async () => {
+    it('a cached analysis is shown at once, without starting the engine', async () => {
         const fetchMock = stubApi({pgn: {ok: true, text: FOOLS_MATE_PGN}, cached: {ok: true, body: ANALYSIS}});
         renderViewer();
 
         expect((await screen.findAllByText(/31\.4%/)).length).toBeGreaterThan(0);
         expect(screen.getAllByText(/97\.2%/).length).toBeGreaterThan(0);
         expect(fetchMock.mock.calls.some(([, init]) => init?.method === 'POST')).toBe(false);
-        // Старый разбор без фаз — строки фаз нет.
+        // An old review without phases — there is no phases row.
         expect(screen.queryByTestId('viewer-phases-white')).toBeNull();
     });
 
-    it('критические моменты: перелом, худшие ходы, упущенный удар — щелчок открывает ход', async () => {
+    it('critical moments: the turning point, the worst moves, a missed punishment — a click opens the move', async () => {
         const summary = {
             kind: 'decisive_blunder', turning_point_ply: 3, lead_changes: 0, equal_share: 0.5,
             white: {best_ply: null, worst_ply: 3}, black: {best_ply: 4, worst_ply: null},
@@ -329,12 +329,12 @@ describe('GameViewer', () => {
         stubApi({pgn: {ok: true, text: FOOLS_MATE_PGN}, cached: {ok: true, body: {...ANALYSIS, summary}}});
         renderViewer();
         const block = await screen.findByTestId('viewer-moments');
-        expect(block.textContent).toBe('Критические моментыУпущенный удар: 1… e5Перелом: 2. g4');
+        expect(block.textContent).toBe('Critical momentsMissed punishment: 1… e5Turning point: 2. g4');
         fireEvent.click(screen.getByTestId('moment-3'));
         expect(screen.getByTestId('moment-3').className).toContain('bg-amber-900/50');
     });
 
-    it('точность по фазам: дебют, миттельшпиль, эндшпиль; фаза без ходов — прочерк', async () => {
+    it('accuracy by phases: opening, middlegame, endgame; a phase without moves — a dash', async () => {
         const withPhases = {
             ...ANALYSIS,
             white: {...sideStats(31.4), phases: {opening: 31.4, middlegame: null, endgame: null}},
@@ -343,11 +343,11 @@ describe('GameViewer', () => {
         stubApi({pgn: {ok: true, text: FOOLS_MATE_PGN}, cached: {ok: true, body: withPhases}});
         renderViewer();
         const row = await screen.findByTestId('viewer-phases-white');
-        expect(row.textContent).toBe('Деб. 31.4%Мит. —Энд. —');
+        expect(row.textContent).toBe('Op. 31.4%Mid. —End. —');
         expect(screen.getByTestId('viewer-phases-black').textContent).toContain('97.2%');
     });
 
-    it('комментарий наставника к ходу: текст, стрелки, подсветка и переключатель стрелок', async () => {
+    it('the mentor\'s comment on a move: text, arrows, highlight and the arrows switch', async () => {
         const moves = ANALYSIS.moves.map((m) => ({...m}));
         moves[2] = {
             ...moves[2], classification: 'Blunder', cp_loss: 900,
@@ -356,7 +356,7 @@ describe('GameViewer', () => {
                     {key: 'coach.verdict.blunder.v1', params: {move: 'g4'}},
                     {key: 'coach.threat.mate_in.v1', params: {n: 1, move: '♛h4#'}},
                     {key: 'coach.best.generic.v1', params: {move: '♘c3'}},
-                    {key: 'coach.from.the.future.v9', params: {}},  // незнакомый ключ пропускается
+                    {key: 'coach.from.the.future.v9', params: {}},  // an unknown key is skipped
                 ],
                 arrows: [{from: 'd8', to: 'h4', kind: 'threat'}, {from: 'b1', to: 'c3', kind: 'best'},
                          {from: 'z9', to: 'h4', kind: 'threat'}],
@@ -367,18 +367,18 @@ describe('GameViewer', () => {
         stubApi({pgn: {ok: true, text: FOOLS_MATE_PGN}, cached: {ok: true, body: {...ANALYSIS, moves}}});
         renderViewer();
 
-        // Конец партии — мат.
-        expect(await screen.findByTestId('coach-comment')).toHaveTextContent('♛h4# — мат!');
-        fireEvent.click(screen.getByTitle('Ход назад'));
+        // The end of the game — mate.
+        expect(await screen.findByTestId('coach-comment')).toHaveTextContent('♛h4# — checkmate!');
+        fireEvent.click(screen.getByTitle('Move back'));
         const comment = await screen.findByText(
-            'g4 — грубая ошибка! Теперь у соперника мат в 1 х.: ♛h4#. Сильнее было ♘c3.',
+            'g4 is a blunder! Now the opponent has mate in 1: ♛h4#. Stronger was ♘c3.',
         );
         expect(comment).toBeInTheDocument();
-        expect(screen.getAllByTestId('coach-arrow-threat')).toHaveLength(1);  // стрелка с полем «z9» отброшена
+        expect(screen.getAllByTestId('coach-arrow-threat')).toHaveLength(1);  // the arrow with the square "z9" is dropped
         expect(screen.getAllByTestId('coach-arrow-best')).toHaveLength(1);
         expect(screen.getAllByTestId('coach-target')).toHaveLength(1);
 
-        fireEvent.click(screen.getByRole('checkbox', {name: 'Стрелки наставника'}));
+        fireEvent.click(screen.getByRole('checkbox', {name: 'Coach’s arrows'}));
         expect(screen.queryByTestId('coach-arrow-threat')).not.toBeInTheDocument();
         expect(screen.queryByTestId('coach-target')).not.toBeInTheDocument();
 
@@ -390,7 +390,7 @@ describe('GameViewer', () => {
         expect(screen.queryByTestId('coach-comment')).not.toBeInTheDocument();
     });
 
-    it('кнопка анализа запускает движок с токеном и показывает точность', async () => {
+    it('the analysis button starts the engine with a token and shows the accuracy', async () => {
         setToken('jwt-abc');
         const fetchMock = stubApi({
             pgn: {ok: true, text: FOOLS_MATE_PGN},
@@ -399,7 +399,7 @@ describe('GameViewer', () => {
         });
         renderViewer();
 
-        fireEvent.click(await screen.findByRole('button', {name: 'Компьютерный анализ'}));
+        fireEvent.click(await screen.findByRole('button', {name: 'Computer analysis'}));
 
         expect((await screen.findAllByText(/31\.4%/)).length).toBeGreaterThan(0);
         const post = fetchMock.mock.calls.find(([, init]) => init?.method === 'POST');
@@ -407,19 +407,19 @@ describe('GameViewer', () => {
         expect(post?.[1]?.headers).toEqual({Authorization: 'Bearer jwt-abc', 'X-Request-ID': expect.any(String)});
     });
 
-    it('ошибка анализа показывается текстом сервера', async () => {
+    it('an analysis error is shown by the server text', async () => {
         stubApi({
             pgn: {ok: true, text: FOOLS_MATE_PGN},
-            analyze: {ok: false, status: 429, body: {detail: 'Слишком много запросов к движку'}},
+            analyze: {ok: false, status: 429, body: {detail: 'Too many requests to the engine'}},
         });
         renderViewer();
 
-        fireEvent.click(await screen.findByRole('button', {name: 'Компьютерный анализ'}));
+        fireEvent.click(await screen.findByRole('button', {name: 'Computer analysis'}));
 
-        expect(await screen.findByText('Слишком много запросов к движку')).toBeInTheDocument();
+        expect(await screen.findByText('Too many requests to the engine')).toBeInTheDocument();
     });
 
-    it('ошибка валидации (detail — список) не роняет страницу', async () => {
+    it('a validation error (detail is a list) does not crash the page', async () => {
         stubApi({
             pgn: {ok: true, text: FOOLS_MATE_PGN},
             analyze: {
@@ -429,12 +429,12 @@ describe('GameViewer', () => {
         });
         renderViewer();
 
-        fireEvent.click(await screen.findByRole('button', {name: 'Компьютерный анализ'}));
+        fireEvent.click(await screen.findByRole('button', {name: 'Computer analysis'}));
 
-        expect(await screen.findByText('game_id: некорректное значение')).toBeInTheDocument();
+        expect(await screen.findByText('game_id: invalid value')).toBeInTheDocument();
     });
 
-    it('пустой анализ партии с ходами — понятная ошибка вместо «100 %» без графика', async () => {
+    it('an empty analysis of a game with moves — a clear error instead of "100 %" without a chart', async () => {
         const empty = {...ANALYSIS, white: sideStats(100), black: sideStats(100), moves: []};
         stubApi({
             pgn: {ok: true, text: FOOLS_MATE_PGN},
@@ -443,22 +443,22 @@ describe('GameViewer', () => {
         });
         renderViewer();
 
-        // Пустой кэш не показывается — доступна кнопка запуска анализа.
-        fireEvent.click(await screen.findByRole('button', {name: 'Компьютерный анализ'}));
+        // An empty cache is not shown — the analysis start button is available.
+        fireEvent.click(await screen.findByRole('button', {name: 'Computer analysis'}));
 
-        expect(await screen.findByText(/Сервер вернул пустой анализ/)).toBeInTheDocument();
+        expect(await screen.findByText(/The server returned an empty analysis/)).toBeInTheDocument();
         expect(screen.queryByText(/100(\.0)?%/)).toBeNull();
     });
 
-    it('недоступный PGN — сообщение об ошибке', async () => {
+    it('an unavailable PGN — an error message', async () => {
         stubApi({pgn: {ok: false, status: 404}});
         renderViewer();
 
-        expect(await screen.findByText('Не удалось загрузить данные партии')).toBeInTheDocument();
+        expect(await screen.findByText('Could not load the game data')).toBeInTheDocument();
     });
 });
 
-describe('GameViewer: партия с произвольной позиции', () => {
+describe('GameViewer: a game from an arbitrary position', () => {
     const FROM_POSITION_PGN = [
         '[Event "Historical Bot Match"]',
         '[White "Alice"]',
@@ -470,32 +470,32 @@ describe('GameViewer: партия с произвольной позиции', 
         '40... Kf8 41. Rd8+ Ke7 1/2-1/2',
     ].join('\n');
 
-    it('позиции восстанавливаются от начальной позиции партии, ходы нумеруются по ней', async () => {
+    it('positions are restored from the start position of the game, moves are numbered by it', async () => {
         stubApi({pgn: {ok: true, text: FROM_POSITION_PGN}});
         renderViewer();
 
-        // Финальная позиция: король на e7, ладья на d8 — а не обычная расстановка с этими ходами.
+        // The final position: the king on e7, the rook on d8 — not the ordinary setup with these moves.
         await waitFor(() => expect(pieceOn('e7')).toBe('b k'));
         expect(pieceOn('d8')).toBe('w r');
         expect(pieceOn('e2')).toBeNull();
         expect(screen.getByText('40.')).toBeInTheDocument();
         expect(screen.getByText('41.')).toBeInTheDocument();
-        expect(screen.getByText('…')).toBeInTheDocument();  // у 40-го хода нет хода белых
+        expect(screen.getByText('…')).toBeInTheDocument();  // move 40 has no White move
 
-        // В начало партии — на доске позиция из FEN.
+        // To the start of the game — the position from the FEN on the board.
         fireEvent.keyDown(window, {key: 'ArrowUp'});
         await waitFor(() => expect(pieceOn('g8')).toBe('b k'));
         expect(pieceOn('d1')).toBe('w r');
     });
 
-    it('пошаговая навигация идёт от позиции из FEN, первый ход — чёрных', async () => {
+    it('step navigation goes from the position from the FEN, the first move is Black\'s', async () => {
         stubApi({pgn: {ok: true, text: FROM_POSITION_PGN}});
         renderViewer();
         await waitFor(() => expect(pieceOn('e7')).toBe('b k'));
         fireEvent.keyDown(window, {key: 'ArrowUp'});
         await waitFor(() => expect(pieceOn('g8')).toBe('b k'));
 
-        // 40... Kf8 — ходят чёрные, ладья белых ещё на d1.
+        // 40... Kf8 — Black moves, the White rook is still on d1.
         fireEvent.keyDown(window, {key: 'ArrowRight'});
         await waitFor(() => expect(pieceOn('f8')).toBe('b k'));
         expect(pieceOn('g8')).toBeNull();
@@ -505,12 +505,12 @@ describe('GameViewer: партия с произвольной позиции', 
         fireEvent.keyDown(window, {key: 'ArrowRight'});
         await waitFor(() => expect(pieceOn('d8')).toBe('w r'));
 
-        // Назад — снова позиция после хода чёрных.
+        // Back — again the position after Black's move.
         fireEvent.keyDown(window, {key: 'ArrowLeft'});
         await waitFor(() => expect(pieceOn('d1')).toBe('w r'));
         expect(pieceOn('f8')).toBe('b k');
 
-        // Ход чёрных стоит в колонке чёрных: первая строка журнала — «40. … Kf8».
+        // Black's move stands in the Black column: the first row of the journal is "40. … Kf8".
         const firstRow = screen.getByText('40.').parentElement as HTMLElement;
         const cells = Array.from(firstRow.children).map((el) => el.textContent?.trim());
         expect(cells[1]).toContain('…');

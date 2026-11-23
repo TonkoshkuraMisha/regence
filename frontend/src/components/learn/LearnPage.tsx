@@ -1,9 +1,9 @@
 // --- FILE: frontend/src/components/learn/LearnPage.tsx ---
-// Школа (таск 14.1): /learn — курсы и уроки с прогрессом игрока; /learn/:lessonId — урок в проигрывателе.
-// Прогресс хранится на сервере только у вошедших; без входа урок проходится, но не запоминается.
-// Раскладка (план владельца 18.11, общие компоненты): «Большой курс» — главная карточка, курсы и тренажёры —
-// сетка карточек (SCHOOL_CARDS), уроки — по курсам с полосой «пройдено N из M» у вошедших.
-// Данные: курсы и уроки — content/lessons (COURSES, lessonById, lessonsOfCourse, nextLesson); прогресс — services/lessonProgress.ts. Подключено в App.tsx.
+// School (task 14.1): /learn has courses and lessons with the player's progress; /learn/:lessonId is a lesson in the player.
+// Progress is stored on the server only for signed-in users; without sign-in a lesson can be completed but is not remembered.
+// Layout (owner's plan 18.11, shared components): the "Great Course" is the main card, courses and trainers are
+// a grid of cards (SCHOOL_CARDS), lessons are by course with a "completed N of M" bar for signed-in users.
+// Data: courses and lessons are content/lessons (COURSES, lessonById, lessonsOfCourse, nextLesson); progress is services/lessonProgress.ts. Wired in App.tsx.
 
 import {useEffect, useRef, useState} from 'react';
 import {Link, useParams} from 'react-router-dom';
@@ -18,7 +18,7 @@ import type {LessonProgress} from '../../services/lessonProgress';
 import {LessonPlayer} from './LessonPlayer';
 import {getToken} from '../../services/authToken';
 
-/** Прогресс уроков вошедшего по lesson_id и признак «загружено»; у гостя запроса нет, loaded сразу true. */
+/** Lesson progress of a signed-in user by lesson_id and a "loaded" flag; a guest has no request, loaded is true at once. */
 function useProgress(): [Record<string, LessonProgress>, boolean] {
     const [progress, setProgress] = useState<Record<string, LessonProgress>>({});
     const [loaded, setLoaded] = useState(false);
@@ -40,7 +40,7 @@ function useProgress(): [Record<string, LessonProgress>, boolean] {
     return [progress, loaded];
 }
 
-/** Курсы и тренажёры школы: адрес, заголовок, описание и иконка карточки. Новый раздел — строка здесь. */
+/** School courses and trainers: address, heading, description and card icon. A new section is a row here. */
 const SCHOOL_CARDS: { id: string; to: string; title: MessageKey; text: MessageKey; icon: LucideIcon }[] = [
     {id: 'basics', to: '/learn/basics', title: 'basics.title', text: 'basics.card', icon: BookOpen},
     {id: 'mates', to: '/learn/mates', title: 'mateCourse.title', text: 'mateCourse.card', icon: Crown},
@@ -50,7 +50,7 @@ const SCHOOL_CARDS: { id: string; to: string; title: MessageKey; text: MessageKe
     {id: 'explorer', to: '/tools', title: 'explorer.title', text: 'explorer.card', icon: Compass},
 ];
 
-/** Главная школы: карточка большого курса, карточки разделов и уроки по курсам с полосой прогресса. */
+/** School home: the great course card, section cards and lessons by course with a progress bar. */
 export function LearnPage() {
     const {t, tp, language} = useI18n();
     const [progress] = useProgress();
@@ -113,8 +113,8 @@ export function LearnPage() {
 }
 
 /**
- * Урок в проигрывателе: незаконченный открывается с дальнего шага, пройденный — сначала. Дальний шаг и итог экзамена
- * сохраняются на сервере; сбой записи показывается пометкой, урок при этом продолжается.
+ * Lesson in the player: an unfinished one opens from the furthest step, a completed one from the start. The furthest step and the exam result
+ * are saved on the server; a write failure is shown with a mark, and the lesson continues.
  */
 export function LessonPage() {
     const {lessonId = ''} = useParams();
@@ -145,7 +145,7 @@ export function LessonPage() {
     if (!loaded) return null;
 
     const following = nextLesson(lesson);
-    // Пройденный урок начинается сначала; незаконченный — с дальнего шага.
+    // A completed lesson starts over; an unfinished one from the furthest step.
     const initialStep = saved && !saved.completed ? Math.min(saved.step, lesson.steps.length - 1) : 0;
 
     return (

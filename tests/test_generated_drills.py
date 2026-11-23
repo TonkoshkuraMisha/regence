@@ -1,8 +1,8 @@
 # --- FILE: tests/test_generated_drills.py ---
 """
-Упражнения-генераторы (таск 13.7): у каждого упражнения ровно один верный ответ (перепроверка на итоговой, в том
-числе зеркальной, позиции), ответ действительно делает то, что требует вид, генерация детерминирована; API выдачи и
-проверки, мат в 2 в два хода, забег на минуту и личный рекорд.
+Generated drills (task 13.7): each drill has exactly one correct answer (rechecked on the final position, including
+the mirrored one), the answer really does what the kind requires, generation is deterministic; the issue and check
+API, mate in 2 in two moves, the one-minute run and the personal record.
 """
 
 import chess
@@ -11,7 +11,7 @@ import pytest
 from src.services import drill_generator as gen
 from src.services import generated_drills as drills
 
-SAMPLE = 4  # seed на сочетание в тестах (мат в 2 перебором — дорогой)
+SAMPLE = 4  # seeds per combination in tests (mate in 2 by brute force is expensive)
 CASES = [(key, seed) for key, seeds in sorted(drills.seeds().items()) for seed in seeds[:SAMPLE]]
 API = "/api/v1/puzzles"
 
@@ -24,7 +24,7 @@ def test_every_combination_has_seeds():
     expected = {f"{k}.{p}.{lv}" for k in gen.KINDS for p in gen.PIECES for lv in gen.LEVELS if gen.supported(k, p)}
     table = drills.seeds()
     assert set(table) == expected
-    # Обычно 40 на сочетание; угроза мата конём с единственной защитой редка (13 на 400 тыс. seed) — минимум 10.
+    # Usually 40 per combination; a knight mate threat with a single defense is rare (13 per 400k seeds), so the minimum is 10.
     assert all(len(seeds) >= 10 for seeds in table.values()), {k: len(v) for k, v in table.items() if len(v) < 10}
     assert sum(len(seeds) >= 40 for seeds in table.values()) >= len(table) - 3
 
@@ -33,7 +33,7 @@ def test_every_combination_has_seeds():
 def test_single_correct_answer_that_does_what_the_kind_asks(key, seed):
     kind, piece, level = key.split(".")
     drill = gen.build(kind, piece, int(level), seed)
-    assert drill is not None and drill == gen.build(kind, piece, int(level), seed)  # детерминированно
+    assert drill is not None and drill == gen.build(kind, piece, int(level), seed)  # deterministic
     board = chess.Board(drill.fen)
     assert board.is_valid() and not board.is_check()
     move = chess.Move.from_uci(drill.solutions[0])
@@ -42,7 +42,7 @@ def test_single_correct_answer_that_does_what_the_kind_asks(key, seed):
     if piece in gen.PIECE_TYPES and kind != "escape":
         assert moved.piece_type == gen.PIECE_TYPES[piece]
 
-    # Перепроверка на итоговой позиции (после зеркалирования за чёрных): ответ один и тот же.
+    # Recheck on the final position (after mirroring for Black): the answer is the same.
     key_square = move.from_square if kind == "safe" else None
     assert [m.uci() for m in gen.solutions_for(kind, board, key_square)] == list(drill.solutions)
 
@@ -63,8 +63,8 @@ def test_single_correct_answer_that_does_what_the_kind_asks(key, seed):
     elif kind == "escape":
         passing = board.copy(stack=False)
         passing.push(chess.Move.null())
-        assert gen._has_mate_in_one(passing) is not None  # угроза мата есть
-        assert gen._has_mate_in_one(after) is None  # и ход её снимает
+        assert gen._has_mate_in_one(passing) is not None  # a mate threat exists
+        assert gen._has_mate_in_one(after) is None  # and the move removes it
     elif kind == "mate1":
         assert after.is_checkmate()
     elif kind == "mate2":
@@ -114,7 +114,7 @@ async def test_api_mate_in_two(client, token_user_1):
     done = client.post(f"{API}/drills/answer", json={"key": view["key"], "moves": [first, reply, mate]},
                        headers=_auth(token_user_1)).json()
     assert done["correct"] and done["done"]
-    # Ответ соперника подменить нельзя.
+    # The opponent's reply cannot be substituted.
     board = chess.Board(view["fen"])
     board.push_uci(first)
     other = next((m.uci() for m in board.legal_moves if m.uci() != reply), None)
@@ -147,7 +147,7 @@ async def test_timed_run_counts_and_keeps_the_record(client, token_user_1):
                            headers=_auth(token_user_1)).json()
         assert body["correct"]
     assert body["run"]["solved"] == 3
-    # Упражнение не из забега счёт не меняет.
+    # A drill that is not part of the run does not change the score.
     outside = client.get(f"{API}/drills/next", params={"kind": "capture", "piece": "r", "level": 1},
                          headers=_auth(token_user_1)).json()
     refused = client.post(f"{API}/drills/answer", json={"key": outside["key"], "moves": _solve(outside["key"]), "run": True},

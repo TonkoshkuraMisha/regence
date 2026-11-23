@@ -1,4 +1,4 @@
-// «Мои ошибки» (таск 13.5): позиция из партии игрока, ответ одним ходом, повторение через интервалы.
+// "My mistakes" (task 13.5): a position from the player's game, an answer with one move, repetition at intervals.
 
 import {act, fireEvent, render, screen} from '@testing-library/react';
 import {MemoryRouter, Route, Routes, useLocation} from 'react-router-dom';
@@ -7,7 +7,7 @@ import PuzzlesPage from '../PuzzlesPage';
 import {resetThemeRegistryCache} from '../../../services/themes';
 import {setToken} from '../../../services/authToken';
 
-// После 3. Фh5 чёрные сыграли 3...Кf6?? — сильный ход 3...g6.
+// After 3. Qh5 Black played 3...Nf6?? — the strong move was 3...g6.
 const VIEW = {
     id: 3, game_id: 41, ply: 6, fen: 'r1bqkbnr/pppp1ppp/2n5/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 3 3',
     previous_move: 'd1h5', color: 'black', themes: [], attempts: 0, solved_streak: 0,
@@ -65,14 +65,14 @@ afterEach(() => {
     localStorage.clear();
 });
 
-describe('Мои ошибки', () => {
-    it('позиция из партии: верный ход, повтор через 3 дня, что было сыграно', async () => {
+describe('My mistakes', () => {
+    it('a position from the game: the right move, a repeat in 3 days, what was played', async () => {
         stub({correct: true, solution: 'g7g6', played: 'g8f6', done: false, solved_streak: 1,
               next_due_at: new Date(Date.now() + 3 * 86_400_000).toISOString()});
         await open();
-        expect(screen.getByTestId('personal-summary').textContent).toBe('К повторению сейчас: 2 · в работе: 3 · освоено: 1');
-        expect(screen.getByTestId('puzzle-status').textContent).toContain('Это было в вашей партии');
-        // Ход соперника из партии подсвечен, доска — за чёрных.
+        expect(screen.getByTestId('personal-summary').textContent).toBe('To review now: 2 · in progress: 3 · mastered: 1');
+        expect(screen.getByTestId('puzzle-status').textContent).toContain('This happened in your game');
+        // The opponent's move from the game is highlighted, the board is for Black.
         const order = Array.from(document.querySelectorAll('[data-square]')).map((el) => el.getAttribute('data-square'));
         expect(order[0]).toBe('h1');
         await act(async () => {
@@ -81,12 +81,12 @@ describe('Мои ошибки', () => {
         await act(async () => {
             fireEvent.click(square('g6'));
         });
-        expect(await screen.findByTestId('personal-result')).toHaveTextContent('Верно! Вернёмся к ней через 3 дн.');
-        expect(screen.getByTestId('personal-played').textContent).toBe('В партии вы сыграли 3… ♞f6; сильный ход — 3… g6.');
-        // Откуда ошибка и разбор на доске (таск B.3).
-        expect(screen.getByTestId('personal-from').textContent).toBe('Партия против Морфи, 10 нояб. 2026');
+        expect(await screen.findByTestId('personal-result')).toHaveTextContent('Correct! We will come back to it in 3 d.');
+        expect(screen.getByTestId('personal-played').textContent).toBe('In the game you played 3… ♞f6; the strong move was 3… g6.');
+        // Where the mistake is from, and a review on the board (task B.3).
+        expect(screen.getByTestId('personal-from').textContent).toBe('Game against Morphy, 10 Nov 2026');
         fireEvent.click(screen.getByTestId('replay-line-played'));
-        expect(screen.getByTestId('replay-step').textContent).toBe('Ход 0 из 1');
+        expect(screen.getByTestId('replay-step').textContent).toBe('Move 0 of 1');
         fireEvent.click(screen.getByTestId('replay-forward'));
         expect(square('f6').querySelector('img')?.getAttribute('alt')).toBe('bn');
         fireEvent.click(screen.getByTestId('replay-line-best'));
@@ -97,7 +97,7 @@ describe('Мои ошибки', () => {
         expect(screen.getByTestId('location').textContent).toBe('/game/41');
     });
 
-    it('неверный ход: правильный показывается на доске, повтор завтра', async () => {
+    it('a wrong move: the right one is shown on the board, a repeat tomorrow', async () => {
         stub({correct: false, solution: 'g7g6', played: 'g8f6', done: false, solved_streak: 0, next_due_at: tomorrow()});
         await open();
         await act(async () => {
@@ -106,7 +106,7 @@ describe('Мои ошибки', () => {
         await act(async () => {
             fireEvent.click(square('e7'));
         });
-        expect(await screen.findByTestId('personal-result')).toHaveTextContent('Не этот ход. Вернёмся к ней через 1 дн.');
+        expect(await screen.findByTestId('personal-result')).toHaveTextContent('Not this move. We will come back to it in 1 d.');
         await act(async () => {
             await vi.advanceTimersByTimeAsync(2000);
         });
@@ -114,7 +114,7 @@ describe('Мои ошибки', () => {
         expect(square('d8').querySelector('img')?.getAttribute('alt')).toBe('bq');
     });
 
-    it('освоено после двух решений подряд; пусто — когда следующая', async () => {
+    it('mastered after two solutions in a row; empty — when the next one is', async () => {
         stub({correct: true, solution: 'g7g6', played: 'g8f6', done: true, solved_streak: 2, next_due_at: null});
         await open();
         await act(async () => {
@@ -123,12 +123,12 @@ describe('Мои ошибки', () => {
         await act(async () => {
             fireEvent.click(square('g6'));
         });
-        expect(await screen.findByTestId('personal-result')).toHaveTextContent('Решено дважды подряд — освоено.');
+        expect(await screen.findByTestId('personal-result')).toHaveTextContent('Solved twice in a row — mastered.');
     });
 
-    it('к повторению ничего нет', async () => {
+    it('nothing to review', async () => {
         stub(null, false);
         await open();
-        expect(await screen.findByTestId('personal-empty')).toHaveTextContent('Все задачи на сегодня решены');
+        expect(await screen.findByTestId('personal-empty')).toHaveTextContent('All puzzles for today are done');
     });
 });

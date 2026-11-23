@@ -1,8 +1,8 @@
 // --- FILE: frontend/src/components/chessboard/AppearancePickerDropdown.tsx ---
-// Выбор оформления доски: набор фигур, тема доски и её размер. Варианты — config/boardAppearance.ts. Вариант,
-// закрытый за достижение (config/unlocks.ts; достижения игрока — GET /profile/{имя}/achievements), выбрать нельзя:
-// кнопка отключена, условие открытия — во всплывающей подсказке. Уже выбранный вариант остаётся доступным. Сам
-// компонент ничего не хранит: выбор запоминает Chessboard (localStorage: regence_piece_set, regence_board_theme,
+// Board appearance picker: piece set, board theme and its size. Options are in config/boardAppearance.ts. An option
+// locked behind an achievement (config/unlocks.ts; the player's achievements come from GET /profile/{name}/achievements) cannot be chosen:
+// the button is disabled, the unlock condition is in the tooltip. An already selected option stays available. The
+// component stores nothing itself: the choice is remembered by Chessboard (localStorage: regence_piece_set, regence_board_theme,
 // regence_board_size).
 
 import {Palette, ChevronDown, ChevronUp, X} from 'lucide-react';
@@ -22,14 +22,14 @@ export interface AppearancePickerDropdownProps {
     activePieceSetShortName: string;
     onPieceSetChange: (id: string) => void;
     onThemeChange: (id: string) => void;
-    /** Сохранённый размер доски (положение ползунка). */
+    /** Saved board size (slider position). */
     boardSize: number;
-    /** Размер, с которым доска нарисована на самом деле: на узком экране он меньше сохранённого. */
+    /** Size the board is actually drawn at: on a narrow screen it is smaller than the saved one. */
     responsiveBoardPx: number;
     onBoardSizeChange: (size: number) => void;
 }
 
-/** Выпадашка выбора комплекта фигур, темы доски и её размера — кнопка + панель настроек. */
+/** Dropdown for choosing the piece set, board theme and its size: a button plus a settings panel. */
 export function AppearancePickerDropdown({
     isOpen, onToggleOpen, onClose, activeTheme, pieceSetKey, activePieceSetName,
     activePieceSetShortName, onPieceSetChange, onThemeChange, boardSize, responsiveBoardPx,

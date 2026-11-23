@@ -1,6 +1,6 @@
 """
-Фора в партии с человеком (21.1, сеть): позиция из приглашения, ходы от неё, PGN с FEN, без рейтинга, фора по
-времени, «песочные часы».
+Odds in a game with a person (21.1, network): the position from the invitation, moves from it, PGN with FEN, no rating, time
+odds, "hourglass".
 """
 
 import time
@@ -29,7 +29,7 @@ def test_odds_positions_and_times():
 
 
 def test_tempo_odds_position():
-    """«Два хода подряд»: получающий уже сыграл по два хода пешками, ход у дающего, позиция легальна и без шаха."""
+    """\"Two moves in a row\": the receiver has already played two pawn moves, the giver is to move, the position is legal."""
     for giver, receiver_pawns in ((chess.WHITE, (chess.E5, chess.D5)), (chess.BLACK, (chess.E4, chess.D4))):
         board = chess.Board(odds.odds_fen(odds.TEMPO, giver))
         assert board.is_valid() and board.turn == giver and not board.is_check()
@@ -45,7 +45,7 @@ async def test_invite_with_material_odds(db_session, giver):
     assert invite["rated"] is False  # с форой — без рейтинга
     started = await matchmaker.start_game_from_invite(invite["code"], b.id, db=db_session)
     game = await db_session.get(Game, started["game_id"])
-    giver_color = chess.WHITE if giver == "creator" else chess.BLACK  # создатель играет белыми
+    giver_color = chess.WHITE if giver == "creator" else chess.BLACK  # the creator plays white
     assert game.initial_fen == odds.odds_fen("queen", giver_color) and game.is_rated is False
     state = await state_manager.get_game_state(started["game_id"])
     assert state["board_fen"] == game.initial_fen and state["pgn"].startswith('[SetUp "1"]')
@@ -78,7 +78,7 @@ async def test_unknown_odds_are_ignored(db_session):
     assert invite["odds_kind"] == "" and invite["rated"] is True
 
 def test_hourglass_clock_rules():
-    """«Песочные часы»: потраченное ходящим уходит сопернику; без них — только добавка ходившему."""
+    """\"Hourglass\": the time spent by the mover goes to the opponent; without it - only the increment to the mover."""
     from src.services.game_state import clocks_after_move, live_clock_ms
 
     assert clocks_after_move(60000, 60000, 7000, 2000, hourglass=True) == (55000, 67000)
@@ -99,7 +99,7 @@ async def test_invite_with_hourglass(db_session):
     game = await db_session.get(Game, started["game_id"])
     assert game.hourglass is True and game.initial_fen is None and game.is_rated is False
 
-    # Белые думали 10 секунд: столько же прибавилось чёрным.
+    # White thought for 10 seconds: black got the same amount added.
     now_ms = int(time.time() * 1000)
     await state_manager.update_game_state(started["game_id"], {"last_move_at": now_ms - 10000})
     res = await state_manager.process_atomic_move(started["game_id"], a.id, "c1", "e2e4")

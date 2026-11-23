@@ -1,6 +1,6 @@
 // --- FILE: frontend/src/i18n/messages/en.ts ---
-// Английский каталог — эталон структуры: тип Messages выводится из него, и украинский и русский каталоги
-// обязаны иметь ровно те же ключи. Английский — американский вариант (defense, color).
+// The English catalog is the reference of the structure: the Messages type is derived from it, and the Ukrainian catalog
+// must have exactly the same keys. English is the American variant (defense, color).
 
 import {plural} from '../core';
 
@@ -471,7 +471,7 @@ export const en = {
         noConnection: 'No connection to the server — the bot will move as soon as the connection is back…',
         moveFailed: 'The bot could not make a move: {detail}',
         moveFailedStatus: 'error {status}',
-        // Мастера прошлого — участники знаменитых турниров («Машина времени», src/services/bots/guests.py).
+        // Masters of the past - participants of famous tournaments ("Time Machine", src/services/bots/guests.py).
         guests: {
             kieseritzky: {name: 'Lionel Kieseritzky', shortName: 'Kieseritzky', about: 'Gambit player from the Café de la Régence'},
             szen: {name: 'József Szén', shortName: 'Szén', about: 'Hungarian master of pawn endgames'},
@@ -1220,7 +1220,7 @@ export const en = {
         older: 'Older →',
         page: 'Page {page} of {pages} · {total} in total',
     },
-    // Ошибки сервера по коду (src/core/errors.py; состав сверяет tests/test_error_codes.py).
+    // Server errors by code (src/core/errors.py; the set is checked by tests/test_error_codes.py).
     serverErrors: {
         internal_error: 'Server error. Please try again.',
         not_authenticated: 'Your session has expired — please log in again',
@@ -1428,7 +1428,7 @@ export const en = {
         no_draw_offer: 'There is no draw offer to accept',
         no_rematch_offer: 'There is no rematch offer to accept',
     },
-    // Стандартные проверки полей (ответ 422): тип проверки pydantic → текст.
+    // Standard field validations (422 response): pydantic check type -> text.
     validation: {
         withField: '{field}: {message}',
         invalid_value: 'invalid value',
@@ -1443,7 +1443,7 @@ export const en = {
         too_long: 'no more than {max_length} items',
         extra_forbidden: 'unknown field',
     },
-    // Названия полей в сообщениях проверки.
+    // Field names in validation messages.
     fields: {
         invite_code: 'Invite code',
         username: 'Username',
@@ -1456,7 +1456,7 @@ export const en = {
         moves: 'Moves',
         config: 'Opponent settings',
     },
-    // Реплики ботов к ходам: ключи присылает сервер (src/services/bots/*.py, tests/test_bot_content_keys.py).
+    // Bot remarks on moves: the keys are sent by the server (src/services/bots/*.py, tests/test_bot_content_keys.py).
     botComments: {
         common: {
             positional: 'A classical positional move.',
@@ -1590,7 +1590,7 @@ export const en = {
             drawDeclined: 'No, let’s play on.',
             drawTooEarly: 'A draw? The game has only just begun — let’s play.',
         },
-        // Ход из дебютной книги бота: в скобках — сколько партий архива с этим ходом.
+        // A move from the bot's opening book: in brackets - how many archive games have this move.
         book: {
             philidor: 'A historical choice of Philidor ({games} games in the archive).',
             labourdonnais: 'La Bourdonnais’s favorite attacking move ({games} games in the archive).',
@@ -1616,7 +1616,7 @@ export const en = {
             petrosian: 'Petrosian’s solid opening ({games} games in the archive).',
         },
     },
-    // Архетипы мастерской: id присылает сервер (src/services/bots/archetypes.py).
+    // Workshop archetypes: the id is sent by the server (src/services/bots/archetypes.py).
     archetypes: {
         blunderer: {
             name: 'Gaper',
@@ -1707,8 +1707,8 @@ export const en = {
             bio: 'Sees blows several moves ahead and almost never miscalculates.',
         },
     },
-    // Наставник (src/services/coach.py): фигуры и поля приходят фигурной нотацией («♘f7»), поэтому
-    // фразы не склоняют названия фигур. У каждого шаблона две формулировки (v1, v2).
+    // Mentor (src/services/coach.py): pieces and squares arrive in figurine notation ("♘f7"), so
+    // the phrases do not decline piece names. Every template has two wordings (v1, v2).
     puzzles: {
         candidates: {
             toggle: 'Candidates first',

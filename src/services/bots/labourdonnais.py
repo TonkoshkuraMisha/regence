@@ -1,16 +1,18 @@
 # --- FILE: src/services/bots/labourdonnais.py ---
 """
-Исторический бот «Луи-Шарль де Лабурдонне»: дебютная книга и правила стиля.
+Historical bot "Louis-Charles de La Bourdonnais": opening book and style rules.
 
-Дебют — книга из партий прототипа (books/labourdonnais.json, собирает scripts/build_opening_books.py) и несколько
-«фирменных» начал, заданных здесь (DEFAULT_LABOURDONNAIS_BOOK).
+Opening — a book from the prototype's games (books/labourdonnais.json, built by scripts/build_opening_books.py) and several
+"signature" openings set here (DEFAULT_LABOURDONNAIS_BOOK).
 
-Стиль (LABOURDONNAIS_STYLE) — бонусы в сантипешках кандидатам движка: быстрое развитие лёгких фигур и рокировка,
-центр, шахи и взятия, после дебюта — фигуры к королю соперника и жертвы. Бонусы только выбирают среди ходов, близких
-по оценке к лучшему (окно — blunder_guard_cp); оценку позиции они не меняют.
+Style (LABOURDONNAIS_STYLE) — bonuses in centipawns for engine candidates: quick development of minor pieces and castling,
+the centre, checks and captures, after the opening — pieces towards the opponent's king and sacrifices. The bonuses only choose
+among moves close
+in evaluation to the best one (the window is blunder_guard_cp); they do not change the position evaluation.
 
-Сила: заявленный рейтинг и ограничение движка UCI_Elo — 1950; измеренная матчами — calibration.json. Порядок выбора
-хода — base.HistoricalBot; реплики бота — ключи каталога botComments.labourdonnais.* на клиенте.
+Strength: the declared rating and the engine's UCI_Elo limit — 1950; the match-measured one — calibration.json. The move
+selection
+order is base.HistoricalBot; the bot's remarks are the botComments.labourdonnais.* catalog keys on the client.
 """
 
 from src.services.bots.base import BookEntry, HistoricalBot, load_bot_opening_book
@@ -35,13 +37,16 @@ from src.services.bots.style import (
     to,
 )
 
-# Ширина окна выбора хода, сп (base.HistoricalBot._window): с опорным ходом силы бот может уступить ему не больше
-# половины этого значения, без движка — лучшему ходу не больше всего значения. Чем шире, тем больше простора стилю.
+# Width of the move selection window, cp (base.HistoricalBot._window): with a strength reference move the bot may fall short of
+# it by at most
+# half of this value, without an engine — short of the best move by at most the whole value. The wider, the more room for
+# style.
 LABOURDONNAIS_BLUNDER_GUARD_CP = 200.0
 
-# Фирменные линии: позиция (FEN без счётчиков ходов) → [(UCI, вес, ключ реплики botComments.*)]. Поверх книги из
-# books/*.json (load_bot_opening_book): ход из файла заменяет совпадающий, а фирменные ходы, которых в файле нет,
-# добавляются.
+# Signature lines: position (FEN without move counters) → [(UCI, weight, remark key botComments.*)]. On top of the book from
+# books/*.json (load_bot_opening_book): a move from the file replaces the matching one, and signature moves absent from the
+# file
+# are added.
 DEFAULT_LABOURDONNAIS_BOOK: dict[str, list[BookEntry]] = {
     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -": [
         ("e2e4", 81, "labourdonnais.bookE4"),
@@ -79,12 +84,12 @@ LABOURDONNAIS_STYLE = Style(
         Rule(SACRIFICE, 16.0),
     ),
 )
-# Функция оценки стиля как самостоятельное имя (её импортируют тесты бота).
+# The style evaluation function as a standalone name (bot tests import it).
 evaluate_labourdonnais_style_bonus = LABOURDONNAIS_STYLE.evaluate
 
 
 class LabourdonnaisBot(HistoricalBot):
-    """Луи-Шарль Маэ де Лабурдонне: UCI_Elo 1950, глубина 5, уровень 5; случайный разброс ±12 сп, MultiPV 8."""
+    """Louis-Charles Mahe de La Bourdonnais: UCI_Elo 1950, depth 5, level 5; random spread +-12 cp, MultiPV 8."""
 
     bot_id = "labourdonnais"
     engine_source_name = "labourdonnais_style_engine"

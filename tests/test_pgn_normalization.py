@@ -1,8 +1,8 @@
 # --- FILE: tests/test_pgn_normalization.py ---
 """
-PGN с пустой строкой после каждой строки (архив чемпионов, импортированный на Windows: \\r\\r\\n).
-По стандарту пустая строка завершает партию — сервер видел партию без ходов, и анализ движком
-возвращал пустой отчёт «100 % точности» без графика.
+PGN with a blank line after every line (champion archive imported on Windows: \\r\\r\\n).
+By the standard a blank line ends the game: the server saw a game with no moves, and engine analysis
+returned an empty report of "100 % accuracy" with no chart.
 """
 
 import importlib.util
@@ -21,7 +21,7 @@ CLEAN = (
     '[Event "St Petersburg"]\n[White "Lasker, Emanuel"]\n[Black "Steinitz, William"]\n[Result "1-0"]\n\n'
     "1. e4 e5 2. Nf3 Nc6 3. Bb5 d6\n4. d4 Bd7 1-0\n"
 )
-# Как хранилось в базе: пустая строка после каждой строки.
+# As stored in the database: a blank line after every line.
 DAMAGED = CLEAN.replace("\n", "\n\n")
 
 
@@ -69,7 +69,7 @@ def test_migration_repairs_only_damaged_rows():
 
     assert module._has_blank_line_inside(DAMAGED)
     assert not module._has_blank_line_inside(CLEAN)
-    # Копия алгоритма в миграции совпадает с кодом приложения.
+    # The copy of the algorithm in the migration matches the application code.
     assert module._normalize(DAMAGED) == normalize_pgn_text(DAMAGED)
 
 

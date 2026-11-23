@@ -1,7 +1,7 @@
 // --- FILE: frontend/src/test/mocks.ts ---
-// Общие тестовые дублёры для компонентных тестов Chessboard: gameSocket (WS не поднимаем —
-// просто фиксируем send() и позволяем тесту вручную дёргать зарегистрированные обработчики
-// событий) и маршрутизатор fetch по префиксу URL.
+// Shared test doubles for the Chessboard component tests: gameSocket (we do not bring up a WS —
+// we just record send() and let the test pull the registered handlers
+// of events by hand) and a fetch router by URL prefix.
 
 import {vi, type Mock} from 'vitest';
 
@@ -13,9 +13,9 @@ export function emitSocketEvent(onMock: Mock, event: string, data: any) {
 type FetchHandler = () => unknown;
 
 /**
- * vi.fn() для global.fetch: сравнивает URL по includes() с ключами handlers (порядок проверки —
- * порядок объявления) и возвращает {ok: true, json: () => handler()}. Непойманные запросы —
- * {ok: false} (ровно то, что делает graceful-деградация в самом компоненте).
+ * vi.fn() for global.fetch: compares the URL by includes() with the keys of handlers (the check order is
+ * the declaration order) and returns {ok: true, json: () => handler()}. Unmatched requests are
+ * {ok: false} (exactly what graceful degradation does in the component itself).
  */
 export function mockFetchRouter(handlers: Record<string, FetchHandler>) {
     return vi.fn(async (input: string | URL | Request) => {

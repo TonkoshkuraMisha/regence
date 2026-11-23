@@ -1,33 +1,33 @@
 // --- FILE: frontend/src/services/themes.ts ---
-// Реестр тактических приёмов (таск 13.0): коды, разделы и родители — с сервера (GET /api/v1/themes), названия и
-// объяснения — из каталогов (themes.<код>.name / .short / .explain) на языке игрока.
-// Источник правды — src/services/themes.py (описание тем — docs/training/tactical-themes.md); маршрут —
-// src/api/themes.py, открыт без входа.
+// Tactical theme registry (task 13.0): codes, sections and parents — from the server (GET /api/v1/themes), names and
+// explanations — from the catalogs (themes.<code>.name / .short / .explain) in the player's language.
+// Source of truth — src/services/themes.py (theme descriptions — docs/training/tactical-themes.md); route —
+// src/api/themes.py, open without sign-in.
 
 import {API_BASE_URL} from '../config/api';
 import {hasMessage, uiMessage} from '../i18n';
 import type {I18n} from '../i18n';
 import {UiError} from './apiErrors';
 
-/** Разделы каталога приёмов A–L; названия разделов — в каталоге переводов. */
+/** Sections A–L of the tactics catalog; section names are in the translation catalog. */
 export type ThemeSection = 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'I' | 'J' | 'K' | 'L';
-/** Какой текст темы нужен: название, краткое или подробное объяснение. */
+/** Which theme text is needed: name, short or detailed explanation. */
 export type ThemeTextPart = 'name' | 'short' | 'explain';
 
-/** Тема реестра, как её отдаёт сервер. */
+/** Registry theme as the server returns it. */
 export interface ThemeInfo {
-    /** Неизменный код темы — ключ в базе задач, в прогрессе игрока и в каталоге текстов. */
+    /** Immutable theme code — the key in the puzzle database, in the player's progress and in the text catalog. */
     code: string;
     section: ThemeSection;
-    /** Код родительской темы (например, у видов вилки родитель — вилка); null — тема верхнего уровня. */
+    /** Parent theme code (e.g. for fork kinds the parent is fork); null — a top-level theme. */
     parent: string | null;
-    /** Чем размечаются задачи темы: D — детектор мотивов, L — тег открытой базы задач, M — ручная разметка. */
+    /** How the theme's puzzles are labeled: D — motif detector, L — open puzzle database tag, M — manual labeling. */
     sources: ('D' | 'L' | 'M')[];
-    /** Сколько задач нужно на каждой из четырёх ступеней, чтобы тему можно было выдавать «по теме». */
+    /** How many puzzles are needed at each of the four stages for the theme to be issued "by theme". */
     minimums: [number, number, number, number];
 }
 
-/** Ответ GET /api/v1/themes: разделы и темы в порядке каталога. */
+/** Response of GET /api/v1/themes: sections and themes in catalog order. */
 export interface ThemeRegistry {
     sections: ThemeSection[];
     themes: ThemeInfo[];
@@ -36,8 +36,8 @@ export interface ThemeRegistry {
 let cached: Promise<ThemeRegistry> | null = null;
 
 /**
- * Реестр тем: один запрос на вкладку (результат кэшируется), после ошибки следующий вызов идёт в сеть заново.
- * Темы, для которых у клиента ещё нет текстов (сервер новее), отбрасываются.
+ * Theme registry: one request per tab (the result is cached); after an error the next call goes to the network again.
+ * Themes for which the client has no texts yet (the server is newer) are dropped.
  */
 export function fetchThemeRegistry(): Promise<ThemeRegistry> {
     if (!cached) {
@@ -55,28 +55,28 @@ export function fetchThemeRegistry(): Promise<ThemeRegistry> {
     return cached;
 }
 
-/** Для тестов: сбросить закэшированный реестр. */
+/** For tests: reset the cached registry. */
 export function resetThemeRegistryCache(): void {
     cached = null;
 }
 
-/** Тема известна клиенту (есть тексты): новая тема сервера без текстов у старого клиента не показывается. */
+/** The theme is known to the client (texts exist): a new server theme without texts is not shown by an old client. */
 export function isKnownTheme(code: string): boolean {
     return /^[a-z][a-z0-9_]*$/.test(code) && hasMessage(`themes.${code}.name`);
 }
 
-/** Название, краткое или подробное объяснение темы на языке игрока; неизвестная тема — её код. */
+/** Name, short or detailed explanation of a theme in the player's language; an unknown theme — its code. */
 export function themeText(code: string, part: ThemeTextPart, t: I18n['t']): string {
     const key = `themes.${code}.${part}`;
     return hasMessage(key) ? t(key as never) : code;
 }
 
-/** Темы раздела в порядке реестра. */
+/** Themes of a section in registry order. */
 export function themesOfSection(registry: ThemeRegistry, section: ThemeSection): ThemeInfo[] {
     return registry.themes.filter((theme) => theme.section === section);
 }
 
-/** Дочерние темы (например, виды вилки). */
+/** Child themes (e.g. fork kinds). */
 export function childThemes(registry: ThemeRegistry, code: string): ThemeInfo[] {
     return registry.themes.filter((theme) => theme.parent === code);
 }

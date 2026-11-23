@@ -1,7 +1,7 @@
 # --- FILE: tests/test_disconnect_clock.py ---
 """
-Разрыв соединения: часы при переподключении, флаг и брошенная партия у отключённого игрока,
-несколько вкладок одного пользователя и гонка «перезагрузка страницы».
+Connection loss: the clock on reconnect, the flag and an abandoned game for a disconnected player,
+several tabs of one user and the "page reload" race.
 """
 
 import time
@@ -38,10 +38,10 @@ def _state(now: int, **overrides) -> dict:
 
 
 async def test_reconnect_during_opponent_turn_does_not_give_opponent_time():
-    """Раньше last_move_at сдвигался на время офлайна, и часы соперника стояли всё это время."""
+    """Previously last_move_at was shifted by the offline time, and the opponent's clock stood still all that time."""
     await state_manager.initialize_game(game_id=31, white_id=10, black_id=20, base_time_ms=60000, increment_ms=0)
     now = int(time.time() * 1000)
-    # Ход белых; чёрные отключились 20 секунд назад.
+    # White to move; black disconnected 20 seconds ago.
     await state_manager.update_game_state(31, {
         "last_move_at": now - 30000,
         "black_disconnected": "true",
@@ -57,7 +57,7 @@ async def test_reconnect_during_opponent_turn_does_not_give_opponent_time():
 
 
 def test_disconnected_player_flags_counting_time_before_disconnect():
-    """Время между последним ходом и разрывом тоже идёт в зачёт (раньше терялось)."""
+    """The time between the last move and the disconnect also counts (it used to be lost)."""
     now = int(time.time() * 1000)
     state = _state(
         now,
@@ -69,8 +69,8 @@ def test_disconnected_player_flags_counting_time_before_disconnect():
 
 def test_abandon_timer_ignores_stopped_clock_on_opponent_turn():
     """
-    Если сейчас ход соперника, часы отключённого стоят: при 5 секундах на часах он не должен
-    проигрывать через 5 секунд офлайна — только по общему таймеру брошенной партии.
+    If it is now the opponent's move, the disconnected player's clock is stopped: with 5 seconds on the clock they must not
+    lose after 5 seconds offline - only by the shared abandoned-game timer.
     """
     now = int(time.time() * 1000)
     state = _state(now, black_time_ms=5000, black_disconnected="true", black_disconnect_started_at=now - 10000)
@@ -94,7 +94,7 @@ async def test_opponent_gets_wait_limited_by_live_clock():
 
 
 async def test_disconnect_flag_not_written_after_game_finished():
-    """Флаг отключения не пишется в партию, которая уже не идёт."""
+    """The disconnect flag is not written to a game that is no longer in progress."""
     await state_manager.initialize_game(game_id=33, white_id=10, black_id=20, base_time_ms=60000, increment_ms=0)
     await state_manager.update_game_state(33, {"status": "completed"})
 
@@ -105,8 +105,8 @@ async def test_disconnect_flag_not_written_after_game_finished():
 
 
 class _NoDbSession:
-    """Сессия-заглушка: тест проверяет жизненный цикл соединений, БД ему не нужна.
-    (Настоящая сессия из event loop TestClient ломает общее SQLite-соединение тестов.)"""
+    """Stub session: the test checks the connection life cycle and does not need the DB.
+    (A real session from the TestClient event loop breaks the tests' shared SQLite connection.)"""
 
     async def __aenter__(self):
         return self
@@ -141,7 +141,7 @@ async def test_closing_one_tab_keeps_player_online(client, monkeypatch):
 
     with client.websocket_connect(url) as tab2:
         with client.websocket_connect(url):
-            pass  # первая вкладка закрыта
+            pass  # the first tab is closed
 
         state = await state_manager.get_game_state(34)
         assert state["white_disconnected"] == "false"
@@ -149,13 +149,13 @@ async def test_closing_one_tab_keeps_player_online(client, monkeypatch):
         assert any(tab2.receive_json()["event"] == "queue_left" for _ in range(5))
 
     state = await state_manager.get_game_state(34)
-    assert state["white_disconnected"] == "true"  # закрыта последняя вкладка
+    assert state["white_disconnected"] == "true"  # the last tab is closed
 
 
 async def test_reload_race_does_not_leave_player_marked_disconnected(monkeypatch):
     """
-    Перезагрузка страницы: новая вкладка подключается (и выполняет handle_player_reconnect,
-    который ничего не делает), пока старая ещё обрабатывает разрыв и только потом ставит флаг.
+    Page reload: the new tab connects (and runs handle_player_reconnect,
+    which does nothing) while the old one is still handling the disconnect and only then sets the flag.
     """
     await state_manager.initialize_game(game_id=35, white_id=10, black_id=20, base_time_ms=60000, increment_ms=0)
     cm = ConnectionManager()
@@ -165,7 +165,7 @@ async def test_reload_race_does_not_leave_player_marked_disconnected(monkeypatch
     original_disconnect_handler = state_manager.handle_player_disconnect
 
     async def reconnect_then_mark(user_id, manager):
-        await cm.connect(new_tab, user_id=10)  # новая вкладка успела подключиться
+        await cm.connect(new_tab, user_id=10)  # the new tab managed to connect
         await original_disconnect_handler(user_id, manager)
 
     monkeypatch.setattr(state_manager, "handle_player_disconnect", reconnect_then_mark)

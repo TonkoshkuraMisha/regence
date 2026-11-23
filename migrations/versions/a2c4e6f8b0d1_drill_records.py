@@ -2,7 +2,7 @@
 
 """drill_records
 
-Личные рекорды забега на минуту в упражнениях-генераторах (таск 13.7).
+Personal records of the one-minute run in the generator drills (task 13.7).
 
 Revision ID: a2c4e6f8b0d1
 Revises: f3b5d7e9a1c2

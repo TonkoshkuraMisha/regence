@@ -2,8 +2,8 @@
 
 """theme_training
 
-Тренировка по приёмам (таск 13.4): ступень задачи (1 — знакомство … 4 — мастер) и прогресс игрока по каждой теме.
-Ступень уже загруженных задач считается здесь же — по рейтингу и длине решения (как в src/services/puzzles.py).
+Training by tactical themes (task 13.4): the puzzle tier (1 - introduction ... 4 - master) and the player's progress per theme.
+The tier of already loaded puzzles is computed right here - by rating and solution length (as in src/services/puzzles.py).
 
 Revision ID: c5e7a9b1d3f6
 Revises: b3d5f7a9c1e4
@@ -20,7 +20,7 @@ down_revision: str | Sequence[str] | None = "b3d5f7a9c1e4"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
-# Число ходов решающего = (число ходов в строке − 1) / 2; пробелов в строке на один меньше, чем ходов.
+# Number of the solver's moves = (number of moves in the line - 1) / 2; there is one fewer space in the line than moves.
 _PLIES = "(length(moves) - length(replace(moves, ' ', '')) + 1)"
 
 
@@ -34,7 +34,7 @@ def upgrade() -> None:
             ELSE 1 END
     """)
     op.create_index("ix_puzzles_stage", "puzzles", ["stage"])
-    # Версия разметки тем: импорт переразмечает задачи с версией ниже текущей (новые темы, классификатор матов).
+    # Theme markup version: the import re-tags puzzles with a version below the current one (new themes, mate classifier).
     op.add_column("puzzles", sa.Column("tag_version", sa.Integer(), nullable=False, server_default="0"))
     op.create_table(
         "theme_progress",

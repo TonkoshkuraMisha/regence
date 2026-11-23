@@ -1,24 +1,24 @@
 // --- FILE: frontend/src/components/ui/Button.tsx ---
-// Кнопки платформы (общие компоненты дизайна, план владельца 18.11; правила — docs/design-system.md). Иерархия:
-// primary — одно главное действие на экране (янтарная заливка), secondary — обычные действия (тёмная с рамкой),
-// ghost — второстепенные (только текст), danger — необратимые (сдаться, удалить). Размеры: sm — в плотных панелях,
-// md — по умолчанию, lg — главный призыв страницы. ButtonLink — то же оформление у ссылки маршрутизатора. Классы
-// собирает buttonClasses — один источник. Витрина — страница /design (DesignGallery).
+// Platform buttons (shared design components, owner plan of 18.11; rules in docs/design-system.md). Hierarchy:
+// primary - the single main action on a screen (amber fill), secondary - ordinary actions (dark with border),
+// ghost - secondary (text only), danger - irreversible (resign, delete). Sizes: sm - in dense panels,
+// md - default, lg - the main call to action of a page. ButtonLink - the same look for a router link. Classes
+// are assembled by buttonClasses - a single source. Showcase - the /design page (DesignGallery).
 
 import type {ButtonHTMLAttributes, ReactNode} from 'react';
 import {Link} from 'react-router-dom';
 import type {LinkProps} from 'react-router-dom';
 
-// Вид и размер кнопки (см. заголовок файла).
+// Button variant and size (see the file header).
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
 export type ButtonSize = 'sm' | 'md' | 'lg';
 
-// Общая часть классов: раскладка, плавная смена цвета, вид отключённой кнопки и видимая рамка фокуса с клавиатуры.
+// Common class part: layout, smooth colour change, disabled look and a visible keyboard focus ring.
 const BASE = 'inline-flex items-center justify-center gap-1.5 rounded-md font-bold transition-colors cursor-pointer '
     + 'disabled:opacity-45 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-offset-2 '
     + 'focus-visible:outline-amber-300';
 
-// Цвета по видам кнопки.
+// Colours per button variant.
 const VARIANTS: Record<ButtonVariant, string> = {
     primary: 'bg-amber-700 hover:bg-amber-600 text-white shadow-sm',
     secondary: 'bg-black/30 hover:bg-black/45 border border-amber-800/60 hover:border-amber-500 text-boxwood-light',
@@ -26,28 +26,28 @@ const VARIANTS: Record<ButtonVariant, string> = {
     danger: 'bg-rose-900/70 hover:bg-rose-800 border border-rose-600/60 text-rose-50',
 };
 
-// Отступы и размер шрифта по размерам.
+// Padding and font size per size.
 const SIZES: Record<ButtonSize, string> = {
     sm: 'px-2.5 py-1 text-xs',
     md: 'px-3.5 py-1.5 text-sm',
     lg: 'px-5 py-2.5 text-base',
 };
 
-/** Классы кнопки — для мест, где нужен другой элемент с тем же видом (например, label). */
+/** Button classes - for places that need another element with the same look (for example, a label). */
 export function buttonClasses(variant: ButtonVariant = 'secondary', size: ButtonSize = 'md', extra = ''): string {
     return [BASE, VARIANTS[variant], SIZES[size], extra].filter(Boolean).join(' ');
 }
 
-// Общие свойства Button и ButtonLink.
+// Properties shared by Button and ButtonLink.
 interface CommonProps {
     variant?: ButtonVariant;
     size?: ButtonSize;
-    /** Иконка перед текстом (lucide-react, размер подбирает вызывающий). */
+    /** Icon before the text (lucide-react, size chosen by the caller). */
     icon?: ReactNode;
     children?: ReactNode;
 }
 
-/** Кнопка (по умолчанию type="button", чтобы не отправлять формы случайно); остальные свойства — как у button. */
+/** Button (type="button" by default so forms are not submitted by accident); other properties are as on button. */
 export function Button({variant = 'secondary', size = 'md', icon, children, className = '', type = 'button', ...rest}:
                            CommonProps & ButtonHTMLAttributes<HTMLButtonElement>) {
     return (
@@ -57,7 +57,7 @@ export function Button({variant = 'secondary', size = 'md', icon, children, clas
     );
 }
 
-/** Ссылка маршрутизатора с видом кнопки. */
+/** Router link styled as a button. */
 export function ButtonLink({variant = 'secondary', size = 'md', icon, children, className = '', ...rest}: CommonProps & LinkProps) {
     return (
         <Link className={buttonClasses(variant, size, className)} {...rest}>

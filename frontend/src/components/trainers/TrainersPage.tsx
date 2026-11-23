@@ -1,9 +1,9 @@
 // --- FILE: frontend/src/components/trainers/TrainersPage.tsx ---
-// Тренажёры (таск 19.1): /train — все тренажёры с личными рекордами; /train/:trainerId — выбор уровня, попытка,
-// результат (очки, время, ошибки, рекорд) и график последних попыток.
-// Данные: services/trainers.ts (рекорды, история и сохранение попытки; сервер — src/api/trainers.py, таблица trainer_results). Игры считаются на клиенте:
-// компоненты в соседних файлах, чистые правила и генераторы заданий — в frontend/src/trainers/. Без входа результаты не сохраняются.
-// Сверху страницы — ссылки на /workout, /programs и /exam. Подключено в App.tsx.
+// Trainers (task 19.1): /train lists all trainers with personal records; /train/:trainerId is level selection, an attempt,
+// the result (score, time, mistakes, record) and a chart of the latest attempts.
+// Data: services/trainers.ts (records, history and saving an attempt; server - src/api/trainers.py, table trainer_results). Games are scored on the client:
+// components live in neighbouring files, pure rules and task generators in frontend/src/trainers/. Without sign-in, results are not saved.
+// The top of the page links to /workout, /programs and /exam. Wired up in App.tsx.
 
 import {useEffect, useRef, useState} from 'react';
 import {Link, useParams} from 'react-router-dom';
@@ -25,10 +25,10 @@ import {PLACEMENT_PUZZLES, TOUR_SIZES} from '../../trainers/boardPuzzles';
 import {COORD_TRAINERS, levelToOptions, optionsToLevel} from '../../trainers/coordinates';
 import type {CoordTrainer} from '../../trainers/coordinates';
 
-/** Число уровней в списке выбора (1–10); у расстановок, обхода коня и координат список свой. */
+/** Number of levels in the picker (1-10); placement, knight-tour and coordinates trainers have their own list. */
 const LEVELS = 10;
 
-/** Личные рекорды по тренажёрам; гость — пустой объект, запроса нет. */
+/** Personal records per trainer; a guest gets an empty object and no request is made. */
 function useRecords(): Partial<Record<TrainerId, TrainerRecord>> {
     const [records, setRecords] = useState<Partial<Record<TrainerId, TrainerRecord>>>({});
     useEffect(() => {
@@ -37,7 +37,7 @@ function useRecords(): Partial<Record<TrainerId, TrainerRecord>> {
     return records;
 }
 
-/** Список всех тренажёров с личными рекордами. */
+/** List of all trainers with personal records. */
 export function TrainersPage() {
     const {t} = useI18n();
     const records = useRecords();
@@ -97,7 +97,7 @@ export function TrainersPage() {
     );
 }
 
-/** График последних результатов: линия по очкам, масштаб по максимуму; меньше двух точек не рисуется. */
+/** Chart of the latest results: a line by score, scaled to the maximum; fewer than two points are not drawn. */
 function Sparkline({values}: { values: number[] }) {
     if (values.length < 2) return null;
     const max = Math.max(...values, 1);
@@ -109,12 +109,12 @@ function Sparkline({values}: { values: number[] }) {
     );
 }
 
-/** Итог попытки; record: null — ответ сервера о рекорде ещё не пришёл (или гость не вошёл). */
+/** Attempt result; record: null means the server's record reply has not arrived yet (or the guest is not signed in). */
 type Outcome = { score: number; mistakes: number; timeMs: number; record: boolean | null };
 
 /**
- * Страница тренажёра: выбор уровня или настроек, запуск игры, итог попытки и график. seed задаёт последовательность заданий
- * (null — игра не идёт); итог игра отдаёт в finish, а попытка сохраняется вошедшему.
+ * Trainer page: level or settings selection, game launch, attempt result and chart. seed defines the task sequence
+ * (null - no game in progress); the game hands its result to finish, and the attempt is saved for a signed-in player.
  */
 export function TrainerPage() {
     const {t} = useI18n();
@@ -132,7 +132,7 @@ export function TrainerPage() {
 
     if (!id) return <p className="p-4 text-rose-300">{t('trainers.notFound')}</p>;
     const isCoord = (COORD_TRAINERS as readonly string[]).includes(id);
-    // У тренажёров счёта (19.7), викторин по структурам и планам и миниатюр уровней нет.
+    // Counting trainers (19.7), structure/plan quizzes and miniatures have no levels.
     const noLevels = id.startsWith('calc_') || id === 'structure_quiz' || id === 'plan_quiz' || id === 'miniatures';
 
     const start = () => {

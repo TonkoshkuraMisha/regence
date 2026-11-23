@@ -898,12 +898,10 @@
   }
  ],
  "intro": {
-  "ru": "Венская партия с ранним f2–f4. Белыми играет Стейниц, и большую часть партии перевес у него.",
   "uk": "Віденська партія з раннім f2–f4. Білими грає Стейніц, і більшу частину партії перевага в нього.",
   "en": "A Vienna Game with an early f2–f4. Steinitz has White, and for most of the game he is better."
  },
  "summary": {
-  "ru": "В эндшпиле белые ошиблись ходом 54.h5, и король чёрных пошёл вперёд: 53...Kxg4, 56...Kxf5, 57...Ke5, — после чего пешка «f» прошла в ферзи. Урок: в эндшпиле король решает — активный король выигрывает пешки соперника и проводит свои.",
   "uk": "В ендшпілі білі помилилися ходом 54.h5, і король чорних пішов уперед: 53...Kxg4, 56...Kxf5, 57...Ke5, — після чого пішак «f» пройшов у ферзі. Урок: в ендшпілі король вирішує — активний король виграє пішаків суперника й проводить своїх.",
   "en": "In the endgame White erred with 54.h5, and the black king marched forward: 53...Kxg4, 56...Kxf5, 57...Ke5 — after which the f-pawn queened. Lesson: in the endgame the king decides — an active king wins the opponent's pawns and escorts its own."
  }

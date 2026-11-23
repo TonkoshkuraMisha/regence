@@ -1,8 +1,8 @@
 // --- FILE: frontend/src/components/puzzles/__tests__/puzzlesFailures.test.tsx ---
-// Страница задач (PuzzlesPage.tsx) при сбоях сети: непроверенный ход откатывается с сообщением об ошибке,
-// отказ подсказки, показа решения и старта режима на время тоже показываются сообщением (а не молча теряются),
-// завершение забега с ошибкой возвращает на стартовый экран. Сервер подменяется стабом fetch: нужный адрес
-// отвечает кодом 500, остальные — заготовками, как в puzzles.test.tsx.
+// The puzzle page (PuzzlesPage.tsx) on network failures: an unchecked move is rolled back with an error message,
+// a refused hint, solution display and timed-mode start are also shown with a message (and not silently lost),
+// finishing a run with an error returns to the start screen. The server is replaced by a fetch stub: the needed address
+// answers with code 500, the others with canned replies, as in puzzles.test.tsx.
 
 import {act, fireEvent, render, screen, waitFor} from '@testing-library/react';
 import {MemoryRouter} from 'react-router-dom';
@@ -20,7 +20,7 @@ const REGISTRY = {sections: ['F'], themes: [
     {code: 'back_rank_mate', section: 'F', parent: null, sources: ['D', 'L'], minimums: [25, 25, 20, 15]},
 ]};
 
-/** Стаб сервера: адреса из failing отвечают 500, остальные — заготовками (задача, профиль, реестр тем). */
+/** A server stub: addresses from failing answer 500, the others with canned replies (a puzzle, a profile, the theme registry). */
 function stub(failing: string[], extra: (url: string) => unknown = () => ({})) {
     vi.stubGlobal('fetch', vi.fn(async (input: string | URL | Request) => {
         const url = String(input);
@@ -72,17 +72,17 @@ afterEach(() => {
     localStorage.clear();
 });
 
-describe('сбои сети на странице задач', () => {
-    it('отказ проверки хода откатывает ход и показывает ошибку', async () => {
+describe('network failures on the puzzle page', () => {
+    it('a refused move check rolls the move back and shows an error', async () => {
         stub(['/move']);
         await startRated();
         await play('d2', 'd8');
         await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument());
-        // Ход откатан: ладья снова на d2, решать можно дальше.
+        // The move is rolled back: the rook is on d2 again, solving can go on.
         expect(square('d2').querySelector('img')?.getAttribute('alt')).toBe('wr');
     });
 
-    it('отказ подсказки и показа решения — сообщение об ошибке', async () => {
+    it('a refused hint and solution display — an error message', async () => {
         stub(['/hint', '/giveup', '/solution', '/skip']);
         await startRated();
         await act(async () => {
@@ -96,7 +96,7 @@ describe('сбои сети на странице задач', () => {
         await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument());
     });
 
-    it('отказ старта режима на время — сообщение, забег не начат', async () => {
+    it('a refused timed-mode start — a message, the run is not started', async () => {
         stub(['/timed/start'], () => ({rows: []}));
         render(
             <MemoryRouter initialEntries={['/puzzles']}>

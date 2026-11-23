@@ -1,16 +1,18 @@
 # --- FILE: src/services/attachments.py ---
 """
-Карточки-вложения игрока (таски 30.1 и 30.2): партия, позиция, задача, урок, турнир, партия библиотеки — в личных
-сообщениях и ленте; своё достижение — только в ленте. Сервер проверяет ссылку и снимает данные на момент отправки (имена,
-результат, рейтинг задачи); подписи на трёх языках собирает клиент — строк интерфейса здесь нет.
+Player attachment cards (tasks 30.1 and 30.2): a game, position, puzzle, lesson, tournament, library game — in direct
+messages and the feed; one's own achievement — only in the feed. The server validates the reference and snapshots the data at
+send time (names,
+result, puzzle rating); captions in three languages are built by the client — there are no UI strings here.
 
-Партия библиотеки прикладывается, только если лежит в публичной коллекции: материалы с ограниченной видимостью
-(свои закрытые, служебные) наружу не уходят, даже если автор сам их видит.
+A library game is attached only if it lies in a public collection: materials with restricted visibility
+(one's own private ones, internal ones) do not go out, even if the author can see them.
 
-Что проверяется по видам: партия, задача, турнир и партия библиотеки — запись с таким номером есть в базе (games,
-puzzles, tournaments, library_games); позиция — FEN читается и позиция возможна; достижение — открыто у самого автора
-(user_achievements); урок — только вид идентификатора: уроки лежат в файлах клиента, сервер их не хранит.
-Кто вызывает: src/services/direct_messages.py (виды MESSAGE_KINDS) и src/services/feed.py (POST_KINDS).
+What is checked per kind: game, puzzle, tournament and library game — a record with such an id exists in the database (games,
+puzzles, tournaments, library_games); position — the FEN is readable and the position is possible; achievement — unlocked for
+the author
+(user_achievements); lesson — only the identifier format: lessons live in client files, the server does not store them.
+Callers: src/services/direct_messages.py (kinds MESSAGE_KINDS) and src/services/feed.py (POST_KINDS).
 """
 
 import re
@@ -27,18 +29,18 @@ from src.models.puzzle import Puzzle
 from src.models.tournament import Tournament
 from src.models.user import User
 
-# Виды карточек, которые можно приложить к личному сообщению, и к записи ленты (там ещё своё достижение).
+# Card kinds that can be attached to a direct message, and to a feed post (which also allows one's own achievement).
 MESSAGE_KINDS = ("game", "position", "puzzle", "lesson", "tournament", "library")
 POST_KINDS = (*MESSAGE_KINDS, "achievement")
-# Допустимый вид идентификатора урока и кода достижения (до обращения к базе).
+# Valid format of a lesson identifier and an achievement code (checked before touching the database).
 LESSON_ID = re.compile(r"^[A-Za-z0-9_.:-]{1,64}$")
 ACHIEVEMENT_CODE = re.compile(r"^[a-z0-9_]{1,32}$")
 
 
 def clean_text(text: str | None, limit: int) -> str:
     """
-    Обрезка краёв и лишних пустых строк; переносы внутри сохраняются. Несколько пустых строк подряд становятся одной,
-    пробелы в конце строк убираются, результат обрезается до limit знаков.
+    Trims the edges and extra blank lines; line breaks inside are kept. Several blank lines in a row become one,
+    trailing spaces on lines are removed, the result is cut to limit characters.
     """
     lines = [line.rstrip() for line in (text or "").strip().splitlines()]
     out: list[str] = []
@@ -61,9 +63,9 @@ def _invalid() -> DomainError:
 
 async def _numeric(db: AsyncSession, kind: str, key: int) -> dict:
     """
-    Карточка для видов с номером записи: партия (имена игроков, результат, статус), задача (позиция и рейтинг),
-    партия библиотеки (только из публичной коллекции) и турнир с ботами (формат, размер, статус, владелец). Записи
-    нет — attachment_invalid.
+    Card for kinds with a record id: a game (player names, result, status), a puzzle (position and rating),
+    a library game (only from a public collection) and a tournament with bots (format, size, status, owner). No record
+    — attachment_invalid.
     """
     if kind == "game":
         game = await db.get(Game, key)
@@ -99,10 +101,10 @@ async def _numeric(db: AsyncSession, kind: str, key: int) -> dict:
 async def build_attachment(db: AsyncSession, kind: str, ref: str, *, author: User,
                            kinds: tuple[str, ...] = MESSAGE_KINDS) -> dict:
     """
-    Проверяет ссылку и снимает карточку. Ошибка — attachment_invalid. kind — вид карточки (должен входить в kinds),
-    ref — номер записи, FEN позиции, идентификатор урока или код достижения (не длиннее 100 знаков); author нужен
-    только достижению: приложить можно лишь своё. Возвращает словарь с "kind", "ref" и снимком данных — он
-    сохраняется вместе с сообщением и позже не обновляется.
+    Validates the reference and snapshots the card. Error — attachment_invalid. kind is the card kind (must be in kinds),
+    ref is a record id, a position FEN, a lesson identifier or an achievement code (at most 100 characters); author is needed
+    only for an achievement: only one's own can be attached. Returns a dict with "kind", "ref" and a data snapshot — it
+    is stored together with the message and is not updated later.
     """
     ref = (ref or "").strip()
     if kind not in kinds or not ref or len(ref) > 100:

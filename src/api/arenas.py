@@ -1,12 +1,13 @@
 # --- FILE: src/api/arenas.py ---
 """
-Арены — турниры между людьми (таск 17.2): расписание, вход, «Играть», таблица, напоминание о начале. Правила —
-src/services/arena.py, расписание по конференциям — src/services/arena_schedule.py.
+Arenas - tournaments between people (task 17.2): schedule, joining, "Play", table, start reminder. Rules -
+src/services/arena.py, schedule by conference - src/services/arena_schedule.py.
 
-Списки и страница арены открыты всем; вход, «Играть» и напоминания — только вошедшим. Арены, участники и партии
-лежат в таблицах arenas, arena_players, arena_games, arena_reminders; кто сейчас ждёт пару — в Redis
-(arena:{id}:waiting). Сами партии арены идут по общему WebSocket партий (src/api/websockets.py).
-Месячная лига арен (GET /arenas/league) — src/services/arena_league.py.
+Lists and the arena page are open to everyone; joining, "Play" and reminders - only for logged-in users. Arenas, participants
+and games
+live in the tables arenas, arena_players, arena_games, arena_reminders; who is waiting for a pairing now - in Redis
+(arena:{id}:waiting). The arena games themselves go through the shared game WebSocket (src/api/websockets.py).
+Monthly arena league (GET /arenas/league) - src/services/arena_league.py.
 """
 
 from datetime import timedelta
@@ -28,9 +29,9 @@ from src.services.matchmaker import MatchmakingError
 
 router = APIRouter()
 
-# Сколько законченная арена ещё видна в списке.
+# How long a finished arena stays visible in the list.
 RECENT = timedelta(hours=6)
-# Статусы HTTP для кодов отказа сервиса; остальные отказы — 409 (конфликт с состоянием арены).
+# HTTP statuses for service refusal codes; all other refusals are 409 (conflict with the arena state).
 _CODES = {"arena_not_found": status.HTTP_404_NOT_FOUND, "arena_fair_play": status.HTTP_403_FORBIDDEN,
           "match_wrong_conference": status.HTTP_403_FORBIDDEN, "match_no_conference": status.HTTP_403_FORBIDDEN}
 
@@ -40,7 +41,7 @@ def _http(exc: DomainError):
 
 
 async def _views(db: AsyncSession, rows: list[Arena], now) -> list[dict]:
-    """Карточки арен списка: число участников и идущих партий — двумя запросами на весь список."""
+    """Arena cards of the list: the number of participants and games in progress - two queries for the whole list."""
     players, unfinished = await service.counts(db, [a.id for a in rows])
     return [{**service.view(a, now, unfinished.get(a.id, 0)), "players": players.get(a.id, 0)} for a in rows]
 
@@ -48,8 +49,8 @@ async def _views(db: AsyncSession, rows: list[Arena], now) -> list[dict]:
 @router.get("")
 async def list_arenas(db: AsyncSession = Depends(get_db)):
     """
-    Идущие, ближайшие (на 6 часов вперёд) и недавно законченные арены; расписание дополняется при запросе.
-    Законченные арены, в которые никто не вошёл, не показываются: при расписании пяти конференций они засоряли бы список.
+    Arenas in progress, upcoming (6 hours ahead) and recently finished; the schedule is topped up on request.
+    Finished arenas that nobody joined are not shown: with a schedule of five conferences they would clutter the list.
     """
     await service.ensure_schedule(db)
     now = service._now()
@@ -65,8 +66,9 @@ async def list_arenas(db: AsyncSession = Depends(get_db)):
 async def arena_league_table(request: Request, category: RatingCategory = Query("blitz"),
                              season: str | None = Query(None, pattern=SEASON), db: AsyncSession = Depends(get_db)):
     """
-    Месячная лига арен: игроки по сумме очков арен сезона (по умолчанию — текущий месяц) в категории контроля. На
-    рейтинг не влияет. Открыта всем; вошедшему — его строка (me), даже если он ниже первых строк таблицы.
+    Monthly arena league: players by the sum of arena points of the season (the current month by default) in a time-control
+    category. It does not affect
+    the rating. Open to everyone; for a logged-in user - their row (me), even if they are below the first rows of the table.
     """
     return await arena_league.league(db, category, season, await optional_user_id(request, db))
 
@@ -74,8 +76,9 @@ async def arena_league_table(request: Request, category: RatingCategory = Query(
 @router.get("/current")
 async def current_arena(db: AsyncSession = Depends(get_db)):
     """
-    Для лобби: арена, в которую можно войти и играть прямо сейчас (пары ещё создаются), — та, где больше игроков;
-    иначе ближайшая по времени начала. Арена, которая только доигрывает партии, в анонс не идёт.
+    For the lobby: an arena that can be joined and played right now (pairings are still being created) - the one with more
+    players;
+    otherwise the nearest by start time. An arena that is only finishing its games does not go into the announcement.
     """
     await service.ensure_schedule(db)
     now = service._now()
@@ -94,8 +97,9 @@ async def current_arena(db: AsyncSession = Depends(get_db)):
 @router.get("/{arena_id}")
 async def get_arena(arena_id: int, request: Request, db: AsyncSession = Depends(get_db)):
     """
-    Страница арены: карточка, таблица, зачёт конференций и — вошедшему игроку — его состояние (участвует ли, ждёт ли
-    пару, идущая партия, напоминание, призовое место после итогов). Заодно продвигает швейцарку: тур мог закончиться.
+    Arena page: card, table, conference standings and - for a logged-in player - their state (participating or not, waiting for
+    a pairing, game in progress, reminder, prize place after the results). It also advances the Swiss: a round may have
+    finished.
     """
     user_id = await optional_user_id(request, db)
     try:
@@ -103,37 +107,37 @@ async def get_arena(arena_id: int, request: Request, db: AsyncSession = Depends(
     except DomainError as exc:
         raise _http(exc) from None
     if arena.format in service.ROUND_FORMATS:
-        await service.advance_swiss(db, arena)  # тур мог закончиться, а турнир — начаться
+        await service.advance_swiss(db, arena)  # a round may have finished and the tournament may have started
         await db.commit()
     me = None
     if user_id is not None:
         joined = await service._player(db, arena.id, user_id) is not None
-        # Игрок может быть в другом делении этой арены (33.2) — клиент перейдёт туда.
+        # The player may be in another division of this arena (33.2) - the client will go there.
         division_id = None
         if not joined:
             for item in await service.divisions(db, arena):
                 if item.id != arena.id and await service._player(db, item.id, user_id) is not None:
                     division_id = item.id
-        me = {"username": getattr(await db.get(User, user_id), "username", None),  # по имени итоги находят строку игрока
+        me = {"username": getattr(await db.get(User, user_id), "username", None),  # the results find the player's row by name
               "joined": joined, "waiting": user_id in await service.waiting_ids(arena.id),
               "current_game_id": await service.current_game(db, arena.id, user_id) if joined else None,
               "division_arena_id": division_id,
               "reminder": await service.has_reminder(db, arena.id, user_id),
-              # Призовое место (33.5) — только когда награды розданы, то есть итоги окончательные.
+              # Prize place (33.5) - only when awards are handed out, i.e. the results are final.
               "podium_place": await arena_awards.place_of(db, arena.id, user_id) if joined else None}
     return {**service.view(arena, None, await service.open_games(db, arena.id)),
             "standings": await service.standings(db, arena.id),
-            # Зачёт конференций арены (33.6): сумма очков лучших участников каждой конференции.
+            # Conference standings of the arena (33.6): the sum of points of the best participants of each conference.
             "conferences": await conferences.arena_table(db, arena.id), "me": me,
-            # Матч конференций: счёт сторон и доски (src/services/conference_match_rules.py).
+            # Conference match: the score of the sides and boards (src/services/conference_match_rules.py).
             "match": await service.match_view(db, arena) if arena.format == "match" else None}
 
 
 @router.post("/{arena_id}/join")
 async def join_arena(arena_id: int, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
     """
-    Вход в арену — любому зарегистрированному игроку без флага нечестной игры; при переполнении игрок попадает в
-    другое деление — его id в ответе.
+    Joining an arena - any registered player without the unfair-play flag; on overflow the player goes into
+    another division - its id is in the response.
     """
     try:
         player = await service.join(db, await service.get(db, arena_id), user)
@@ -144,7 +148,7 @@ async def join_arena(arena_id: int, db: AsyncSession = Depends(get_db), user: Us
 
 @router.post("/{arena_id}/remind")
 async def remind(arena_id: int, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
-    """«Напомнить»: незадолго до начала арены игроку придёт уведомление (33.4). Только до её начала."""
+    """"Remind me": shortly before the arena starts the player gets a notification (33.4). Only before it starts."""
     try:
         return {"reminder": await service.set_reminder(db, await service.get(db, arena_id), user.id, True)}
     except DomainError as exc:
@@ -153,7 +157,7 @@ async def remind(arena_id: int, db: AsyncSession = Depends(get_db), user: User =
 
 @router.delete("/{arena_id}/remind")
 async def forget_reminder(arena_id: int, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
-    """Отменить своё напоминание о начале арены."""
+    """Cancel one's own reminder about the arena start."""
     try:
         return {"reminder": await service.set_reminder(db, await service.get(db, arena_id), user.id, False)}
     except DomainError as exc:
@@ -163,8 +167,9 @@ async def forget_reminder(arena_id: int, db: AsyncSession = Depends(get_db), use
 @router.post("/{arena_id}/ready")
 async def ready(arena_id: int, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
     """
-    «Играть»: пара с другим ожидающим или ожидание (клиент повторяет запрос). Отметка ожидания в Redis считается
-    действующей arena.WAIT_TTL_S секунд — кто перестал повторять запрос, тот больше не ждёт.
+    "Play": a pairing with another waiting player or waiting (the client repeats the request). The waiting mark in Redis is
+    considered
+    valid for arena.WAIT_TTL_S seconds - whoever stops repeating the request no longer waits.
     """
     try:
         return await service.ready(db, await service.get(db, arena_id), user)
@@ -176,6 +181,6 @@ async def ready(arena_id: int, db: AsyncSession = Depends(get_db), user: User = 
 
 @router.post("/{arena_id}/leave-waiting")
 async def leave_waiting(arena_id: int, user: User = Depends(get_current_user)):
-    """Перестать ждать пару: убирает игрока из списка ожидающих арены в Redis."""
+    """Stop waiting for a pairing: removes the player from the arena waiting list in Redis."""
     await service.leave_waiting(arena_id, user.id)
     return {"waiting": False}

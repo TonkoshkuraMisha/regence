@@ -11,7 +11,7 @@ from src.services.game_state import state_manager
 
 @pytest.mark.asyncio
 async def test_human_telemetry_keeps_high_trust_factor(db_session):
-    """На серии «человеческих» ходов (разное время, без ухода из вкладки) trust_factor остаётся 100."""
+    """On a series of "human" moves (varied time, no leaving the tab) trust_factor stays 100."""
     human = User(
         username="honest_gm", hashed_password="pw", bullet_rating=1850, blitz_rating=1850,
         rapid_rating=1850, classical_rating=1850, trust_factor=100, is_cheater=False
@@ -64,7 +64,7 @@ async def test_human_telemetry_keeps_high_trust_factor(db_session):
 
 @pytest.mark.asyncio
 async def test_robotic_blurred_telemetry_flags_cheater(db_session):
-    """Постоянный window_blurred_before_move=True и монотонное время 4500 мс снижают trust_factor < 30."""
+    """A constant window_blurred_before_move=True and a monotonic time of 4500 ms lower trust_factor below 30."""
     cheater = User(
         username="tab_switcher_bot", hashed_password="pw", bullet_rating=1500, blitz_rating=1500,
         rapid_rating=1500, classical_rating=1500, trust_factor=100, is_cheater=False
@@ -117,7 +117,7 @@ async def test_robotic_blurred_telemetry_flags_cheater(db_session):
 
 @pytest.mark.asyncio
 async def test_finish_game_triggers_telemetry_anticheat(db_session):
-    """Проверяет автоматический запуск evaluate_game_telemetry внутри state_manager.finish_game."""
+    """Checks the automatic launch of evaluate_game_telemetry inside state_manager.finish_game."""
     cheater = User(
         username="auto_ac_cheater", hashed_password="pw", bullet_rating=1400, blitz_rating=1400,
         rapid_rating=1400, classical_rating=1400, trust_factor=100, is_cheater=False
@@ -145,7 +145,7 @@ async def test_finish_game_triggers_telemetry_anticheat(db_session):
 
     await state_manager.initialize_game(game.id, cheater.id, other.id, 180000, 0)
 
-    # Используем валидную последовательность коротких ходов для построения PGN
+    # Use a valid sequence of short moves to build the PGN
     valid_uci_moves = ["e2e4", "e7e5", "g1f3", "b8c6", "f1c4", "f8c5", "d2d3", "g8f6", "b1c3", "d7d6"]
     for idx, uci in enumerate(valid_uci_moves, start=1):
         await state_manager.save_move_telemetry(game.id, {
@@ -167,10 +167,10 @@ async def test_finish_game_triggers_telemetry_anticheat(db_session):
     assert cheater.is_cheater is True
 
 
-# --- Чистые правила и ветки отказов (добавлено для покрытия) ---
+# --- Pure rules and refusal branches (added for coverage) ---
 
 def _move(num, ms, blurred=False, premove=False):
-    """Ход в памяти (без базы) для проверки чистых функций."""
+    """An in-memory move (no database) for testing pure functions."""
     return Move(
         game_id=1, player_id=1, move_number=num, notation="e2e4", san="e4",
         time_taken_ms=ms, window_blurred_before_move=blurred, is_premove=premove,
@@ -181,7 +181,7 @@ def test_blur_ratio_empty_and_short_post_opening():
     from src.services.anticheat import calculate_blur_ratio
 
     assert calculate_blur_ratio([]) == 0.0
-    # после дебюта меньше трёх ходов — считаются все ходы игрока
+    # fewer than three moves after the opening — all of the player's moves count
     moves = [_move(1, 1000, blurred=True), _move(2, 1000), _move(3, 1000), _move(4, 1000)]
     assert calculate_blur_ratio(moves) == 0.25
 
@@ -198,22 +198,22 @@ def test_penalty_tiers_for_blur_and_rhythm():
     from src.services.anticheat import MIN_MOVES_FOR_ANALYSIS, compute_telemetry_penalty
 
     n = max(MIN_MOVES_FOR_ANALYSIS, 12)
-    # ровный ритм 4 с без потери фокуса: только штраф за ритм
+    # steady 4 s rhythm without losing focus: only the rhythm penalty
     flat = [_move(i + 10, 4000) for i in range(n)]
     assert compute_telemetry_penalty(flat)["penalty"] == 40
-    # доля потери фокуса 0.4 усиливает штраф на 12
-    some_blur = [_move(i + 10, 4000, blurred=(i % 5 < 2)) for i in range(10)]  # 4 из 10
+    # a focus-loss share of 0.4 adds a penalty of 12
+    some_blur = [_move(i + 10, 4000, blurred=(i % 5 < 2)) for i in range(10)]  # 4 of 10
     assert compute_telemetry_penalty(some_blur)["penalty"] == 40 + 12
-    # доля 0.5 -> +25
+    # share 0.5 -> +25
     half = [_move(i + 10, 4000, blurred=(i % 2 == 0)) for i in range(n)]
     assert compute_telemetry_penalty(half)["penalty"] == 40 + 25
-    # слишком мало ходов — штрафа нет
+    # too few moves — no penalty
     assert compute_telemetry_penalty(flat[:2])["penalty"] == 0
 
 
 @pytest.mark.asyncio
 async def test_claim_first_evaluation_without_redis_is_denied(monkeypatch):
-    """Redis недоступен: партия считается уже оценённой, штраф не начисляется."""
+    """Redis unavailable: the game is considered already evaluated, no penalty is applied."""
     from src.db import redis as redis_module
     from src.services.anticheat import _claim_first_evaluation
 
@@ -226,10 +226,10 @@ async def test_claim_first_evaluation_without_redis_is_denied(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_evaluate_missing_game_and_missing_user(db_session):
-    # партии нет
+    # no game
     assert await evaluate_game_telemetry(db_session, 424242) == {}
 
-    # игрок партии удалён: его пропускают, не падая
+    # the game's player was deleted: they are skipped without crashing
     keeper = User(username="ac_keeper", hashed_password="pw")
     db_session.add(keeper)
     await db_session.commit()
@@ -257,7 +257,7 @@ def test_trusted_premove_requires_fast_server_side_move():
 def test_penalty_for_moderately_regular_rhythm():
     from src.services.anticheat import compute_telemetry_penalty
 
-    # CV между 0.12 и 0.22 при «движковом» среднем: штраф за ритм 22
+    # CV between 0.12 and 0.22 at an "engine-like" mean: rhythm penalty 22
     times = [3000, 4000, 3500, 4500, 3200, 3800, 4200, 3600]
     moves = [_move(i + 10, t) for i, t in enumerate(times)]
     metrics = compute_telemetry_penalty(moves)

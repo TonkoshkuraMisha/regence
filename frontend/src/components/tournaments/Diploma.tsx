@@ -1,12 +1,12 @@
 // --- FILE: frontend/src/components/tournaments/Diploma.tsx ---
-// Диплом призёра турнира (таск 15.3): собственное оформление в SVG на клиенте (рисуется кодом, без чужих картинок),
-// сохранение в PNG и печать. Используется в TournamentsPage.tsx (TournamentView) для мест 1–3 законченного
-// турнира. Данные — только свойства компонента; тексты — каталог tournaments.diploma.*; сеть не нужна.
+// Tournament prize-winner diploma (task 15.3): custom SVG design on the client (drawn by code, no third-party images),
+// saving to PNG and printing. Used in TournamentsPage.tsx (TournamentView) for places 1-3 of a finished
+// tournament. Data - only component props; texts - catalogue tournaments.diploma.*; no network needed.
 
 import {useRef} from 'react';
 import {useI18n} from '../../i18n';
 
-/** Свойства диплома: имя игрока, место (1–3), название формата или исторического турнира, размер и дата. */
+/** Diploma props: player name, place (1-3), format or historic tournament name, size and date. */
 export interface DiplomaProps {
     name: string;
     place: number;
@@ -15,15 +15,15 @@ export interface DiplomaProps {
     date: string;
 }
 
-// Цвета медали диплома по месту: золото, серебро, бронза (индекс — место минус один).
+// Diploma medal colours by place: gold, silver, bronze (index is place minus one).
 const MEDAL = ['#d4a017', '#a8a9ad', '#b0703c'];
 
-/** Разметка SVG диплома как строка — для сохранения в PNG и печати. */
+/** Diploma SVG markup as a string - for saving to PNG and printing. */
 function svgMarkup(svg: SVGSVGElement): string {
     return new XMLSerializer().serializeToString(svg);
 }
 
-/** Диплом в SVG с кнопками «Сохранить PNG» (через canvas) и «Печать» (отдельное окно с тем же SVG). */
+/** Diploma in SVG with "Save PNG" (via canvas) and "Print" (a separate window with the same SVG) buttons. */
 export function Diploma({name, place, format, size, date}: DiplomaProps) {
     const {t} = useI18n();
     const svgRef = useRef<SVGSVGElement>(null);
@@ -35,7 +35,7 @@ export function Diploma({name, place, format, size, date}: DiplomaProps) {
         const blob = new Blob([svgMarkup(svg)], {type: 'image/svg+xml;charset=utf-8'});
         const url = URL.createObjectURL(blob);
         const image = new Image();
-        // Размер PNG 1600x1131 — пропорции листа A4 в альбомной ориентации (как viewBox 1414x1000).
+        // PNG size 1600x1131 - the proportions of an A4 sheet in landscape (like the 1414x1000 viewBox).
         image.onload = () => {
             const canvas = document.createElement('canvas');
             canvas.width = 1600;

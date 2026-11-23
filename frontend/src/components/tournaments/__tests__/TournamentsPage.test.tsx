@@ -1,4 +1,4 @@
-// Турниры (таск 15.3): создание, таблица кругового турнира, сетка, «Играть мою партию», диплом, обновление.
+// Tournaments (task 15.3): creation, the round-robin table, the bracket, "Play my game", the diploma, refreshing.
 
 import {act, fireEvent, render, screen, waitFor} from '@testing-library/react';
 import {MemoryRouter, Route, Routes, useLocation} from 'react-router-dom';
@@ -76,8 +76,8 @@ afterEach(() => {
     localStorage.clear();
 });
 
-describe('список турниров (раскладка на общих компонентах, план владельца 18.11)', () => {
-    it('арены и машина времени — карточки; мои турниры — место или статус; пустой список — пустое состояние', async () => {
+describe('tournament list (layout on shared components, owner plan 18.11)', () => {
+    it('arenas and the time machine are cards; my tournaments — a place or a status; an empty list — an empty state', async () => {
         stub({
             '/tournaments': () => [
                 {id: 3, format: 'round_robin', size: 6, status: 'finished', my_place: 1},
@@ -96,15 +96,15 @@ describe('список турниров (раскладка на общих ко
         expect(mine.querySelector('a[href="/tournaments/3"]')).toHaveTextContent('1');
     });
 
-    it('без турниров — пустое состояние', async () => {
+    it('without tournaments — an empty state', async () => {
         stub({'/tournaments': () => [], '/bots/catalog': () => ({calibration: null, historical: [], archetypes: []}), '/bots/personalities': () => []});
         render(<MemoryRouter><TournamentsPage/></MemoryRouter>);
         expect(await screen.findByText('No tournaments yet.')).toBeInTheDocument();
     });
 });
 
-describe('создание турнира', () => {
-    it('выбор соперников по размеру турнира и отправка', async () => {
+describe('creating a tournament', () => {
+    it('choosing opponents by tournament size and sending', async () => {
         const fetchMock = stub({
             '/tournaments': (init) => (init?.method === 'POST' ? {id: 9} : []),
             '/bots/catalog': () => ({calibration: null, historical: [], archetypes: []}),
@@ -119,7 +119,7 @@ describe('создание турнира', () => {
         for (const bot of ['Morphy', 'Philidor', 'Staunton', 'Anderssen']) {
             fireEvent.click(screen.getByRole('button', {name: new RegExp(`^${bot}`)}));
         }
-        expect(screen.getByTestId('opponents-needed')).toHaveTextContent('(3/3)');  // четвёртый не добавился
+        expect(screen.getByTestId('opponents-needed')).toHaveTextContent('(3/3)');  // the fourth was not added
         await act(async () => fireEvent.click(create));
 
         const post = fetchMock.mock.calls.find(([, init]) => init?.method === 'POST')!;
@@ -129,7 +129,7 @@ describe('создание турнира', () => {
         expect(await screen.findByText('opened')).toBeInTheDocument();
     });
 
-    it('размеры турнира — с сервера: у швейцарки только 6 и 8', async () => {
+    it('tournament sizes — from the server: a Swiss has only 6 and 8', async () => {
         stub({
             '/tournaments/formats': () => ({round_robin: [4, 6, 8], knockout: [4, 8], swiss: [6, 8]}),
             '/tournaments': () => [],
@@ -142,11 +142,11 @@ describe('создание турнира', () => {
         await waitFor(() => expect(Array.from(sizeSelect.options, (o) => o.value)).toEqual(['4', '6', '8']));
         fireEvent.change(formatSelect, {target: {value: 'swiss'}});
         expect(Array.from(sizeSelect.options, (o) => o.value)).toEqual(['6', '8']);
-        expect(sizeSelect.value).toBe('6');  // 4 у швейцарки нет — размер сменился на первый допустимый
+        expect(sizeSelect.value).toBe('6');  // a Swiss has no 4 — the size changed to the first allowed one
         expect(screen.getByTestId('opponents-needed')).toHaveTextContent('(0/5)');
     });
 
-    it('сила соперников — как в посеве: измеренная с пометкой, без замера — заявленная', async () => {
+    it('the opponents\' strength — as in the seeding: measured with a mark, without a measurement — the declared one', async () => {
         stub({
             '/tournaments': () => [],
             '/bots/catalog': () => ({
@@ -163,8 +163,8 @@ describe('создание турнира', () => {
     });
 });
 
-describe('турнир', () => {
-    it('таблица кругового турнира и запуск своей партии на главной доске', async () => {
+describe('tournament', () => {
+    it('the round-robin table and starting your own game on the main board', async () => {
         stub({
             '/tournaments/7': () => roundRobin(), '/profile/me': () => ({username: 'Alice'}),
             '/games/1/start': () => ({forfeited: false, game: game(1, 1, 1, 1, 4)}),
@@ -183,7 +183,7 @@ describe('турнир', () => {
         });
     });
 
-    it('соперник из мастерской передаётся характером и архетипом', async () => {
+    it('an opponent from the workshop is passed on by character and archetype', async () => {
         const t = roundRobin({games: [game(1, 1, 1, 4, 2), game(2, 1, 2, 1, 3)] as Tournament['games']});
         stub({'/tournaments/7': () => t, '/profile/me': () => ({username: 'Alice'}), '/games/1/start': () => ({forfeited: false})});
         renderView();
@@ -194,7 +194,7 @@ describe('турнир', () => {
         expect(state.tournamentGame.custom).toMatchObject({archetypeId: 'combinator', config: {target_elo: 2200}});
     });
 
-    it('пока боты играют — страница обновляется сама', async () => {
+    it('while the bots play — the page refreshes by itself', async () => {
         vi.useFakeTimers({shouldAdvanceTime: true});
         const running = roundRobin({games: [game(1, 1, 1, 1, 4, '0-1'), game(2, 1, 2, 2, 3)] as Tournament['games']});
         const fetchMock = stub({'/tournaments/7': () => running, '/profile/me': () => ({})});
@@ -207,7 +207,7 @@ describe('турнир', () => {
         expect(loads).toBeGreaterThanOrEqual(2);
     });
 
-    it('сетка на выбывание с переигровкой', async () => {
+    it('a knockout bracket with a replay', async () => {
         const knockout = roundRobin({
             format: 'knockout', standings: [],
             games: [
@@ -225,7 +225,7 @@ describe('турнир', () => {
         expect(state.tournamentGame).toMatchObject({gameId: 5, color: 'white', baseTimeMs: 150000, incrementMs: 1000});
     });
 
-    it('призёр получает диплом, победитель назван', async () => {
+    it('a prizewinner gets a diploma, the winner is named', async () => {
         const finished = roundRobin({
             status: 'finished', finished_at: '2026-11-13T12:00:00Z',
             players: players.map((p) => ({...p, place: p.seat === 4 ? 2 : p.seat === 2 ? 1 : p.seat === 1 ? 3 : 4})),
@@ -239,7 +239,7 @@ describe('турнир', () => {
         expect(screen.getByRole('button', {name: 'Save as PNG'})).toBeInTheDocument();
     });
 
-    it('ошибка загрузки показывается текстом сервера', async () => {
+    it('a load error is shown with the server text', async () => {
         vi.stubGlobal('fetch', vi.fn(async () => ({
             ok: false, status: 404,
             json: async () => ({detail: {code: 'tournament_not_found', params: {}, message: 'Tournament not found'}}),
@@ -248,7 +248,7 @@ describe('турнир', () => {
         expect(await screen.findByRole('alert')).toHaveTextContent('Tournament not found');
     });
 
-    it('брошенная и начатая заново партия — поражение, на главную доску не переходим', async () => {
+    it('an abandoned and restarted game — a loss, we do not go to the main board', async () => {
         const fetchMock = stub({
             '/tournaments/7': () => roundRobin(), '/profile/me': () => ({}),
             '/games/1/start': () => ({forfeited: true, game: game(1, 1, 1, 1, 4, '1-0')}),
@@ -261,7 +261,7 @@ describe('турнир', () => {
         expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/tournaments/7')).length).toBeGreaterThanOrEqual(2);
     });
 
-    it('сдать турнир — с подтверждением', async () => {
+    it('resigning from a tournament — with a confirmation', async () => {
         vi.stubGlobal('confirm', vi.fn(() => true));
         const fetchMock = stub({
             '/tournaments/7': () => roundRobin(), '/profile/me': () => ({}),
@@ -275,7 +275,7 @@ describe('турнир', () => {
     });
 });
 
-describe('карьера (таск 15.4)', () => {
+describe('career (task 15.4)', () => {
     const CAREER = {
         stages: [
             {key: 'main-1', number: 1, invitational: false, hidden: false, unlocked: true, best_place: 2, format: 'round_robin', size: 4,
@@ -290,7 +290,7 @@ describe('карьера (таск 15.4)', () => {
         return render(<MemoryRouter><Routes><Route path="/" element={<TournamentsPage/>}/><Route path="/tournaments/:tournamentId" element={<p>opened</p>}/></Routes></MemoryRouter>);
     }
 
-    it('лестница: пройденный, закрытый и скрытый этапы; запуск этапа', async () => {
+    it('the ladder: passed, closed and hidden stages; starting a stage', async () => {
         const fetchMock = stub({
             '/tournaments': () => [],
             '/tournaments/career': () => CAREER,
@@ -308,7 +308,7 @@ describe('карьера (таск 15.4)', () => {
         expect(await screen.findByText('opened')).toBeInTheDocument();
     });
 
-    it('случайные соперники: выбирать не нужно, на сервер уходит режим', async () => {
+    it('random opponents: nothing to choose, the mode goes to the server', async () => {
         const fetchMock = stub({
             '/tournaments': (init) => (init?.method === 'POST' ? {id: 9} : []),
             '/tournaments/career': () => ({stages: []}),
@@ -326,8 +326,8 @@ describe('карьера (таск 15.4)', () => {
     });
 });
 
-describe('швейцарская система (таск 15.4)', () => {
-    it('таблица с Бухгольцем и туры «N из 5»', async () => {
+describe('Swiss system (task 15.4)', () => {
+    it('a table with Buchholz and rounds "N of 5"', async () => {
         const swiss = roundRobin({
             format: 'swiss', size: 8, current_round: 2,
             standings: [

@@ -1,30 +1,31 @@
 # --- FILE: src/services/positional.py ---
 """
-Позиционные признаки (таск B.4): о чём сказать, когда тактики нет. Правила простые и проверяемые, без движка —
-наставник называет признак и поле, а не оценку:
+Positional features (task B.4): what to say when there is no tactic. The rules are simple and verifiable, with no engine -
+the mentor names a feature and a square, not an evaluation:
 
-* king_center — миттельшпиль (с 8-го хода, не эндшпиль, у соперника есть ферзь или фигур не меньше чем на 10
-  очков), а король стороны ещё на первой горизонтали на вертикали d или e (право рокировки не проверяется);
-* king_holes — король на фланге (на первой горизонтали, не на d/e), а на третьей горизонтали перед ним (вертикали
-  короля ±1) поле, которое своя пешка уже никогда не защитит; у соперника есть слон этого цвета, у стороны — нет;
-* passed_enemy / passed_own — проходная пешка соперника (не заблокирована) или своя, дошедшая хотя бы до четвёртой
-  горизонтали от своего края; называется самая продвинутая;
-* king_active — эндшпиль (ферзей нет, лёгких и тяжёлых фигур мало), а король на своих двух первых горизонталях;
-* open_file — вертикаль без пешек, на которой нет своей ладьи и ферзя (а ладья есть);
-* outpost — свободное поле для коня на вертикалях c–f и на 4–6-й горизонтали от своего края, защищённое своей
-  пешкой, которое пешка соперника уже не прогонит (у стороны есть конь);
-* isolated_enemy — изолированная пешка соперника в центре (c–f) — объект атаки;
-* backward_enemy — отсталая пешка соперника на полуоткрытой для стороны вертикали: соседние пешки ушли вперёд, а
-  поле перед ней бьёт пешка стороны;
-* bad_bishop — свой слон, а на полях его цвета стоит больше половины своих пешек (не меньше трёх) и хотя бы две
-  из них заблокированы;
-* doubled_own — свои сдвоенные пешки.
+* king_center - middlegame (from move 8, not an endgame, the opponent has a queen or pieces worth at least 10
+  points), while the side's king is still on the first rank on file d or e (castling rights are not checked);
+* king_holes - the king is on a wing (on the first rank, not on d/e), and on the third rank in front of it (king's file
+  +-1) there is a square that an own pawn can never defend again; the opponent has a bishop of that colour, the side does not;
+* passed_enemy / passed_own - an opponent's passed pawn (not blocked) or an own one that has reached at least the fourth
+  rank from its own edge; the most advanced is named;
+* king_active - endgame (no queens, few minor and heavy pieces), with the king on its own first two ranks;
+* open_file - a file without pawns on which there is no own rook or queen (while a rook exists);
+* outpost - a free square for a knight on files c-f and on the 4th-6th rank from its own edge, defended by an own
+  pawn, which an opponent pawn can no longer drive away (the side has a knight);
+* isolated_enemy - an opponent's isolated pawn in the centre (c-f) - a target of attack;
+* backward_enemy - an opponent's backward pawn on a file half-open for the side: the neighbouring pawns have advanced, and
+  the square in front of it is attacked by the side's pawn;
+* bad_bishop - an own bishop, with more than half of the own pawns (at least three) on the squares of its colour and at
+least two
+  of them blocked;
+* doubled_own - own doubled pawns.
 
-Признаки — для стороны color; порядок — от важного (безопасность короля, проходные) к частному.
+Features are for the side color; the order is from important (king safety, passed pawns) to minor.
 
-Модуль ничего не хранит и не читает, кроме доски. Признаки превращает в предложения наставника
-src/services/coach.py: совет по позиции, первая ступень подсказки и объяснение лучшего хода (``move_idea``); текст
-собирает клиент из каталога coach.* по коду и параметрам (поле, вертикаль).
+The module stores and reads nothing except the board. The features are turned into mentor sentences by
+src/services/coach.py: advice on a position, the first hint step and the explanation of the best move (``move_idea``); the
+text is assembled by the client from the coach.* catalogue by the code and parameters (square, file).
 """
 
 from __future__ import annotations
@@ -33,20 +34,20 @@ from dataclasses import dataclass, field
 
 import chess
 
-# Коды признаков в порядке важности; в этом же порядке их возвращает ``positional_features``.
+# Feature codes in order of importance; ``positional_features`` returns them in the same order.
 POSITIONAL_PRIORITY = (
     "king_center", "king_holes", "passed_enemy", "passed_own", "king_active", "open_file", "outpost",
     "isolated_enemy", "backward_enemy", "bad_bishop", "doubled_own",
 )
 CENTRAL_FILES = (2, 3, 4, 5)  # c–f
-# Эндшпиль: у каждой стороны лёгких и тяжёлых фигур не больше чем на ладью с лёгкой фигурой.
+# Endgame: each side has minor and heavy pieces worth no more than a rook plus a minor piece.
 ENDGAME_MATERIAL = 8
-PIECE_POINTS = {chess.KNIGHT: 3, chess.BISHOP: 3, chess.ROOK: 5, chess.QUEEN: 9}  # очки фигур без пешек и короля
+PIECE_POINTS = {chess.KNIGHT: 3, chess.BISHOP: 3, chess.ROOK: 5, chess.QUEEN: 9}  # points of pieces without pawns and the king
 
 
 @dataclass(frozen=True)
 class Feature:
-    """Признак позиции: код, параметры для текста (поле или вертикаль) и поля, которые клиент подсвечивает."""
+    """A position feature: a code, parameters for the text (a square or a file) and the squares the client highlights."""
 
     code: str
     params: dict[str, str] = field(default_factory=dict)
@@ -58,7 +59,7 @@ def _material(board: chess.Board, color: chess.Color) -> int:
 
 
 def is_endgame(board: chess.Board) -> bool:
-    """Эндшпиль по правилу модуля: ферзей нет ни у кого, и у каждой стороны фигур не больше чем на ENDGAME_MATERIAL."""
+    """Endgame by the module's rule: nobody has queens, and each side has pieces worth no more than ENDGAME_MATERIAL."""
     return not board.pieces(chess.QUEEN, chess.WHITE) and not board.pieces(chess.QUEEN, chess.BLACK) and all(
         _material(board, color) <= ENDGAME_MATERIAL for color in chess.COLORS)
 
@@ -68,13 +69,13 @@ def _forward(color: chess.Color) -> int:
 
 
 def _relative_rank(square: chess.Square, color: chess.Color) -> int:
-    """Горизонталь с точки зрения стороны: 0 — своя первая."""
+    """Rank from the side's point of view: 0 is its own first."""
     rank = chess.square_rank(square)
     return rank if color == chess.WHITE else 7 - rank
 
 
 def is_passed(board: chess.Board, square: chess.Square, color: chess.Color) -> bool:
-    """Проходная ли пешка стороны color на поле: впереди на её и соседних вертикалях нет пешек соперника."""
+    """Whether the side's pawn on the square is passed: no opponent pawns ahead on its file and the neighbouring ones."""
     file, rank = chess.square_file(square), chess.square_rank(square)
     for enemy in board.pieces(chess.PAWN, not color):
         ef, er = chess.square_file(enemy), chess.square_rank(enemy)
@@ -84,15 +85,16 @@ def is_passed(board: chess.Board, square: chess.Square, color: chess.Color) -> b
 
 
 def is_isolated(board: chess.Board, square: chess.Square, color: chess.Color) -> bool:
-    """Изолированная ли пешка: на соседних вертикалях нет своих пешек."""
+    """Whether the pawn is isolated: there are no own pawns on the neighbouring files."""
     file = chess.square_file(square)
     return not any(abs(chess.square_file(p) - file) == 1 for p in board.pieces(chess.PAWN, color))
 
 
 def pawn_can_attack(board: chess.Board, square: chess.Square, by: chess.Color) -> bool:
     """
-    Может ли пешка стороны by когда-нибудь ударить поле: пешка на соседней вертикали ещё позади поля. Свободен ли
-    её путь, не проверяется — оценка осторожная: поле считается недосягаемым, только когда такой пешки нет вовсе.
+    Whether the pawn of side by can ever attack the square: a pawn on a neighbouring file is still behind the square. Whether
+    its path is free is not checked - the estimate is cautious: the square counts as unreachable only when there is no such
+    pawn at all.
     """
     file, rank = chess.square_file(square), chess.square_rank(square)
     for pawn in board.pieces(chess.PAWN, by):
@@ -104,8 +106,8 @@ def pawn_can_attack(board: chess.Board, square: chess.Square, by: chess.Color) -
 
 def is_outpost(board: chess.Board, square: chess.Square, color: chess.Color) -> bool:
     """
-    Форпост для коня: поле на 4–6-й горизонтали от своего края, защищённое своей пешкой, на которое пешки соперника
-    уже не смогут напасть. Поле, занятое своей фигурой (не конём), форпостом не считается.
+    Outpost for a knight: a square on the 4th-6th rank from its own edge, defended by an own pawn, which opponent pawns
+    can no longer attack. A square occupied by an own piece (not a knight) is not an outpost.
     """
     if not 3 <= _relative_rank(square, color) <= 5:
         return False
@@ -118,20 +120,20 @@ def is_outpost(board: chess.Board, square: chess.Square, color: chess.Color) -> 
 
 
 def is_open_file(board: chess.Board, file: int) -> bool:
-    """Открытая вертикаль: на ней нет пешек ни одной из сторон."""
+    """Open file: there are no pawns of either side on it."""
     return not any(chess.square_file(p) == file for p in board.pieces(chess.PAWN, chess.WHITE)) and not any(
         chess.square_file(p) == file for p in board.pieces(chess.PAWN, chess.BLACK))
 
 
 def _central_first(squares: list[chess.Square]) -> list[chess.Square]:
-    """Поля от центральных вертикалей к крайним: из нескольких кандидатов наставник называет самый центральный."""
+    """Squares from the central files to the edge ones: of several candidates the mentor names the most central."""
     return sorted(squares, key=lambda s: (abs(chess.square_file(s) - 3.5), s))
 
 
 def _king_center(board: chess.Board, color: chess.Color) -> Feature | None:
     """
-    Король в центре. Молчим до 8-го хода (дебют ещё идёт), в эндшпиле и когда у соперника нет ни ферзя, ни фигур
-    на 10 очков: атаковать короля ему нечем.
+    King in the centre. Silent until move 8 (the opening is still on), in the endgame and when the opponent has neither a
+    queen nor pieces worth 10 points: there is nothing to attack the king with.
     """
     king = board.king(color)
     if king is None or is_endgame(board) or board.fullmove_number < 8:
@@ -145,13 +147,13 @@ def _king_center(board: chess.Board, color: chess.Color) -> Feature | None:
 
 def _passed(board: chess.Board, color: chess.Color, own: bool) -> Feature | None:
     """
-    Проходная: своя (own) или соперника. Называется самая продвинутая (при равенстве — ближе к центру), и только
-    если она дошла до четвёртой горизонтали от своего края: дальняя от превращения проходная — ещё не тема.
+    Passed pawn: own (own) or the opponent's. The most advanced is named (on a tie - closer to the centre), and only
+    if it has reached the fourth rank from its own edge: a passed pawn far from promotion is not yet a topic.
     """
     side = color if own else not color
     pawns = [p for p in board.pieces(chess.PAWN, side) if is_passed(board, p, side)]
     if not own:
-        # Заблокированная фигурой проходная пока не опасна.
+        # A passed pawn blocked by a piece is not dangerous yet.
         pawns = [p for p in pawns if board.piece_at(p + 8 * _forward(side)) is None]
     if not pawns:
         return None
@@ -170,8 +172,8 @@ def _king_active(board: chess.Board, color: chess.Color) -> Feature | None:
 
 def _open_file(board: chess.Board, color: chess.Color) -> Feature | None:
     """
-    Открытая вертикаль, не занятая своей ладьёй или ферзём; из нескольких — ближайшая к центру (d, e, c, f, b, g,
-    a, h). Подсвечивается первая ладья стороны — та, которую можно туда поставить.
+    Open file not occupied by an own rook or queen; of several - the closest to the centre (d, e, c, f, b, g,
+    a, h). The side's first rook is highlighted - the one that can be put there.
     """
     rooks = list(board.pieces(chess.ROOK, color))
     if not rooks:
@@ -185,7 +187,7 @@ def _open_file(board: chess.Board, color: chess.Color) -> Feature | None:
 
 
 def _outpost(board: chess.Board, color: chess.Color) -> Feature | None:
-    """Свободный форпост на вертикалях c–f, если у стороны есть конь, который можно туда привести."""
+    """Free outpost on files c-f if the side has a knight that can be brought there."""
     if not board.pieces(chess.KNIGHT, color):
         return None
     candidates = [s for s in chess.SQUARES if chess.square_file(s) in CENTRAL_FILES and is_outpost(board, s, color)]
@@ -206,23 +208,24 @@ def _isolated_enemy(board: chess.Board, color: chess.Color) -> Feature | None:
 
 
 def _shade(square: chess.Square) -> int:
-    """Цвет поля: 0 — тёмное (как a1), 1 — светлое."""
+    """Square colour: 0 is dark (like a1), 1 is light."""
     return (chess.square_file(square) + chess.square_rank(square)) % 2
 
 
 def _king_holes(board: chess.Board, color: chess.Color) -> Feature | None:
     """
-    Слабые поля у короля на фланге (не в эндшпиле, король на первой горизонтали). В параметре — ближайшая к королю
-    «дыра», в подсветке — все.
+    Weak squares near the king on a wing (not in the endgame, king on the first rank). The parameter is the one nearest to
+    the king "hole", the highlight is all of them.
     """
     king = board.king(color)
     if king is None or is_endgame(board) or _relative_rank(king, color) != 0:
         return None
     king_file = chess.square_file(king)
     if king_file in (3, 4):
-        return None  # король в центре — об этом king_center
+        return None  # king in the centre - that is king_center
     holes = []
-    # Третья горизонталь перед королём: поле прямо перед ним король защищает сам, а дыры после g3/h3 — f3, h3, g3.
+    # The third rank in front of the king: the king itself defends the square right in front of it, and the holes after
+    # g3/h3 are f3, h3, g3.
     for file in range(max(0, king_file - 1), min(7, king_file + 1) + 1):
         square = chess.square(file, chess.square_rank(king) + 2 * _forward(color))
         if board.piece_at(square) == chess.Piece(chess.PAWN, color) or pawn_can_attack(board, square, color):
@@ -240,8 +243,8 @@ def _king_holes(board: chess.Board, color: chess.Color) -> Feature | None:
 
 def is_backward(board: chess.Board, square: chess.Square, color: chess.Color) -> bool:
     """
-    Отсталая пешка стороны color: соседние пешки ушли вперёд и не защитят её, а поле перед ней бьёт пешка
-    соперника — продвинуться нельзя.
+    Backward pawn of side color: the neighbouring pawns have advanced and will not defend it, and the square in front of it
+    is attacked by an opponent pawn - it cannot advance.
     """
     file, rank = chess.square_file(square), _relative_rank(square, color)
     neighbours = [p for p in board.pieces(chess.PAWN, color) if abs(chess.square_file(p) - file) == 1]
@@ -254,7 +257,7 @@ def is_backward(board: chess.Board, square: chess.Square, color: chess.Color) ->
 
 
 def _backward_enemy(board: chess.Board, color: chess.Color) -> Feature | None:
-    # Объект атаки, только если вертикаль полуоткрыта для нас: своя пешка не мешает давить на неё.
+    # A target of attack only if the file is half-open for us: an own pawn does not prevent pressing on it.
     own_files = {chess.square_file(p) for p in board.pieces(chess.PAWN, color)}
     pawns = [p for p in board.pieces(chess.PAWN, not color)
              if chess.square_file(p) not in own_files and is_backward(board, p, not color)]
@@ -266,8 +269,8 @@ def _backward_enemy(board: chess.Board, color: chess.Color) -> Feature | None:
 
 def _bad_bishop(board: chess.Board, color: chess.Color) -> Feature | None:
     """
-    «Плохой» слон: на полях его цвета не меньше трёх своих пешек и больше половины всех своих пешек, причём хотя бы
-    две из них упёрлись в фигуру или пешку. Подсвечиваются слон и заблокированные пешки.
+    "Bad" bishop: on the squares of its colour there are at least three own pawns and more than half of all own pawns, at least
+    two of them blocked by a piece or a pawn. The bishop and the blocked pawns are highlighted.
     """
     pawns = list(board.pieces(chess.PAWN, color))
     for bishop in board.pieces(chess.BISHOP, color):
@@ -291,7 +294,7 @@ def _doubled_own(board: chess.Board, color: chess.Color) -> Feature | None:
 
 
 def positional_features(board: chess.Board, color: chess.Color) -> list[Feature]:
-    """Признаки позиции для стороны color, в порядке POSITIONAL_PRIORITY."""
+    """Position features for the side color, in the order of POSITIONAL_PRIORITY."""
     found = [
         _king_center(board, color), _king_holes(board, color), _passed(board, color, own=False),
         _passed(board, color, own=True), _king_active(board, color), _open_file(board, color),
@@ -303,9 +306,9 @@ def positional_features(board: chess.Board, color: chess.Color) -> list[Feature]
 
 def move_idea(board: chess.Board, move: chess.Move) -> Feature | None:
     """
-    Позиционная идея хода (для лучшего хода без тактики): рокировка, ладья на открытую вертикаль, конь на опорный
-    пункт, король к центру в эндшпиле, продвижение проходной. Проверяются в этом порядке, возвращается первая.
-    Коды castle и passed_push есть только здесь — в POSITIONAL_PRIORITY их нет.
+    Positional idea of a move (for a best move without a tactic): castling, a rook to an open file, a knight to an outpost,
+    the king to the centre in the endgame, advancing a passed pawn. Checked in this order, the first is returned.
+    Codes castle and passed_push exist only here - they are not in POSITIONAL_PRIORITY.
     """
     piece = board.piece_at(move.from_square)
     if piece is None:

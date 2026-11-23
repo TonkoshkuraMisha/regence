@@ -1,5 +1,5 @@
 """
-Наблюдаемость: метрики Prometheus (HTTP, WS-действия, пул БД) и подключение Sentry только по DSN.
+Observability: Prometheus metrics (HTTP, WS actions, DB pool) and Sentry connection only when a DSN is set.
 """
 
 import pytest
@@ -41,7 +41,7 @@ def silent_send(monkeypatch):
     return sent
 
 
-# --- /metrics и HTTP --------------------------------------------------------------------------
+# --- /metrics and HTTP ------------------------------------------------------------------------
 
 def test_metrics_endpoint_exposes_application_metrics(client):
     res = client.get("/metrics")
@@ -57,7 +57,7 @@ def test_http_requests_are_counted_by_route_template(client):
     before = _sample("regence_http_requests_total", method="GET", route=route, status="404")
     client.get("/api/v1/profile/nobody_with_this_name")
     client.get("/api/v1/profile/another_missing_name")
-    # Метка — шаблон маршрута, а не путь: два разных имени дают один временной ряд.
+    # The label is the route template, not the path: two different names give one time series.
     assert _sample("regence_http_requests_total", method="GET", route=route, status="404") == before + 2
 
 
@@ -67,7 +67,7 @@ def test_metrics_scrapes_are_not_counted(client):
     assert _sample("regence_http_requests_total", method="GET", route="/metrics", status="200") == before
 
 
-# --- WebSocket-действия -------------------------------------------------------------------------
+# --- WebSocket actions --------------------------------------------------------------------------
 
 @pytest.mark.parametrize("raised, outcome", [
     (None, obs.OUTCOME_OK),
@@ -105,7 +105,7 @@ async def test_rate_limited_ws_action_is_counted(silent_send, monkeypatch):
     assert _sample("regence_ws_actions_total", action="chat_message", outcome=obs.OUTCOME_RATE_LIMITED) == before + 1
 
 
-# --- Пул БД и метки -----------------------------------------------------------------------------
+# --- DB pool and labels -------------------------------------------------------------------------
 
 async def test_pool_gauge_follows_checkout_and_checkin(tmp_path):
     engine = create_async_engine(
@@ -163,8 +163,8 @@ class _Route:
 
 
 @pytest.mark.parametrize("path, template, label", [
-    ("/api/v1/profile/alice", "/profile/{username}", "/api/v1/profile/{username}"),  # префикс роутера не в шаблоне
-    ("/api/v1/profile/alice", "/api/v1/profile/{username}", "/api/v1/profile/{username}"),  # уже полный шаблон
+    ("/api/v1/profile/alice", "/profile/{username}", "/api/v1/profile/{username}"),  # router prefix not in the template
+    ("/api/v1/profile/alice", "/api/v1/profile/{username}", "/api/v1/profile/{username}"),  # already a full template
     ("/api/v1/bots/list", "/list", "/api/v1/bots/list"),
     ("/health", "/health", "/health"),
     ("/files/a/b/c", "/files/{rest:path}", "/files/{rest:path}"),

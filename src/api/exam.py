@@ -1,4 +1,4 @@
-"""Диагностический экзамен (таск 22.0): вопросы теста, проверка ответов, последние итоги."""
+"""Diagnostic exam (task 22.0): test questions, answer checking, latest results."""
 
 from typing import Annotated
 
@@ -22,7 +22,7 @@ MAX_LINE = 20
 
 
 class Answer(BaseModel):
-    """Ответ на позицию: ходы игрока по порядку (moves); move — прежний формат «один ход»."""
+    """The answer to a position: the player's moves in order (moves); move is the former "single move" format."""
     id: int = Field(..., ge=1)
     move: UciMove | None = None
     moves: list[UciMove] | None = Field(None, max_length=MAX_LINE)
@@ -54,7 +54,7 @@ async def results(db: AsyncSession = Depends(get_db), user: User = Depends(get_c
 
 @router.get("/{section}/questions")
 async def questions(section: str = Section, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
-    """Вопросы теста без ответов; time_limit_s — время на экзамен уровня (у диагностики разделов — None)."""
+    """Test questions without answers; time_limit_s - the time for a level exam (None for section diagnostics)."""
     try:
         return {"section": section, "questions": await exam.build(db, section),
                 "time_limit_s": level_exam.time_limit_s(section)}
@@ -66,8 +66,9 @@ async def questions(section: str = Section, db: AsyncSession = Depends(get_db), 
 async def move(payload: MoveIn, section: str = Section, db: AsyncSession = Depends(get_db),
                user: User = Depends(get_current_user)):
     """
-    Ход во время теста: верен ли он, чем отвечает соперник и закончена ли позиция. Решение доигрывается до конца —
-    за каждый верный ход очко; ошибка заканчивает позицию.
+    A move during the test: whether it is correct, how the opponent replies and whether the position is finished. The solution
+    is played to the end -
+    a point for each correct move; a mistake ends the position.
     """
     try:
         progress = await exam.check_moves(db, section, payload.id, payload.moves)
@@ -81,8 +82,9 @@ async def move(payload: MoveIn, section: str = Section, db: AsyncSession = Depen
 async def submit(payload: SubmitIn, section: str = Section, db: AsyncSession = Depends(get_db),
                  user: User = Depends(get_current_user)):
     """
-    Сдача экзамена раздела: ответы проверяются на сервере; возвращаются число верных, оценка силы, уровень, разбор по
-    позициям и очки за ходы.
+    Submitting a section exam: the answers are checked on the server; returned are the number of correct ones, the strength
+    estimate, the level, a breakdown by
+    positions and the points for moves.
     """
     try:
         graded = await exam.grade(db, user.id, section, [(a.id, a.played()) for a in payload.answers])

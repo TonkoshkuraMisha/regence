@@ -28,5 +28,5 @@ test-results/
 playwright-report/
 blob-report/
 
-# Отчёт покрытия vitest (npm run test:coverage)
+# vitest coverage report (npm run test:coverage)
 coverage/

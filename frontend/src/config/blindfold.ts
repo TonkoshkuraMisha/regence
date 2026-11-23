@@ -1,7 +1,7 @@
 // --- FILE: frontend/src/config/blindfold.ts ---
-// Игра вслепую (таск 19.5). Ступени: 1 — видны только свои фигуры; 2 — фигура исчезает через FADE_PLIES полуходов
-// после своего последнего хода; 3 — видны только пешки; 4 — полностью вслепую. «Подсмотреть» показывает всё на
-// PEEK_MS (подсмотры считаются в итогах). Только нерейтинговые партии.
+// Blindfold play (task 19.5). Levels: 1 - only own pieces visible; 2 - a piece disappears after FADE_PLIES plies
+// following its last move; 3 - only pawns visible; 4 - fully blindfold. "Peek" shows everything for
+// PEEK_MS (peeks are counted in the results). Unrated games only.
 
 import {useSyncExternalStore} from 'react';
 
@@ -15,7 +15,7 @@ interface BoardPiece {
     color: 'w' | 'b';
 }
 
-/** Поля, фигуры на которых видны на данной ступени. `history` — ходы партии (verbose), `board` — chess.js board(). */
+/** Squares whose pieces are visible at the given level. `history` - game moves (verbose), `board` - chess.js board(). */
 export function visibleSquares(level: BlindfoldLevel, board: (BoardPiece | null)[][], history: { to: string }[], myColor: 'w' | 'b'): Set<string> {
     const visible = new Set<string>();
     const recent = new Set(history.slice(-FADE_PLIES).map((m) => m.to));
@@ -30,9 +30,9 @@ export function visibleSquares(level: BlindfoldLevel, board: (BoardPiece | null)
 }
 
 export interface BlindfoldState {
-    /** Ступень, выбранная для следующей партии (0 — обычная игра). */
+    /** Level chosen for the next game (0 - ordinary game). */
     armed: BlindfoldLevel;
-    /** Ступень текущей партии (0 — партия обычная). */
+    /** Level of the current game (0 - ordinary game). */
     level: BlindfoldLevel;
     peeks: number;
     peekUntil: number;
@@ -66,12 +66,12 @@ export function armBlindfold(level: BlindfoldLevel): void {
     try {
         localStorage.setItem(KEY, String(level));
     } catch {
-        // без хранилища выбор действует до перезагрузки
+        // without storage the choice holds until reload
     }
     update({armed: level});
 }
 
-/** Новая партия: вслепую, если выбрана ступень и партия может быть вслепую (без рейтинга). */
+/** New game: blindfold if a level is chosen and the game may be blindfold (unrated). */
 export function startBlindfold(allowed: boolean): void {
     update({level: allowed ? state.armed : 0, peeks: 0, peekUntil: 0, hideMoves: false});
 }
@@ -99,7 +99,7 @@ export function useBlindfold(): BlindfoldState {
     return useSyncExternalStore(subscribe, getBlindfold, getBlindfold);
 }
 
-/** Ход нотацией (SAN или «e2e4»): from/to/promotion по текущей позиции; null — нелегальный ход. */
+/** Move in notation (SAN or "e2e4"): from/to/promotion for the current position; null - illegal move. */
 export function parseMoveInput(moves: { san: string; from: string; to: string; promotion?: string }[], input: string):
     { from: string; to: string; promotion?: string } | null {
     const text = input.trim().replace(/[+#!?]+$/, '').replace(/0/g, 'O');

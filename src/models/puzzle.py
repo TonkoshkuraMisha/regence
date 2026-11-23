@@ -1,8 +1,8 @@
 # --- FILE: src/models/puzzle.py ---
 """
-Задачи (таск 13.1). Источник — открытая база задач lichess (CC0), выборка — data/puzzles/. Формат ходов — как в
-базе: `moves[0]` — ход соперника, который создаёт задачу, дальше чередуются ход решающего и ответ.
-Темы — коды реестра (src/services/themes.py) в отдельной таблице, чтобы выбирать задачи по теме индексом.
+Puzzles (task 13.1). The source is the open lichess puzzle database (CC0), the sample - data/puzzles/. The move format is as in
+the database: `moves[0]` is the opponent's move that creates the puzzle, then the solver's move and the reply alternate.
+Themes are registry codes (src/services/themes.py) in a separate table, so that puzzles can be chosen by theme via an index.
 """
 
 from datetime import date, datetime
@@ -12,14 +12,15 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.models.base import Base, one_of
 
-# Виды защитных упражнений (src/services/defense_drills.py, KINDS).
+# Kinds of defence drills (src/services/defense_drills.py, KINDS).
 DEFENSE_DRILL_KINDS = ("threat", "blunder")
 
 
 class Puzzle(Base):
     """
-    Задача: позиция, решение, рейтинг сложности и идентификатор в источнике (повторная загрузка той же задачи
-    пропускается).
+    A puzzle: the position, the solution, the difficulty rating and the identifier in the source (a repeated load of the same
+    puzzle
+    is skipped).
     """
     __tablename__ = "puzzles"
     __table_args__ = (UniqueConstraint("source", "source_id", name="uq_puzzles_source"),)
@@ -27,19 +28,19 @@ class Puzzle(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     source: Mapped[str] = mapped_column(String(20), nullable=False)
     source_id: Mapped[str] = mapped_column(String(20), nullable=False)
-    # Позиция до хода соперника (moves[0]); решающий играет за сторону, которая ходит после него.
+    # The position before the opponent's move (moves[0]); the solver plays the side that moves after it.
     fen: Mapped[str] = mapped_column(String(100), nullable=False)
     moves: Mapped[str] = mapped_column(String(400), nullable=False)
     rating: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     rating_deviation: Mapped[int] = mapped_column(Integer, nullable=False, default=75)
     popularity: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     plays: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    # Исходные теги базы — для повторной разметки при изменении реестра.
+    # The source tags of the database - for re-tagging when the registry changes.
     source_tags: Mapped[str] = mapped_column(String(300), nullable=False, default="")
-    # Ступень (таск 13.4): 1 — знакомство, 2 — закрепление, 3 — в сочетании, 4 — мастер; считается при импорте по
-    # рейтингу и длине решения (src/services/puzzle_import.stage_for).
+    # The tier (task 13.4): 1 - introduction, 2 - consolidation, 3 - in combination, 4 - master; computed on import from
+    # the rating and the solution length (src/services/puzzle_import.stage_for).
     stage: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1", index=True)
-    # Версия разметки тем (src/services/puzzle_import.TAG_VERSION): старая — задача переразмечается при импорте.
+    # The theme markup version (src/services/puzzle_import.TAG_VERSION): an old one - the puzzle is re-tagged on import.
     tag_version: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
@@ -54,8 +55,9 @@ class Puzzle(Base):
 
 class PuzzleTheme(Base):
     """
-    Тема задачи — код реестра src/services/themes.py. Отдельная строка на каждую тему, чтобы задачи по теме выбирались
-    индексом.
+    A puzzle theme - a registry code from src/services/themes.py. A separate row for each theme, so that puzzles by theme are
+    chosen
+    by an index.
     """
     __tablename__ = "puzzle_themes"
 
@@ -66,7 +68,7 @@ class PuzzleTheme(Base):
 
 
 class ThemeProgress(Base):
-    """Прогресс игрока по теме (таск 13.4): ступень, последние результаты на ней ('1' — чисто, '0' — нет)."""
+    """A player's progress by theme (task 13.4): the tier, the latest results on it ('1' - clean, '0' - not)."""
     __tablename__ = "theme_progress"
 
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
@@ -81,9 +83,9 @@ class ThemeProgress(Base):
 
 class PersonalPuzzle(Base):
     """
-    Задача из партии игрока (таск 13.5): позиция перед его ошибкой и единственный сильный ход. Повторение с
-    интервалами: нерешённая возвращается через 1, 3, 7, 21 день, пока не решится дважды подряд (тогда done).
-    Числа — personal_puzzles.INTERVALS_DAYS и SOLVES_TO_MASTER; создаёт задачи фоновый разбор партии
+    A puzzle from a player's game (task 13.5): the position before their mistake and the only strong move. Repetition with
+    intervals: an unsolved one returns after 1, 3, 7, 21 days until it is solved twice in a row (then done).
+    The numbers are personal_puzzles.INTERVALS_DAYS and SOLVES_TO_MASTER; the puzzles are created by the background game review
     (src/worker/tasks.py → personal_puzzles.extract_for_game / extract_for_imported).
     """
     __tablename__ = "personal_puzzles"
@@ -95,19 +97,20 @@ class PersonalPuzzle(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    # Партия на сайте или партия с другого сайта (таск 24.1) — ровно одно из двух.
+    # A game on the site or a game from another site (task 24.1) - exactly one of the two.
     game_id: Mapped[int | None] = mapped_column(ForeignKey("games.id", ondelete="CASCADE"), nullable=True, index=True)
     imported_game_id: Mapped[int | None] = mapped_column(
         ForeignKey("imported_games.id", ondelete="CASCADE"), nullable=True, index=True,
     )
-    # Полуход ошибки (1 — первый ход партии) и позиция перед ним; предыдущий ход — для подсветки.
+    # The ply of the mistake (1 - the first move of the game) and the position before it; the previous move is for
+    # highlighting.
     ply: Mapped[int] = mapped_column(Integer, nullable=False)
     fen: Mapped[str] = mapped_column(String(100), nullable=False)
     previous_move: Mapped[str | None] = mapped_column(String(5), nullable=True)
     solution: Mapped[str] = mapped_column(String(5), nullable=False)
     played: Mapped[str] = mapped_column(String(5), nullable=False)
     cp_loss: Mapped[int] = mapped_column(Integer, nullable=False)
-    # Коды тем реестра через запятую; читать и писать — personal_puzzles.split_themes / join_themes.
+    # Registry theme codes separated by commas; read and write via personal_puzzles.split_themes / join_themes.
     themes: Mapped[str] = mapped_column(String(300), nullable=False, default="")
     interval_index: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     solved_streak: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
@@ -119,8 +122,9 @@ class PersonalPuzzle(Base):
 
 class DefenseDrill(Base):
     """
-    Защитное упражнение (таск 13.6, src/services/defense_drills.py): «Что грозит соперник?» (kind=threat) и «Не
-    зевни» (kind=blunder). Позиция — с очередью хода обороняющегося; угроза и верные ходы клиенту не отправляются.
+    A defence drill (task 13.6, src/services/defense_drills.py): "What does the opponent threaten?" (kind=threat) and "Don't
+    blunder" (kind=blunder). The position has the defender to move; the threat and the correct moves are not sent to the
+    client.
     """
     __tablename__ = "defense_drills"
     __table_args__ = (
@@ -134,21 +138,21 @@ class DefenseDrill(Base):
     source: Mapped[str] = mapped_column(String(20), nullable=False)
     source_id: Mapped[str] = mapped_column(String(20), nullable=False)
     fen: Mapped[str] = mapped_column(String(100), nullable=False)
-    # threat: ход соперника, который грозит (если бы ход был его); blunder — нет.
+    # threat: the opponent's move that threatens (if it were their move); blunder - no.
     threat: Mapped[str | None] = mapped_column(String(5), nullable=True)
-    # blunder: три хода на выбор и опровержения проигрывающих («ход:ответ» через пробел).
+    # blunder: three moves to choose from and the refutations of the losing ones ("move:reply" separated by a space).
     choices: Mapped[str] = mapped_column(String(20), nullable=False, default="", server_default="")
     refutations: Mapped[str] = mapped_column(String(30), nullable=False, default="", server_default="")
     good_moves: Mapped[str] = mapped_column(String(30), nullable=False)
     rating: Mapped[int] = mapped_column(Integer, nullable=False)
     stage: Mapped[int] = mapped_column(Integer, nullable=False)
-    # Темы тактики, которая стоит за угрозой или зевком (из исходной задачи) — объяснение после ответа.
+    # The tactic themes behind the threat or the blunder (from the original puzzle) - an explanation after the answer.
     motifs: Mapped[str] = mapped_column(String(300), nullable=False, default="", server_default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
 
 class DrillRecord(Base):
-    """Личный рекорд забега на минуту в упражнениях-генераторах (таск 13.7): сочетание «вид.фигура.уровень»."""
+    """A personal record of the one-minute run in the generator drills (task 13.7): the combination "kind.piece.level"."""
     __tablename__ = "drill_records"
 
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
@@ -160,7 +164,8 @@ class DrillRecord(Base):
 
 class PuzzleAttempt(Base):
     """
-    Попытка игрока решить задачу и её итог. По попыткам считаются рейтинг решателя, прогресс по темам и карта навыков.
+    A player's attempt to solve a puzzle and its result. The solver rating, theme progress and the skill map are computed from
+    attempts.
     """
     __tablename__ = "puzzle_attempts"
 
@@ -176,8 +181,9 @@ class PuzzleAttempt(Base):
 
 class PuzzleTimedScore(Base):
     """
-    Лучший счёт игрока в забеге на время за неделю (таблица лидеров, таск 26.1): строка на игрока, длину забега
-    (3 или 5 минут) и неделю — понедельник UTC. Пишет puzzle_leaders.record_week при завершении забега, счёт только растёт.
+    A player's best score in a timed run for a week (the leaderboard, task 26.1): a row per player, run length
+    (3 or 5 minutes) and week - the UTC Monday. Written by puzzle_leaders.record_week at the end of a run, the score only
+    grows.
     """
     __tablename__ = "puzzle_timed_scores"
     __table_args__ = (UniqueConstraint("user_id", "minutes", "week", name="uq_puzzle_timed_scores_week"),)

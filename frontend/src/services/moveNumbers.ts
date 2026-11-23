@@ -1,9 +1,9 @@
 // --- FILE: frontend/src/services/moveNumbers.ts ---
-// Запись ходов с номерами: «1. e4», «e5», «2. Nf3»… Если линия начинается из своей позиции (FEN), номер берётся из
-// шестого поля FEN, а первый ход чёрных пишется «12… Kg7». Чистая функция, без сети.
-// Используют редактор и тренажёр репертуара (repertoire/), шахматы Фишера (chess960/) и анализ на доске (tools/).
+// Move notation with numbers: "1. e4", "e5", "2. Nf3"... If the line starts from its own position (FEN), the number is taken from
+// the sixth FEN field, and Black's first move is written "12... Kg7". A pure function, no network.
+// Used by the repertoire editor and trainer (repertoire/), Fischer chess (chess960/) and board analysis (tools/).
 
-/** Ходы SAN с номерами; startFen — позиция, с которой начинается линия (по умолчанию — первый ход белых). */
+/** SAN moves with numbers; startFen — the position the line starts from (by default — White's first move). */
 export function numberedMoves(sans: string[], startFen?: string): string[] {
     const fields = startFen?.split(' ') ?? [];
     const firstBlack = fields[1] === 'b';

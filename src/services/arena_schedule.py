@@ -1,20 +1,22 @@
 # --- FILE: src/services/arena_schedule.py ---
 """
-Расписание арен по конференциям (таск 33.4, docs/research/arenas.md §4, §6, §9).
+Arena schedule by conference (task 33.4, docs/research/arenas.md §4, §6, §9).
 
-У каждой конференции — «домашняя» зона времени, и расписание её арен задано в её местном времени (DAY_PLAN):
+Each conference has a "home" time zone, and the schedule of its arenas is given in its local time (DAY_PLAN):
 
-* вечер (18:00–23:00): блиц 3+2 каждый час (60 мин); через час рядом с ним вторая арена — пуля 2+1 в 18:00 и в 22:00
-  (45 мин), а в 20:00 — вечерняя 5+3 (90 мин), главная арена дня;
-* ночь и день: блиц 3+2 раз в три часа;
-* швейцарки: 10+5 каждый день в 15:00, 15+10 по воскресеньям в 11:00 (по 5 туров).
+* evening (18:00-23:00): blitz 3+2 every hour (60 min); an hour later a second arena runs next to it — bullet 2+1 at 18:00 and
+  at 22:00
+  (45 min), and at 20:00 the evening 5+3 (90 min), the main arena of the day;
+* night and day: blitz 3+2 once every three hours;
+* Swiss: 10+5 every day at 15:00, 15+10 on Sundays at 11:00 (5 rounds each).
 
-В одной конференции одновременно идёт не больше двух турниров (проверяется тестом на неделю вперёд). Играть можно в
-арене любой конференции: зона времени определяет только то, когда арены идут чаще. Арен «для своей силы» в расписании
-нет: каждая арена открыта любому зарегистрированному игроку (решение владельца 17.11.2026). Сам список стран конференций и
-зачёт — таск 33.6; здесь нужны только ключи конференций и их зоны.
+At most two tournaments run at the same time in one conference (checked by a test a week ahead). One may play in the
+arena of any conference: the time zone only determines when arenas run more often. There are no arenas "for one's own strength"
+in the schedule:
+every arena is open to any registered player (owner decision of 17.11.2026). The list of conference countries and the
+standing are task 33.6; here only the conference keys and their zones are needed.
 
-Модуль чистый: по моменту времени возвращает, какие арены должны существовать; создаёт их arena.ensure_schedule.
+The module is pure: for a point in time it returns which arenas must exist; arena.ensure_schedule creates them.
 """
 
 from dataclasses import dataclass
@@ -23,7 +25,7 @@ from zoneinfo import ZoneInfo
 
 from src.core.config import settings
 
-# Ключ конференции → её домашняя зона времени (IANA).
+# Conference key -> its home time zone (IANA).
 CONFERENCE_ZONES: dict[str, str] = {
     "central": "Europe/Kyiv",
     "western": "America/New_York",
@@ -31,15 +33,16 @@ CONFERENCE_ZONES: dict[str, str] = {
     "southern": "Europe/Istanbul",
     "eastern": "Asia/Kolkata",
 }
-# Номер воскресенья в date.weekday() (понедельник — 0).
+# Sunday number in date.weekday() (Monday is 0).
 SUNDAY = 6
 
 
 @dataclass(frozen=True)
 class Slot:
     """
-    Вид турнира расписания: ключ, контроль времени (база и добавка в мс), длительность, формат ("arena" или "swiss")
-    и число туров (только для швейцарки). У швейцарки длительность — плановое окно: конец определяют сыгранные туры.
+    Schedule tournament kind: key, time control (base and increment in ms), duration, format ("arena" or "swiss")
+    and number of rounds (Swiss only). For a Swiss the duration is a planned window: the end is determined by the rounds
+    played.
     """
     key: str
     base_time_ms: int
@@ -55,20 +58,21 @@ EVENING = Slot("evening-5+3", 300_000, 3_000, timedelta(minutes=90))
 SWISS_DAILY = Slot("swiss-10+5", 600_000, 5_000, timedelta(hours=3), "swiss", 5)
 SWISS_WEEKLY = Slot("swiss-15+10", 900_000, 10_000, timedelta(hours=4), "swiss", 5)
 
-# Час местного времени конференции → турнир. Вечер — каждый час и вторая арена через час; остальное время — реже.
+# Conference local hour -> tournament. Evening — every hour plus a second arena an hour later; the rest of the time — less
+# often.
 DAY_PLAN: tuple[tuple[int, Slot], ...] = (
     (0, BLITZ), (3, BLITZ), (6, BLITZ), (9, BLITZ), (12, BLITZ), (15, BLITZ),
     (15, SWISS_DAILY),
     (18, BLITZ), (19, BLITZ), (20, BLITZ), (21, BLITZ), (22, BLITZ),
     (18, BULLET), (20, EVENING), (22, BULLET),
 )
-# День недели и час местного времени → турнир раз в неделю.
+# Day of week and local hour -> a tournament once a week.
 WEEK_PLAN: tuple[tuple[int, int, Slot], ...] = ((SUNDAY, 11, SWISS_WEEKLY),)
 
 
 @dataclass(frozen=True)
 class Planned:
-    """Турнир расписания: ключ «конференция:слот», начало в UTC и параметры."""
+    """Schedule tournament: key "conference:slot", start in UTC and parameters."""
     schedule_key: str
     conference: str
     slot: Slot
@@ -80,13 +84,13 @@ class Planned:
 
 
 def active_conferences() -> tuple[str, ...]:
-    """Конференции, для которых создаются арены: настройка ARENA_CONFERENCES (по умолчанию — все пять)."""
+    """Conferences for which arenas are created: the ARENA_CONFERENCES setting (by default all five)."""
     wanted = [item.strip() for item in settings.ARENA_CONFERENCES.split(",")]
     return tuple(key for key in CONFERENCE_ZONES if key in wanted)
 
 
 def day_events(conference: str, day: date) -> list[tuple[datetime, Slot]]:
-    """Турниры конференции, начинающиеся в этот день её местного времени: (начало в UTC, слот)."""
+    """Conference tournaments starting on this day of its local time: (start in UTC, slot)."""
     zone = ZoneInfo(CONFERENCE_ZONES[conference])
     plan = list(DAY_PLAN) + [(hour, slot) for weekday, hour, slot in WEEK_PLAN if day.weekday() == weekday]
     events = [(datetime(day.year, day.month, day.day, hour, tzinfo=zone).astimezone(UTC), slot) for hour, slot in plan]
@@ -95,9 +99,9 @@ def day_events(conference: str, day: date) -> list[tuple[datetime, Slot]]:
 
 def planned(now: datetime, horizon: timedelta) -> list[Planned]:
     """
-    Турниры, которые идут сейчас или начнутся в ближайшие horizon, — по всем активным конференциям, по порядку начала.
-    Просматриваются местные дни конференции от вчерашнего до послезавтрашнего: этого хватает и на турнир, начатый
-    до полуночи, и на горизонт в несколько часов.
+    Tournaments that are running now or will start within the nearest horizon, over all active conferences, in start order.
+    Local conference days from yesterday to the day after tomorrow are scanned: this covers both a tournament started
+    before midnight and a horizon of several hours.
     """
     out: dict[tuple[str, datetime], Planned] = {}
     for conference in active_conferences():
@@ -107,11 +111,11 @@ def planned(now: datetime, horizon: timedelta) -> list[Planned]:
                 if not (starts_at < now + horizon and starts_at + slot.duration > now):
                     continue
                 key = f"{conference}:{slot.key}"
-                # Переход на зимнее время повторяет час: один ключ и момент — один турнир.
+                # The switch to winter time repeats an hour: one key and moment is one tournament.
                 out.setdefault((key, starts_at), Planned(key, conference, slot, starts_at))
     return sorted(out.values(), key=lambda item: (item.starts_at, item.schedule_key))
 
 
 def is_evening(schedule_key: str | None) -> bool:
-    """Вечерняя арена 5+3 — главная арена дня своей конференции; узнаётся по части ключа расписания после «:»."""
+    """The evening 5+3 arena is the main arena of its conference's day; recognised by the key part after ":"."""
     return bool(schedule_key) and str(schedule_key).split(":")[-1] == EVENING.key

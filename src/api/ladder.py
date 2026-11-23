@@ -1,5 +1,5 @@
 # --- FILE: src/api/ladder.py ---
-"""Клубная лестница: прогресс игрока и начало партии со следующим соперником (src/services/ladder.py)."""
+"""Club ladder: the player's progress and the start of a game with the next opponent (src/services/ladder.py)."""
 
 import random
 from typing import Literal
@@ -24,7 +24,7 @@ class RungOut(BaseModel):
     id: str
     rating: int
     measured: bool
-    # skipped — слабее текущей ступени, но не пройдена (соперник добавлен ниже уже пройденного).
+    # skipped - weaker than the current rung but not beaten (an opponent was added below an already beaten one).
     status: ladder.RungStatus
 
 
@@ -42,7 +42,7 @@ class LadderStartRequest(BaseModel):
 
 
 class LadderOpponent(BaseModel):
-    """Соперник ступени: имя и описание на языке игрока клиент берёт из каталога по id."""
+    """A rung opponent: the name and description in the player's language are taken by the client from the catalogue by id."""
     key: str
     kind: str
     id: str
@@ -59,7 +59,7 @@ class LadderStartResponse(BaseModel):
 
 
 async def _state(db: AsyncSession, user: User, active: str | None) -> LadderState:
-    """Лестница игрока: рейтинг, номер текущей ступени (step) и статус каждой ступени (ladder.rung_status)."""
+    """The player's ladder: rating, the current rung number (step) and the status of each rung (ladder.rung_status)."""
     items = ladder.rungs()
     beaten = await ladder.beaten_keys(db, user.id)
     current = ladder.current_index(items, beaten)
@@ -78,13 +78,13 @@ async def _state(db: AsyncSession, user: User, active: str | None) -> LadderStat
 
 
 async def note_ladder_analysis(request: Request, db: AsyncSession = Depends(get_db)) -> None:
-    """Зависимость эндпоинтов анализа: во время партии лестницы анализ — подсказка."""
+    """The dependency of analysis endpoints: during a ladder game analysis is a hint."""
     await ladder.note_analysis(await optional_user_id(request, db))
 
 
 @router.get("", response_model=LadderState)
 async def get_ladder(db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
-    """Прогресс игрока на лестнице и соперник открытой партии, если она есть."""
+    """The player's progress on the ladder and the opponent of the open game, if there is one."""
     session = await ladder.get_session(user.id)
     return await _state(db, user, session.rung_key if session else None)
 
@@ -93,7 +93,7 @@ async def get_ladder(db: AsyncSession = Depends(get_db), user: User = Depends(ge
 async def start_ladder_game(
         payload: LadderStartRequest, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user),
 ):
-    """Открывает партию со следующим соперником. Брошенная начатая партия засчитывается поражением."""
+    """Opens a game with the next opponent. An abandoned started game counts as a loss."""
     forfeited = None
     previous = await ladder.get_session(user.id)
     if previous is not None and previous.max_ply >= 0:

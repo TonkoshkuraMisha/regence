@@ -1,4 +1,4 @@
-"""Продвинутые стартовые наборы (таск 27.10) создаются через API целиком и укладываются в лимиты репертуара."""
+"""Advanced starter sets (task 27.10) are created via the API in full and fit the repertoire limits."""
 
 import pytest
 
@@ -16,5 +16,5 @@ def test_advanced_starter_is_created_whole(client, token_user_1, starter):
     assert rep["color"] == BY_ID[starter].color
     lines = {tuple(repertoire.san_line_to_uci(line)) for line in BY_ID[starter].lines}
     plies = {line[:n] for line in lines for n in range(1, len(line) + 1)}
-    # Узлы — позиции: перестановки сливаются, поэтому ходов не больше, чем разных начал линий.
+    # Nodes are positions: transpositions merge, so there are no more moves than distinct line starts.
     assert 300 < len(rep["moves"]) <= len(plies) <= repertoire.MAX_MOVES

@@ -1,8 +1,8 @@
 """rename own puzzle source and theme tags: michess -> regence (platform rename, 19.11.2026)
 
-Свои задачи (src/services/puzzle_import.py, GENERATED_SOURCE / OWN_TAG) хранились с источником «michess» и тегами
-«michess:<код>» в puzzles.source_tags. Схема не меняется — только данные, чтобы повторный импорт и переразметка
-узнавали уже загруженные задачи под новым именем.
+Own puzzles (src/services/puzzle_import.py, GENERATED_SOURCE / OWN_TAG) were stored with the source "michess" and tags
+"michess:<code>" in puzzles.source_tags. The schema does not change - only data, so that a repeated import and re-tagging
+recognise the already loaded puzzles under the new name.
 
 Revision ID: d3a8f1c6e2b7
 Revises: c7d2e9f4a1b6
@@ -21,7 +21,7 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    """Источник и теги своих задач — под новым именем платформы."""
+    """The source and tags of own puzzles - under the new platform name."""
     op.execute(
         "UPDATE puzzles SET source = 'regence', source_tags = REPLACE(source_tags, 'michess:', 'regence:') "
         "WHERE source = 'michess'"
@@ -29,7 +29,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    """Обратно к прежнему имени."""
+    """Back to the former name."""
     op.execute(
         "UPDATE puzzles SET source = 'michess', source_tags = REPLACE(source_tags, 'regence:', 'michess:') "
         "WHERE source = 'regence'"

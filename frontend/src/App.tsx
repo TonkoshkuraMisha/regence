@@ -1,9 +1,9 @@
 // --- FILE: frontend/src/App.tsx ---
-// Каркас приложения: шапка (разделы, язык, поиск игроков, уведомления, сообщения, меню профиля), окно входа и все
-// маршруты сайта (<Routes> в конце файла). При загрузке восстанавливает вход по refresh-cookie
-// (services/authToken.ts) и ждёт этого не дольше SESSION_RESTORE_WAIT_MS; профиль (/profile/me) задаёт язык
-// интерфейса, тему-комплект и аватар. Страницы разделов — в components/<раздел>/; новая страница добавляется сюда
-// маршрутом и, если она без параметров, — в список ROUTES проверки вёрстки (e2e/layout.e2e.ts).
+// Application shell: the header (sections, language, player search, notifications, messages, profile menu), the sign-in window and all
+// site routes (<Routes> at the end of the file). On load it restores sign-in by the refresh cookie
+// (services/authToken.ts) and waits for that no longer than SESSION_RESTORE_WAIT_MS; the profile (/profile/me) sets the interface
+// language, the theme set and the avatar. Section pages are in components/<section>/; a new page is added here
+// as a route and, if it has no parameters, to the ROUTES list of the layout check (e2e/layout.e2e.ts).
 
 import {useState, useRef, useEffect} from 'react';
 import {Routes, Route, useNavigate, Link, useLocation} from 'react-router-dom';
@@ -103,34 +103,34 @@ interface UserProfile {
     rapid_rating: number;
     classical_rating: number;
     is_cheater: boolean;
-    /** Категории с временным рейтингом (таск 17.8): меньше 30 партий. */
+    /** Categories with a provisional rating (task 17.8): fewer than 30 games. */
     provisional?: string[];
-    /** Языки (таск 17.7): язык из профиля и режим «помощник перевода». */
+    /** Languages (task 17.7): the language from the profile and the "translation helper" mode. */
     language?: string | null;
     translation_helper?: boolean;
-    /** Тема-комплект (таск 18.3). */
+    /** Theme set (task 18.3). */
     theme_preset?: string | null;
-    /** Аватар из собственного набора (таск 18.4). */
+    /** Avatar from the own set (task 18.4). */
     avatar?: string | null;
 }
 
-/** Сколько ждать восстановления входа, прежде чем показать страницу без него. */
+/** How long to wait for sign-in restoration before showing the page without it. */
 export const SESSION_RESTORE_WAIT_MS = 3000;
 
 export default function App() {
     const {t, language, setLanguage} = useI18n();
-    // Токен — в памяти (services/authToken): при загрузке вход восстанавливается по httpOnly-cookie (таск 17.5).
+    // The token is in memory (services/authToken): on load sign-in is restored by the httpOnly cookie (task 17.5).
     const [token, setToken] = useState<string | null>(() => auth.getToken());
-    // Страницы рисуются после первой попытки восстановить вход (cookie → токен). Иначе при прямом заходе и при
-    // обновлении страницы они запрашивали данные раньше, чем появлялся токен, и получали 401: «Машина времени»
-    // показывала «Не удалось загрузить турниры», страница турнира — ошибку, список турниров оставался пустым.
+    // Pages are rendered after the first attempt to restore sign-in (cookie -> token). Otherwise, on a direct visit and on
+    // a page refresh, they requested data before the token appeared and got 401: "Time Machine"
+    // showed "Failed to load tournaments", the tournament page showed an error, the tournament list stayed empty.
     const [sessionChecked, setSessionChecked] = useState<boolean>(() => auth.getToken() !== null);
     const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
     const [profileRetry, setProfileRetry] = useState(0);
 
     const [isProfileOpen, setIsProfileOpen] = useState(false);
-    // Язык хранится в профиле (таск 17.7): при входе язык профиля применяется (так он переходит между устройствами),
-    // если в профиле его ещё нет — туда записывается текущий; дальше каждая смена языка сохраняется на сервере.
+    // The language is stored in the profile (task 17.7): on sign-in the profile language is applied (so it moves between devices),
+    // if the profile has none yet, the current one is written there; after that every language change is saved on the server.
     const languageSyncedFor = useRef<number | null>(null);
     useEffect(() => {
         if (!token || !userProfile) {
@@ -151,7 +151,7 @@ export default function App() {
             saveProfileSettings({language}).catch(() => undefined);
         }
     }, [token, userProfile, language, setLanguage]);
-    // Тема-комплект из профиля (таск 18.3) применяется при входе, если в браузере выбрана другая.
+    // The theme set from the profile (task 18.3) is applied on sign-in if another one is chosen in the browser.
     const presetSyncedFor = useRef<number | null>(null);
     useEffect(() => {
         if (!userProfile || presetSyncedFor.current === userProfile.id) return;
@@ -159,11 +159,11 @@ export default function App() {
         const preset = findPreset(userProfile.theme_preset);
         if (preset && preset.id !== getSavedPresetId()) applyPreset(preset);
     }, [userProfile]);
-    // Открываемое оформление (таск 18.4): полученные достижения игрока; гость — ничего.
+    // Unlockable appearance (task 18.4): the player's earned achievements; a guest has none.
     useEffect(() => {
         void loadUnlocks(token && userProfile ? userProfile.username : null);
     }, [token, userProfile?.username]); // eslint-disable-line react-hooks/exhaustive-deps
-    // Пункт «Модерация» (17.4) — только модератору и игроку с флагом нечестной игры (там — апелляция).
+    // The "Moderation" item (17.4) is only for a moderator and a player with the unfair play flag (there, an appeal).
     const [showModeration, setShowModeration] = useState(false);
     useEffect(() => {
         if (!token || !userProfile) {
@@ -175,7 +175,7 @@ export default function App() {
     const [isChampionsMenuOpen, setIsChampionsMenuOpen] = useState(false);
 
     const [showAuthModal, setShowAuthModal] = useState(false);
-    // Программа беты (таск 24.4): «Сообщить о проблеме» — с любой страницы; закрыта ли регистрация — с сервера.
+    // Beta programme (task 24.4): "Report a problem" from any page; whether registration is closed comes from the server.
     const [showReport, setShowReport] = useState(false);
     const siteConfig = useSiteConfig();
     const [serverPing, setServerPing] = useState<number | null>(null);
@@ -184,10 +184,10 @@ export default function App() {
     const championsMenuRef = useRef<HTMLDivElement>(null);
     const navigate = useNavigate();
     const location = useLocation();
-    // Ссылка-приглашение (/?invite=КОД): код запоминается, из адреса убирается, гостю сразу открывается регистрация.
+    // Invitation link (/?invite=CODE): the code is remembered, removed from the address, and a guest gets registration opened at once.
     const [inviteCode] = useState(() => new URLSearchParams(location.search).get('invite')?.trim() || undefined);
 
-    // Звук шаха — только в обучающих разделах; в партиях он отвлекает (решение владельца, 17.11).
+    // The check sound is only in learning sections; in games it distracts (owner's decision, 17.11).
     useEffect(() => {
         setCheckSounds(isLearningPath(location.pathname));
     }, [location.pathname]);
@@ -195,8 +195,8 @@ export default function App() {
     const isSingleScreenRoute =
         location.pathname === '/' ||
         location.pathname.startsWith('/challenge/') ||
-        // Просмотр партии — тот же экран с доской и для библиотеки, и для партий с других сайтов: иначе панель
-        // с ходами растягивается на всю партию, и страница едет вслед за текущим ходом.
+        // The game viewer is the same screen with a board for the library and for games from other sites: otherwise the move
+        // panel stretches over the whole game, and the page moves along with the current move.
         /^\/(game|library\/game|import\/game)\//.test(location.pathname);
 
     useEffect(() => {
@@ -207,8 +207,8 @@ export default function App() {
                 gameSocket.disconnect();
             }
         });
-        // Страховка: если сервер не отвечает на восстановление входа, страницы не ждут его дольше трёх секунд —
-        // гость должен видеть хотя бы то, что не требует сервера.
+        // Safety net: if the server does not answer the sign-in restoration, pages do not wait for it longer than three seconds:
+        // a guest must see at least what does not need the server.
         const giveUp = setTimeout(() => setSessionChecked(true), SESSION_RESTORE_WAIT_MS);
         void Promise.resolve(auth.restoreSession()).then((restored) => {
             clearTimeout(giveUp);
@@ -245,9 +245,9 @@ export default function App() {
         })
             .then(res => {
                 if (res.status === 401) {
-                    // Только отказ в авторизации означает, что токен недействителен (например, истёк, пока
-                    // компьютер спал). Сетевая ошибка или 5xx — не повод разлогинивать. Сначала — обновить токен по
-                    // cookie; не вышло — выход (подписка выше).
+                    // Only an authorization refusal means the token is invalid (for example, it expired while the
+                    // computer slept). A network error or 5xx is no reason to sign out. First refresh the token by
+                    // the cookie; if that fails, sign out (the subscription above).
                     void auth.refreshSession();
                     return null;
                 }
@@ -258,7 +258,7 @@ export default function App() {
                 if (!cancelled && data) setUserProfile(data);
             })
             .catch(() => {
-                // Профиль не загрузился — пробуем ещё раз, сессию не трогаем.
+                // The profile did not load: we try again, the session is not touched.
                 if (!cancelled) retryTimer = setTimeout(() => setProfileRetry(n => n + 1), 3000);
             });
 
@@ -291,7 +291,7 @@ export default function App() {
     };
 
     const handleLogoutEverywhere = async () => {
-        // Сервер отзывает все токены и закрывает WebSocket во всех вкладках и на всех устройствах.
+        // The server revokes all tokens and closes the WebSocket in all tabs and on all devices.
         if (token) {
             try {
                 await fetch(`${API_BASE_URL}/api/v1/auth/logout-all`, {
@@ -299,7 +299,7 @@ export default function App() {
                     headers: {Authorization: `Bearer ${token}`},
                 });
             } catch {
-                // Сеть недоступна — локальный выход всё равно выполняем.
+                // The network is unavailable: we perform the local sign-out anyway.
             }
         }
         handleLogout();
@@ -319,18 +319,18 @@ export default function App() {
     }, []);
 
     const username = userProfile?.username || t('nav.guest');
-    // Блиц — заголовочный рейтинг в компактной навигации (как на chess.com/lichess.org);
-    // полный разбор по пуле/блицу/рапиду/классике — на странице профиля.
+    // Blitz is the headline rating in the compact navigation (as on chess.com/lichess.org);
+    // the full breakdown by bullet/blitz/rapid/classical is on the profile page.
     const userRating = userProfile?.blitz_rating || 1200;
-    // Временный рейтинг (таск 17.8) — со знаком «?», пока сыграно мало партий блица.
+    // A provisional rating (task 17.8) gets a "?" mark while few blitz games have been played.
     const ratingProvisional = Boolean(userProfile?.provisional?.includes('blitz'));
     const ratingLabel = ratingProvisional ? `${userRating}?` : String(userRating);
 
-    // Подписи пунктов меню видны с той ширины, где шапка помещается целиком; уже — остаются значки с подсказками.
-    // Шрифт интерфейса системный, и ширина текста зависит от системы игрока: на Linux (и там, где установлен Inter)
-    // он на 9–10 % шире, чем Segoe UI на Windows. Пороги взяты по широкому шрифту (замер 17.11 с Verdana, которая
-    // ещё на 15–25 px шире шрифта сборки в CI): гостю с подписями нужно до 1335 px, вошедшему игроку без самой
-    // длинной подписи («Легенды шахмат») — до 1340 px, со всеми подписями — до 1465 px.
+    // Menu item labels are visible from the width at which the whole header fits; narrower, icons with tooltips remain.
+    // The interface font is the system one, and text width depends on the player's system: on Linux (and where Inter is installed)
+    // it is 9-10% wider than Segoe UI on Windows. The thresholds are taken for the wide font (the 17.11 measurement with Verdana, which
+    // is still 15-25 px wider than the font in the CI build): a guest with labels needs up to 1335 px, a signed-in player without the
+    // longest label ("Chess Legends") up to 1340 px, with all labels up to 1465 px.
     const navLabel = 'hidden min-[1360px]:inline';
     const legendsLabel = token && userProfile ? 'hidden min-[1500px]:inline' : navLabel;
 
@@ -343,8 +343,8 @@ export default function App() {
             <header
                 className="h-14 shrink-0 bg-acacia-dark border-b-2 border-amber-900/60 px-3 sm:px-5 flex items-center justify-between shadow-heavy relative z-30">
                 <div className="flex items-center gap-4 2xl:gap-7">
-                    {/* Название у вошедшего игрока — с 720 px: на 640 px оно появлялось вместе с именем игрока, и шапке
-                        с длинным именем не хватало места (на Windows — 8 px, с широким шрифтом — больше). */}
+                    {/* The name for a signed-in player appears from 720 px: at 640 px it appeared together with the player's name, and a header
+                        with a long name ran out of room (on Windows 8 px, with a wide font more). */}
                     <Link to="/" className="flex items-center gap-2.5 cursor-pointer group outline-none">
                         <div
                             className="w-9 h-9 rounded-md bg-boxwood flex items-center justify-center shadow-inner border border-amber-600/40 text-acacia-dark font-bold text-xl">
@@ -379,7 +379,7 @@ export default function App() {
                             <Puzzle size={17}/> <span className={navLabel}>{t('nav.puzzles')}</span>
                         </Link>
 
-                        {/* Школа (14.2): три курса готовы — пункт вернулся в шапку (23.6). */}
+                        {/* School (14.2): three courses are ready, so the item is back in the header (23.6). */}
                         <Link
                             to="/learn"
                             title={t('learn.title')}
@@ -402,7 +402,7 @@ export default function App() {
                             <Trophy size={17}/> <span className={navLabel}>{t('nav.tournaments')}</span>
                         </Link>
 
-                        {/* Тренажёры (19.1). */}
+                        {/* Trainers (19.1). */}
                         <Link
                             to="/train"
                             title={t('trainers.title')}
@@ -471,7 +471,7 @@ export default function App() {
                                             </div>
                                         </Link>
                                     ))}
-                                    {/* Каталог мастеров прошлого (таск 28.5): участники исторических турниров. */}
+                                    {/* Catalogue of masters of the past (task 28.5): participants of historical tournaments. */}
                                     <Link to="/masters" onClick={() => setIsChampionsMenuOpen(false)} data-testid="nav-masters"
                                           className="flex flex-col gap-0.5 px-4 py-2.5 hover:bg-black/40 transition outline-none">
                                         <span className="font-bold text-amber-200 text-[15px]">{t('masters.title')}</span>
@@ -504,7 +504,7 @@ export default function App() {
                     >
                         <Scale size={19}/>
                     </Link>
-                    {/* Вошедшему на узком экране — пункт в меню профиля: в шапке не хватает места. */}
+                    {/* For a signed-in player on a narrow screen the item is in the profile menu: there is not enough room in the header. */}
                     <button
                         type="button"
                         onClick={() => setShowReport(true)}
@@ -734,7 +734,7 @@ export default function App() {
                             aria-label={t('nav.login')}
                             className="flex items-center gap-2 px-2.5 sm:px-4 py-1.5 bg-boxwood text-acacia-dark font-bold text-sm rounded-md hover:bg-boxwood-light transition shadow border border-amber-600/40 cursor-pointer"
                         >
-                            {/* На узком экране — только иконка: иначе шапка шире экрана. */}
+                            {/* On a narrow screen only the icon: otherwise the header is wider than the screen. */}
                             <LogIn size={16}/> <span className="hidden sm:inline">{t('nav.login')}</span>
                         </button>
                     )}
@@ -750,7 +750,7 @@ export default function App() {
             >
                 <PageErrorBoundary resetKey={location.pathname}>
                 {!sessionChecked ? (
-                    // Пока неизвестно, вошёл ли игрок: место страницы пустое (доли секунды), шапка уже на месте.
+                    // While it is unknown whether the player is signed in: the page place is empty (a fraction of a second), the header is already in place.
                     <div className="flex-1" data-testid="session-restoring" aria-busy="true"/>
                 ) : (
                 <Routes>
@@ -784,7 +784,7 @@ export default function App() {
                         <Route path="/feed/post/:postId" element={<PostPage/>}/>
                         <Route path="/rules" element={<CommunityRulesPage/>}/>
                         <Route path="/privacy" element={<PrivacyPage/>}/>
-                        {/* Витрина общих компонентов дизайна — в меню нет (docs/design-system.md). */}
+                        {/* Showcase of shared design components: not in the menu (docs/design-system.md). */}
                         <Route path="/design" element={<DesignGallery/>}/>
                         <Route path="/train" element={<TrainersPage/>}/>
                         <Route path="/train/games" element={<MiniGamesPage/>}/>
