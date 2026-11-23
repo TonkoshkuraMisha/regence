@@ -50,4 +50,4 @@ def test_cli_reads_files_and_reports_nothing_found(tmp_path, capsys):
     assert main(["game_id=7", str(log)]) == 0
     assert "task_failed" in capsys.readouterr().out
     assert main(["game_id=999", str(log)]) == 1
-    assert "ничего не найдено" in capsys.readouterr().out
+    assert "nothing found" in capsys.readouterr().out

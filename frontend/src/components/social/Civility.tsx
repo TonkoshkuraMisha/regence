@@ -16,7 +16,7 @@ import type {ReportReason} from '../../services/moderation';
 
 // Report reasons for a text (without "cheating", it belongs to a game) and the items of the rules page (keys civil.rules.*).
 const REASONS: ReportReason[] = ['abuse', 'spam', 'other'];
-const RULES = ['respect', 'noInsults', 'noSpam', 'fairPlay', 'privacy', 'reports'] as const;
+const RULES = ['respect', 'noInsults', 'noSpam', 'fairPlay', 'privacy', 'illegal', 'accounts', 'reports'] as const;
 
 /** The server did not accept the text by the insult filter - offer to rewrite or send for review. */
 export function isTextFlagged(err: unknown): boolean {
@@ -98,6 +98,7 @@ export function CommunityRulesPage() {
             <p className="text-boxwood/85">{t('civil.filter')}</p>
             <p className="text-boxwood/85">{t('civil.limits')}</p>
             <p className="text-boxwood/85">{t('civil.decisions')}</p>
+            <p className="text-boxwood/85">{t('civil.consequences')}</p>
         </article>
     );
 }

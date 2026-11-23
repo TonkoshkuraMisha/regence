@@ -8,7 +8,7 @@ import sys
 import textwrap
 
 batch = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
-LANGS = ("en", "uk", "ru")
+LANGS = ("en", "uk")
 
 
 def q(text: str) -> str:
