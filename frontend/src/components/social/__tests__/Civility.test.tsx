@@ -108,6 +108,6 @@ describe('жалоба и скрытие', () => {
         expect(page).toHaveTextContent('Здесь говорят свободно.');
         expect(page).toHaveTextContent('Мы не оцениваем вкус и тон.');
         expect(page).toHaveTextContent('Нельзя травить человека');
-        expect(screen.getAllByRole('listitem')).toHaveLength(6);
+        expect(screen.getAllByRole('listitem')).toHaveLength(8);
     });
 });
