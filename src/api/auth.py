@@ -206,13 +206,9 @@ async def refresh_session(request: Request, response: Response, db: AsyncSession
         rejected = JSONResponse({"detail": error_payload("not_authenticated")}, status_code=401,
                                 headers={"WWW-Authenticate": "Bearer"})
         auth_sessions.clear_refresh_cookie(rejected)
-        auth_sessions.clear_refresh_cookie(rejected, auth_sessions.LEGACY_REFRESH_COOKIE)
         return rejected
     # Срок cookie продлевается вместе с записью в Redis: активный игрок не выходит сам собой.
-    # Кука под прежним именем переезжает под новое (LEGACY_REFRESH_COOKIE).
     auth_sessions.set_refresh_cookie(response, token)
-    if auth_sessions.LEGACY_REFRESH_COOKIE in request.cookies:
-        auth_sessions.clear_refresh_cookie(response, auth_sessions.LEGACY_REFRESH_COOKIE)
     return {"access_token": create_user_token(user), "token_type": "bearer"}
 
 
@@ -222,7 +218,6 @@ async def logout(request: Request) -> Response:
     await auth_sessions.revoke(auth_sessions.read_refresh_cookie(request.cookies))
     response = Response(status_code=status.HTTP_204_NO_CONTENT)
     auth_sessions.clear_refresh_cookie(response)
-    auth_sessions.clear_refresh_cookie(response, auth_sessions.LEGACY_REFRESH_COOKIE)
     return response
 
 

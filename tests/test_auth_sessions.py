@@ -83,14 +83,10 @@ async def test_sessions_are_stored_as_hashes():
     assert await auth_sessions.lookup(token) is None
 
 
-def test_refresh_accepts_the_legacy_cookie_name_and_moves_it(client):
-    """Кука под прежним именем платформы (michess_refresh) продлевает сессию и переезжает под новое имя."""
+def test_refresh_ignores_the_old_platform_cookie_name(client):
+    """Кука под прежним именем платформы (michess_refresh) не читается: сайт не выкладывался, боевых сессий под ним нет."""
     _login(client)
     token = client.cookies.get(auth_sessions.REFRESH_COOKIE)
     client.cookies.clear()
-    client.cookies.set(auth_sessions.LEGACY_REFRESH_COOKIE, token, path="/api/v1/auth")
-    res = client.post(REFRESH)
-    assert res.status_code == 200 and res.json()["access_token"]
-    set_cookies = res.headers.get_list("set-cookie")
-    assert any(c.startswith(f"{auth_sessions.REFRESH_COOKIE}={token}") for c in set_cookies)
-    assert any(c.startswith(f"{auth_sessions.LEGACY_REFRESH_COOKIE}=") and "Max-Age=0" in c for c in set_cookies)
+    client.cookies.set("michess_refresh", token, path="/api/v1/auth")
+    assert client.post(REFRESH).status_code == 401
