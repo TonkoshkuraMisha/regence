@@ -20,6 +20,18 @@ describe('форы', () => {
         expect(oddsFen('hourglass', 'white')).toBeNull();
     });
 
+    it('«два хода подряд»: получающий уже сыграл e4+d4 (e5+d5), ход у дающего, позиция легальна', () => {
+        const whiteGives = new Chess(oddsFen('tempo', 'white')!);
+        expect(whiteGives.turn()).toBe('w');
+        expect(whiteGives.get('e5')?.type).toBe('p');
+        expect(whiteGives.get('d5')?.type).toBe('p');
+        const blackGives = new Chess(oddsFen('tempo', 'black')!);
+        expect(blackGives.turn()).toBe('b');
+        expect(blackGives.get('e4')?.type).toBe('p');
+        expect(blackGives.get('d4')?.type).toBe('p');
+        expect(hasGiver('tempo')).toBe(true);
+    });
+
     it('фора по времени — треть часов, не меньше минуты; кто даёт фору', () => {
         expect(oddsTimes('time', 'white', 300_000, 300_000)).toEqual({white: 100_000, black: 300_000});
         expect(oddsTimes('time', 'black', 120_000, 120_000)).toEqual({white: 120_000, black: 60_000});

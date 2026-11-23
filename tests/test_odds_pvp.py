@@ -28,6 +28,15 @@ def test_odds_positions_and_times():
     assert odds.odds_times("knight", chess.WHITE, 180000) == (180000, 180000)
 
 
+def test_tempo_odds_position():
+    """«Два хода подряд»: получающий уже сыграл по два хода пешками, ход у дающего, позиция легальна и без шаха."""
+    for giver, receiver_pawns in ((chess.WHITE, (chess.E5, chess.D5)), (chess.BLACK, (chess.E4, chess.D4))):
+        board = chess.Board(odds.odds_fen(odds.TEMPO, giver))
+        assert board.is_valid() and board.turn == giver and not board.is_check()
+        assert all(board.piece_at(sq) is not None for sq in receiver_pawns)
+        assert odds.TEMPO in odds.KINDS
+
+
 @pytest.mark.parametrize("giver", ["creator", "acceptor"])
 async def test_invite_with_material_odds(db_session, giver):
     a, b = await _users(db_session, 1500, 1500)
