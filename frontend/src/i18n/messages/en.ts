@@ -4344,6 +4344,11 @@ export const en = {
             short: 'With bishops of opposite colours even an extra pawn often does not win.',
             explain: 'The defending bishop controls the queening square or a square on the path of the pawn, and the attacking bishop cannot help the pawn there. Place the bishop on the right colour and the draw is close; the more pawns the attacker has, and the farther apart they are, the harder the defence.',
         },
+        rook_vs_minor: {
+            name: 'Rook against a minor piece',
+            short: 'A lone bishop or knight can hold off a rook if the king and the piece stay together.',
+            explain: 'A rook alone cannot win against a bishop or a knight. The defender keeps the king near the piece, stays away from forks and skewers, and avoids the edge of the board. Find the one move that keeps the draw.',
+        },
         basic_mates: {
             name: 'Basic mates',
             short: 'Mate with queen, rook, two bishops, bishop and knight.',

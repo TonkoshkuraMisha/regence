@@ -65,7 +65,8 @@ _DEFAULT_GOAL = {
     **dict.fromkeys(("promotion", "underpromotion", "pawn_breakthrough", "pawn_race", "advanced_pawn",
                      "passed_pawn_support", "square_rule", "key_squares", "lucena", "rook_behind_passer"), "promotion"),
     **dict.fromkeys(("perpetual_check", "stalemate_trick", "fortress", "save_by_perpetual", "save_by_stalemate",
-                     "equality", "philidor_position", "wrong_bishop", "opposite_bishops", "perpetual_attack"), "draw"),
+                     "equality", "philidor_position", "wrong_bishop", "opposite_bishops", "rook_vs_minor",
+                     "perpetual_attack"), "draw"),
     **dict.fromkeys(("trapped_piece", "domination", "hanging_piece"), "material"),
     **dict.fromkeys(("open_file", "seventh_rank", "outpost"), "invasion"),
     **dict.fromkeys(("tempo_gain", "development_lag"), "tempo"),
@@ -186,6 +187,7 @@ THEMES: tuple[Theme, ...] = (
     _t("rook_behind_passer", "J", "D,M"),
     _t("wrong_bishop", "J", "D,M"),
     _t("opposite_bishops", "J", "D,M"),
+    _t("rook_vs_minor", "J", "D,M"),
     _t("basic_mates", "J", "D,M"),
     # K. Расчёт и сочетание приёмов
     _t("combination", "K", "L,D"),
