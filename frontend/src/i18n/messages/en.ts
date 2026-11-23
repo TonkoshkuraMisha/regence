@@ -2830,7 +2830,7 @@ export const en = {
         opponentGives: 'the opponent gives',
         iGive: 'I give',
         kinds: {none: 'no odds', knight: 'without a knight', rook: 'without a rook', queen: 'without the queen',
-            pawn: 'without the f-pawn', time: 'on time (⅓ of the clock)', hourglass: 'hourglass clock'},
+            pawn: 'without the f-pawn', time: 'on time (⅓ of the clock)', tempo: 'two moves in a row', hourglass: 'hourglass clock'},
     },
     skills: {
         title: 'Skill map',

@@ -2834,7 +2834,7 @@ export const ru: Messages = {
         opponentGives: 'даёт соперник',
         iGive: 'даю я',
         kinds: {none: 'без форы', knight: 'без коня', rook: 'без ладьи', queen: 'без ферзя',
-            pawn: 'без f-пешки', time: 'по времени (⅓ часов)', hourglass: 'песочные часы'},
+            pawn: 'без f-пешки', time: 'по времени (⅓ часов)', tempo: 'два хода подряд', hourglass: 'песочные часы'},
     },
     skills: {
         title: 'Карта навыков',

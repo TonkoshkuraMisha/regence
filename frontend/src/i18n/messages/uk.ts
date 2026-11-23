@@ -2834,7 +2834,7 @@ export const uk: Messages = {
         opponentGives: 'дає суперник',
         iGive: 'даю я',
         kinds: {none: 'без фори', knight: 'без коня', rook: 'без тури', queen: 'без ферзя',
-            pawn: 'без f-пішака', time: 'за часом (⅓ годинника)', hourglass: 'пісочний годинник'},
+            pawn: 'без f-пішака', time: 'за часом (⅓ годинника)', tempo: 'два ходи поспіль', hourglass: 'пісочний годинник'},
     },
     skills: {
         title: 'Карта навичок',
