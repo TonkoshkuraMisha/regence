@@ -1,21 +1,22 @@
 # --- FILE: src/core/logging_setup.py ---
 """
-Журналы сервера (задача по наблюдаемости 21.11.2026): один формат на API, WebSocket и воркеры Celery, чтобы любую
-жалобу «у меня пропала партия» можно было разобрать по цепочке событий и воспроизвести.
+Server logs (the observability task of 21.11.2026): one format for the API, WebSocket and Celery workers, so that any
+complaint like "my game disappeared" can be analysed by the chain of events and reproduced.
 
-Что делает модуль:
-- Контекст записи (request_id, user_id, game_id, tournament_id, task…) лежит в contextvar и подмешивается в КАЖДУЮ
-  строку журнала автоматически — кто бы её ни писал (bind_log_context). Для HTTP контекст заводит
-  request_log_middleware, для WebSocket — matchmaking_endpoint, для задач Celery — сигналы в worker/celery_app.py.
-- Формат: json (одна JSON-строка на запись — для сбора в Loki/ELK/файлы) или text (для чтения в консоли). Выбирает
-  LOG_FORMAT; auto — json в продакшене, text в разработке. Файл с ротацией (LOG_FILE) всегда пишется в json.
-- request_log_middleware — «сквозной номер запроса»: берёт X-Request-ID клиента (если он безопасный) или заводит
-  свой, возвращает его в ответе и пишет по строке http_request на запрос (метод, шаблон маршрута, статус, время).
-  Клиент (frontend/src/services/http.ts) шлёт свой номер в каждом запросе и вместе с ошибкой страницы отправляет
-  последние запросы — по ним в журнале находится вся цепочка.
+What the module does:
+- The record context (request_id, user_id, game_id, tournament_id, task...) lies in a contextvar and is mixed into EVERY
+  log line automatically - whoever writes it (bind_log_context). For HTTP the context is set by
+  request_log_middleware, for WebSocket - matchmaking_endpoint, for Celery tasks - the signals in worker/celery_app.py.
+- Format: json (one JSON line per record - for collecting into Loki/ELK/files) or text (for reading in the console). Chosen by
+  LOG_FORMAT; auto - json in production, text in development. The rotating file (LOG_FILE) is always written in json.
+- request_log_middleware - the "end-to-end request id": takes the client's X-Request-ID (if it is safe) or creates
+  its own, returns it in the response and writes one http_request line per request (method, route template, status, time).
+  The client (frontend/src/services/http.ts) sends its own id in every request and together with a page error sends
+  the latest requests - by them the whole chain is found in the log.
 
-Что в журнал НЕ попадает: тела запросов и ответов, пароли, токены, заголовки Authorization и Cookie, e-mail — только
-числовые id и коды. Параметры из адреса не пишутся: логируется шаблон маршрута (/games/{game_id}), а не сам путь.
+What does NOT go into the log: request and response bodies, passwords, tokens, Authorization and Cookie headers, e-mail - only
+numeric ids and codes. Address parameters are not written: the route template (/games/{game_id}) is logged, not the path
+itself.
 """
 
 import contextvars
@@ -36,37 +37,38 @@ from starlette.responses import JSONResponse, Response
 from src.core.config import settings
 from src.core.errors import error_payload
 
-# Номер запроса от клиента принимаем только в безопасном виде: он попадает в журнал и в заголовок ответа.
+# A request id from the client is accepted only in a safe form: it goes into the log and into the response header.
 REQUEST_ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]{8,64}$")
 REQUEST_ID_HEADER = "X-Request-ID"
-# Запросы дольше этого (секунд) пишутся уровнем WARNING: по ним ищут «зависания» без метрик.
+# Requests longer than this (seconds) are written at WARNING level: they are used to look for "hangs" without metrics.
 SLOW_REQUEST_S = 2.0
-# Служебные пути пишутся уровнем DEBUG: опрос здоровья и метрик иначе забил бы журнал.
+# Service paths are written at DEBUG level: health and metrics polling would otherwise flood the log.
 QUIET_PATHS = frozenset({"/health", "/metrics"})
-# Атрибуты обычной записи logging — всё остальное считается «дополнительными полями» (extra=...).
+# Attributes of an ordinary logging record - everything else is considered "extra fields" (extra=...).
 _STANDARD_ATTRS = frozenset(logging.LogRecord("", 0, "", 0, "", (), None).__dict__) | {"message", "asctime", "taskName"}
 
-# Поля контекста, которые дублируются тегами событий Sentry.
+# Context fields that are duplicated as Sentry event tags.
 _SENTRY_TAGS = frozenset({"request_id", "user_id", "game_id", "task", "ws_id"})
 
 _context: contextvars.ContextVar[dict[str, Any] | None] = contextvars.ContextVar("log_context", default=None)
 
 
 def bind_log_context(**fields: Any) -> None:
-    """Добавляет поля в контекст текущего запроса, сообщения WebSocket или задачи; None-значения пропускаются."""
+    """Adds fields to the context of the current request, WebSocket message or task; None values are skipped."""
     current = _context.get()
     if current is None:
         current = {}
         _context.set(current)
     current.update({key: value for key, value in fields.items() if value is not None})
-    # Те же поля — тегами события Sentry: по request_id событие находится и в журнале сервера (set_tag без Sentry — пустышка).
+    # The same fields as Sentry event tags: by request_id the event is found in the server log too (set_tag without Sentry is a
+    # no-op).
     for key in _SENTRY_TAGS & fields.keys():
         if fields[key] is not None:
             sentry_sdk.set_tag(key, str(fields[key]))
 
 
 def unbind_log_context(*keys: str) -> None:
-    """Убирает поля из контекста (например, game_id после действия: соединение живёт дольше действия)."""
+    """Removes fields from the context (for example game_id after an action: the connection outlives the action)."""
     current = _context.get()
     if current:
         for key in keys:
@@ -74,24 +76,24 @@ def unbind_log_context(*keys: str) -> None:
 
 
 def start_log_context(**fields: Any) -> contextvars.Token:
-    """Начинает новый контекст (для запроса или задачи); вернувшийся токен передают в end_log_context."""
+    """Starts a new context (for a request or a task); the returned token is passed to end_log_context."""
     token = _context.set({})
     bind_log_context(**fields)
     return token
 
 
 def end_log_context(token: contextvars.Token) -> None:
-    """Возвращает контекст, бывший до start_log_context."""
+    """Restores the context that was before start_log_context."""
     _context.reset(token)
 
 
 def current_log_context() -> dict[str, Any]:
-    """Копия текущего контекста (для тестов и для передачи в чужую задачу)."""
+    """A copy of the current context (for tests and for passing to someone else's task)."""
     return dict(_context.get() or {})
 
 
 def new_request_id() -> str:
-    """Свой номер запроса, если клиент его не прислал или прислал небезопасный."""
+    """Our own request id, if the client did not send one or sent an unsafe one."""
     return uuid.uuid4().hex[:16]
 
 
@@ -100,7 +102,7 @@ def _extra_fields(record: logging.LogRecord) -> dict[str, Any]:
 
 
 class JsonFormatter(logging.Formatter):
-    """Одна запись — одна JSON-строка: время UTC, уровень, источник, сообщение, контекст, поля и ошибка со стеком."""
+    """One record - one JSON line: UTC time, level, source, message, context, fields and the error with a stack."""
 
     def __init__(self, component: str) -> None:
         super().__init__()
@@ -122,7 +124,7 @@ class JsonFormatter(logging.Formatter):
 
 
 class TextFormatter(logging.Formatter):
-    """Читаемая строка для консоли разработчика; контекст — в квадратных скобках после сообщения."""
+    """A readable line for the developer's console; the context is in square brackets after the message."""
 
     def format(self, record: logging.LogRecord) -> str:
         context = {**(_context.get() or {}), **_extra_fields(record)}
@@ -136,7 +138,7 @@ class TextFormatter(logging.Formatter):
 
 
 def resolve_format() -> str:
-    """json или text: LOG_FORMAT, а при auto — json в продакшене и text в разработке."""
+    """json or text: LOG_FORMAT, and with auto - json in production and text in development."""
     configured = settings.LOG_FORMAT.lower()
     if configured in ("json", "text"):
         return configured
@@ -145,9 +147,9 @@ def resolve_format() -> str:
 
 def setup_logging(component: str) -> None:
     """
-    Настраивает корневой журнал процесса: консоль (формат по resolve_format) и, если задан LOG_FILE, файл с ротацией
-    в json. component — "api" или "worker": пишется в каждую строку json. Повторный вызов заменяет обработчики
-    (--reload и тесты не плодят дубли). Строки доступа uvicorn выключены: их заменяет http_request ниже.
+    Configures the process root log: the console (the format by resolve_format) and, if LOG_FILE is set, a rotating file
+    in json. component is "api" or "worker": written into every json line. A repeated call replaces the handlers
+    (--reload and tests do not breed duplicates). The uvicorn access lines are off: they are replaced by http_request below.
     """
     root = logging.getLogger()
     for handler in list(root.handlers):
@@ -184,9 +186,9 @@ async def request_log_middleware(
         request: Request, call_next: Callable[[Request], Awaitable[Response]],
 ) -> Response:
     """
-    Заводит контекст запроса (request_id), пишет строку http_request и возвращает номер в заголовке X-Request-ID.
-    Необработанное исключение пишется с полным стеком (http_unhandled_error); клиент получает 500 с кодом
-    internal_error и тем же номером в заголовке. Номер от клиента принимается только по REQUEST_ID_PATTERN.
+    Sets up the request context (request_id), writes the http_request line and returns the id in the X-Request-ID header.
+    An unhandled exception is written with the full stack (http_unhandled_error); the client gets 500 with the code
+    internal_error and the same id in the header. A client id is accepted only by REQUEST_ID_PATTERN.
     """
     supplied = request.headers.get(REQUEST_ID_HEADER, "")
     request_id = supplied if REQUEST_ID_PATTERN.match(supplied) else new_request_id()
@@ -201,8 +203,9 @@ async def request_log_middleware(
     except Exception:
         request_logger.exception(
             "http_unhandled_error", extra={"method": request.method, "route": _route_template(request)})
-        # Ответ 500 в общем формате ошибок и с номером запроса: игрок может назвать его в жалобе, а клиент — приложить
-        # к отчёту (в обычном ответе сервера 500 был бы без тела и без заголовка).
+        # A 500 response in the common error format and with the request id: the player can name it in a complaint, and the
+        # client can attach it
+        # to the report (in an ordinary server response the 500 would have no body and no header).
         return JSONResponse(
             status_code=500, content={"detail": error_payload("internal_error")}, headers={REQUEST_ID_HEADER: request_id},
         )

@@ -1,10 +1,10 @@
 // --- FILE: frontend/src/services/courseProgress.ts ---
-// Автозачёт шагов Большого курса (план владельца 18.11, задача 6): GET /learn/course-progress отдаёт выполненное по
-// видам упражнений (нормативы считает сервер — src/services/course_progress.py), здесь оно сопоставляется с шагами
-// модуля. Ключи записей прогресса — те же функции, которыми их пишут разделы (азбука, курс матов, эндшпиль, мини-игры).
-// Шаг без объективного итога (библиотека, репертуар, партии мастеров, «угадай ход», разминка, игра) не проверяется:
-// модуль из одних таких шагов игрок отмечает сам, как раньше. Те же правила засчитывают занятия программ
-// тренировок (22.3, programAutoCount): занятие — набор таких же упражнений.
+// Auto-credit of Grand Course steps (owner's plan 18.11, task 6): GET /learn/course-progress returns what has been done by
+// exercise kinds (the norms are computed by the server — src/services/course_progress.py), and here it is matched to the steps
+// of a module. The progress record keys are the same functions the sections write them with (alphabet, mates course, endgame, mini-games).
+// A step without an objective outcome (library, repertoire, master games, «guess the move», warm-up, play) is not checked:
+// a module made only of such steps is marked by the player, as before. The same rules credit the sessions of training
+// programs (22.3, programAutoCount): a session is a set of the same exercises.
 
 import {API_BASE_URL} from '../config/api';
 import {LEVEL_EXAM_TARGET} from '../content/supercourse';
@@ -17,23 +17,23 @@ import {miniProgressId} from '../components/trainers/MiniGames';
 import {getToken} from './authToken';
 
 export interface CourseFacts {
-    /** id выполненных записей lesson_progress (уроки, азбука, маты, эндшпиль, мини-игры). */
+    /** ids of completed lesson_progress records (lessons, alphabet, mates, endgame, mini-games). */
     lessons: string[];
-    /** Темы задач, засчитанные по нормативу ступени. */
+    /** Puzzle themes credited by the level's norm. */
     themes: string[];
-    /** Тренажёры, в которых есть законченная попытка. */
+    /** Trainers in which there is a finished attempt. */
     trainers: string[];
-    /** Последняя оценка силы по разделу экзамена. */
+    /** The latest strength assessment per exam section. */
     exams: Record<string, number>;
 }
 
-/** Выполненное игроком; без входа — null (автозачёта нет). */
+/** What the player has completed; without login — null (no auto-credit). */
 export async function fetchCourseFacts(): Promise<CourseFacts | null> {
     const token = getToken();
     if (!token) return null;
     const res = await fetch(`${API_BASE_URL}/api/v1/learn/course-progress`, {headers: {Authorization: `Bearer ${token}`}});
     if (!res.ok) throw new Error(`course progress ${res.status}`);
-    // Недостающие поля (ответ сервера другой версии) — пустые: автозачёт тогда просто ничего не отмечает.
+    // Missing fields (a response from a server of another version) are empty: auto-credit then simply marks nothing.
     const body = (await res.json()) as Partial<CourseFacts> | null;
     return {
         lessons: Array.isArray(body?.lessons) ? body.lessons : [],
@@ -45,14 +45,14 @@ export async function fetchCourseFacts(): Promise<CourseFacts | null> {
 
 const NO_FACTS: CourseFacts = {lessons: [], themes: [], trainers: [], exams: {}};
 
-/** Есть ли в модуле проверяемые шаги: если нет, модуль отмечает сам игрок (кнопка «пройдено»). */
+/** Whether the module has checkable steps: if not, the player marks the module themselves (the «completed» button). */
 export function moduleCheckable(module: CourseModule): boolean {
     return module.steps.some((step) => activityDone(step, NO_FACTS) !== null);
 }
 
 const LEVEL_EXAM = /^level(\d)$/;
 
-/** Выполнен ли шаг: true / false; null — у шага нет объективного итога, он не проверяется. */
+/** Whether the step is completed: true / false; null — the step has no objective outcome, it is not checked. */
 export function activityDone(activity: Activity, facts: CourseFacts): boolean | null {
     const lessons = new Set(facts.lessons);
     switch (activity.kind) {
@@ -66,7 +66,7 @@ export function activityDone(activity: Activity, facts: CourseFacts): boolean | 
         case 'exam': {
             const estimate = facts.exams[activity.id];
             if (estimate === undefined) return false;
-            // Экзамен уровня сдан при оценке не ниже цели уровня; диагностический раздел — когда пройден.
+            // A level exam is passed at an assessment not below the level's target; a diagnostic section — once taken.
             const level = LEVEL_EXAM.exec(activity.id);
             return level ? estimate >= LEVEL_EXAM_TARGET[Number(level[1])] : true;
         }
@@ -75,23 +75,23 @@ export function activityDone(activity: Activity, facts: CourseFacts): boolean | 
 }
 
 /**
- * Модуль закрыт сам: в нём есть проверяемые шаги и все они выполнены. Непроверяемые шаги закрытию не мешают;
- * модуль только из непроверяемых шагов автоматически не закрывается.
+ * The module is closed automatically: it has checkable steps and all of them are done. Uncheckable steps do not prevent closing;
+ * a module made only of uncheckable steps is not closed automatically.
  */
 export function moduleAutoDone(module: CourseModule, facts: CourseFacts): boolean {
     return stepsAutoDone(module.steps, facts);
 }
 
-/** Набор упражнений закрыт сам: есть проверяемые и все они выполнены (общее правило модуля курса и занятия программы). */
+/** An exercise set is closed automatically: there are checkable ones and all are done (the shared rule of a course module and a program session). */
 export function stepsAutoDone(steps: Activity[], facts: CourseFacts): boolean {
     const checked = steps.map((step) => activityDone(step, facts)).filter((done) => done !== null);
     return checked.length > 0 && checked.every(Boolean);
 }
 
 /**
- * Автозачёт программы тренировок (22.3): прогресс программы — число занятий по порядку, поэтому от уже пройденных
- * (done) засчитываются подряд идущие занятия, закрытые сами (stepsAutoDone). Занятие без проверяемых упражнений
- * останавливает счёт — его игрок отмечает кнопкой.
+ * Auto-credit of a training program (22.3): program progress is the number of sessions in order, so starting from those already completed
+ * (done) consecutive sessions closed automatically are credited (stepsAutoDone). A session without checkable exercises
+ * stops the count — the player marks it with a button.
  */
 export function programAutoCount(sessions: Activity[][], done: number, facts: CourseFacts): number {
     let count = done;

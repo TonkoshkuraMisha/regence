@@ -1,5 +1,5 @@
 # --- FILE: tests/test_email_links.py ---
-"""E-mail и сброс пароля по ссылке (таск 17.5): письма перехватываются, ссылки одноразовые и с истечением."""
+"""E-mail and password reset by link (task 17.5): emails are intercepted, links are single-use and expire."""
 
 import re
 from datetime import UTC, datetime, timedelta
@@ -18,7 +18,7 @@ PASSWORD = "secret-pass-1"
 
 @pytest.fixture
 def outbox(monkeypatch):
-    """Письма вместо SMTP: (кому, тема, текст)."""
+    """Emails instead of SMTP: (to, subject, body)."""
     sent: list[tuple[str, str, str]] = []
 
     async def capture(to, subject, body):
@@ -60,7 +60,7 @@ async def test_email_is_linked_only_after_the_link(client, db_session, test_user
     token = link_token(body)
     assert client.post(f"{API}/email/verify", json={"token": token}).json() == {"email": "alice@example.com"}
     assert client.get("/api/v1/profile/me", headers=auth(token_user_1)).json()["email"] == "alice@example.com"
-    # Ссылка одноразовая.
+    # The link is single-use.
     again = client.post(f"{API}/email/verify", json={"token": token})
     assert again.status_code == 400 and again.json()["detail"]["code"] == "email_link_invalid"
 
@@ -86,7 +86,7 @@ async def test_password_reset_by_link(client, db_session, test_user_1, token_use
 
     assert client.post(f"{API}/password-reset/confirm",
                        json={"token": token, "new_password": "brand-new-pass"}).status_code == 204
-    # Старые сессии отозваны, новый пароль входит, ссылка второй раз не работает.
+    # Old sessions are revoked, the new password works, the link does not work a second time.
     assert client.get("/api/v1/profile/me", headers=auth(token_user_1)).status_code == 401
     login = client.post("/api/v1/auth/login", data={"username": test_user_1.username, "password": "brand-new-pass"})
     assert login.status_code == 200

@@ -1,9 +1,9 @@
 // --- FILE: frontend/src/components/chessboard/annotations.tsx ---
-// Пометки игрока на доске (таск B.1): правой кнопкой — протянуть стрелку или щёлкнуть поле, цвет — модификатором
-// (без него зелёный, Shift — красный, Alt — синий, Ctrl или Shift+Alt — жёлтый); повтор той же пометки её снимает,
-// левый щелчок по доске убирает всё. Для расчёта вариантов в живой партии и в задачах — на ход не влияет.
-// Работает только мышью (на сенсорном экране правой кнопки нет); пометки живут в памяти компонента — на сервер
-// не уходят и сопернику не видны.
+// Player marks on the board (task B.1): with the right button, drag an arrow or click a square; the colour is set by a modifier
+// (none is green, Shift red, Alt blue, Ctrl or Shift+Alt yellow); repeating the same mark removes it,
+// a left click on the board clears everything. For calculating variations in a live game and in puzzles; it does not affect the move.
+// Mouse only (a touch screen has no right button); marks live in the component's memory: they are not sent to the server
+// and are not visible to the opponent.
 
 import {useCallback, useEffect, useRef, useState} from 'react';
 import type {PointerEvent as ReactPointerEvent} from 'react';
@@ -26,7 +26,7 @@ export const ANNOTATION_COLORS: Record<AnnotationColor, string> = {
 
 const ANNOTATION_KEYS = Object.keys(ANNOTATION_COLORS) as AnnotationColor[];
 
-/** Цвет пометки по зажатым клавишам: Ctrl/Cmd или Shift+Alt — жёлтый, Shift — красный, Alt — синий, иначе зелёный. */
+/** Mark colour by the held keys: Ctrl/Cmd or Shift+Alt is yellow, Shift is red, Alt is blue, otherwise green. */
 export function annotationColor(event: { shiftKey: boolean; altKey: boolean; ctrlKey: boolean; metaKey: boolean }): AnnotationColor {
     if (event.ctrlKey || event.metaKey || (event.shiftKey && event.altKey)) return 'yellow';
     if (event.shiftKey) return 'red';
@@ -34,21 +34,21 @@ export function annotationColor(event: { shiftKey: boolean; altKey: boolean; ctr
     return 'green';
 }
 
-/** Поле доски под точкой экрана (по атрибуту data-square). */
+/** Board square under a screen point (by the data-square attribute). */
 function squareAt(x: number, y: number): string | null {
     const elements = typeof document.elementsFromPoint === 'function' ? document.elementsFromPoint(x, y) : [];
     const cell = elements.find((el) => el instanceof HTMLElement && el.dataset.square);
     return cell instanceof HTMLElement ? cell.dataset.square ?? null : null;
 }
 
-/** Стрелка: повтор той же пометки снимает её, другой цвет — перекрашивает. */
+/** Arrow: repeating the same mark removes it, a different colour recolours it. */
 export function toggleArrow(arrows: AnnotationArrow[], next: AnnotationArrow): AnnotationArrow[] {
     const same = arrows.find((a) => a.from === next.from && a.to === next.to);
     const rest = arrows.filter((a) => a !== same);
     return same && same.color === next.color ? rest : [...rest, next];
 }
 
-/** Кольцо на поле: тот же цвет снимает его, другой — перекрашивает. */
+/** Ring on a square: the same colour removes it, a different one recolours it. */
 export function toggleSquare(squares: Record<string, AnnotationColor>, square: string, color: AnnotationColor) {
     const next = {...squares};
     if (next[square] === color) delete next[square];
@@ -56,11 +56,11 @@ export function toggleSquare(squares: Record<string, AnnotationColor>, square: s
     return next;
 }
 
-/** Что возвращает useBoardAnnotations: сами пометки и обработчики указателя для контейнера доски. */
+/** What useBoardAnnotations returns: the marks themselves and pointer handlers for the board container. */
 export interface BoardAnnotations {
     arrows: AnnotationArrow[];
     squares: Record<string, AnnotationColor>;
-    /** Обработчики для контейнера доски (на клетках они тоже работают — событие всплывает). */
+    /** Handlers for the board container (they work on squares too: the event bubbles up). */
     handlers: {
         onPointerDown: (event: ReactPointerEvent) => void;
         onPointerUp: (event: ReactPointerEvent) => void;
@@ -69,14 +69,14 @@ export interface BoardAnnotations {
 }
 
 /**
- * Пометки доски. resetKey — пометки снимаются, когда он меняется (сделан ход, новая задача). enabled=false —
- * правая кнопка остаётся за вызывающим (например, отменяет предход). Поле под указателем ищется по атрибуту
- * data-square, поэтому клетки доски вызывающего должны его иметь.
+ * Board marks. resetKey: marks are cleared when it changes (a move was made, a new puzzle). enabled=false:
+ * the right button is left to the caller (for example, it cancels a premove). The square under the pointer is found by the
+ * data-square attribute, so the caller's board squares must have it.
  */
 export function useBoardAnnotations(resetKey: string, enabled = true): BoardAnnotations {
     const [arrows, setArrows] = useState<AnnotationArrow[]>([]);
     const [squares, setSquares] = useState<Record<string, AnnotationColor>>({});
-    // Поле, на котором нажата правая кнопка: отпускание на нём же — кольцо, на другом — стрелка.
+    // Square where the right button was pressed: releasing on the same one makes a ring, on another one an arrow.
     const start = useRef<string | null>(null);
 
     const clear = useCallback(() => {
@@ -84,7 +84,7 @@ export function useBoardAnnotations(resetKey: string, enabled = true): BoardAnno
         setSquares((prev) => (Object.keys(prev).length ? {} : prev));
     }, []);
 
-    // Сброс только при смене resetKey, а не при каждом рендере и не при первом показе.
+    // Reset only when resetKey changes, not on every render and not on first display.
     const lastKey = useRef(resetKey);
     useEffect(() => {
         if (lastKey.current === resetKey) return;
@@ -120,11 +120,11 @@ interface OverlayProps {
     arrows: AnnotationArrow[];
     squares: Record<string, AnnotationColor>;
     flipped: boolean;
-    /** Префикс id маркеров: на странице может быть несколько досок. */
+    /** Marker id prefix: a page may have several boards. */
     idPrefix?: string;
 }
 
-/** Слой пометок поверх доски: кольца на полях и стрелки. Клики не перехватывает; без пометок не рисуется. */
+/** Layer of marks over the board: rings on squares and arrows. It does not intercept clicks; it is not drawn without marks. */
 export function AnnotationsOverlay({arrows, squares, flipped, idPrefix = 'notes'}: OverlayProps) {
     const marked = Object.entries(squares);
     if (arrows.length === 0 && marked.length === 0) return null;

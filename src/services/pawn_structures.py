@@ -1,15 +1,16 @@
 """
-Пешечные структуры (таск 27.5): определение по расположению пешек — для меток библиотеки партий, поиска «партии с
-этой структурой» и будущих модулей Большого курса (С3–С4, `docs/research/supercourse.md`).
+Pawn structures (task 27.5): detection by pawn placement - for library game tags, search for "games with
+this structure" and future Supercourse modules (C3-C4, `docs/research/supercourse.md`).
 
-Правила — с точки зрения белых; каждое правило проверяется и на зеркальной позиции, поэтому структура узнаётся у
-любой стороны (изолированная, висячие, каменная стена, карлсбадская и др.). Порядок проверки важен: более частные
-структуры раньше общих (ёж — частный случай Мароци, клин — староиндийской цепи). Структура партии — самая долгая из
-встреченных между 12-м и 80-м полуходом (не меньше 8 полуходов; полуходы считаются все, не обязательно подряд).
+The rules are from White's point of view; each rule is also checked on the mirrored position, so a structure is recognised for
+either side (isolated, hanging, stonewall, Carlsbad and others). The order of checking matters: more specific
+structures come before general ones (hedgehog is a special case of Maroczy, wedge of the King's Indian chain). The
+structure of a game is the longest of those met between the 12th and 80th plies (at least 8 plies; plies are all counted,
+not necessarily consecutive).
 
-Правила смотрят только на пешки и только на названные поля: это метка для поиска, а не оценка позиции.
-Кто вызывает: импорт партии в библиотеку (src/services/library.py) и переразметка scripts/tag_library.py — код
-структуры хранится в library_games.structure; «Узнай структуру» (src/services/structure_quiz.py) берёт его оттуда.
+The rules look only at pawns and only at named squares: this is a tag for search, not a position evaluation.
+Who calls it: game import into the library (src/services/library.py) and re-tagging scripts/tag_library.py - the structure
+code is stored in library_games.structure; "Name the Structure" (src/services/structure_quiz.py) takes it from there.
 """
 
 from collections import Counter
@@ -19,15 +20,15 @@ import chess
 
 STRUCTURES = ("hedgehog", "maroczy", "wedge", "kid_chain", "modern_benoni", "stonewall", "saw", "french_chain",
               "french_exchange", "carlsbad", "hanging_pawns", "isolated_pawn", "spanish", "symmetry")
-# Окно партии, в котором ищется структура: до 12-го полухода она ещё не сложилась, после 80-го — уже эндшпиль.
-# MIN_PLIES — сколько полуходов структура должна простоять, чтобы стать меткой партии.
+# The game window in which the structure is searched: before the 12th ply it has not formed yet, after the 80th it is
+# already an endgame. MIN_PLIES - how many plies the structure must stand to become a game tag.
 FIRST_PLY, LAST_PLY, MIN_PLIES = 12, 80, 8
 
 
 class Pawns:
     """
-    Пешки сторон как множества полей — для коротких проверок структуры: «свои пешки на …», «пешки соперника на …», «на
-    вертикали нет своих пешек».
+    Pawns of the sides as sets of squares - for short structure checks: "own pawns on ...", "opponent pawns on ...", "on
+    the file there are no own pawns".
     """
     def __init__(self, board: chess.Board, color: chess.Color):
         self.ours = {chess.square_name(s) for s in board.pieces(chess.PAWN, color)}
@@ -47,75 +48,75 @@ class Pawns:
 
 
 def _hedgehog(p: Pawns) -> bool:
-    """«Ёж»: c4 + e4 без d-пешки против b6 + d6 + e6 и a6 (или a7), у соперника нет c-пешки."""
+    """Hedgehog: c4 + e4 without a d-pawn against b6 + d6 + e6 and a6 (or a7), the opponent has no c-pawn."""
     return (p.has("c4", "e4") and p.none_on("d") and p.they("b6", "d6", "e6") and p.they_none_on("c")
             and (p.they("a6") or p.they("a7")))
 
 
 def _maroczy(p: Pawns) -> bool:
-    """Система Мароци: c4 + e4 без d-пешки против d6 (или d7), у соперника нет c-пешки."""
+    """Maroczy system: c4 + e4 without a d-pawn against d6 (or d7), the opponent has no c-pawn."""
     return p.has("c4", "e4") and p.none_on("d") and (p.they("d6") or p.they("d7")) and p.they_none_on("c")
 
 
 def _kid_chain(p: Pawns) -> bool:
-    """Староиндийская цепь: d5 + e4 против d6 + e5."""
+    """King's Indian chain: d5 + e4 against d6 + e5."""
     return p.has("d5", "e4") and p.they("d6", "e5")
 
 
 def _wedge(p: Pawns) -> bool:
-    """Клин в центре: d5 + e4 против c5 + d6 + e5 (закрытый центр с запертыми флангами пешек)."""
+    """Wedge in the centre: d5 + e4 against c5 + d6 + e5 (a closed centre with locked pawn flanks)."""
     return p.has("d5", "e4") and p.they("c5", "d6", "e5")
 
 
 def _modern_benoni(p: Pawns) -> bool:
-    """Современный Бенони: d5 против c5 + d6, у соперника нет e-пешки."""
+    """Modern Benoni: d5 against c5 + d6, the opponent has no e-pawn."""
     return p.has("d5") and p.they("c5", "d6") and p.they_none_on("e")
 
 
 def _saw(p: Pawns) -> bool:
-    """«Пила»: d4 против c6 (c7) + e6, у чёрных нет d-пешки, у белых — e-пешки."""
+    """Sawtooth: d4 against c6 (c7) + e6, Black has no d-pawn, White has no e-pawn."""
     return (p.has("d4") and p.none_on("e") and p.they("e6") and (p.they("c6") or p.they("c7"))
             and p.they_none_on("d"))
 
 
 def _french_chain(p: Pawns) -> bool:
-    """Французская цепь: d4 + e5 против d5 + e6."""
+    """French chain: d4 + e5 against d5 + e6."""
     return p.has("d4", "e5") and p.they("d5", "e6")
 
 
 def _french_exchange(p: Pawns) -> bool:
-    """Разменная структура: d4 против d5, e-пешек нет у обеих сторон."""
+    """Exchange structure: d4 against d5, neither side has an e-pawn."""
     return p.has("d4") and p.they("d5") and p.none_on("e") and p.they_none_on("e")
 
 
 def _carlsbad(p: Pawns) -> bool:
-    """Карлсбадская: d4 без c-пешки против c6 + d5, у соперника нет e-пешки."""
+    """Carlsbad: d4 without a c-pawn against c6 + d5, the opponent has no e-pawn."""
     return p.has("d4") and p.none_on("c") and p.they("c6", "d5") and p.they_none_on("e")
 
 
 def _hanging(p: Pawns) -> bool:
-    """Висячие пешки: c4 + d4 без своих b- и e-пешек (пешки соперника не проверяются)."""
+    """Hanging pawns: c4 + d4 without own b- and e-pawns (the opponent's pawns are not checked)."""
     return p.has("c4", "d4") and p.none_on("b") and p.none_on("e")
 
 
 def _isolated(p: Pawns) -> bool:
-    """Изолированная d-пешка: нет своих c- и e-пешек, у соперника нет d-пешки (иначе это Бенони или висячие)."""
+    """Isolated d-pawn: no own c- and e-pawns, the opponent has no d-pawn (otherwise it is a Benoni or hanging pawns)."""
     return (any(p.has(f"d{rank}") for rank in (3, 4, 5)) and p.none_on("c") and p.none_on("e")
             and p.they_none_on("d"))
 
 
 def _stonewall(p: Pawns) -> bool:
-    """«Каменная стена»: свои пешки d4 + e3 + f4 (пешки соперника не проверяются)."""
+    """Stonewall: own pawns d4 + e3 + f4 (the opponent's pawns are not checked)."""
     return p.has("d4", "e3", "f4")
 
 
 def _spanish(p: Pawns) -> bool:
-    """Код spanish: e4 без d-пешки против d6, у соперника нет e-пешки (центр после размена d-пешки на e-пешку)."""
+    """Code spanish: e4 without a d-pawn against d6, the opponent has no e-pawn (the d-pawn was exchanged for the e-pawn)."""
     return p.has("e4") and p.none_on("d") and p.they("d6") and p.they_none_on("e")
 
 
 def _symmetry(p: Pawns) -> bool:
-    """Симметрия в центре: e4 против e5, d-пешки разменены."""
+    """Symmetry in the centre: e4 against e5, the d-pawns are exchanged."""
     return p.has("e4") and p.they("e5") and p.none_on("d") and p.they_none_on("d")
 
 
@@ -124,11 +125,11 @@ RULES: tuple[tuple[str, Callable[[Pawns], bool]], ...] = (
     ("modern_benoni", _modern_benoni), ("stonewall", _stonewall), ("saw", _saw), ("french_chain", _french_chain),
     ("french_exchange", _french_exchange), ("carlsbad", _carlsbad), ("hanging_pawns", _hanging),
     ("isolated_pawn", _isolated), ("spanish", _spanish), ("symmetry", _symmetry),
-)  # порядок — порядок проверки: побеждает первое сработавшее правило
+)  # the order is the order of checking: the first rule that fires wins
 
 
 def detect(board: chess.Board) -> str | None:
-    """Структура позиции: правило для белых, затем — для зеркальной позиции (та же структура у чёрных)."""
+    """Structure of a position: the rule for White, then for the mirrored position (the same structure for Black)."""
     sides = (Pawns(board, chess.WHITE), Pawns(board.mirror(), chess.WHITE))
     for code, rule in RULES:
         if any(rule(side) for side in sides):
@@ -138,8 +139,9 @@ def detect(board: chess.Board) -> str | None:
 
 def game_structure(moves: Iterable[chess.Move], start: chess.Board | None = None) -> str | None:
     """
-    Самая долгая структура партии между FIRST_PLY и LAST_PLY (не меньше MIN_PLIES полуходов). «Долгая» — по числу
-    позиций окна, в которых она определилась (не обязательно подряд). start — начальная позиция, если не обычная.
+    The longest structure of a game between FIRST_PLY and LAST_PLY (at least MIN_PLIES plies). "Longest" - by the number of
+    window positions in which it was detected (not necessarily consecutive). start - the starting position, if not the
+    ordinary one.
     """
     board = (start or chess.Board()).copy()
     seen: Counter[str] = Counter()

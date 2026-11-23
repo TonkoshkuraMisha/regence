@@ -1,4 +1,4 @@
-// «Инструменты» (таск 16.4): экспорт PGN, импорт FEN/PGN, редактор позиции, «Найти мат», переход в анализ.
+// "Tools" (task 16.4): PGN export, FEN/PGN import, the position editor, "Find mate", moving to analysis.
 
 import {act, fireEvent, render, screen} from '@testing-library/react';
 import {MemoryRouter, Route, Routes, useLocation} from 'react-router-dom';
@@ -36,13 +36,13 @@ function stub(mate: unknown = {found: true, mate_in: 1, line: ['a1a8'], san: ['R
 
 afterEach(() => vi.unstubAllGlobals());
 
-describe('экспорт PGN', () => {
-    it('ходы, значки и комментарии; своя позиция — с заголовками SetUp/FEN и номером хода чёрных', () => {
+describe('PGN export', () => {
+    it('moves, symbols and comments; a custom position — with SetUp/FEN headers and a Black move number', () => {
         const pgn = buildPgn({headers: {White: 'A', Black: 'B'}, result: '1-0',
-            moves: [{san: 'e4'}, {san: 'e5', symbol: '?!', comment: 'слабее {d5}'}, {san: 'Qh5'}]});
+            moves: [{san: 'e4'}, {san: 'e5', symbol: '?!', comment: 'weaker {d5}'}, {san: 'Qh5'}]});
         expect(pgn).toContain('[White "A"]');
         expect(pgn).toContain('[Result "1-0"]');
-        expect(pgn).toContain('1. e4 e5?! {слабее d5} 2. Qh5 1-0');
+        expect(pgn).toContain('1. e4 e5?! {weaker d5} 2. Qh5 1-0');
         const custom = buildPgn({startFen: '6k1/5ppp/8/8/8/8/8/R5K1 b - - 0 7', moves: [{san: 'Kf8'}, {san: 'Ra8#'}]});
         expect(custom).toContain('[FEN "6k1/5ppp/8/8/8/8/8/R5K1 b - - 0 7"]');
         expect(custom).toContain('7... Kf8 8. Ra8# *');
@@ -50,16 +50,16 @@ describe('экспорт PGN', () => {
     });
 });
 
-describe('импорт', () => {
-    it('FEN, PGN из начальной позиции и с заголовком FEN; мусор — null', () => {
+describe('import', () => {
+    it('FEN, PGN from the starting position and with a FEN header; junk — null', () => {
         expect(parseImport('6k1/5ppp/8/8/8/8/8/R5K1 w - - 0 1')).toEqual({fen: '6k1/5ppp/8/8/8/8/8/R5K1 w - - 0 1', moves: []});
         expect(parseImport('1. e4 e5 2. Nf3 *')).toEqual({fen: STANDARD_FEN, moves: ['e2e4', 'e7e5', 'g1f3']});
         const withFen = parseImport('[SetUp "1"]\n[FEN "6k1/5ppp/8/8/8/8/8/R5K1 w - - 0 1"]\n\n1. Ra8# 1-0');
         expect(withFen).toEqual({fen: '6k1/5ppp/8/8/8/8/8/R5K1 w - - 0 1', moves: ['a1a8']});
-        expect(parseImport('просто текст')).toBeNull();
+        expect(parseImport('just text')).toBeNull();
     });
 
-    it('загруженная линия — на доске; из своей позиции справочник не показывается', async () => {
+    it('a loaded line — on the board; from a custom position the reference is not shown', async () => {
         stub();
         renderTools();
         fireEvent.click(screen.getByTestId('tools-tab-import'));
@@ -70,15 +70,15 @@ describe('импорт', () => {
     });
 });
 
-describe('редактор позиции', () => {
-    it('расстановка ↔ FEN, рокировки только при фигурах на местах', () => {
+describe('position editor', () => {
+    it('placement ↔ FEN, castling only with pieces in place', () => {
         const placement = placementOf(STANDARD_FEN);
         expect(fenOf(placement, 'w', 'KQkq')).toBe(STANDARD_FEN);
         delete placement.h1;
         expect(fenOf(placement, 'b', 'KQkq').split(' ').slice(1, 3)).toEqual(['b', 'Qkq']);
     });
 
-    it('ошибки позиции', () => {
+    it('position errors', () => {
         const check = (fen: string) => positionProblem(placementOf(fen), fen);
         expect(check('8/8/8/8/8/8/8/4K3 w - - 0 1')).toBe('tools.editor.needKings');
         expect(check('4k3/8/8/8/8/8/8/P3K3 w - - 0 1')).toBe('tools.editor.pawnsOnEdge');
@@ -86,12 +86,12 @@ describe('редактор позиции', () => {
         expect(check('R3k3/8/8/8/8/8/8/4K3 b - - 0 1')).toBeNull();
     });
 
-    it('щелчки по доске ставят фигуры, корректную позицию можно взять на доску', () => {
+    it('clicks on the board place pieces, a correct position can be taken to the board', async () => {
         stub();
         renderTools();
         fireEvent.click(screen.getByTestId('tools-tab-editor'));
         fireEvent.click(screen.getByTestId('editor-clear'));
-        expect(screen.getByTestId('editor-problem')).toHaveTextContent('по одному королю');
+        expect(screen.getByTestId('editor-problem')).toHaveTextContent('exactly one king');
         fireEvent.click(screen.getByTestId('brush-K'));
         fireEvent.click(cell('g1'));
         fireEvent.click(screen.getByTestId('brush-k'));
@@ -104,22 +104,22 @@ describe('редактор позиции', () => {
     });
 });
 
-describe('доска инструментов', () => {
-    it('«Найти мат» показывает линию; «Анализ» передаёт позицию на главную доску', async () => {
+describe('tools board', () => {
+    it('"Find mate" shows a line; "Analysis" passes the position on to the main board', async () => {
         const fetchMock = stub();
         renderTools();
         await act(async () => fireEvent.click(screen.getByTestId('tools-mate-search')));
-        expect(await screen.findByTestId('tools-mate-result')).toHaveTextContent('Мат в 1: Ra8#');
+        expect(await screen.findByTestId('tools-mate-result')).toHaveTextContent('Mate in 1: Ra8#');
         const call = fetchMock.mock.calls.find(([u]) => String(u).includes('find-mate'))!;
         expect(JSON.parse(String((call as unknown as [string, RequestInit])[1].body))).toEqual({fen: STANDARD_FEN, moves: 3});
         fireEvent.click(screen.getByTestId('tools-analyze'));
         expect(screen.getByTestId('probe')).toHaveTextContent(STANDARD_FEN);
     });
 
-    it('мата нет — понятное сообщение', async () => {
+    it('no mate — a clear message', async () => {
         stub({found: false, mate_in: null, line: [], san: []});
         renderTools();
         await act(async () => fireEvent.click(screen.getByTestId('tools-mate-search')));
-        expect(await screen.findByTestId('tools-mate-result')).toHaveTextContent('Мата не длиннее 3 ходов нет.');
+        expect(await screen.findByTestId('tools-mate-result')).toHaveTextContent('No mate within 3 moves.');
     });
 });

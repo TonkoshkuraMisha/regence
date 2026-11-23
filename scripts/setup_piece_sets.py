@@ -1,15 +1,15 @@
 # --- FILE: scripts/setup_piece_sets.py ---
 """
-Скачивает наборы фигур в frontend/public/assets/pieces.
+Downloads piece sets into frontend/public/assets/pieces.
 
-Источник — репозиторий lichess (lila), но берутся только наборы, которые его COPYING.md относит
-к свободным и которые можно использовать в любом проекте, включая коммерческий. Наборы с
-условием «некоммерческое использование» (CC BY-NC-SA, «free for personal non commercial use»)
-и наборы без указанной лицензии сюда не добавляются.
+The source is the lichess repository (lila), but only the sets that its COPYING.md classes
+as free and usable in any project, including a commercial one, are taken. Sets with the
+"non-commercial use" condition (CC BY-NC-SA, "free for personal non commercial use")
+and sets without a stated licence are not added here.
 
-Добавляя набор: сверить лицензию в https://github.com/lichess-org/lila/blob/master/COPYING.md,
-вписать его в PIECE_SETS ниже, в frontend/src/config/boardAppearance.ts и в ATTRIBUTION.md —
-tests/test_assets_licensing.py проверяет, что все три списка совпадают.
+When adding a set: check the licence at https://github.com/lichess-org/lila/blob/master/COPYING.md,
+add it to PIECE_SETS below, to frontend/src/config/boardAppearance.ts and to ATTRIBUTION.md -
+tests/test_assets_licensing.py checks that all three lists match.
 """
 
 import urllib.request
@@ -22,14 +22,14 @@ PIECE_CODES = ["wP", "wN", "wB", "wR", "wQ", "wK", "bP", "bN", "bB", "bR", "bQ",
 
 LILA_PIECE_URL = "https://raw.githubusercontent.com/lichess-org/lila/master/public/piece/{name}/{code}.svg"
 
-# Папка набора -> (автор, лицензия). Единственный источник правды о том, что лежит в pieces/.
+# Set folder -> (author, licence). The single source of truth about what lies in pieces/.
 PIECE_SETS: dict[str, tuple[str, str]] = {
     "merida": ("Armando Hernandez Marroquin", "GPL-2.0-or-later"),
     "cburnett": ("Colin M.L. Burnett", "GPL-2.0-or-later"),
     "chessnut": ("Alexis Luengas", "Apache-2.0"),
     "fantasy": ("Maurizio Monge", "MIT"),
     "rhosgfx": ("RhosGFX", "CC0-1.0"),
-    # Таск 18.2: аудит COPYING.md lila (15.11.2026) — только лицензии без «NC».
+    # Task 18.2: audit of lila's COPYING.md (15.11.2026) - only licences without "NC".
     "mpchess": ("Maxime Chupin", "GPL-3.0-or-later"),
     "celtic": ("Maurizio Monge", "MIT"),
     "spatial": ("Maurizio Monge", "MIT"),
@@ -42,21 +42,21 @@ PIECE_SETS: dict[str, tuple[str, str]] = {
     "letter": ("usolando", "AGPL-3.0-or-later"),
 }
 
-# Собственная производная от merida (белая/тёмная окантовка) — наследует её лицензию.
+# The project's own derivative of merida (white/dark outline) - inherits its licence.
 OUTLINE_SET = "outline"
 OUTLINE_SOURCE = "merida"
 DERIVED_SETS: dict[str, tuple[str, str]] = {
-    OUTLINE_SET: ("regence, на основе Merida (Armando Hernandez Marroquin)", "GPL-2.0-or-later"),
+    OUTLINE_SET: ("regence, based on Merida (Armando Hernandez Marroquin)", "GPL-2.0-or-later"),
 }
 
-# Собственные наборы проекта (таск 18.2): рисуются своими скриптами, а не скачиваются.
+# The project's own sets (task 18.2): drawn by its own scripts, not downloaded.
 OWN_SETS: dict[str, tuple[str, str]] = {
-    "lewis": ("regence, по мотивам льюисских шахмат XII века (scripts/build_lewis_pieces.py)", "CC0-1.0"),
+    "lewis": ("regence, inspired by the 12th-century Lewis chessmen (scripts/build_lewis_pieces.py)", "CC0-1.0"),
 }
 
 
 def make_outlined_svg(base_svg: str, code: str) -> str:
-    """Добавляет в SVG фигуры контрастный фильтр обводки для набора outline."""
+    """Adds a contrasting outline filter to the SVG pieces for the outline set."""
     is_black = code.startswith("b")
     halo_color = "#FFFFFF" if is_black else "#111827"
     filter_id = f"outline_halo_{code}"
@@ -80,7 +80,7 @@ def make_outlined_svg(base_svg: str, code: str) -> str:
 
 
 def download_svg(url: str) -> str | None:
-    """Скачивает один SVG-файл фигуры по URL с проверкой целостности."""
+    """Downloads one piece SVG file by URL with an integrity check."""
     req = urllib.request.Request(url, headers={"User-Agent": "piece-set-setup/1.0"})
     try:
         with urllib.request.urlopen(req, timeout=15) as resp:
@@ -89,12 +89,12 @@ def download_svg(url: str) -> str | None:
                 if "<svg" in text:
                     return text
     except Exception as exc:
-        print(f"[!] Не удалось загрузить {url}: {exc}")
+        print(f"[!] Failed to download {url}: {exc}")
     return None
 
 
 def setup_all_piece_sets() -> None:
-    """Скачивает свободные наборы фигур и собирает производный набор с обводкой."""
+    """Downloads the free piece sets and builds the derived outlined set."""
     PIECES_ROOT.mkdir(parents=True, exist_ok=True)
 
     for set_name in PIECE_SETS:
@@ -110,7 +110,7 @@ def setup_all_piece_sets() -> None:
             if svg_content:
                 target_file.write_text(svg_content, encoding="utf-8")
                 ready += 1
-        print(f"[+] Набор '{set_name}' готов ({ready}/12 фигур)")
+        print(f"[+] Set '{set_name}' is ready ({ready}/12 pieces)")
 
     outline_dir = PIECES_ROOT / OUTLINE_SET
     outline_dir.mkdir(parents=True, exist_ok=True)
@@ -119,7 +119,7 @@ def setup_all_piece_sets() -> None:
         if src_file.exists():
             outlined = make_outlined_svg(src_file.read_text(encoding="utf-8"), code)
             (outline_dir / f"{code}.svg").write_text(outlined, encoding="utf-8")
-    print(f"[+] Набор '{OUTLINE_SET}' собран из '{OUTLINE_SOURCE}'")
+    print(f"[+] Set '{OUTLINE_SET}' built from '{OUTLINE_SOURCE}'")
 
 
 if __name__ == "__main__":

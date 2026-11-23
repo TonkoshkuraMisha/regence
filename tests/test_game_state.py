@@ -8,7 +8,7 @@ from src.services.game_state import state_manager
 
 
 class DummyManager:
-    """Заглушка WebSocket-менеджера для изоляции тестов логики состояний."""
+    """WebSocket manager stub to isolate the state-logic tests."""
     async def send_personal_message(self, message: dict, user_id: int):
         pass
 
@@ -30,8 +30,8 @@ async def test_game_state_initialization():
 @pytest.mark.asyncio
 async def test_disconnect_and_reconnect_keeps_clock_running():
     """
-    Разрыв соединения не останавливает и не сдвигает часы: после переподключения остаток
-    белых равен base - (now - last_move_at), а last_move_at и сохранённое время не меняются.
+    A dropped connection neither stops nor shifts the clock: after reconnecting, White's remaining
+    time equals base - (now - last_move_at), and last_move_at and the stored time do not change.
     """
     from src.services.game_state import live_clock_ms
 
@@ -39,7 +39,7 @@ async def test_disconnect_and_reconnect_keeps_clock_running():
         game_id=2, white_id=10, black_id=20, base_time_ms=180000, increment_ms=0
     )
     now_ms = int(time.time() * 1000)
-    # Ход белых идёт 5 секунд, из них 3 секунды белые были офлайн.
+    # White's move has been running for 5 seconds, 3 of which White was offline.
     await state_manager.update_game_state(2, {"last_move_at": now_ms - 5000})
 
     dummy_manager = DummyManager()
@@ -59,7 +59,7 @@ async def test_disconnect_and_reconnect_keeps_clock_running():
 
 @pytest.mark.asyncio
 async def test_abort_game_without_rating_change(db_session):
-    """Проверяет, что отмена партии на 1-м ходу (до 2 полуходов) не меняет рейтинг и ставит статус ABORTED."""
+    """Checks that aborting a game on the first move (before 2 plies) does not change rating and sets status ABORTED."""
     from src.models.game import Game, GameStatus
     from src.models.user import User
     from src.services.game_state import state_manager
@@ -113,7 +113,7 @@ async def test_abort_game_without_rating_change(db_session):
 
 @pytest.mark.asyncio
 async def test_private_invite_create_and_redeem():
-    """Проверяет создание приватного вызова по ссылке в Redis и его одноразовое погашение."""
+    """Checks creation of a private link challenge in Redis and its single-use redemption."""
     from src.services.matchmaker import matchmaker
 
     invite = await matchmaker.create_private_invite(
@@ -127,11 +127,11 @@ async def test_private_invite_create_and_redeem():
     code = invite["code"]
     assert len(code) >= 6
 
-    # Создатель не может принять собственный вызов
+    # The creator cannot accept their own challenge
     self_accept = await matchmaker.accept_private_invite(code, acceptor_id=101)
     assert self_accept is None
 
-    # Второй игрок успешно принимает вызов
+    # The second player accepts the challenge successfully
     redeemed = await matchmaker.accept_private_invite(code, acceptor_id=202)
     assert redeemed is not None
     assert redeemed["white_id"] == 101
@@ -139,6 +139,6 @@ async def test_private_invite_create_and_redeem():
     assert redeemed["base_time_ms"] == 600000
     assert redeemed["increment_ms"] == 5000
 
-    # Повторное погашение того же кода невозможно
+    # Redeeming the same code again is impossible
     second_try = await matchmaker.accept_private_invite(code, acceptor_id=303)
     assert second_try is None

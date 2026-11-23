@@ -1,6 +1,6 @@
 """
-Библиотека партий (таск 27.1): дерево коллекций, партии коллекции, поиск и партия для просмотра. Без входа видны
-только публичные коллекции; свои закрытые — владельцу, служебные — модераторам. Движок не вызывается.
+Game library (task 27.1): the tree of collections, games of a collection, search and a game for viewing. Without login only
+public collections are visible; one's own private ones - to the owner, service ones - to moderators. The engine is not called.
 """
 
 import random
@@ -24,7 +24,7 @@ router = APIRouter(dependencies=[Depends(rate_limit("library", "RATE_LIMIT_PUZZL
 
 PAGE = 50
 RESULTS = ("1-0", "0-1", "1/2-1/2")
-# Решающие результаты: у миниатюры (метка 27.5) кто-то выиграл.
+# Decisive results: in a miniature (mark 27.5) somebody won.
 DECISIVE = RESULTS[:2]
 
 
@@ -42,7 +42,7 @@ def _row(game: LibraryGame) -> dict:
 
 
 def _visible_game(user: User | None):
-    """Партия видна, если лежит хотя бы в одной видимой коллекции."""
+    """A game is visible if it lies in at least one visible collection."""
     return exists().where(
         LibraryGameCollection.game_id == LibraryGame.id,
         LibraryGameCollection.collection_id == LibraryCollection.id,
@@ -59,7 +59,7 @@ async def _visible_game_or_404(db: AsyncSession, game_id: int, user: User | None
 
 @router.get("/collections")
 async def collections(db: AsyncSession = Depends(get_db), user: User | None = Depends(optional_user)):
-    """Видимые коллекции плоским списком (дерево собирает клиент по parent_id) с числом своих партий."""
+    """Visible collections as a flat list (the client builds the tree by parent_id) with the number of their own games."""
     counts = (select(LibraryGameCollection.collection_id, func.count().label("n"))
               .group_by(LibraryGameCollection.collection_id).subquery())
     rows = (await db.execute(
@@ -77,8 +77,8 @@ async def collection_games(collection_id: int = Path(..., ge=1), offset: int = Q
                            limit: int = Query(PAGE, ge=1, le=200), db: AsyncSession = Depends(get_db),
                            user: User | None = Depends(optional_user)):
     """
-    Партии коллекции библиотеки, постранично. Коллекция, которую этот посетитель видеть не должен, отвечает как
-    несуществующая.
+    Games of a library collection, paginated. A collection that this visitor must not see answers as
+    non-existent.
     """
     collection = await db.scalar(select(LibraryCollection).where(LibraryCollection.id == collection_id,
                                                                  library.visible_clause(user)))
@@ -103,9 +103,10 @@ async def search(player: str = Query("", max_length=60), eco: str = Query("", ma
                  offset: int = Query(0, ge=0), limit: int = Query(PAGE, ge=1, le=200),
                  db: AsyncSession = Depends(get_db), user: User | None = Depends(optional_user)):
     """
-    Поиск по видимым партиям: игрок (часть имени), код дебюта (начало), годы, результат, длина, структура; moves —
-    начало партии в UCI через пробел (узел репертуара, 27.10; без перестановок); miniature — метка «миниатюра» (27.5):
-    решающая партия не длиннее miniatures.MAX_PLIES полуходов (25 ходов); beautiful — метка «красивая» (beauty.py).
+    Search over visible games: player (part of the name), opening code (prefix), years, result, length, structure; moves -
+    the start of the game in UCI separated by spaces (a repertoire node, 27.10; without transpositions); miniature - the
+    "miniature" mark (27.5):
+    a decisive game no longer than miniatures.MAX_PLIES plies (25 moves); beautiful - the "beautiful" mark (beauty.py).
     """
     conditions = [_visible_game(user)]
     if player.strip():
@@ -142,7 +143,7 @@ async def search(player: str = Query("", max_length=60), eco: str = Query("", ma
 @router.get("/structure-quiz")
 async def structure_quiz(count: int = Query(10, ge=1, le=20), seed: int | None = Query(None),
                          db: AsyncSession = Depends(get_db)):
-    """«Узнай структуру» (27.9): позиции из публичных размеченных партий, недостающее — учебные скелеты."""
+    """"Recognise the structure" (27.9): positions from public tagged games, the missing ones - training skeletons."""
     rng = random.Random(seed)
     rows = (await db.execute(
         select(LibraryGame.id, LibraryGame.structure, LibraryGame.moves)
@@ -157,7 +158,7 @@ async def structure_quiz(count: int = Query(10, ge=1, le=20), seed: int | None =
 @router.get("/miniatures")
 async def miniatures(count: int = Query(10, ge=1, le=20), seed: int | None = Query(None),
                      db: AsyncSession = Depends(get_db)):
-    """«Миниатюры» (27.9): короткие публичные партии, закончившиеся матом, — найти последний ход."""
+    """"Miniatures" (27.9): short public games that ended in mate - find the last move."""
     rows = (await db.execute(
         select(LibraryGame.id, LibraryGame.moves)
         .where(LibraryGame.mate_finish.is_(True), LibraryGame.plies <= miniatures_service.MAX_PLIES,
@@ -174,8 +175,8 @@ async def miniatures(count: int = Query(10, ge=1, le=20), seed: int | None = Que
 async def game(game_id: int = Path(..., ge=1), db: AsyncSession = Depends(get_db),
                user: User | None = Depends(optional_user)):
     """
-    Партия библиотеки для просмотра: заголовки, ходы, коллекции, в которых она лежит (только видимые посетителю), и
-    аннотация, если есть.
+    A library game for viewing: headers, moves, the collections it lies in (only those visible to the visitor), and
+    the annotation, if there is one.
     """
     found = await _visible_game_or_404(db, game_id, user)
     in_collections = (await db.execute(

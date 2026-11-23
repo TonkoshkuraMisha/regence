@@ -1,9 +1,9 @@
 // --- FILE: frontend/src/components/beta/ReportProblem.tsx ---
-// «Сообщить о проблеме» (таск 24.4): окно с любой страницы, в том числе без входа. К тексту прикладывается
-// контекст — путь страницы, версия приложения, язык и размер окна; что именно уйдёт, показано прямо в форме.
-// Окно — общий Modal (затемнение, крестик, Esc). Отправка — services/beta.ts, POST /api/v1/beta/feedback.
-// CommunityLink — ссылка на канал сообщества: видна, только когда она задана в настройках сервера (COMMUNITY_URL);
-// версию и ссылку отдаёт useSiteConfig. Окно открывает App.tsx, ссылку показывает ещё About.tsx.
+// «// "Report a problem" (task 24.4): a window available from any page, including when signed out. The text is sent with
+// // context: page path, app version, language and window size; exactly what will be sent is shown right in the form.
+// // The window is the shared Modal (backdrop, close button, Esc). Submission goes through services/beta.ts, POST /api/v1/beta/feedback.
+// CommunityLink — // CommunityLink is a link to the community channel: visible only when it is set in the server settings (COMMUNITY_URL);
+// // the version and the link come from useSiteConfig. App.tsx opens the window; About.tsx also shows the link.
 
 import {useState} from 'react';
 import {useLocation} from 'react-router-dom';
@@ -14,11 +14,11 @@ import {errorMessage} from '../../services/apiErrors';
 import {Modal} from '../ui';
 import {betaApi, communityPlatform, screenSize, useSiteConfig} from '../../services/beta';
 
-// Границы длины сообщения в символах; те же значения проверяет сервер (src/services/beta.py: MESSAGE_MIN, MESSAGE_MAX).
+// // Message length limits in characters; the server checks the same values (src/services/beta.py: MESSAGE_MIN, MESSAGE_MAX).
 const MESSAGE_MIN = 5;
 const MESSAGE_MAX = 2000;
 
-/** Ссылка на канал сообщества (название платформы — по адресу); без заданного COMMUNITY_URL не рисуется. */
+/** /** Link to the community channel (the platform name is taken from the address); not rendered unless COMMUNITY_URL is set. */
 export function CommunityLink({className = ''}: { className?: string }) {
     const {t} = useI18n();
     const {communityUrl} = useSiteConfig();
@@ -31,7 +31,7 @@ export function CommunityLink({className = ''}: { className?: string }) {
     );
 }
 
-/** Окно отправки сообщения; после успешной отправки показывает подтверждение вместо формы. */
+/** /** Message submission window; after a successful submit it shows a confirmation instead of the form. */
 export function ReportProblem({onClose}: { onClose: () => void }) {
     const {t, language} = useI18n();
     const location = useLocation();
@@ -40,7 +40,7 @@ export function ReportProblem({onClose}: { onClose: () => void }) {
     const [sending, setSending] = useState(false);
     const [sent, setSent] = useState(false);
     const [error, setError] = useState<UiMessage | null>(null);
-    // Страница и размер окна — на момент открытия формы: именно там игрок увидел проблему.
+    //     // Page and window size are captured when the form opens: that is where the player saw the problem.
     const [context] = useState(() => ({page: location.pathname, screen: screenSize()}));
 
     const text = message.trim();

@@ -1,4 +1,4 @@
-// «Мои партии с других сайтов» (таск 24.1): импорт по нику, вставка PGN, список с итогом и задачами, ошибки сервера.
+// "My games from other sites" (task 24.1): import by username, PGN paste, a list with the result and puzzles, server errors.
 
 import {fireEvent, render, screen, waitFor} from '@testing-library/react';
 import {MemoryRouter} from 'react-router-dom';
@@ -36,8 +36,8 @@ afterEach(() => {
     vi.unstubAllGlobals();
 });
 
-describe('Импорт партий', () => {
-    it('без входа просит войти и не ходит на сервер', () => {
+describe('Game import', () => {
+    it('without login it asks to log in and does not call the server', () => {
         clearToken();
         const fetchMock = stub(() => undefined);
         renderPage();
@@ -45,17 +45,17 @@ describe('Импорт партий', () => {
         expect(fetchMock).not.toHaveBeenCalled();
     });
 
-    it('список: итог с точки зрения игрока, соперник, задачи и ссылка на разбор', async () => {
+    it('list: result from the player\'s point of view, opponent, puzzles and a link to the review', async () => {
         stub((url) => url.includes('/imports/games') ? {body: {total: 1, max: 300, games: [GAME]}} : undefined);
         renderPage();
         const row = await screen.findByTestId('imported-game');
-        expect(row).toHaveTextContent('Победа');
-        expect(row).toHaveTextContent('чёрными против rival (1510)');
-        expect(row).toHaveTextContent('2 задачи');
+        expect(row).toHaveTextContent('Win');
+        expect(row).toHaveTextContent('as Black vs rival (1510)');
+        expect(row).toHaveTextContent('2 puzzles');
         expect(row.querySelector('a')).toHaveAttribute('href', '/import/game/3');
     });
 
-    it('импорт по нику: запрос с сайтом, ником и числом партий, ник запоминается', async () => {
+    it('import by username: the request carries the site, the username and the game count, the username is remembered', async () => {
         const fetchMock = stub((url, init) => url.endsWith('/imports/fetch')
             ? {body: {added: [GAME], duplicates: 1, skipped: 0}} : (init?.method ? undefined : undefined));
         renderPage();
@@ -63,21 +63,21 @@ describe('Импорт партий', () => {
         fireEvent.change(screen.getByTestId('import-nick'), {target: {value: 'me_42'}});
         fireEvent.click(screen.getByRole('button', {name: '20'}));
         fireEvent.click(screen.getByTestId('import-submit'));
-        expect(await screen.findByTestId('import-result')).toHaveTextContent('Добавлена 1 партия');
+        expect(await screen.findByTestId('import-result')).toHaveTextContent('Added 1 game');
         const call = fetchMock.mock.calls.find(([url]) => String(url).endsWith('/imports/fetch'));
         expect(JSON.parse(String(call?.[1]?.body))).toEqual({source: 'chesscom', username: 'me_42', max: 20});
         expect(call?.[1]?.headers).toMatchObject({Authorization: 'Bearer t'});
         expect(localStorage.getItem('regence_import_nick_chesscom')).toBe('me_42');
     });
 
-    it('кнопка неактивна, пока ник не похож на ник', () => {
+    it('the button is disabled while the username does not look like one', () => {
         stub(() => undefined);
         renderPage();
         fireEvent.change(screen.getByTestId('import-nick'), {target: {value: 'a b'}});
         expect(screen.getByTestId('import-submit')).toBeDisabled();
     });
 
-    it('PGN: имя игрока уходит в запрос; ошибка сервера показывается текстом из каталога', async () => {
+    it('PGN: the player name goes into the request; a server error is shown as text from the catalog', async () => {
         const fetchMock = stub((url) => url.endsWith('/imports/pgn')
             ? {status: 400, body: {detail: {code: 'import_player_not_in_pgn', params: {player: 'Misha'}, message: ''}}}
             : undefined);
@@ -86,12 +86,12 @@ describe('Импорт партий', () => {
         fireEvent.change(screen.getByTestId('import-pgn'), {target: {value: '1. e4 e5'}});
         fireEvent.change(screen.getByTestId('import-player'), {target: {value: 'Misha'}});
         fireEvent.click(screen.getByTestId('import-submit'));
-        expect(await screen.findByTestId('import-error')).toHaveTextContent('Ни в одной партии PGN нет игрока «Misha»');
+        expect(await screen.findByTestId('import-error')).toHaveTextContent('No game in the PGN has a player named “Misha”');
         const call = fetchMock.mock.calls.find(([url]) => String(url).endsWith('/imports/pgn'));
         expect(JSON.parse(String(call?.[1]?.body))).toMatchObject({pgn: '1. e4 e5', player: 'Misha'});
     });
 
-    it('удаление спрашивает подтверждение и обновляет список', async () => {
+    it('deletion asks for confirmation and refreshes the list', async () => {
         let games = [GAME];
         const fetchMock = stub((url, init) => {
             if (init?.method === 'DELETE') {

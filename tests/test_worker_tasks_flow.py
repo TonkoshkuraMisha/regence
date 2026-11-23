@@ -1,8 +1,8 @@
 """
-Задачи Celery (src/worker/tasks.py) без Stockfish: службы подменены, проверяются порядок вызовов,
-повтор при занятом пуле движков, поведение при сбоях и постановка следующих партий турнира.
-Задачи вызываются напрямую (как функции) — каждая запускает свой asyncio.run, как в живом воркере;
-база — файловая sqlite во временной папке теста.
+Celery tasks (src/worker/tasks.py) without Stockfish: services are replaced, the call order is checked,
+retry when the engine pool is busy, behavior on failures and queueing of the tournament's next games.
+Tasks are called directly (as functions) - each runs its own asyncio.run, as in a live worker;
+the database is a file-based sqlite in the test's temp folder.
 """
 
 import asyncio
@@ -21,7 +21,7 @@ from src.worker import tasks
 
 @pytest.fixture(autouse=True)
 def task_db(tmp_path, monkeypatch):
-    """Каждая задача получает файловую базу sqlite с созданными таблицами."""
+    """Each task gets a file-based sqlite database with the tables created."""
     url = f"sqlite+aiosqlite:///{(tmp_path / 'flow.db').as_posix()}"
 
     async def create():

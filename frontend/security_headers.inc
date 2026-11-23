@@ -1,16 +1,16 @@
 # --- FILE: frontend/security_headers.inc ---
-# Заголовки безопасности для всех ответов nginx (подключается в server и в каждом location).
+# Security headers for all nginx responses (included in server and in every location).
 #
-# CSP — главная защита токена в localStorage от XSS: даже если злоумышленник внедрит разметку,
-# браузер не выполнит чужой или встроенный скрипт и не отправит данные на чужой домен.
-#   script-src 'self'         — только скрипты из сборки, без inline и eval;
-#   style-src 'unsafe-inline' — React и библиотеки выставляют стили атрибутом style;
-#   img-src                   — только свои картинки (аватары — собственный набор, таск 18.4), data:/blob: для иконок и превью;
-#   connect-src 'self' + Sentry — fetch и WebSocket на свой домен (CSP3 включает ws/wss) и отчёты об ошибках в Sentry (ЕС и США).
+# CSP is the main protection of the token in localStorage against XSS: even if an attacker injects markup,
+# the browser will not run a foreign or inline script and will not send data to a foreign domain.
+#   script-src 'self'         - only scripts from the build, no inline and no eval;
+#   style-src 'unsafe-inline' - React and libraries set styles via the style attribute;
+#   img-src                   - only own images (avatars are our own set, task 18.4), data:/blob: for icons and previews;
+#   connect-src 'self' + Sentry - fetch and WebSocket to our own domain (CSP3 includes ws/wss) and error reports to Sentry (EU and US).
 add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' data: blob:; connect-src 'self' https://*.ingest.de.sentry.io https://*.ingest.sentry.io; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'" always;
 add_header X-Content-Type-Options "nosniff" always;
 add_header X-Frame-Options "DENY" always;
 add_header Referrer-Policy "no-referrer" always;
 add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
-# HSTS: значение задаёт map $hsts_value в nginx.conf — на HTTPS-запросе срок и includeSubDomains, на HTTP заголовка нет.
+# HSTS: the value is set by the map $hsts_value in nginx.conf - on an HTTPS request the term and includeSubDomains, on HTTP there is no header.
 add_header Strict-Transport-Security $hsts_value always;

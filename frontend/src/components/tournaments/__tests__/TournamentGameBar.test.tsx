@@ -1,5 +1,5 @@
-// Навигация турнира: плашка над партией, «Следующая партия» и ожидание тура, «Продолжить турнир» на главной,
-// «Ваша последняя партия» на странице турнира, карточка соперника — мастера прошлого.
+// Tournament navigation: the bar above the game, "Next game" and waiting for the round, "Continue the tournament" on the home page,
+// "Your last game" on the tournament page, the opponent card — a master of the past.
 
 import {act, fireEvent, render, screen, waitFor} from '@testing-library/react';
 import {MemoryRouter, Route, Routes, useLocation} from 'react-router-dom';
@@ -51,19 +51,19 @@ afterEach(() => {
     vi.useRealTimers();
 });
 
-describe('плашка турнирной партии', () => {
-    it('во время партии: турнир, тур, соперник и таблица поверх доски', async () => {
+describe('tournament game bar', () => {
+    it('during a game: the tournament, the round, the opponent and the table over the board', async () => {
         stub({'/tournaments/7': () => tournament([game(31, 1, 1, 2, null)], 1)});
         render(<MemoryRouter><TournamentGameBar tournamentId={7} tournamentGameId={31} gameOver={false}/></MemoryRouter>);
         const bar = await screen.findByTestId('tournament-bar');
-        expect(bar).toHaveTextContent('Тур 1 из 3');
-        expect(screen.getByTestId('tournament-bar-opponent')).toHaveTextContent('против');
+        expect(bar).toHaveTextContent('Round 1 of 3');
+        expect(screen.getByTestId('tournament-bar-opponent')).toHaveTextContent('vs');
         expect(screen.queryByTestId('tournament-bar-after')).toBeNull();
         fireEvent.click(screen.getByTestId('tournament-bar-table'));
         expect(screen.getByTestId('tournament-standings-overlay').querySelectorAll('tr')).toHaveLength(4);
     });
 
-    it('после партии: ждёт тур, затем «Следующая партия» запускает её на доске', async () => {
+    it('after the game: waits for the round, then "Next game" starts it on the board', async () => {
         vi.useFakeTimers({shouldAdvanceTime: true});
         let round = 1;
         const fetchMock = stub({
@@ -95,8 +95,8 @@ describe('плашка турнирной партии', () => {
     });
 });
 
-describe('путь назад в турнир', () => {
-    it('главная: турниры, где ждут партию игрока', async () => {
+describe('the way back into a tournament', () => {
+    it('the home page: tournaments where a player\'s game is waiting', async () => {
         stub({'/tournaments': () => [
             {id: 7, format: 'round_robin', size: 12, status: 'active', created_at: '', my_place: null, event_key: 'kyiv_1903',
                 current_round: 4, my_game_ready: true},
@@ -108,11 +108,11 @@ describe('путь назад в турнир', () => {
         render(<MemoryRouter><ContinueTournaments/></MemoryRouter>);
         const card = await screen.findByTestId('continue-tournament-7');
         expect(card).toHaveAttribute('href', '/tournaments/7');
-        expect(card).toHaveTextContent('тур 4: ваша партия готова');
+        expect(card).toHaveTextContent('round 4: your game is ready');
         expect(screen.queryByTestId('continue-tournament-8')).toBeNull();
     });
 
-    it('страница турнира: последняя партия — разбор и карточка соперника', async () => {
+    it('the tournament page: the last game — a review and the opponent card', async () => {
         stub({
             '/profile/me': () => ({username: 'misha'}),
             '/tournaments/7': () => tournament([game(31, 1, 1, 2, '0-1', 555), game(32, 1, 3, 4, '1-0')], 2),
@@ -121,7 +121,7 @@ describe('путь назад в турнир', () => {
             <Route path="/tournaments/:tournamentId" element={<TournamentView/>}/>
         </Routes></MemoryRouter>);
         const card = await screen.findByTestId('my-last-game');
-        expect(card).toHaveTextContent('тур 1');
+        expect(card).toHaveTextContent('round 1');
         expect(card).toHaveTextContent(': 0');
         expect(screen.getByTestId('my-last-game-review')).toHaveAttribute('href', '/game/555');
         await waitFor(() => expect(screen.getByTestId('my-last-game-opponent')).toHaveAttribute('href', '/masters?master=bernstein'));

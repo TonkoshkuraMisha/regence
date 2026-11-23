@@ -1,6 +1,6 @@
-// Проигрыватель урока, дополнительные пути: все виды действий показа (ход, стрелка, подсветка, призрак, постановка
-// фигуры, очистка, пауза), «Показать ещё раз» и повторный просмотр урока после экзамена. Урок собран прямо в тесте,
-// чтобы не зависеть от содержимого каталога уроков.
+// Lesson player, extra paths: all kinds of demonstration actions (move, arrow, highlight, ghost, piece placement,
+// clearing, pause), "Show again" and re-viewing a lesson after the exam. The lesson is assembled right in the test
+// so as not to depend on the contents of the lesson catalog.
 
 import {act, fireEvent, render, screen} from '@testing-library/react';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
@@ -8,7 +8,7 @@ import {setLanguage} from '../../../i18n';
 import type {Lesson, LocalizedText} from '../../../content/lessons/format';
 import {LessonPlayer} from '../LessonPlayer';
 
-const text = (value: string): LocalizedText => ({en: value, uk: value, ru: value});
+const text = (value: string): LocalizedText => ({en: value, uk: value});
 const START = '4k3/8/8/8/8/8/4P3/4K3 w - - 0 1';
 
 const LESSON: Lesson = {
@@ -50,16 +50,16 @@ beforeEach(() => {
 
 afterEach(() => {
     vi.useRealTimers();
-    setLanguage('ru', {persist: false});
+    setLanguage('en', {persist: false});
 });
 
-describe('LessonPlayer: показ', () => {
-    it('действия показа применяются по очереди; «Показать ещё раз» начинает с исходной позиции', async () => {
+describe('LessonPlayer: demonstration', () => {
+    it('demonstration actions are applied in turn; "Show again" starts from the initial position', async () => {
         render(<LessonPlayer lesson={LESSON}/>);
         await tick(400);
         expect(screen.getByTestId('board-arrow-e2e4')).toBeInTheDocument();
         await tick(4000);
-        // Конь поставлен на e5, пешка пошла e2-e4, оформление очищено.
+        // The knight is placed on e5, the pawn went e2-e4, the styling is cleared.
         expect(pieceOn('e5')).toBe('wn');
         expect(pieceOn('e4')).toBe('wp');
         expect(screen.queryByTestId('board-arrow-e2e4')).toBeNull();
@@ -72,8 +72,8 @@ describe('LessonPlayer: показ', () => {
     });
 });
 
-describe('LessonPlayer: экзамен и повторный просмотр', () => {
-    it('после экзамена «Повторить урок» возвращает к первому шагу', async () => {
+describe('LessonPlayer: exam and re-viewing', () => {
+    it('after the exam "Repeat the lesson" returns to the first step', async () => {
         const onFinish = vi.fn();
         render(<LessonPlayer lesson={LESSON} onFinish={onFinish}/>);
         await tick(4000);

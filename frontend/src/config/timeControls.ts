@@ -1,11 +1,11 @@
 // --- FILE: frontend/src/config/timeControls.ts ---
-// Контроли времени для онлайн-игры: 4 категории (как на chess.com и lichess.org), в каждой —
-// самые популярные пресеты. Раньше здесь был полный список программ часов DGT 2500 (36 штук,
-// включая задержку Бронштейна/US Delay, бё-ёми, песочные часы, гонг, Scrabble) — но сервер
-// для сетевых партий понимает только простое время + добавление за ход (Fischer), так что
-// все эти экзотические режимы для онлайн-игры были чисто декоративными и только путали выбор.
+// Time controls for online play: 4 categories (as on chess.com and lichess.org), each with
+// the most popular presets. This used to hold the full list of DGT 2500 clock programs (36 of them,
+// including Bronstein/US Delay, byo-yomi, hourglass, gong, Scrabble) - but for network games the server
+// understands only plain time + increment per move (Fischer), so all
+// those exotic modes were purely decorative for online play and only confused the choice.
 //
-// Подписи и описания — в каталогах сообщений (геттеры), здесь только числа.
+// Labels and descriptions are in the message catalogs (getters), only numbers here.
 
 import {t} from '../i18n';
 
@@ -20,8 +20,8 @@ export type TimeControlId =
 export interface TimeControlOption {
     id: TimeControlId;
     category: TimeControlCategory;
-    base: number; // минут на старте
-    inc: number; // секунд добавления за ход (Fischer); 0 — без добавления
+    base: number; // minutes at the start
+    inc: number; // seconds added per move (Fischer); 0 - no increment
     readonly label: string;
     readonly details: string;
     isManual?: boolean;
@@ -33,7 +33,7 @@ export interface TimeControlGroup {
     options: TimeControlOption[];
 }
 
-/** Подпись пресета: «3 мин + 2 сек/ход» на текущем языке. */
+/** Preset label: "3 min + 2 sec/move" in the current language. */
 export function timeControlLabel(base: number, inc: number): string {
     return inc > 0 ? t('timeControl.minutesIncrement', {base, inc}) : t('timeControl.minutes', {base});
 }
@@ -88,8 +88,8 @@ export const TIME_CONTROLS: TimeControlGroup[] = [
         option('rapid', 15, 10, true),
     ]),
     group('classical', [
-        // 30 минут без добавления — уже классика: сервер (classify_time_control) относит партию
-        // к категории по оценке «база + 40 × добавление», порог классики — 25 минут.
+        // 30 minutes with no increment is already classical: the server (classify_time_control) assigns the game
+        // to a category by the estimate "base + 40 x increment", the classical threshold is 25 minutes.
         option('classical', 30, 0),
         option('classical', 30, 20),
         option('classical', 60, 30),
@@ -102,8 +102,8 @@ export const DEFAULT_TIME_CONTROL: TimeControlOption =
     ALL_TIME_CONTROLS.find(o => o.id === 'blitz-3+2') || ALL_TIME_CONTROLS[0];
 
 /**
- * Категория контроля — то же правило, что на сервере (src/services/rating.classify_time_control): оценка длительности
- * «база + 40 × добавление»; пуля — до 3 минут, блиц — до 8, рапид — до 25, дальше классика.
+ * Control category - the same rule as on the server (src/services/rating.classify_time_control): duration estimate
+ * "base + 40 x increment"; bullet - up to 3 minutes, blitz - up to 8, rapid - up to 25, beyond that classical.
  */
 export function timeControlCategory(baseMs: number, incrementMs: number): TimeControlCategory {
     const estimatedS = baseMs / 1000 + 40 * (incrementMs / 1000);

@@ -1,6 +1,6 @@
 // --- FILE: frontend/src/__tests__/App.test.tsx ---
-// Шапка и меню профиля: ни одного элемента управления без действия. Пункт меню появляется только
-// вместе с рабочей страницей (ToDo.md, «Правила Части II»).
+// The header and the profile menu: no control without an action. A menu item appears only
+// together with a working page (ToDo.md, "Part II rules").
 
 import {act, fireEvent, render, screen, waitFor, within} from '@testing-library/react';
 import {MemoryRouter} from 'react-router-dom';
@@ -43,7 +43,7 @@ function renderApp(path = '/leaderboard') {
     );
 }
 
-/** React хранит пропсы элемента на DOM-узле — так видно, есть ли у кнопки обработчик. */
+/** React keeps an element's props on the DOM node — that shows whether a button has a handler. */
 function hasClickHandler(element: Element): boolean {
     const propsKey = Object.keys(element).find((key) => key.startsWith('__reactProps'));
     const props = propsKey ? (element as unknown as Record<string, {onClick?: unknown}>)[propsKey] : undefined;
@@ -52,10 +52,10 @@ function hasClickHandler(element: Element): boolean {
 
 function expectNoDeadControls(container: HTMLElement) {
     for (const button of within(container).queryAllByRole('button')) {
-        expect(hasClickHandler(button), `кнопка «${button.textContent || button.title}» ничего не делает`).toBe(true);
+        expect(hasClickHandler(button), `the button "${button.textContent || button.title}" does nothing`).toBe(true);
     }
     for (const link of within(container).queryAllByRole('link')) {
-        expect(link.getAttribute('href'), `ссылка «${link.textContent || link.title}» никуда не ведёт`).toBeTruthy();
+        expect(link.getAttribute('href'), `the link "${link.textContent || link.title}" leads nowhere`).toBeTruthy();
     }
 }
 
@@ -67,31 +67,31 @@ afterEach(() => {
     vi.unstubAllGlobals();
 });
 
-describe('App: просмотр партии на одном экране', () => {
-    // Доска и панель с ходами занимают ровно экран: страница не прокручивается, прокручивается список ходов.
+describe('App: viewing a game on a single screen', () => {
+    // The board and the move panel take exactly one screen: the page does not scroll, the move list scrolls.
     it.each(['/game/5', '/library/game/17321', '/import/game/3'])('%s', (path) => {
         const {container} = renderApp(path);
         expect(container.firstElementChild?.className).toContain('xl:h-dvh');
         expect(screen.getByRole('main').className).toContain('xl:overflow-hidden');
     });
 
-    it('обычная страница прокручивается целиком', () => {
+    it('an ordinary page scrolls as a whole', () => {
         const {container} = renderApp('/library');
         expect(container.firstElementChild?.className).not.toContain('xl:h-dvh');
     });
 
-    // Фон страницы (узор и палитра, таски 18.1 и 31.1) рисуется на body: корневой блок с собственной заливкой
-    // закрывал его целиком, и выбранный фон был виден только в превью настроек.
-    it('корневой блок прозрачен: фон страницы виден сквозь него', () => {
+    // The page background (pattern and palette, tasks 18.1 and 31.1) is drawn on body: a root block with its own fill
+    // used to cover it entirely, and the chosen background was visible only in the settings preview.
+    it('the root block is transparent: the page background shows through it', () => {
         const {container} = renderApp('/library');
         expect(container.firstElementChild?.className).not.toMatch(/(^|\s)bg-/);
     });
 });
 
-describe('App: меню в шапке на средних ширинах', () => {
-    // На 768–1360 px подписи пунктов скрыты (остаются значки): у каждого пункта должны быть подсказка и доступное
-    // имя, а сама подпись — в отдельном элементе, который показывается с ширины, где шапка помещается.
-    it('у каждого пункта меню — подсказка, доступное имя и подпись, скрываемая на узкой шапке', () => {
+describe('App: header menu at medium widths', () => {
+    // At 768–1360 px the item labels are hidden (icons remain): every item must have a tooltip and an accessible
+    // name, and the label itself is a separate element that is shown from the width where the header fits.
+    it('every menu item has a tooltip, an accessible name and a label hidden on a narrow header', () => {
         renderApp('/library');
         const nav = screen.getByRole('navigation');
         const items = [...within(nav).getAllByRole('link'), within(nav).getByRole('button')];
@@ -103,12 +103,12 @@ describe('App: меню в шапке на средних ширинах', () =>
             const label = within(item).getByText(name!);
             expect(label.className).toMatch(/^hidden min-\[1(360|500)px\]:inline$/);
         }
-        // Турниры и таблица лидеров различимы и без подписей: значки у них разные.
+        // Tournaments and the leaderboard are distinguishable without labels: their icons differ.
         const icon = (name: string) => within(nav).getByRole('link', {name}).querySelector('svg')?.getAttribute('class');
-        expect(icon('Турниры')).not.toBe(icon('Лидеры'));
+        expect(icon('Tournaments')).not.toBe(icon('Leaderboard'));
     });
 
-    it('длинное имя игрока в шапке обрезается, а не растягивает её', async () => {
+    it('a long player name in the header is truncated, not stretching it', async () => {
         setToken('jwt');
         renderApp('/library');
         const name = await screen.findByTitle('alice');
@@ -117,97 +117,97 @@ describe('App: меню в шапке на средних ширинах', () =>
     });
 });
 
-describe('App: программа беты (таск 24.4)', () => {
-    it('гость открывает «Сообщить о проблеме» из шапки', () => {
+describe('App: beta programme (task 24.4)', () => {
+    it('a guest opens "Report a problem" from the header', () => {
         renderApp('/puzzles');
-        fireEvent.click(within(screen.getByRole('banner')).getByRole('button', {name: 'Сообщить о проблеме'}));
+        fireEvent.click(within(screen.getByRole('banner')).getByRole('button', {name: 'Report a problem'}));
         expect(screen.getByTestId('report-problem')).toBeInTheDocument();
         expect(screen.getByTestId('report-problem-context')).toHaveTextContent('/puzzles');
-        fireEvent.click(screen.getByRole('button', {name: 'Закрыть'}));
+        fireEvent.click(screen.getByRole('button', {name: 'Close'}));
         expect(screen.queryByTestId('report-problem')).not.toBeInTheDocument();
     });
 
-    it('вошедший игрок открывает «Сообщить о проблеме» из меню профиля', async () => {
+    it('a logged-in player opens "Report a problem" from the profile menu', async () => {
         setToken('test-token');
         renderApp();
         fireEvent.click(await within(screen.getByRole('banner')).findByText('alice'));
         fireEvent.click(screen.getByTestId('report-problem-menu'));
         expect(screen.getByTestId('report-problem')).toBeInTheDocument();
-        // Меню профиля при этом закрылось.
+        // The profile menu closed at the same time.
         expect(screen.queryByTestId('report-problem-menu')).not.toBeInTheDocument();
         setToken(null);
     });
 
-    it('ссылка-приглашение открывает гостю регистрацию с вписанным кодом', async () => {
+    it('an invitation link opens registration for a guest with the code filled in', async () => {
         renderApp('/?invite=K7QF2MXN9B');
         expect(await screen.findByTestId('auth-invite')).toHaveValue('K7QF2MXN9B');
-        expect(screen.getByRole('heading', {name: 'Регистрация аккаунта'})).toBeInTheDocument();
+        expect(screen.getByRole('heading', {name: 'Create an account'})).toBeInTheDocument();
     });
 
-    it('без приглашения окно входа само не открывается', async () => {
+    it('without an invitation the login window does not open by itself', async () => {
         renderApp('/leaderboard');
         await vi.waitFor(() => expect(fetch).toHaveBeenCalled());
         expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
 });
 
-describe('App: навигация', () => {
-    it('в шапке гостя нет элементов без действия', () => {
+describe('App: navigation', () => {
+    it('the guest header has no elements without an action', () => {
         renderApp();
         const header = screen.getByRole('banner');
 
         expectNoDeadControls(header);
-        for (const label of ['Обучение', 'Просмотр', 'Инструменты']) {
+        for (const label of ['Learning', 'Watch', 'Tools']) {
             expect(within(header).queryByText(label)).not.toBeInTheDocument();
         }
-        // «Задачи» вернулись в шапку вместе с разделом (таск 13.3) — это рабочая ссылка.
-        expect(within(header).getByText('Задачи').closest('a')?.getAttribute('href')).toBe('/puzzles');
-        expect(within(header).queryByTitle('Поиск партии')).not.toBeInTheDocument();
-        expect(within(header).queryByTitle('Уведомления')).not.toBeInTheDocument();
+        // "Puzzles" returned to the header together with the section (task 13.3) — it is a working link.
+        expect(within(header).getByText('Puzzles').closest('a')?.getAttribute('href')).toBe('/puzzles');
+        expect(within(header).queryByTitle('Game search')).not.toBeInTheDocument();
+        expect(within(header).queryByTitle('Notifications')).not.toBeInTheDocument();
     });
 
-    it('в шапке и меню профиля вошедшего игрока нет элементов без действия', async () => {
+    it('the header and profile menu of a logged-in player have no elements without an action', async () => {
         setToken('test-token');
         renderApp();
         const header = screen.getByRole('banner');
 
         fireEvent.click(await within(header).findByText('alice'));
-        expect(within(header).getByText('Профиль')).toBeInTheDocument();
+        expect(within(header).getByText('Profile')).toBeInTheDocument();
 
         expectNoDeadControls(header);
-        expect(within(header).queryByText('Входящие')).not.toBeInTheDocument();
+        expect(within(header).queryByText('Inbox')).not.toBeInTheDocument();
     });
 
-    it('«Настройки» из меню профиля открывают страницу настроек', async () => {
+    it('"Settings" from the profile menu opens the settings page', async () => {
         setToken('test-token');
         renderApp();
         const header = screen.getByRole('banner');
 
         fireEvent.click(await within(header).findByText('alice'));
-        fireEvent.click(within(header).getByRole('button', {name: /Настройки/}));
+        fireEvent.click(within(header).getByRole('button', {name: /Settings/}));
 
-        expect(await screen.findByRole('heading', {name: 'Настройки'})).toBeInTheDocument();
-        expect(screen.getByText('Аккаунт alice')).toBeInTheDocument();
-        expect(screen.getByRole('button', {name: 'Сменить пароль'})).toBeInTheDocument();
+        expect(await screen.findByRole('heading', {name: 'Settings'})).toBeInTheDocument();
+        expect(screen.getByText('Account alice')).toBeInTheDocument();
+        expect(screen.getByRole('button', {name: 'Change password'})).toBeInTheDocument();
     });
 
-    it('гость попадает в настройки по ссылке в шапке', async () => {
+    it('a guest reaches the settings by the header link', async () => {
         renderApp();
-        fireEvent.click(within(screen.getByRole('banner')).getByTitle('Настройки'));
-        // Страница появляется после попытки восстановить вход (у гостя она заканчивается ничем).
-        expect(await screen.findByRole('heading', {name: 'Настройки'})).toBeInTheDocument();
-        expect(screen.getByText(/Войдите в аккаунт/)).toBeInTheDocument();
+        fireEvent.click(within(screen.getByRole('banner')).getByTitle('Settings'));
+        // The page appears after an attempt to restore the login (for a guest it ends with nothing).
+        expect(await screen.findByRole('heading', {name: 'Settings'})).toBeInTheDocument();
+        expect(screen.getByText(/Log in to change your password/)).toBeInTheDocument();
     });
 });
 
-describe('App: вход восстанавливается до первой страницы', () => {
-    // Каждый сценарий начинает с чистого состояния: токен из соседнего теста означал бы «уже вошёл».
+describe('App: login is restored before the first page', () => {
+    // Each scenario starts from a clean state: a token from a neighbouring test would mean "already logged in".
     beforeEach(() => setToken(null));
     afterEach(() => setToken(null));
 
-    // При прямом заходе и обновлении страницы токена ещё нет — он приходит по cookie. Страницы, которые
-    // запрашивают данные сразу, раньше успевали получить 401 («Не удалось загрузить турниры» в «Машине времени»).
-    it('страница не рисуется и не запрашивает данные, пока вход не восстановлен; затем получает токен', async () => {
+    // On a direct visit and on a page refresh there is no token yet — it comes by cookie. Pages that
+    // request data at once used to get a 401 ("Could not load tournaments" in the "Time machine").
+    it('the page is not rendered and requests no data until the login is restored; then it gets the token', async () => {
         let finishRefresh: (response: Response) => void = () => undefined;
         const requests: { url: string; authorized: boolean }[] = [];
         vi.stubGlobal('fetch', vi.fn((url: string, init?: RequestInit) => {
@@ -222,7 +222,7 @@ describe('App: вход восстанавливается до первой с�
                 <App/>
             </MemoryRouter>,
         );
-        // Шапка уже на месте, страницы ещё нет, запросов за турнирами не было.
+        // The header is already in place, the page is not yet, no tournament requests were made.
         expect(screen.getByRole('banner')).toBeInTheDocument();
         expect(screen.getByTestId('session-restoring')).toBeInTheDocument();
         expect(screen.queryByTestId('time-machine')).toBeNull();
@@ -238,7 +238,7 @@ describe('App: вход восстанавливается до первой с�
         expect(list.every((r) => r.authorized)).toBe(true);
     });
 
-    it('сервер не отвечает на восстановление входа — страница открывается сама через три секунды', async () => {
+    it('the server does not answer the login restore — the page opens by itself after three seconds', async () => {
         vi.useFakeTimers();
         try {
             vi.stubGlobal('fetch', vi.fn((url: string) => String(url).includes('/auth/refresh')
@@ -263,13 +263,13 @@ describe('App: вход восстанавливается до первой с�
         }
     });
 
-    it('у вошедшего игрока страница рисуется сразу', () => {
+    it('for a logged-in player the page is rendered at once', () => {
         setToken('jwt');
         renderApp('/library');
         expect(screen.queryByTestId('session-restoring')).toBeNull();
     });
 
-    it('у гостя страница появляется, когда восстановление входа ничего не дало', async () => {
+    it('for a guest the page appears when the login restore yielded nothing', async () => {
         vi.stubGlobal('fetch', vi.fn((url: string) => Promise.resolve(String(url).includes('/auth/refresh')
             ? {ok: false, status: 401, json: async () => ({})} as Response
             : {ok: true, status: 200, json: async () => []} as Response)));

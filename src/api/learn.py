@@ -1,13 +1,13 @@
 # --- FILE: src/api/learn.py ---
 """
-Школа (таск 14.1): прогресс уроков. Уроки — данные клиента, поэтому сервер принимает любой id урока в формате
-слага и хранит по нему шаг, завершение и лучший результат контрольных вопросов. Прогресс только растёт: повторное
-прохождение не сбрасывает пройденное, а результат экзамена хранится лучший.
+School (task 14.1): lesson progress. Lessons are client data, so the server accepts any lesson id in the
+slug format and stores for it the step, completion and the best result of the quiz questions. Progress only grows: repeating
+a lesson does not reset what was passed, and the exam result stored is the best one.
 
-GET /learn/after-game/{game_id} — карточки «Клубного тренера» после своей законченной партии
+GET /learn/after-game/{game_id} - the "Club Coach" cards after one's own finished game
 (src/services/coach_cards.py).
 
-GET /learn/course-progress — выполненное по видам упражнений для автозачёта шагов курса
+GET /learn/course-progress - what was done by exercise kind, for the auto-credit of course steps
 (src/services/course_progress.py).
 """
 
@@ -33,16 +33,18 @@ router = APIRouter()
 LESSON_ID_PATTERN = r"^[a-z0-9][a-z0-9-]{1,63}$"
 MAX_STEPS = 200
 MAX_EXAM_QUESTIONS = 10
-# Уроки — данные клиента, и сервер не знает их списка (таск A.8): потолок записей на игрока, чтобы произвольные id не
-# копились без конца. Уроков в плане — десятки.
+# Lessons are client data, and the server does not know their list (task A.8): a ceiling of records per player so that
+# arbitrary ids do not
+# pile up endlessly. There are dozens of lessons in the plan.
 MAX_LESSON_RECORDS = 300
 
 
 class ProgressUpdate(BaseModel):
     """
-    Прогресс урока от клиента: дальний пройденный шаг, число шагов, завершён ли урок и результат контрольных вопросов.
+    Lesson progress from the client: the furthest passed step, the number of steps, whether the lesson is completed and the
+    result of the quiz questions.
     """
-    step: int = Field(..., ge=0, lt=MAX_STEPS, description="Дальний пройденный шаг (с нуля)")
+    step: int = Field(..., ge=0, lt=MAX_STEPS, description="The furthest passed step (from zero)")
     steps_total: int = Field(..., ge=1, le=MAX_STEPS)
     completed: bool = False
     exam_score: int | None = Field(None, ge=0, le=MAX_EXAM_QUESTIONS)
@@ -86,7 +88,7 @@ async def list_progress(db: AsyncSession = Depends(get_db), user: User = Depends
 @router.get("/course-progress")
 async def course_progress(db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
     """
-    Выполненное игроком по видам упражнений — для автозачёта шагов Большого курса и программ (нормативы —
+    What the player did by exercise kind - for the auto-credit of steps of the Big Course and programmes (norms -
     src/services/course_progress.py): {lessons, themes, trainers, exams}.
     """
     return await course_progress_service.summary(db, user.id)
@@ -100,8 +102,8 @@ async def save_progress(
         user: User = Depends(get_current_user),
 ):
     """
-    Сохраняет прогресс урока. Повторное прохождение пройденного не сбрасывает: шаг только растёт, результат
-    контрольных хранится лучший.
+    Saves lesson progress. Repeating a passed lesson does not reset it: the step only grows, the result of the
+    quiz questions stored is the best one.
     """
     progress = (await db.execute(
         select(LessonProgress).where(LessonProgress.user_id == user.id, LessonProgress.lesson_id == lesson_id)
@@ -115,7 +117,7 @@ async def save_progress(
         progress = LessonProgress(user_id=user.id, lesson_id=lesson_id, step=0, steps_total=payload.steps_total)
         db.add(progress)
 
-    # Урок могли переписать (стало меньше шагов) — шаг не выходит за его длину.
+    # The lesson may have been rewritten (fewer steps now) - the step does not go beyond its length.
     progress.steps_total = payload.steps_total
     progress.step = min(max(progress.step, payload.step), payload.steps_total - 1)
     if payload.completed and progress.completed_at is None:
@@ -123,7 +125,7 @@ async def save_progress(
         await product_metrics.record_event(db, user.id, product_metrics.LESSON_COMPLETED)
     if payload.exam_score is not None and payload.exam_total is not None:
         if progress.exam_total != payload.exam_total:
-            # Экзамен изменился — прежний результат к нему не относится.
+            # The exam changed - the former result does not apply to it.
             progress.exam_score, progress.exam_total = payload.exam_score, payload.exam_total
         else:
             progress.exam_score = max(progress.exam_score or 0, payload.exam_score)
@@ -136,8 +138,9 @@ async def save_progress(
 async def after_game(game_id: int = Path(..., ge=1), db: AsyncSession = Depends(get_db),
                      user: User = Depends(get_current_user)):
     """
-    Карточки «Клубного тренера» после партии: личная задача из самой дорогой ошибки, отклонение от репертуара и темы
-    ошибки для урока (src/services/coach_cards.py). Только своя законченная партия, иначе 404 game_not_found.
+    "Club Coach" cards after a game: a personal puzzle from the costliest mistake, a deviation from the repertoire and the
+    mistake themes
+    for a lesson (src/services/coach_cards.py). Only one's own finished game, otherwise 404 game_not_found.
     """
     game = await db.get(Game, game_id)
     player = game is not None and user.id in (game.white_player_id, game.black_player_id)

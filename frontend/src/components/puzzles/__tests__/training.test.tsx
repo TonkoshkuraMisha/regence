@@ -1,4 +1,4 @@
-// Тренировка по приёмам (таск 13.4): список тем с прогрессом, карточка темы, показ на доске, тренировка, подборки.
+// Motif training (task 13.4): a list of themes with progress, a theme card, a show on the board, training, sets.
 
 import {act, fireEvent, render, screen, waitFor} from '@testing-library/react';
 import {MemoryRouter} from 'react-router-dom';
@@ -59,17 +59,17 @@ async function openThemes() {
     return screen.findByTestId('training-panel');
 }
 
-describe('режим «Приёмы»', () => {
-    it('темы по разделам с прогрессом; тема без задач приглушена', async () => {
+describe('"Motifs" mode', () => {
+    it('themes by section with progress; a theme without puzzles is dimmed', async () => {
         stub();
         await openThemes();
-        expect(screen.getByTestId('training-section-A').textContent).toContain('Двойной удар');
-        expect(screen.getByTestId('training-theme-fork').textContent).toContain('ступень 2 · 3/8');
-        expect(screen.getByTestId('training-theme-pin').textContent).toContain('освоено');
+        expect(screen.getByTestId('training-section-A').textContent).toContain('Double attack');
+        expect(screen.getByTestId('training-theme-fork').textContent).toContain('stage 2 · 3/8');
+        expect(screen.getByTestId('training-theme-pin').textContent).toContain('mastered');
         expect(screen.getByTestId('training-theme-lucena').className).toContain('opacity-50');
     });
 
-    it('карточка темы: объяснение, показ на доске, тренировка с прогрессом', async () => {
+    it('theme card: an explanation, a show on the board, training with progress', async () => {
         const calls = stub((url) => (url.includes('/move')
             ? {correct: true, done: true, reply: null, solution: null, result: {
                 solved: true, rating_before: 1500, rating_after: 1508, delta: 8, streak: 1, themes: ['fork'], run: null,
@@ -79,9 +79,9 @@ describe('режим «Приёмы»', () => {
         await openThemes();
         fireEvent.click(screen.getByTestId('training-theme-fork'));
         const card = screen.getByTestId('theme-card');
-        expect(card.textContent).toContain('Вилка');
-        expect(card.textContent).toContain('одна фигура одновременно нападает');
-        expect(card.textContent).toContain('Ступень 2 — закрепление: чисто решено 3 из последних 10, для перехода нужно 8.');
+        expect(card.textContent).toContain('Fork');
+        expect(card.textContent).toContain('A fork is when one piece attacks two of the opponent');
+        expect(card.textContent).toContain('Stage 2 — practice: solved cleanly 3 of the last 10, 8 needed to move on.');
 
         await act(async () => {
             fireEvent.click(screen.getByTestId('theme-demo'));
@@ -92,8 +92,8 @@ describe('режим «Приёмы»', () => {
             fireEvent.click(screen.getByTestId('theme-train'));
         });
         expect(calls.some((u) => u.endsWith('/train?theme=fork'))).toBe(true);
-        expect(screen.getByTestId('training-target').textContent).toContain('Вилка');
-        expect(screen.getByTestId('puzzle-info').textContent).toContain('ступень 1');
+        expect(screen.getByTestId('training-target').textContent).toContain('Fork');
+        expect(screen.getByTestId('puzzle-info').textContent).toContain('stage 1');
         await act(async () => {
             await vi.advanceTimersByTimeAsync(600);
         });
@@ -103,7 +103,7 @@ describe('режим «Приёмы»', () => {
         await act(async () => {
             fireEvent.click(document.querySelector('[data-square="f7"]') as HTMLElement);
         });
-        expect(await screen.findByTestId('training-progress')).toHaveTextContent('Ступень 2: чисто решено 4 из последних 10 (нужно 8).');
+        expect(await screen.findByTestId('training-progress')).toHaveTextContent('Stage 2: solved cleanly 4 of the last 10 (need 8).');
 
         await act(async () => {
             fireEvent.click(screen.getByTestId('training-back'));
@@ -111,7 +111,7 @@ describe('режим «Приёмы»', () => {
         expect(await screen.findByTestId('training-panel')).toBeTruthy();
     });
 
-    it('смешанная подборка «без названия темы» скрывает темы до конца решения', async () => {
+    it('the mixed set "without the theme name" hides the themes until the solution ends', async () => {
         const calls = stub((url) => (url.includes('/train?') ? {...PUZZLE, themes: [], stage: null} : null));
         await openThemes();
         fireEvent.click(screen.getByTestId('training-blind'));
@@ -119,11 +119,11 @@ describe('режим «Приёмы»', () => {
             fireEvent.click(screen.getByTestId('training-mixed-A'));
         });
         expect(calls.some((u) => u.endsWith('/train?section=A&blind=true'))).toBe(true);
-        expect(screen.getByTestId('training-target').textContent).toContain('Смешанная: Двойной удар · Без названия темы');
+        expect(screen.getByTestId('training-target').textContent).toContain('Mixed: Double attack · Without the theme name');
         expect(screen.queryByTestId('puzzle-themes')).toBeNull();
     });
 
-    it('цель задачи (27.8) уходит в запрос тренировки', async () => {
+    it('the puzzle goal (27.8) goes into the training request', async () => {
         const calls = stub((url) => (url.includes('/train?') ? {...PUZZLE, stage: null} : null));
         await openThemes();
         fireEvent.change(screen.getByTestId('training-goal'), {target: {value: 'mate'}});
@@ -133,7 +133,7 @@ describe('режим «Приёмы»', () => {
         expect(calls.some((u) => u.endsWith('/train?section=A&goal=mate'))).toBe(true);
     });
 
-    it('переход на следующую ступень и освоение темы', async () => {
+    it('moving to the next stage and mastering the theme', async () => {
         stub((url) => (url.includes('/move')
             ? {correct: true, done: true, reply: null, solution: null, result: {
                 solved: true, rating_before: 1500, rating_after: 1508, delta: 8, streak: 1, themes: [], run: null,
@@ -154,26 +154,26 @@ describe('режим «Приёмы»', () => {
         await act(async () => {
             fireEvent.click(document.querySelector('[data-square="f7"]') as HTMLElement);
         });
-        await waitFor(() => expect(screen.getByTestId('training-progress').textContent).toBe('Ступень пройдена! Теперь ступень 3.'));
+        await waitFor(() => expect(screen.getByTestId('training-progress').textContent).toBe('Stage passed! Now stage 3.'));
     });
 });
 
 describe('DemoViewer', () => {
-    it('ходы по шагам и переключение примеров', () => {
+    it('moves step by step and switching examples', () => {
         render(<DemoViewer examples={[
             {fen: PUZZLE.fen, moves: ['g8h8', 'e5f7'], color: 'white'},
             {fen: PUZZLE.fen, moves: ['g8f8'], color: 'white'},
         ]}/>);
-        expect(screen.getByTestId('demo-caption').textContent).toBe('Исходная позиция · ход 0 из 2');
+        expect(screen.getByTestId('demo-caption').textContent).toBe('The starting position · move 0 of 2');
         fireEvent.click(screen.getByTestId('demo-next'));
-        expect(screen.getByTestId('demo-caption').textContent).toContain('Ход соперника');
+        expect(screen.getByTestId('demo-caption').textContent).toContain('The opponent\'s move');
         fireEvent.click(screen.getByTestId('demo-next'));
-        expect(screen.getByTestId('demo-caption').textContent).toContain('Ход решения');
+        expect(screen.getByTestId('demo-caption').textContent).toContain('The solution move');
         expect(document.querySelector('[data-square="f7"] img')?.getAttribute('alt')).toBe('wn');
         expect((screen.getByTestId('demo-next') as HTMLButtonElement).disabled).toBe(true);
         fireEvent.click(screen.getByTestId('demo-prev'));
-        expect(screen.getByTestId('demo-caption').textContent).toContain('ход 1 из 2');
+        expect(screen.getByTestId('demo-caption').textContent).toContain('move 1 of 2');
         fireEvent.click(screen.getByTestId('demo-other'));
-        expect(screen.getByTestId('demo-caption').textContent).toBe('Исходная позиция · ход 0 из 1');
+        expect(screen.getByTestId('demo-caption').textContent).toBe('The starting position · move 0 of 1');
     });
 });

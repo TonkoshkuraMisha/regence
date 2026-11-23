@@ -1,7 +1,7 @@
 // --- FILE: frontend/src/trainers/coordinates.ts ---
-// Тренажёры координат (таск 19.2): «Найди поле», «Назови поле», «Цвет поля», «Диагонали». Вопросы — детерминированные
-// по seed (тесты); настройки попытки (сторона, координаты на доске, время) кодируются в номер уровня 1–8, чтобы
-// рекорды считались отдельно для каждого сочетания.
+// Coordinate trainers (task 19.2): "Find the square", "Name the square", "Square color", "Diagonals". Questions are deterministic
+// by seed (tests); attempt settings (side, coordinates on the board, time) are encoded in a level number 1-8 so that
+// records are counted separately for each combination.
 
 import {rng} from './vision';
 
@@ -17,7 +17,7 @@ export interface CoordOptions {
     seconds: 30 | 60;
 }
 
-/** Уровень 1–8 ↔ настройки: сторона, координаты, время. */
+/** Level 1-8 <-> settings: side, coordinates, time. */
 export function optionsToLevel(o: CoordOptions): number {
     return 1 + (o.side === 'black' ? 1 : 0) + (o.coordinates ? 0 : 2) + (o.seconds === 60 ? 4 : 0);
 }
@@ -27,7 +27,7 @@ export function levelToOptions(level: number): CoordOptions {
     return {side: n & 1 ? 'black' : 'white', coordinates: !(n & 2), seconds: n & 4 ? 60 : 30};
 }
 
-/** a1 — тёмное поле. */
+/** a1 is a dark square. */
 export function squareColor(square: string): 'light' | 'dark' {
     const file = FILES.indexOf(square[0]);
     const rank = Number(square[1]) - 1;
@@ -42,9 +42,9 @@ export function sameDiagonal(a: string, b: string): boolean {
 }
 
 export interface CoordQuestion {
-    /** Поле вопроса: назвать / найти / цвет / от него диагональ. */
+    /** Question square: to name / to find / color / diagonal from it. */
     square: string;
-    /** Варианты ответа (для «Назови поле» и «Диагонали»), правильный — `answer`. */
+    /** Answer options (for "Name the square" and "Diagonals"), the correct one is `answer`. */
     options: string[];
     answer: string;
 }
@@ -58,7 +58,7 @@ function shuffle<T>(items: T[], next: () => number): T[] {
     return list;
 }
 
-/** Вопрос номер `index` попытки с данным seed. */
+/** Question number `index` of an attempt with the given seed. */
 export function coordQuestion(trainer: CoordTrainer, seed: number, index: number): CoordQuestion {
     const next = rng(seed * 1009 + index * 7919 + 17);
     const pick = <T, >(list: T[]) => list[Math.floor(next() * list.length)];
@@ -68,7 +68,7 @@ export function coordQuestion(trainer: CoordTrainer, seed: number, index: number
         return {square, options: shuffle([square, ...others], next), answer: square};
     }
     if (trainer === 'coord_diagonal') {
-        // Поле, у которого есть диагональные соседи (у любого поля они есть), и три поля не на его диагоналях.
+        // A square that has diagonal neighbors (every square has them), and three squares not on its diagonals.
         const onDiagonal = ALL_SQUARES.filter((s) => sameDiagonal(square, s));
         const answer = pick(onDiagonal);
         const wrong = shuffle(ALL_SQUARES.filter((s) => s !== square && !sameDiagonal(square, s)), next).slice(0, 3);
@@ -78,7 +78,7 @@ export function coordQuestion(trainer: CoordTrainer, seed: number, index: number
     return {square, options: [], answer: square};
 }
 
-/** Проверка ответа: для «Найди поле» ответ — поле, по которому нажали. */
+/** Answer check: for "Find the square" the answer is the square that was clicked. */
 export function isCorrect(question: CoordQuestion, reply: string): boolean {
     return reply === question.answer;
 }

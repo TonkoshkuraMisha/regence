@@ -1,5 +1,5 @@
-// «Клубный тренер» в итоге партии (план владельца 18.11, задача 5): правила выбора модуля курса и переспроса,
-// три карточки в GameSummaryPanel, решение задачи из своей ошибки прямо в панели, ссылка на модуль курса.
+// The "club coach" in the game summary (owner plan 18.11, task 5): rules for choosing a course module and for re-asking,
+// three cards in GameSummaryPanel, solving a puzzle from one's own mistake right in the panel, a link to the course module.
 
 import {fireEvent, render, screen, waitFor} from '@testing-library/react';
 import {MemoryRouter} from 'react-router-dom';
@@ -17,13 +17,13 @@ const CARDS: AfterGameCards = {
     game_id: 42, analysed: true,
     puzzle: {id: 7, game_id: 42, ply: 6, fen: FEN, previous_move: 'f1c4', color: 'black', themes: ['fork'],
              attempts: 0, solved_streak: 0},
-    deviation: {repertoire_id: 3, name: 'Испанская', starter: null, kind: 'you_left', ply: 5, played: 'Bc4',
+    deviation: {repertoire_id: 3, name: 'Spanish', starter: null, kind: 'you_left', ply: 5, played: 'Bc4',
                 played_uci: 'f1c4', expected: ['Bb5'], line: ['e2e4', 'e7e5', 'g1f3', 'b8c6'], position: 'p'},
     lesson_themes: ['no_such_theme', 'fork'],
 };
 
 
-/** fetch по адресу: разбор, карточки, ответ на задачу. */
+/** fetch by address: the analysis, the cards, the answer to a puzzle. */
 function stubApi(cards: Partial<AfterGameCards> | null) {
     const calls: string[] = [];
     vi.stubGlobal('fetch', vi.fn(async (url: string) => {
@@ -43,21 +43,21 @@ afterEach(() => {
     localStorage.clear();
 });
 
-describe('правила', () => {
+describe('rules', () => {
     const course: CourseModule[] = [
         {code: 'T2.1', level: 2, branch: 'T', steps: [{kind: 'theme', id: 'fork'}]},
         {code: 'T1.1', level: 1, branch: 'T', steps: [{kind: 'theme', id: 'fork'}]},
         {code: 'T1.2', level: 1, branch: 'T', steps: [{kind: 'theme', id: 'pin'}]},
     ];
 
-    it('урок — первая тема с модулем, модуль самого раннего уровня', () => {
+    it('the lesson — the first theme with a module, the module of the earliest level', () => {
         expect(lessonModuleFor(['skewer', 'fork', 'pin'], course)).toEqual({module: course[1], theme: 'fork'});
         expect(lessonModuleFor(['pin'], course)?.module.code).toBe('T1.2');
         expect(lessonModuleFor(['skewer'], course)).toBeNull();
         expect(lessonModuleFor([], course)).toBeNull();
     });
 
-    it('переспрашивать — пока задачи нет и попытки не кончились', () => {
+    it('re-ask — while there is no puzzle and attempts are not used up', () => {
         const empty = {...CARDS, puzzle: null};
         expect(shouldPoll(empty, 0)).toBe(true);
         expect(shouldPoll(empty, POLL_ATTEMPTS)).toBe(false);
@@ -66,8 +66,8 @@ describe('правила', () => {
     });
 });
 
-describe('карточки в итоге партии', () => {
-    it('три карточки; задача решается в панели; урок ведёт в модуль курса', async () => {
+describe('cards in the game summary', () => {
+    it('three cards; the puzzle is solved in the panel; the lesson leads to a module of the course', async () => {
         const calls = stubApi(CARDS);
         render(<MemoryRouter><GameSummaryPanel gameId={42} playerColor="black" recommendation={null} onPlayRecommended={vi.fn()}/></MemoryRouter>);
         await screen.findByTestId('coach-cards');
@@ -75,15 +75,15 @@ describe('карточки в итоге партии', () => {
         expect(screen.getByTestId('coach-card-deviation').textContent).toContain('Bc4');
         const link = screen.getByTestId('coach-lesson-link');
         expect(link.getAttribute('href')).toBe('/learn/course?level=1&module=T1.1');
-        expect(screen.getByTestId('coach-card-lesson').textContent).toContain('Вилка');
+        expect(screen.getByTestId('coach-card-lesson').textContent).toContain('Fork');
 
         fireEvent.click(screen.getByTestId('coach-solve'));
         await playMove('g8', 'f6');
-        await waitFor(() => expect(screen.getByTestId('coach-puzzle-result').textContent).toContain('Верно!'));
+        await waitFor(() => expect(screen.getByTestId('coach-puzzle-result').textContent).toContain('Correct!'));
         expect(calls.some((url) => url.includes('/personal/7/answer'))).toBe(true);
     });
 
-    it('нечего показать — блока нет; ответ без полей не ломает панель', async () => {
+    it('nothing to show — no block; an answer without fields breaks nothing the panel', async () => {
         stubApi({game_id: 42, analysed: false, puzzle: null, deviation: null, lesson_themes: []});
         const {unmount} = render(<MemoryRouter><GameSummaryPanel gameId={42} playerColor="white" recommendation={null} onPlayRecommended={vi.fn()}/></MemoryRouter>);
         await screen.findByTestId('summary-accuracy');

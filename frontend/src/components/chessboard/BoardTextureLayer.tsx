@@ -1,7 +1,7 @@
 // --- FILE: frontend/src/components/chessboard/BoardTextureLayer.tsx ---
-// Слой процедурной текстуры доски (таск 18.1) поверх цвета рамки или клетки. Текстура задана в теме доски
-// (config/boardAppearance.ts, textureLayerStyle): файл из /assets/textures, непрозрачность и режим наложения. У темы
-// без текстуры (или с текстурой только для тёмных полей — на светлом поле) слой не создаётся.
+// Procedural board texture layer (task 18.1) over the frame or square colour. The texture is defined in the board theme
+// (config/boardAppearance.ts, textureLayerStyle): a file from /assets/textures, opacity and blend mode. For a theme
+// without a texture (or with a texture only for dark squares, on a light square) the layer is not created.
 
 import {textureLayerStyle} from '../../config/boardAppearance';
 import type {BoardTheme} from '../../config/boardAppearance';

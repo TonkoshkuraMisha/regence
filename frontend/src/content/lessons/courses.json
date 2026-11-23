@@ -1,58 +1,50 @@
 [
-  {
-    "id": "tactics",
-    "order": 1,
-    "title": {
-      "en": "Tactics: double attack, pin, deflection and more",
-      "uk": "Тактика: подвійний удар, зв'язка, відволікання та інші прийоми",
-      "ru": "Тактика: двойной удар, связка, отвлечение и другие приёмы"
+    {
+        "id": "tactics",
+        "order": 1,
+        "title": {
+            "en": "Tactics: double attack, pin, deflection and more",
+            "uk": "Тактика: подвійний удар, зв'язка, відволікання та інші прийоми"
+        },
+        "summary": {
+            "en": "The basic tactical blows that win material in almost every game.",
+            "uk": "Базові тактичні удари, що виграють матеріал майже в кожній партії."
+        }
     },
-    "summary": {
-      "en": "The basic tactical blows that win material in almost every game.",
-      "uk": "Базові тактичні удари, що виграють матеріал майже в кожній партії.",
-      "ru": "Базовые тактические удары, которые выигрывают материал почти в каждой партии."
-    }
-  },
-  {
-    "id": "king-attack",
-    "order": 2,
-    "title": {
-      "en": "Attacking the king",
-      "uk": "Атака на короля",
-      "ru": "Атака на короля"
+    {
+        "id": "king-attack",
+        "order": 2,
+        "title": {
+            "en": "Attacking the king",
+            "uk": "Атака на короля"
+        },
+        "summary": {
+            "en": "Typical mating patterns and blows that decide the game at once.",
+            "uk": "Типові матові побудови й удари, що вирішують партію одразу."
+        }
     },
-    "summary": {
-      "en": "Typical mating patterns and blows that decide the game at once.",
-      "uk": "Типові матові побудови й удари, що вирішують партію одразу.",
-      "ru": "Типовые матовые построения и удары, которые решают партию сразу."
-    }
-  },
-  {
-    "id": "endgame",
-    "order": 3,
-    "title": {
-      "en": "Endgame: converting an advantage",
-      "uk": "Ендшпіль: реалізація переваги",
-      "ru": "Эндшпиль: реализация перевеса"
+    {
+        "id": "endgame",
+        "order": 3,
+        "title": {
+            "en": "Endgame: converting an advantage",
+            "uk": "Ендшпіль: реалізація переваги"
+        },
+        "summary": {
+            "en": "How to turn an extra pawn and an active king into a win.",
+            "uk": "Як довести зайвого пішака й активного короля до перемоги."
+        }
     },
-    "summary": {
-      "en": "How to turn an extra pawn and an active king into a win.",
-      "uk": "Як довести зайвого пішака й активного короля до перемоги.",
-      "ru": "Как довести лишнюю пешку и активного короля до победы."
+    {
+        "id": "strategy",
+        "order": 4,
+        "title": {
+            "en": "Strategy: pawn structures",
+            "uk": "Стратегія: пішакові структури"
+        },
+        "summary": {
+            "en": "Typical pawn structures and the plans they give both sides.",
+            "uk": "Типові пішакові структури й плани, які вони дають обом сторонам."
+        }
     }
-  },
-  {
-    "id": "strategy",
-    "order": 4,
-    "title": {
-      "en": "Strategy: pawn structures",
-      "uk": "Стратегія: пішакові структури",
-      "ru": "Стратегия: пешечные структуры"
-    },
-    "summary": {
-      "en": "Typical pawn structures and the plans they give both sides.",
-      "uk": "Типові пішакові структури й плани, які вони дають обом сторонам.",
-      "ru": "Типичные пешечные структуры и планы, которые они дают обеим сторонам."
-    }
-  }
 ]

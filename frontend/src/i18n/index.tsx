@@ -1,10 +1,10 @@
 // --- FILE: frontend/src/i18n/index.tsx ---
-// Текущий язык и перевод. Язык — модульное хранилище (useSyncExternalStore), а не React-контекст: перевод
-// нужен и вне компонентов (сервис WebSocket, звуки, конфиги), и компоненты работают без обёртки-провайдера —
-// в том числе в тестах, где их отрисовывают поодиночке.
+// Current language and translation. The language is a module store (useSyncExternalStore), not a React context: translation
+// is needed outside components too (WebSocket service, sounds, configs), and components work without a provider wrapper -
+// including in tests where they are rendered one by one.
 
 import {Fragment, useMemo, useSyncExternalStore, type ReactNode} from 'react';
-import {enUS, ru as ruDateLocale, uk as ukDateLocale, type Locale} from 'date-fns/locale';
+import {enUS, uk as ukDateLocale, type Locale} from 'date-fns/locale';
 import {
     DEFAULT_LANGUAGE,
     interpolate,
@@ -20,18 +20,17 @@ import {
 } from './core';
 import {en, type Messages} from './messages/en';
 import {uk} from './messages/uk';
-import {ru} from './messages/ru';
 
 export * from './core';
 export {LANGUAGE_NATIVE_NAMES, LANGUAGE_SHORT_LABELS} from './messages/languageNames';
 export type {Messages};
 
-export const CATALOGS: Record<Language, Messages> = {en, uk, ru};
+export const CATALOGS: Record<Language, Messages> = {en, uk};
 
 export type MessageKey = TextKey<Messages>;
 export type MessagePluralKey = PluralKey<Messages>;
 
-const DATE_LOCALES: Record<Language, Locale> = {en: enUS, uk: ukDateLocale, ru: ruDateLocale};
+const DATE_LOCALES: Record<Language, Locale> = {en: enUS, uk: ukDateLocale};
 
 export const LANGUAGE_STORAGE_KEY = 'regence_language';
 
@@ -44,7 +43,7 @@ function readStoredLanguage(): Language | null {
     }
 }
 
-// Язык по умолчанию — английский (решение владельца 22.11): язык браузера не угадываем, игрок выбирает сам, выбор запоминается.
+// The default language is English (owner's decision of 22.11): the browser language is not guessed, the player chooses, the choice is remembered.
 let currentLanguage: Language = readStoredLanguage() ?? DEFAULT_LANGUAGE;
 const listeners = new Set<() => void>();
 
@@ -63,7 +62,7 @@ export function setLanguage(language: Language, {persist = true}: { persist?: bo
         try {
             localStorage.setItem(LANGUAGE_STORAGE_KEY, language);
         } catch {
-            // приватный режим или запрет хранилища — язык просто не запомнится
+            // private mode or storage blocked - the language just will not be remembered
         }
     }
     if (language === currentLanguage) return;
@@ -99,7 +98,7 @@ export function translatePlural(language: Language, key: MessagePluralKey, count
     return interpolate(selectPlural(language, message, count), {count, ...params});
 }
 
-/** Перевод на текущем языке — для кода вне компонентов. В компонентах — useI18n(), чтобы перерисоваться при смене. */
+/** Translation in the current language - for code outside components. In components use useI18n() to re-render on change. */
 export function t(key: MessageKey, params?: Params): string {
     return translate(currentLanguage, key, params);
 }
@@ -108,7 +107,7 @@ export function tp(key: MessagePluralKey, count: number, params?: Params): strin
     return translatePlural(currentLanguage, key, count, params);
 }
 
-/** Локаль date-fns текущего языка — для форматирования дат вне компонентов. */
+/** date-fns locale of the current language - for date formatting outside components. */
 export function getDateLocale(): Locale {
     return DATE_LOCALES[currentLanguage];
 }
@@ -117,7 +116,7 @@ export interface I18n {
     language: Language;
     t: (key: MessageKey, params?: Params) => string;
     tp: (key: MessagePluralKey, count: number, params?: Params) => string;
-    /** Сообщение, в которое подставлены элементы (ссылки, выделение): предложение целиком остаётся в каталоге. */
+    /** A message with elements substituted (links, emphasis): the whole sentence stays in the catalog. */
     rich: (key: MessageKey, params: Record<string, ReactNode | string | number>) => ReactNode;
     dateLocale: Locale;
     setLanguage: (language: Language) => void;
@@ -144,9 +143,9 @@ export function useI18n(): I18n {
 }
 
 /**
- * Сообщение для показа: ключ каталога с параметрами (переводится при каждом показе — значит, и после смены
- * языка) или текст как есть (имя, присланное сервером, или текст ошибки, кода которой клиент ещё не знает).
- * Параметр сам может быть сообщением: «Бот не смог сделать ход: {detail}», где detail — ошибка сервера.
+ * Message for display: a catalog key with parameters (translated on every display - hence also after a language
+ * change) or text as is (a name sent by the server, or error text whose code the client does not know yet).
+ * A parameter can itself be a message: "The bot could not make a move: {detail}", where detail is a server error.
  */
 export type UiMessage = { key: MessageKey; params?: Record<string, MessageParam> } | { text: string };
 
@@ -156,7 +155,7 @@ export function uiMessage(key: MessageKey, params?: Record<string, MessageParam>
     return params ? {key, params} : {key};
 }
 
-/** Есть ли такой ключ-строка в каталоге (эталон — английский): для кодов, пришедших с сервера. */
+/** Whether such a string key exists in the catalog (reference - English): for codes that came from the server. */
 export function hasMessage(key: string): key is MessageKey {
     return typeof lookup(CATALOGS.en, key) === 'string';
 }

@@ -1,10 +1,12 @@
 # --- FILE: src/services/guess_quiz.py ---
 """
-Вопросы после партии в режиме «Угадай ход» (таск 14.3, «партия целиком»): три вопроса о только что разобранной партии
-мастера — кто выиграл, где был ключевой момент и кончилась ли партия матом. Ответы известны по данным партии
-(`games.result`, PGN) и отобранным моментам (`guess_positions.gap_cp` — отрыв лучшего хода): движок не вызывается.
-Правила — чистые функции без базы: варианты и верные ответы детерминированы (зерно — id партии), поэтому сервер
-ничего не хранит: проверка пересчитывает те же вопросы. Сервер отдаёт коды вариантов, текст собирает клиент.
+Questions after a game in the "Guess the move" mode (task 14.3, "whole game"): three questions about the master game just
+analysed -- who won, where the key moment was and whether the game ended in mate. The answers are known from the game data
+(`games.result`, PGN) and the selected moments (`guess_positions.gap_cp` -- the gap of the best move): the engine is not
+called.
+The rules are pure functions without a database: the options and correct answers are deterministic (the seed is the game id),
+so the server
+stores nothing: checking recomputes the same questions. The server gives option codes, the client assembles the text.
 """
 
 import io
@@ -13,27 +15,30 @@ import random
 import chess
 import chess.pgn
 
-# Вопросы: код вопроса -> варианты по умолчанию (для «ключевого момента» варианты строятся по партии).
+# Questions: question code -> default options (for the "key moment" the options are built from the game).
 WINNER_OPTIONS = ("white", "black", "draw")
 MATE_OPTIONS = ("yes", "no")
-# Сколько вариантов у вопроса про ключевой момент: верный и до двух правдоподобных.
+# How many options the key moment question has: the correct one and up to two plausible ones.
 KEY_MOMENT_OPTIONS = 3
-# Минимум отобранных моментов, чтобы спрашивать про ключевой (с одним моментом вопрос выдаёт ответ).
+# The minimum of selected moments to ask about the key one (with a single moment the question gives away the answer).
 MIN_MOMENTS_FOR_KEY = 2
 
 
 def moment_code(ply: int) -> str:
-    """Код хода для варианта: номер хода и сторона («12w» — 12-й ход белых; ply — полуход с нуля)."""
+    """A move code for an option: the move number and side ("12w" -- White's 12th move; ply -- the ply counted from zero)."""
     return f"{ply // 2 + 1}{'w' if ply % 2 == 0 else 'b'}"
 
 
 def winner_of(result: str | None) -> str:
-    """Победитель по итогу партии: white / black / draw (всё, кроме 1-0 и 0-1, — ничья)."""
+    """The winner by the game result: white / black / draw (everything except 1-0 and 0-1 is a draw)."""
     return {"1-0": "white", "0-1": "black"}.get(result or "", "draw")
 
 
 def plies_and_mate(pgn: str | None) -> tuple[int, bool]:
-    """(число полуходов, кончается ли партия матом на доске) по записи ходов; нечитаемая запись — (0, False)."""
+    """
+    (the number of plies, whether the game ends in mate on the board) from the move record; an unreadable record -- (0,
+    False).
+    """
     if not pgn:
         return 0, False
     try:
@@ -50,16 +55,18 @@ def build_quiz(
         game_id: int, result: str | None, final_mate: bool, moments: list[tuple[int, int]], total_plies: int,
 ) -> tuple[list[dict], dict[str, str]]:
     """
-    (вопросы, верные ответы). moments — (полуход, отрыв лучшего хода) отобранных моментов партии; ключевой момент — с
-    наибольшим отрывом. Неверные варианты ключевого момента — другие ходы партии (зерно — id партии, порядок
-    постоянный). Вопрос про ключевой момент есть, только если моментов не меньше MIN_MOMENTS_FOR_KEY.
+    (questions, correct answers). moments -- (ply, the best move's gap) of the game's selected moments; the key moment is the
+    one with
+    the biggest gap. The wrong options of the key moment are other moves of the game (the seed is the game id, the order
+    is constant). The key moment question exists only if there are at least MIN_MOMENTS_FOR_KEY moments.
     """
     questions = [{"id": "winner", "options": list(WINNER_OPTIONS)}]
     answers = {"winner": winner_of(result)}
     if len(moments) >= MIN_MOMENTS_FOR_KEY:
         key_ply = max(moments, key=lambda m: (m[1], -m[0]))[0]
         rng = random.Random(game_id)
-        # Игра идёт за ту сторону, что в позиции момента; неверные варианты — ходы той же стороны, не отобранные.
+        # The game goes for the side that is to move in the moment's position; the wrong options are moves of the same side,
+        # not selected.
         selected = {ply for ply, _gap in moments}
         pool = [p for p in range(key_ply % 2, max(total_plies, key_ply + 1), 2) if p not in selected]
         wrong = rng.sample(pool, min(KEY_MOMENT_OPTIONS - 1, len(pool)))
@@ -73,6 +80,9 @@ def build_quiz(
 
 
 def check_quiz(answers: dict[str, str], correct: dict[str, str]) -> dict:
-    """Итог: {score, total, results: {вопрос: верно ли}, correct: верные ответы}. Нет ответа на вопрос — неверно."""
+    """
+    The result: {score, total, results: {question: whether correct}, correct: the correct answers}. No answer to a question
+    -- wrong.
+    """
     results = {question: answers.get(question) == right for question, right in correct.items()}
     return {"score": sum(results.values()), "total": len(correct), "results": results, "correct": correct}

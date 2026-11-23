@@ -1,4 +1,4 @@
-// Доски (таск 18.1): координаты читаются на каждой доске (контраст WCAG ≥ 4,5), текстуры существуют, имена — в каталогах.
+// Boards (task 18.1): coordinates are readable on every board (WCAG contrast ≥ 4.5), textures exist, names are in the catalogs.
 
 import {existsSync, readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
@@ -19,31 +19,31 @@ function contrast(a: string, b: string): number {
 
 const themes = Object.values(BOARD_THEMES);
 
-describe('доски', () => {
-    it('не меньше 22 досок, id совпадает с ключом', () => {
+describe('boards', () => {
+    it('at least 22 boards, the id matches the key', () => {
         expect(themes.length).toBeGreaterThanOrEqual(22);
         for (const [key, theme] of Object.entries(BOARD_THEMES)) expect(theme.id).toBe(key);
     });
 
-    it.each(themes.map((theme) => [theme.id, theme] as const))('%s: координаты контрастны клетке (WCAG ≥ 4,5)', (_id, theme) => {
+    it.each(themes.map((theme) => [theme.id, theme] as const))('%s: coordinates contrast with the square (WCAG ≥ 4.5)', (_id, theme) => {
         expect(contrast(theme.coordLight, theme.light)).toBeGreaterThanOrEqual(4.5);
         expect(contrast(theme.coordDark, theme.dark)).toBeGreaterThanOrEqual(4.5);
     });
 
-    it('у каждой доски есть название на трёх языках', () => {
+    it('every board has a name in both languages', () => {
         for (const language of LANGUAGES) {
             const names = CATALOGS[language].appearance.themes as Record<string, string>;
             for (const theme of themes) expect(names[theme.id], `${language}: ${theme.id}`).toBeTruthy();
         }
     });
 
-    it('файлы текстур на месте', () => {
+    it('texture files are in place', () => {
         for (const theme of themes) {
             if (theme.texture) expect(existsSync(resolve(__dirname, '../../../public/assets/textures', theme.texture.file)), theme.id).toBe(true);
         }
     });
 
-    it('слой текстуры: режим наложения, рамка без слоя при 0, штриховка только на тёмных полях', () => {
+    it('texture layer: the blend mode, a frame without a layer at 0, hatching only on dark squares', () => {
         expect(textureLayerStyle(BOARD_THEMES.walnut, 'frame')).toMatchObject({opacity: 0.25, mixBlendMode: 'multiply'});
         expect(textureLayerStyle(BOARD_THEMES.glass, 'square')?.mixBlendMode).toBe('screen');
         expect(textureLayerStyle(BOARD_THEMES.maple, 'square')).toBeNull();
@@ -55,19 +55,19 @@ describe('доски', () => {
     });
 });
 
-describe('рамка фокуса клетки (таск 26.3, WCAG 1.4.11)', () => {
-    // Рамка двухцветная — чёрная и белая (index.css, .board-square:focus-visible): на любой клетке любой темы хотя бы
-    // один цвет должен отличаться от клетки с контрастом не ниже 3:1, иначе фокус с клавиатуры не видно.
+describe('square focus ring (task 26.3, WCAG 1.4.11)', () => {
+    // The ring is two-coloured — black and white (index.css, .board-square:focus-visible): on any square of any theme at least
+    // one colour must differ from the square with a contrast of at least 3:1, otherwise the keyboard focus is not visible.
     const RING = ['#000000', '#FFFFFF'];
     const MIN_NON_TEXT_CONTRAST = 3;
 
-    it.each(themes.map((theme) => [theme.id, theme] as const))('%s: рамка видна на светлой и тёмной клетке', (_id, theme) => {
+    it.each(themes.map((theme) => [theme.id, theme] as const))('%s: the ring is visible on a light and a dark square', (_id, theme) => {
         for (const square of [theme.light, theme.dark]) {
             expect(Math.max(...RING.map((ring) => contrast(ring, square)))).toBeGreaterThanOrEqual(MIN_NON_TEXT_CONTRAST);
         }
     });
 
-    it('стиль рамки — эти два цвета', () => {
+    it('the ring style is two colours', () => {
         const css = readFileSync(resolve(__dirname, '../../index.css'), 'utf8');
         const rule = css.slice(css.indexOf('.board-square:focus-visible'));
         for (const ring of RING) expect(rule).toContain(ring);

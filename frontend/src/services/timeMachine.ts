@@ -1,10 +1,10 @@
 // --- FILE: frontend/src/services/timeMachine.ts ---
-// «Машина времени» (таск 28.3): знаменитые турниры прошлого, в которые игрок входит дополнительным участником.
-// Сервер отдаёт ключи и числа (состав, сила, настоящий итог); названия, рассказы и имена — из каталога.
-// Эндпоинты (src/api/tournaments.py): GET /api/v1/tournaments/time-machine — лента турниров, открыта и гостю;
-// POST /api/v1/tournaments/time-machine/{ключ} — войти в турнир, только с входом. Составы и настоящие итоги
-// записаны на сервере в src/services/time_machine.py. Каталог: названия турниров — timeMachine.events.<ключ>,
-// мастера прошлого — bots.guests.<id>, исторические боты — bots.profiles.<id>.
+// "Time Machine" (task 28.3): famous tournaments of the past that the player joins as an extra participant.
+// The server provides keys and numbers (lineup, strength, real result); names, stories and names of people come from the catalog.
+// Endpoints (src/api/tournaments.py): GET /api/v1/tournaments/time-machine — the tournament feed, open to guests too;
+// POST /api/v1/tournaments/time-machine/{key} — join a tournament, sign-in only. Lineups and real results
+// are recorded on the server in src/services/time_machine.py. Catalog: tournament names — timeMachine.events.<key>,
+// masters of the past — bots.guests.<id>, historical bots — bots.profiles.<id>.
 
 import {API_BASE_URL} from '../config/api';
 import {UiError, readApiErrorOr} from './apiErrors';
@@ -14,39 +14,39 @@ import type {I18n, MessageKey} from '../i18n';
 import {getToken} from './authToken';
 import type {Tournament, TournamentFormat} from './tournaments';
 
-/** Приставка ключа, под которым мастер прошлого сохраняется участником турнира («guest:<id>», как на сервере). */
+/** Prefix of the key under which a master of the past is saved as a tournament participant ("guest:<id>", as on the server). */
 export const GUEST_PREFIX = 'guest:';
 
-/** Участник исторического турнира и его настоящий итог. */
+/** A participant of a historical tournament and their real result. */
 export interface FieldEntry {
     id: string;
-    /** bot — исторический мастер с книгой и портретом; guest — мастер прошлого (участник турниров). */
+    /** bot — a historical master with a book and a portrait; guest — a master of the past (a tournament participant). */
     kind: 'bot' | 'guest';
     rating: number;
-    /** Место в настоящем турнире; null — выбыл без места (турнир на выбывание). */
+    /** Place in the real tournament; null — eliminated without a place (knockout tournament). */
     place: number | null;
-    /** Очки в настоящем турнире; null — у турнира на выбывание очков нет. */
+    /** Points in the real tournament; null — a knockout tournament has no points. */
     score: number | null;
 }
 
-/** Знаменитый турнир в ленте «Машины времени». */
+/** A famous tournament in the "Time Machine" feed. */
 export interface HistoricEvent {
     key: string;
     year: number;
     format: TournamentFormat;
-    /** Число кругов кругового турнира (в каждом круге каждый играет с каждым). */
+    /** Number of rounds of a round-robin (in each round everyone plays everyone). */
     cycles: number;
-    /** Участников вместе с игроком. */
+    /** Participants including the player. */
     size: number;
     rounds: number;
-    /** Сколько партий сыграет игрок; null — зависит от него самого (на выбывание). */
+    /** How many games the player will play; null — depends on the player themselves (knockout). */
     player_games: number | null;
-    /** Настоящая таблица неполная: турнир не доиграли или ничьи не давали очков. */
+    /** The real table is incomplete: the tournament was not finished or draws gave no points. */
     partial?: boolean;
     field: FieldEntry[];
     /**
-     * История вошедшего игрока в этом турнире: id его идущего турнира (null — такого нет), лучшее место и сколько
-     * раз он турнир доиграл. Гостю приходят пустые значения.
+     * History of the joined player in this tournament: the id of their ongoing tournament (null — none), best place and how many
+     * times they completed the tournament. A guest receives empty values.
      */
     active_id: number | null;
     best_place: number | null;
@@ -55,7 +55,7 @@ export interface HistoricEvent {
 
 const BASE = `${API_BASE_URL}/api/v1/tournaments/time-machine`;
 
-/** Запрос с токеном, если игрок вошёл; отказ — UiError с текстом по коду сервера или запасным fallback. */
+/** Request with a token if the player is signed in; a refusal is a UiError with text by server code or the fallback. */
 async function call<T>(url: string, init: RequestInit, fallback: MessageKey): Promise<T> {
     const token = getToken();
     const res = await fetch(url, {
@@ -69,57 +69,57 @@ async function call<T>(url: string, init: RequestInit, fallback: MessageKey): Pr
     return res.json() as Promise<T>;
 }
 
-/** Лента знаменитых турниров по годам. */
+/** Feed of famous tournaments by year. */
 export const getTimeMachine = () =>
     call<{ events?: HistoricEvent[] }>(BASE, {method: 'GET'}, 'timeMachine.loadFailed').then((r) => r.events ?? []);
 
 /**
- * Войти в турнир: сервер создаёт обычный турнир игрока в полном историческом составе с выбранным контролем
- * времени; партии мастеров между собой разыгрывает сервер. Дальше турнир идёт как любой другой (tournaments.ts).
+ * Join a tournament: the server creates the player's ordinary tournament with the full historical lineup and the chosen time
+ * control; games between the masters are played out by the server. After that the tournament runs like any other (tournaments.ts).
  */
 export const startHistoricEvent = (key: string, baseTimeMs: number, incrementMs: number) =>
     call<Tournament>(`${BASE}/${encodeURIComponent(key)}`, {
         method: 'POST', body: JSON.stringify({base_time_ms: baseTimeMs, increment_ms: incrementMs}),
     }, 'timeMachine.startFailed');
 
-/** Полное имя мастера прошлого на языке игрока; id без перевода показывается как есть. */
+/** Full name of a master of the past in the player's language; an id without a translation is shown as is. */
 export function guestName(id: string, t: I18n['t']): string {
     const key = `bots.guests.${id}.name`;
     return hasMessage(key) ? t(key as MessageKey) : id;
 }
 
-/** Короткое имя (фамилия) — для таблиц и сетки турнира, как у исторических ботов. */
+/** Short name (surname) — for tables and the tournament bracket, as with historical bots. */
 export function guestShortName(id: string, t: I18n['t']): string {
     const key = `bots.guests.${id}.shortName`;
     return hasMessage(key) ? t(key as MessageKey) : guestName(id, t);
 }
 
-/** Одна строка о мастере прошлого: кто он и как играл. */
+/** One line about a master of the past: who they are and how they played. */
 export function guestAbout(id: string, t: I18n['t']): string | null {
     const key = `bots.guests.${id}.about`;
     return hasMessage(key) ? t(key as MessageKey) : null;
 }
 
-/** Полное имя участника исторического турнира: у мастера с портретом — из каталога ботов, у мастера прошлого — своё. */
+/** Full name of a historical tournament participant: for a master with a portrait — from the bot catalog, for a master of the past — their own. */
 export function fieldName(entry: Pick<FieldEntry, 'id' | 'kind'>, t: I18n['t']): string {
     if (entry.kind === 'guest') return guestName(entry.id, t);
     const key = `bots.profiles.${entry.id}.name`;
     return hasMessage(key) ? t(key as MessageKey) : ladderOpponentName('historical', entry.id, t);
 }
 
-/** Короткое имя участника — там, где мало места. */
+/** Short name of a participant — where space is tight. */
 export function fieldShortName(entry: Pick<FieldEntry, 'id' | 'kind'>, t: I18n['t']): string {
     return entry.kind === 'guest' ? guestShortName(entry.id, t) : ladderOpponentName('historical', entry.id, t);
 }
 
-/** Очки в привычной записи: 16.5 → «16½», 0.5 → «½». */
+/** Points in the usual notation: 16.5 → "16½", 0.5 → "½". */
 export function scoreText(score: number): string {
     const whole = Math.floor(score);
     const half = score - whole >= 0.5;
     return `${whole || !half ? whole : ''}${half ? '½' : ''}`;
 }
 
-/** Название турнира на языке игрока; неизвестный ключ — как есть. */
+/** Tournament name in the player's language; an unknown key — as is. */
 export function eventTitle(key: string, t: I18n['t']): string {
     const message = `timeMachine.events.${key}.title`;
     return hasMessage(message) ? t(message as MessageKey) : key;

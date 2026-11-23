@@ -1,13 +1,13 @@
 """
-Проверка входа — зависимости маршрутов.
+Login checks - route dependencies.
 
-* get_current_user — для HTTP: игрок по токену из заголовка «Authorization: Bearer». Токен принимается, только
-  пока его версия совпадает с users.token_version (user_from_token): смена пароля и «выйти везде» отзывают все
-  прежние токены. Попутно игрок отмечается активным за сутки — для метрик (src/core/observability.py,
+* get_current_user - for HTTP: the player by the token from the "Authorization: Bearer" header. The token is accepted only
+  while its version matches users.token_version (user_from_token): a password change and "log out everywhere" revoke all
+  earlier tokens. On the way the player is marked as active for the day - for metrics (src/core/observability.py,
   src/services/product_metrics.py).
-* get_current_user_ws — для WebSocket: вход по одноразовому тикету. Тикет выдаёт POST /auth/ws-ticket и кладёт в
-  Redis (ключ ws_ticket:<тикет>, срок WS_TICKET_TTL_S); здесь он забирается командой GETDEL и поэтому срабатывает
-  ровно один раз. Токен в адресе WebSocket не используется: адреса попадают в журналы сервера и прокси.
+* get_current_user_ws - for WebSocket: login by a one-time ticket. The ticket is issued by POST /auth/ws-ticket and put into
+  Redis (key ws_ticket:<ticket>, TTL WS_TICKET_TTL_S); here it is taken by the GETDEL command and therefore works
+  exactly once. A token in the WebSocket address is not used: addresses end up in server and proxy logs.
 """
 
 from fastapi import Depends, Query, WebSocketException, status
@@ -24,7 +24,7 @@ from src.db.session import get_db, get_session_factory
 from src.models.user import User
 from src.services import product_metrics
 
-# Схема для извлечения токена из заголовка Authorization: Bearer
+# The scheme for extracting the token from the Authorization: Bearer header
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/login")
 
 WS_TICKET_PREFIX = "ws_ticket:"
@@ -32,8 +32,8 @@ WS_TICKET_PREFIX = "ws_ticket:"
 
 async def user_from_token(db: AsyncSession, token: str) -> User | None:
     """
-    Пользователь по JWT или None. Токен действителен, только пока его версия совпадает с
-    users.token_version: смена пароля и «выйти на всех устройствах» её увеличивают.
+    The user by JWT or None. The token is valid only while its version matches
+    users.token_version: a password change and "log out on all devices" increase it.
     """
     try:
         user_id, version = decode_user_token(token)
@@ -51,16 +51,16 @@ async def get_current_user(
         session_factory: async_sessionmaker[AsyncSession] = Depends(get_session_factory),
 ) -> User:
     """
-    Зависимость HTTP-эндпоинтов «только для вошедших»: игрок по токену из заголовка Authorization: Bearer, иначе
-    401 not_authenticated. Заодно отмечает игрока активным за сутки: счётчик в Redis для метрики
-    regence_active_players_today и событие в product_events (не чаще раза в сутки).
+    The dependency of "logged-in only" HTTP endpoints: the player by the token from the Authorization: Bearer header, otherwise
+    401 not_authenticated. It also marks the player as active for the day: a counter in Redis for the metric
+    regence_active_players_today and an event in product_events (at most once a day).
     """
     user = await user_from_token(db, token)
     if user is None:
         raise ApiError(status.HTTP_401_UNAUTHORIZED, "not_authenticated", headers={"WWW-Authenticate": "Bearer"})
-    bind_log_context(user_id=user.id)  # каждая строка журнала этого запроса несёт игрока (src/core/logging_setup.py)
-    await note_active_player(user.id)  # для метрики «процессор на активного игрока» (таск 23.3)
-    await product_metrics.mark_active(session_factory, user.id)  # удержание D1/D7/D30 (таск 23.5)
+    bind_log_context(user_id=user.id)  # every log line of this request carries the player (src/core/logging_setup.py)
+    await note_active_player(user.id)  # for the "CPU per active player" metric (task 23.3)
+    await product_metrics.mark_active(session_factory, user.id)  # D1/D7/D30 retention (task 23.5)
     return user
 
 
@@ -69,17 +69,18 @@ async def get_current_user_ws(
         session_factory: async_sessionmaker[AsyncSession] = Depends(get_session_factory),
 ) -> User:
     """
-    Зависимость WebSocket: вход по одноразовому тикету из параметра адреса ?ticket=. Неверный, истёкший или уже
-    использованный тикет — закрытие с кодом 1008; Redis недоступен — 1011.
+    The WebSocket dependency: login by a one-time ticket from the address parameter ?ticket=. A wrong, expired or already
+    used ticket - closing with code 1008; Redis unavailable - 1011.
 
-    JWT в адресе WebSocket попадал бы в access-логи uvicorn и прокси и оставался бы там рабочим до конца своего
-    срока. Вместо него клиент получает по HTTP (токен в заголовке) одноразовый тикет на WS_TICKET_TTL_S секунд;
-    GETDEL гарантирует, что тикет сработает ровно один раз. В Redis под ключом ws_ticket:<тикет> лежит
-    «id игрока:версия токенов».
+    A JWT in the WebSocket address would end up in the uvicorn and proxy access logs and would stay valid there until the end
+    of its
+    lifetime. Instead the client gets over HTTP (token in the header) a one-time ticket for WS_TICKET_TTL_S seconds;
+    GETDEL guarantees that the ticket works exactly once. In Redis under the key ws_ticket:<ticket> lies
+    "player id:token version".
 
-    Пользователь читается в короткой сессии, которая закрывается сразу: зависимость с get_db
-    держала бы соединение пула всё время, пока открыт WebSocket. Возвращаемый объект
-    отсоединён от сессии, его поля уже загружены.
+    The user is read in a short session that is closed immediately: a dependency with get_db
+    would hold a pool connection for as long as the WebSocket is open. The returned object
+    is detached from the session, its fields are already loaded.
     """
     rejected = WebSocketException(code=status.WS_1008_POLICY_VIOLATION, reason="Invalid or expired ticket")
     try:
@@ -93,7 +94,7 @@ async def get_current_user_ws(
     async with session_factory() as db:
         user = await db.get(User, int(user_id_str))
 
-    # Токены отозвали между выдачей тикета и подключением — тикет тоже недействителен.
+    # The tokens were revoked between the ticket being issued and the connection - the ticket is invalid too.
     if user is None or str(user.token_version) != version_str:
         raise rejected
     return user

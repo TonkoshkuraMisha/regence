@@ -1,5 +1,5 @@
 # --- FILE: tests/test_puzzles_api.py ---
-"""API решения задач (таск 13.2): решение не уходит клиенту, сервер проверяет каждый ход, рейтинг, подсказки."""
+"""Puzzle-solving API (task 13.2): the solution is not sent to the client, the server checks every move, rating, hints."""
 
 import datetime as dt
 
@@ -18,11 +18,11 @@ def _row(puzzle_id: str, fen: str, moves: str, tags: str, rating: int = 1500, po
             "Popularity": str(popularity), "NbPlays": "1000", "Themes": tags}
 
 
-# Чёрные уводят ладью с последней горизонтали; Ld8+ Le8 Lxe8# — мат в 2.
+# Black moves the rook off the back rank; Rd8+ Re8 Rxe8# - mate in 2.
 BACK_RANK = _row("BR2", "4r1k1/5ppp/8/8/8/8/3R1PPP/3R2K1 b - - 0 1", "e8e2 d2d8 e2e8 d8e8", "mateIn2 backRankMate")
-# Вилка конём: после ...Kh8 — Kf7+.
+# Knight fork: after ...Kh8 comes Nf7+.
 FORK = _row("FK1", "r2q2k1/ppp3pp/8/4N3/8/8/PPP2PPP/R2QK2R b KQ - 0 1", "g8h8 e5f7", "fork short", rating=1450)
-# Мат в 1 двумя способами: в решении La8#, но Ld8# тоже мат.
+# Mate in 1 two ways: the solution has Ra8#, but Rd8# is also mate.
 TWO_MATES = _row("TM1", "6k1/5ppp/8/8/8/8/5PPP/R2R2K1 b - - 0 1", "g8h8 a1a8", "mateIn1", rating=900)
 
 
@@ -61,7 +61,7 @@ async def test_solution_is_not_sent_and_moves_are_checked_one_by_one(client, tok
 
     attempts = (await db_session.execute(select(PuzzleAttempt))).scalars().all()
     assert len(attempts) == 1 and attempts[0].solved
-    # Задача закончена — ходы по ней больше не принимаются.
+    # The puzzle is finished: further moves on it are no longer accepted.
     assert _move(client, token_user_1, puzzle["id"], "d8e8").status_code == 409
 
 
@@ -96,7 +96,7 @@ async def test_hints_reduce_the_gain(client, token_user_1, puzzles):
     assert second == {"from": "e5", "to": "f7", "hints_used": 2}
     result = _move(client, token_user_1, puzzle["id"], "e5f7").json()["result"]
     assert result["solved"] and result["delta"] == 0
-    # Решено с подсказкой — серия не растёт.
+    # Solved with a hint: the streak does not grow.
     assert result["streak"] == 0
 
 
@@ -123,8 +123,8 @@ async def test_themes_and_repeats(client, token_user_1, puzzles):
         puzzle = _start(client, token_user_1)
         seen.add(puzzle["id"])
         client.post(f"{API}/{puzzle['id']}/give-up", headers=_auth(token_user_1))
-    assert len(seen) == 3  # пока есть нерешавшиеся — повторов нет
-    # Всё перерешано — задача всё равно выдаётся.
+    assert len(seen) == 3  # while unsolved ones remain, there are no repeats
+    # Everything has been re-solved: a puzzle is still served.
     assert _start(client, token_user_1)["id"] in seen
 
 
@@ -146,13 +146,13 @@ async def test_profile_and_auth(client, token_user_1, puzzles):
     assert profile["history"][0]["puzzle_id"] == puzzle["id"] and profile["history"][0]["solved"] is True
 
 
-# --- Режим на время (таск 13.3) ---------------------------------------------------------------------------
+# --- Timed mode (task 13.3) -------------------------------------------------------------------------------
 
 SOLUTIONS = {row["FEN"]: row["Moves"].split()[1::2] for row in (BACK_RANK, FORK, TWO_MATES)}
 
 
 def _wrong_move(view: dict) -> str:
-    """Легальный ход решающего, который не из решения и не мат."""
+    """A legal move for the solver that is neither from the solution nor a mate."""
     import chess
 
     board = chess.Board(view["fen"])
@@ -165,7 +165,7 @@ def _wrong_move(view: dict) -> str:
         board.pop()
         if not mate:
             return move.uci()
-    raise AssertionError("нет неверного хода")
+    raise AssertionError("no wrong move found")
 
 async def test_timed_run_counts_on_the_server_and_keeps_the_record(client, token_user_1, puzzles, monkeypatch):
     assert client.post(f"{API}/timed/start", json={"minutes": 4}, headers=_auth(token_user_1)).status_code == 400
@@ -177,7 +177,7 @@ async def test_timed_run_counts_on_the_server_and_keeps_the_record(client, token
     for uci in SOLUTIONS[first["fen"]]:
         body = _move(client, token_user_1, first["id"], uci).json()
     assert body["result"]["run"]["solved"] == 1
-    # Рейтинг в забеге не меняется.
+    # The rating does not change during a run.
     assert body["result"]["delta"] == 0
 
     second = client.get(f"{API}/timed/next", headers=_auth(token_user_1)).json()
@@ -189,7 +189,7 @@ async def test_timed_run_counts_on_the_server_and_keeps_the_record(client, token
     me = client.get(f"{API}/me", headers=_auth(token_user_1)).json()
     assert me["best"] == {"3": 1, "5": 0} and me["games"] == 0
     assert client.post(f"{API}/timed/finish", headers=_auth(token_user_1)).status_code == 409
-    # Забег попал в таблицы лидеров: неделя и всё время; чужие длины и зачёты — отказ.
+    # The run entered the leaderboards: week and all-time; other lengths and categories are rejected.
     for scope in ("week", "all"):
         board = client.get(f"{API}/timed/leaders?minutes=3&scope={scope}", headers=_auth(token_user_1)).json()
         assert [(r["place"], r["score"], r["me"]) for r in board["rows"]] == [(1, 1, True)]
@@ -204,7 +204,7 @@ def test_leader_places_share_ties_and_week_starts_on_monday():
 
     from src.services.puzzle_leaders import _ranked, week_start
     assert [r["place"] for r in _ranked([(1, "a", 9), (2, "b", 7), (3, "c", 7), (4, "d", 5)])] == [1, 2, 2, 4]
-    assert week_start(dt.date(2026, 11, 22)) == dt.date(2026, 11, 16)   # воскресенье → понедельник той же недели
+    assert week_start(dt.date(2026, 11, 22)) == dt.date(2026, 11, 16)   # Sunday -> Monday of the same week
     assert week_start(dt.date(2026, 11, 16)) == dt.date(2026, 11, 16)
 
 
@@ -214,13 +214,13 @@ async def test_leaders_skip_cheaters_and_keep_the_best_week_score(db_session, te
     from src.services import puzzle_leaders as pl
     today = dt.date(2026, 11, 18)
     await pl.record_week(db_session, test_user_1.id, 3, 12, today)
-    await pl.record_week(db_session, test_user_1.id, 3, 8, today)      # хуже — не заменяет
+    await pl.record_week(db_session, test_user_1.id, 3, 8, today)      # worse: does not replace
     await pl.record_week(db_session, test_user_2.id, 3, 30, today)
     test_user_2.is_cheater = True
     await db_session.commit()
     board = await pl.leaders(db_session, 3, "week", test_user_1.id, today)
     assert [(r["username"], r["score"]) for r in board["rows"]] == [(test_user_1.username, 12)]
-    assert (await pl.leaders(db_session, 3, "week", test_user_1.id, dt.date(2026, 11, 25)))["rows"] == []  # другая неделя
+    assert (await pl.leaders(db_session, 3, "week", test_user_1.id, dt.date(2026, 11, 25)))["rows"] == []  # another week
 
 
 async def test_timed_run_ends_after_time_or_three_mistakes(client, token_user_1, puzzles, monkeypatch):

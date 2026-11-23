@@ -1,7 +1,8 @@
 # --- FILE: src/api/watch.py ---
 """
-«Просмотр» (таск 16.3): архив партий мастеров с фильтрами, «Партия дня» и «забавные подборки». Идущие сейчас партии —
-GET /profile/games/live. Фильтры — в SQL: имя игрока, годы (pgn_date начинается с года), код дебюта (eco), результат.
+"Watch" (task 16.3): the archive of masters' games with filters, the "Game of the day" and "fun collections". Games in progress
+now -
+GET /profile/games/live. Filters are in SQL: player name, years (pgn_date starts with the year), opening code (eco), result.
 """
 
 import datetime as dt
@@ -45,16 +46,16 @@ def _item(row) -> dict:
 
 @router.get("/archive")
 async def archive(
-        player: str | None = Query(None, max_length=60, description="Часть имени игрока (любой цвет)"),
+        player: str | None = Query(None, max_length=60, description="Part of the player name (any colour)"),
         year_from: int | None = Query(None, ge=1400, le=2100),
         year_to: int | None = Query(None, ge=1400, le=2100),
-        eco: str | None = Query(None, pattern=r"^[A-Ea-e](\d{1,2})?$", description="Код или начало кода: C, C6, C60"),
+        eco: str | None = Query(None, pattern=r"^[A-Ea-e](\d{1,2})?$", description="Code or its start: C, C6, C60"),
         result: str | None = Query(None, pattern=r"^(1-0|0-1|1/2-1/2)$"),
         limit: int = Query(20, ge=1, le=100),
         offset: int = Query(0, ge=0),
         db: AsyncSession = Depends(get_db),
 ):
-    """Архив партий мастеров с фильтрами: часть имени игрока, годы, код дебюта и результат; постранично."""
+    """The archive of masters' games with filters: part of the player name, years, opening code and result; paginated."""
     query, white, black = _archive_query()
     if player:
         pattern = f"%{player.strip().lower()}%"
@@ -76,7 +77,7 @@ async def archive(
 
 @router.get("/game-of-the-day")
 async def game_of_the_day(db: AsyncSession = Depends(get_db)):
-    """Одна партия на всех на день: результативная партия архива, выбор — по дате."""
+    """One game for everybody for the day: a decisive game of the archive, chosen by date."""
     query, _, _ = _archive_query()
     query = query.where(Game.result.in_(("1-0", "0-1")))
     count = await db.scalar(select(func.count()).select_from(query.subquery())) or 0
@@ -90,7 +91,7 @@ async def game_of_the_day(db: AsyncSession = Depends(get_db)):
 
 @router.get("/collections")
 async def collections(db: AsyncSession = Depends(get_db)):
-    """Готовые подборки (scripts/build_collections.py): партии по местам и показатель подборки."""
+    """Ready collections (scripts/build_collections.py): games by place and the collection indicator."""
     query, _, _ = _archive_query()
     sub = query.subquery()
     rows = (await db.execute(

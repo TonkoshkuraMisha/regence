@@ -1,5 +1,5 @@
 # --- FILE: tests/test_arena.py ---
-"""Арены (таск 17.2): расписание, вход, пара из ожидающих, очки и «огонь», итог партии через обычное завершение."""
+"""Arenas (task 17.2): schedule, joining, pairing from those waiting, points and "fire", game result via normal finish."""
 
 from datetime import UTC, datetime, timedelta
 
@@ -40,7 +40,7 @@ async def test_schedule_is_created_once(db_session):
     assert await db_session.scalar(select(func.count()).select_from(Arena)) == first > 0
     query = select(Arena).where(Arena.schedule_key == "central:blitz-3+2").order_by(Arena.starts_at)
     blitz = (await db_session.execute(query)).scalars().all()
-    assert arena.status(blitz[0], now) == "running"           # началась в 12:00 по Киеву (10:00 UTC), идёт час
+    assert arena.status(blitz[0], now) == "running"           # started at 12:00 Kyiv time (10:00 UTC), runs for an hour
     assert all(b.increment_ms == 2_000 for b in blitz)
 
 
@@ -56,13 +56,13 @@ async def test_pairing_and_scores(client, db_session, running, test_user_1, test
     started = client.post(f"{API}/{running.id}/ready", headers=auth(token_user_2)).json()
     game_id = started["game_id"]
     assert client.get(f"{API}/{running.id}", headers=auth(token_user_1)).json()["me"]["current_game_id"] == game_id
-    # Страница первого игрока ещё повторяет «Играть»: он уже в партии — получает её, а не новое ожидание (иначе третий
-    # игрок получил бы в пару занятого соперника).
+    # The first player's page still repeats "Play": they are already in a game — they get it, not a new wait
+    # (otherwise the third player would be paired with the busy opponent).
     assert client.post(f"{API}/{running.id}/ready", headers=auth(token_user_1)).json() == {"game_id": game_id}
     assert await arena.waiting_ids(running.id) == set()
     record = (await db_session.execute(select(ArenaGame).where(ArenaGame.game_id == game_id))).scalar_one()
 
-    # Обычное завершение партии засчитывает её в арене.
+    # A normal game finish counts it in the arena.
     await state_manager.finish_game(db_session, game_id, "1-0", termination="resignation")
     await db_session.refresh(record)
     assert (record.result, record.white_points, record.black_points) == ("1-0", 2, 0)

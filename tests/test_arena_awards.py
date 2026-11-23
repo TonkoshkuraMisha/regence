@@ -1,9 +1,9 @@
 # --- FILE: tests/test_arena_awards.py ---
 """
-Награды арен (таск 33.5, src/services/arena_awards.py): тройка таблицы итогов законченной арены получает места,
-уведомление и достижения; без партий места нет; незаконченная арена и швейцарка до последнего тура не награждаются;
-повторный запуск ничего не добавляет; кубки видны в профиле через настоящий запрос; страница арены отдаёт
-призёру его место (праздник призёра). Время зафиксировано.
+Arena awards (task 33.5, src/services/arena_awards.py): the top three of a finished arena's results table get places,
+a notification and achievements; no games means no place; an unfinished arena and a Swiss before the last round get none;
+a repeated run adds nothing; cups are visible in the profile through a real request; the arena page gives
+the prizewinner their place (the prizewinner's celebration). Time is pinned.
 """
 
 import itertools
@@ -19,12 +19,12 @@ from src.services import achievements, arena_awards
 from src.worker.celery_app import celery_app
 
 NOW = datetime(2026, 11, 18, 18, 0, tzinfo=UTC)
-_NAMES = itertools.count()  # имена игроков без повторов во всех аренах теста
+_NAMES = itertools.count()  # player names without repeats across all arenas of the test
 
 
 async def _arena(db, scores: list[tuple[int, int]], *, ends_ago: timedelta = timedelta(minutes=10),
                  open_game: bool = False, fmt: str = "arena") -> tuple[Arena, list[User]]:
-    """Арена блица с участниками (очки, партии); open_game — одна партия ещё идёт."""
+    """A blitz arena with participants (points, games); open_game — one game is still running."""
     users = [User(username=f"aw{next(_NAMES)}", hashed_password="pw") for _ in scores]
     arena = Arena(base_time_ms=180_000, increment_ms=2_000, starts_at=NOW - timedelta(hours=1) - ends_ago,
                   ends_at=NOW - ends_ago, format=fmt, rounds=3 if fmt == "swiss" else 0)
@@ -51,7 +51,7 @@ async def test_podium_of_a_finished_arena(client, db_session):
         ("1", users[1].id, "blitz"), ("2", users[3].id, "blitz"), ("3", users[0].id, "blitz")]
     notes = (await db_session.execute(select(Notification).where(Notification.kind == "arena_podium"))).scalars().all()
     assert sorted(n.payload["place"] for n in notes) == [1, 2, 3]
-    assert await arena_awards.award_finished(db_session, NOW) == 0  # награждают один раз
+    assert await arena_awards.award_finished(db_session, NOW) == 0  # awarded only once
 
     profile = client.get(f"/api/v1/profile/{users[1].username}").json()
     assert profile["arena_trophies"] == {"gold": 1, "silver": 0, "bronze": 0}
@@ -61,10 +61,10 @@ async def test_podium_of_a_finished_arena(client, db_session):
 
 async def test_no_place_without_games_and_no_awards_before_the_end(db_session):
     _, users = await _arena(db_session, [(3, 2), (0, 0)])
-    await _arena(db_session, [(5, 3), (2, 2)], open_game=True)  # партия ещё идёт — итоги не окончательные
-    await _arena(db_session, [(5, 3), (2, 2)], ends_ago=-timedelta(minutes=30))  # ещё не кончилась
-    await _arena(db_session, [(5, 3), (2, 2)], fmt="swiss")  # швейцарка без записанного конца турнира
-    await _arena(db_session, [(5, 3), (2, 2)], ends_ago=arena_awards.LOOKBACK + timedelta(hours=1))  # давняя
+    await _arena(db_session, [(5, 3), (2, 2)], open_game=True)  # the game is still running — results are not final
+    await _arena(db_session, [(5, 3), (2, 2)], ends_ago=-timedelta(minutes=30))  # has not ended yet
+    await _arena(db_session, [(5, 3), (2, 2)], fmt="swiss")  # a Swiss without a recorded tournament end
+    await _arena(db_session, [(5, 3), (2, 2)], ends_ago=arena_awards.LOOKBACK + timedelta(hours=1))  # long ago
 
     assert await arena_awards.award_finished(db_session, NOW) == 1
     only = (await db_session.execute(select(ArenaAward))).scalar_one()
@@ -84,7 +84,7 @@ async def test_arena_page_tells_the_winner_its_place(client, db_session, test_us
     await db_session.commit()
     headers = {"Authorization": f"Bearer {token_user_1}"}
 
-    # Итоги ещё не подведены — места нет.
+    # Results are not tallied yet — no place.
     assert client.get(f"/api/v1/arenas/{arena.id}", headers=headers).json()["me"]["podium_place"] is None
     await arena_awards.award_finished(db_session, NOW)
     page = client.get(f"/api/v1/arenas/{arena.id}", headers=headers).json()

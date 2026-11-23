@@ -1,4 +1,4 @@
-// Мастерская соперников: архетипы, ползунки, сохранение (браузер гостя / профиль) и старт партии.
+// The opponent workshop: archetypes, sliders, saving (guest browser / profile) and starting a game.
 
 import {act, fireEvent, render, screen, waitFor, within} from '@testing-library/react';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
@@ -22,7 +22,7 @@ function renderWorkshop(token: string | null, onPlay = vi.fn()) {
 
 const slider = (label: string) => screen.getByRole('slider', {name: label}) as HTMLInputElement;
 
-// Сервер присылает только id архетипа; имя и описание — из каталога на языке игрока.
+// The server sends only the archetype id; the name and description come from the catalogue in the player's language.
 const archetype = (id: string, target_elo: number, extra: Record<string, unknown> = {}) => ({
     id, config: {...DEFAULT_CONFIG, target_elo, ...extra},
     declared_rating: target_elo, rating: target_elo, measured: false, games: 0, ci95: null,
@@ -34,11 +34,11 @@ const CATALOG = {
     archetypes: [
         {...archetype('rusher', 700, {aggression: 70}), rating: 640, measured: true, games: 40, ci95: 90},
         archetype('combinator', 2200),
-        archetype('archetype_from_the_future', 1500),  // клиент его ещё не знает — не показывается
+        archetype('archetype_from_the_future', 1500),  // the client does not know it yet — it is not shown
     ],
 };
 
-/** fetch: каталог — всегда; остальное — по переданному обработчику. */
+/** fetch: the catalogue — always; the rest — by the passed handler. */
 function stubFetch(other?: (url: string, init?: RequestInit) => unknown) {
     const fetchMock = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
         const url = input.toString();
@@ -66,70 +66,70 @@ beforeEach(() => {
 
 afterEach(() => vi.unstubAllGlobals());
 
-describe('гость', () => {
-    it('архетипы приходят с сервера, измеренная сила помечена', async () => {
+describe('guest', () => {
+    it('archetypes come from the server, the measured strength is marked', async () => {
         stubFetch();
         renderWorkshop(null);
-        expect(await screen.findByRole('button', {name: /Торопыга 640 \(изм\.\)/})).toBeInTheDocument();
-        expect(screen.getByRole('button', {name: /Комбинатор 2200$/})).toBeInTheDocument();
+        expect(await screen.findByRole('button', {name: /Rusher 640 \(meas\.\)/})).toBeInTheDocument();
+        expect(screen.getByRole('button', {name: /Combinator 2200$/})).toBeInTheDocument();
     });
 
-    it('архетип заполняет конструктор, слабый — с пояснением про намеренные ошибки', async () => {
+    it('an archetype fills the constructor, a weak one — with an explanation about deliberate mistakes', async () => {
         stubFetch();
         renderWorkshop(null);
-        fireEvent.click(await screen.findByRole('button', {name: /Торопыга/}));
+        fireEvent.click(await screen.findByRole('button', {name: /Rusher/}));
 
-        expect((screen.getByPlaceholderText(/Гамбитёр/) as HTMLInputElement).value).toBe('Торопыга');
-        expect(slider('Сила (Эло)').value).toBe('700');
-        expect(screen.getByTestId('strength-note').textContent).toMatch(/намеренно/);
+        expect((screen.getByPlaceholderText(/Gambiteer/) as HTMLInputElement).value).toBe('Rusher');
+        expect(slider('Strength (Elo)').value).toBe('700');
+        expect(screen.getByTestId('strength-note').textContent).toMatch(/deliberate/);
     });
 
-    it('ползунок меняет значение и пояснение силы', () => {
+    it('the slider changes the value and the strength explanation', () => {
         stubFetch();
         renderWorkshop(null);
-        fireEvent.change(slider('Сила (Эло)'), {target: {value: '2000'}});
-        expect(screen.getByTestId('strength-note').textContent).toMatch(/~2000.*ошибок «нарочно» нет/);
+        fireEvent.change(slider('Strength (Elo)'), {target: {value: '2000'}});
+        expect(screen.getByTestId('strength-note').textContent).toMatch(/~2000.*no deliberate mistakes/);
     });
 
-    it('сохранение — в браузере, соперник появляется в списке', async () => {
+    it('saving — in the browser, the opponent appears in the list', async () => {
         stubFetch();
         renderWorkshop(null);
-        fireEvent.change(screen.getByPlaceholderText(/Гамбитёр/), {target: {value: 'Гамбитёр'}});
-        fireEvent.change(slider('Агрессия'), {target: {value: '80'}});
-        await act(async () => fireEvent.click(screen.getByRole('button', {name: /Сохранить соперника/})));
+        fireEvent.change(screen.getByPlaceholderText(/Gambiteer/), {target: {value: 'Gambiteer'}});
+        fireEvent.change(slider('Aggression'), {target: {value: '80'}});
+        await act(async () => fireEvent.click(screen.getByRole('button', {name: /Save opponent/})));
 
-        expect(readGuestPersonalities()[0]).toMatchObject({name: 'Гамбитёр', config: {aggression: 80}});
-        expect(screen.getByText(/Сохранено в этом браузере/)).toBeInTheDocument();
-        expect(screen.getByRole('button', {name: 'Изменить Гамбитёр'})).toBeInTheDocument();
+        expect(readGuestPersonalities()[0]).toMatchObject({name: 'Gambiteer', config: {aggression: 80}});
+        expect(screen.getByText(/Saved in this browser/)).toBeInTheDocument();
+        expect(screen.getByRole('button', {name: 'Edit Gambiteer'})).toBeInTheDocument();
     });
 
-    it('без имени не сохраняет', async () => {
+    it('without a name it does not save', async () => {
         stubFetch();
         renderWorkshop(null);
-        await act(async () => fireEvent.click(screen.getByRole('button', {name: /Сохранить соперника/})));
-        expect(screen.getByRole('alert').textContent).toMatch(/имя/);
+        await act(async () => fireEvent.click(screen.getByRole('button', {name: /Save opponent/})));
+        expect(screen.getByRole('alert').textContent).toMatch(/name/);
         expect(readGuestPersonalities()).toEqual([]);
     });
 
-    it('«Сыграть» отдаёт имя и конфиг из конструктора', async () => {
+    it('"Play" hands over the name and the config from the constructor', async () => {
         stubFetch();
         const onPlay = renderWorkshop(null);
-        fireEvent.click(await screen.findByRole('button', {name: /Комбинатор/}));
-        fireEvent.click(screen.getByRole('button', {name: /Чёрными/}));
+        fireEvent.click(await screen.findByRole('button', {name: /Combinator/}));
+        fireEvent.click(screen.getByRole('button', {name: /Black/}));
 
         const [opponent, color] = onPlay.mock.calls[0];
         expect(color).toBe('black');
-        expect(opponent.name).toBe('Комбинатор');
-        expect(opponent.bio).toBe('Видит удары на несколько ходов вперёд и почти не ошибается в расчёте.');
-        expect(opponent.archetypeId).toBe('combinator');  // архетип без изменений — в архив ключом
+        expect(opponent.name).toBe('Combinator');
+        expect(opponent.bio).toBe('Sees blows several moves ahead and almost never miscalculates.');
+        expect(opponent.archetypeId).toBe('combinator');  // the archetype unchanged — into the archive by key
         expect(opponent.config.target_elo).toBe(2200);
         expect(opponent.personalityId).toBeUndefined();
     });
 });
 
-describe('вошедший игрок', () => {
+describe('a logged-in player', () => {
     const saved = {
-        id: 5, name: 'Гамбитёр', config: {...DEFAULT_CONFIG, aggression: 70},
+        id: 5, name: 'Gambiteer', config: {...DEFAULT_CONFIG, aggression: 70},
         created_at: '2026-11-12T00:00:00Z', updated_at: '2026-11-12T00:00:00Z',
     };
 
@@ -139,40 +139,40 @@ describe('вошедший игрок', () => {
             : {...saved, ...JSON.parse(String(init?.body ?? '{}'))}));
     }
 
-    it('список приходит с сервера; неизменённый соперник играет по своему id', async () => {
+    it('the list comes from the server; an unchanged opponent plays by its own id', async () => {
         stubServer();
         const onPlay = renderWorkshop('jwt');
 
-        fireEvent.click(await screen.findByRole('button', {name: 'Изменить Гамбитёр'}));
-        fireEvent.click(screen.getByRole('button', {name: /Белыми/}));
-        expect(onPlay.mock.calls[0][0]).toMatchObject({name: 'Гамбитёр', personalityId: 5});
+        fireEvent.click(await screen.findByRole('button', {name: 'Edit Gambiteer'}));
+        fireEvent.click(screen.getByRole('button', {name: /White/}));
+        expect(onPlay.mock.calls[0][0]).toMatchObject({name: 'Gambiteer', personalityId: 5});
 
-        // После правки ползунка играет текущий конфиг, а не сохранённый.
-        fireEvent.change(slider('Агрессия'), {target: {value: '-50'}});
-        fireEvent.click(screen.getByRole('button', {name: /Белыми/}));
+        // After editing a slider the current config is played, not the saved one.
+        fireEvent.change(slider('Aggression'), {target: {value: '-50'}});
+        fireEvent.click(screen.getByRole('button', {name: /White/}));
         expect(onPlay.mock.calls[1][0].personalityId).toBeUndefined();
         expect(onPlay.mock.calls[1][0].config.aggression).toBe(-50);
     });
 
-    it('сохранение изменённого соперника — PUT в профиль', async () => {
+    it('saving a changed opponent — a PUT to the profile', async () => {
         const fetchMock = stubServer();
         renderWorkshop('jwt');
-        fireEvent.click(await screen.findByRole('button', {name: 'Изменить Гамбитёр'}));
-        fireEvent.change(slider('Центр'), {target: {value: '180'}});
-        await act(async () => fireEvent.click(screen.getByRole('button', {name: /Сохранить соперника/})));
+        fireEvent.click(await screen.findByRole('button', {name: 'Edit Gambiteer'}));
+        fireEvent.change(slider('Center'), {target: {value: '180'}});
+        await act(async () => fireEvent.click(screen.getByRole('button', {name: /Save opponent/})));
 
         const put = fetchMock.mock.calls.find(([, init]) => init?.method === 'PUT');
         expect(put?.[0]).toMatch(/\/bots\/personalities\/5$/);
         expect(JSON.parse(String(put?.[1]?.body)).config.center_control).toBe(180);
-        await waitFor(() => expect(screen.getByText('Сохранено в профиле')).toBeInTheDocument());
+        await waitFor(() => expect(screen.getByText('Saved to your profile')).toBeInTheDocument());
     });
 
-    it('удаление спрашивает подтверждение', async () => {
+    it('deletion asks for confirmation', async () => {
         const fetchMock = stubServer();
         vi.stubGlobal('confirm', vi.fn(() => true));
         renderWorkshop('jwt');
-        const item = (await screen.findByText('Гамбитёр')).closest('li') as HTMLElement;
-        await act(async () => fireEvent.click(within(item).getByRole('button', {name: 'Удалить Гамбитёр'})));
+        const item = (await screen.findByText('Gambiteer')).closest('li') as HTMLElement;
+        await act(async () => fireEvent.click(within(item).getByRole('button', {name: 'Delete Gambiteer'})));
         expect(fetchMock.mock.calls.some(([url, init]) => init?.method === 'DELETE' && String(url).endsWith('/5'))).toBe(true);
     });
 });

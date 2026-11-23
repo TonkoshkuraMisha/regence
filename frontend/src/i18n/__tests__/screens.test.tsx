@@ -1,7 +1,7 @@
 // --- FILE: frontend/src/i18n/__tests__/screens.test.tsx ---
-// Ключевые экраны на трёх языках: заголовки и подписи берутся из своего каталога, данные (в том числе
-// геттеры конфигов — названия досок, контроли времени, имена ботов) переводятся вместе с интерфейсом,
-// а переключатель меняет язык на лету, без перезагрузки и без потери состояния страницы.
+// Key screens in both languages: headings and labels come from their own catalog, the data (including
+// the config getters — board names, time controls, bot names) is translated together with the interface,
+// and the switcher changes the language on the fly, without a reload and without losing the page state.
 
 import {act, fireEvent, render, screen, within} from '@testing-library/react';
 import {MemoryRouter} from 'react-router-dom';
@@ -34,84 +34,79 @@ afterEach(() => {
 const HEADINGS: Record<Language, { settings: string; about: string; login: string; leaderboard: string }> = {
     en: {settings: 'Settings', about: 'About and licenses', login: 'Log in to regence', leaderboard: 'Regence leaderboard'},
     uk: {settings: 'Налаштування', about: 'Про проєкт і ліцензії', login: 'Вхід до regence', leaderboard: 'Таблиця лідерів Regence'},
-    ru: {settings: 'Настройки', about: 'О проекте и лицензиях', login: 'Вход в regence', leaderboard: 'Таблица лидеров Regence'},
 };
 
-describe.each(['en', 'uk', 'ru'] as const)('экраны на языке %s', (language) => {
+describe.each(['en', 'uk'] as const)('screens in language %s', (language) => {
     beforeEach(() => setLanguage(language, {persist: false}));
 
-    it('настройки', () => {
+    it('settings', () => {
         render(<MemoryRouter><Settings token={null} username={null} onTokenChange={vi.fn()} onLogoutEverywhere={vi.fn()}/></MemoryRouter>);
         expect(screen.getByRole('heading', {level: 1})).toHaveTextContent(HEADINGS[language].settings);
-        // Названия досок приходят из конфига — и тоже на этом языке.
+        // Board names come from the config — and are also in this language.
         expect(screen.getByRole('button', {name: BOARD_THEMES.walnut.name})).toBeInTheDocument();
     });
 
-    it('о проекте', () => {
+    it('about the project', () => {
         render(<MemoryRouter><About/></MemoryRouter>);
         expect(screen.getByRole('heading', {level: 1})).toHaveTextContent(HEADINGS[language].about);
         expect(screen.getByRole('link', {name: 'github.com/official-stockfish/Stockfish'})).toBeInTheDocument();
     });
 
-    it('окно входа', () => {
+    it('the login window', () => {
         render(<AuthModal onSuccess={vi.fn()}/>);
         expect(screen.getByRole('dialog', {name: HEADINGS[language].login})).toBeInTheDocument();
     });
 
-    it('таблица лидеров', async () => {
+    it('the leaderboard', async () => {
         render(<MemoryRouter><Leaderboard/></MemoryRouter>);
         expect(await screen.findByRole('heading', {level: 1})).toHaveTextContent(HEADINGS[language].leaderboard);
     });
 
-    it('быстрые фразы чата — на языке читателя', () => {
+    it('quick chat phrases — in the reader\'s language', () => {
         render(<GameChatPanel
             messages={[{sender: 'bob', text: '', preset: 'thanks', timestamp: 1}]}
             chatInput="" onChatInputChange={vi.fn()} onSendMessage={vi.fn()} onSendPreset={vi.fn()}
             isSpectator={false} onLeaveSpectate={vi.fn()}/>);
         const thanks = makeI18n(language).t('chat.presets.thanks');
-        expect(screen.getAllByText(thanks).length).toBe(2); // кнопка и сообщение в ленте
+        expect(screen.getAllByText(thanks).length).toBe(2); // the button and the message in the feed
     });
 });
 
-describe('данные конфигов переводятся вместе с интерфейсом', () => {
-    it('боты, чемпионы, доски, фигуры и контроль времени', () => {
+describe('config data is translated together with the interface', () => {
+    it('bots, champions, boards, pieces and time controls', () => {
         setLanguage('en', {persist: false});
         expect(HISTORICAL_BOTS.morphy.name).toBe('Paul Charles Morphy');
         expect(CHAMPIONS_LIST.find((c) => c.id === 'Ding')!.years).toBe('2023–present');
         expect(PIECE_SETS.cburnett.shortName).toBe('Staunton');
         expect(TIME_CONTROLS[1].title).toBe('Blitz');
         expect(ALL_TIME_CONTROLS.find((o) => o.id === 'blitz-3+2')!.label).toBe('3 min + 2 sec/move');
+        expect(ALL_TIME_CONTROLS.find((o) => o.id === 'bullet-manual')!.label).toBe('Manual setup (Bullet)');
 
         setLanguage('uk', {persist: false});
         expect(HISTORICAL_BOTS.morphy.name).toBe('Пол Чарлз Морфі');
         expect(CHAMPIONS_LIST.find((c) => c.id === 'Ding')!.years).toBe('2023–дотепер');
         expect(BOARD_THEMES.walnut.name).toBe('Горіх');
         expect(ALL_TIME_CONTROLS.find((o) => o.id === 'blitz-3+2')!.label).toBe('3 хв + 2 с/хід');
-
-        setLanguage('ru', {persist: false});
-        expect(HISTORICAL_BOTS.morphy.name).toBe('Пол Чарльз Морфи');
-        expect(ALL_TIME_CONTROLS.find((o) => o.id === 'bullet-manual')!.label).toBe('Ручная настройка (Пуля)');
     });
 
-    it('у всех чемпионов есть подпись лет, у не-чемпионов — «годы выступлений»', () => {
+    it('every champion has a years label, non-champions — "years of play"', () => {
         const careers = CHAMPIONS_LIST.filter((c) => !c.worldChampion).map((c) => c.id);
         expect(careers.sort()).toEqual(['Geller', 'Keres', 'Korchnoi', 'Rubinstein']);
     });
 
-    it('итог партии — на языке показа, а не на языке события', () => {
+    it('the game result — in the display language, not in the event language', () => {
         const summary = describeGameOver('1-0', 'checkmate')!;
         expect(renderStatus(summary, makeI18n('en').t)).toBe('Game over. Result: 1-0 (checkmate)');
         expect(renderStatus(summary, makeI18n('uk').t)).toBe('Партію закінчено. Результат: 1-0 (мат)');
-        expect(renderStatus(summary, makeI18n('ru').t)).toBe('Партия окончена. Результат: 1-0 (мат)');
         expect(renderStatus(describeGameOver('*', 'aborted')!, makeI18n('en').t)).toMatch(/aborted/i);
-        // Неизвестная причина не ломает строку — показывается итог без пояснения.
-        expect(renderStatus(describeGameOver('0-1', 'something_new')!, makeI18n('ru').t)).toBe('Партия окончена. Результат: 0-1');
+        // An unknown reason does not break the string — the result is shown without an explanation.
+        expect(renderStatus(describeGameOver('0-1', 'something_new')!, makeI18n('en').t)).toBe('Game over. Result: 0-1');
     });
 });
 
-describe('переключатель языка', () => {
-    it('меняет язык всей страницы без перезагрузки и запоминает выбор', () => {
-        setLanguage('ru', {persist: false});
+describe('language switcher', () => {
+    it('changes the language of the whole page without a reload and remembers the choice', () => {
+        setLanguage('en', {persist: false});
         render(
             <MemoryRouter>
                 <LanguageSwitcher/>
@@ -122,33 +117,33 @@ describe('переключатель языка', () => {
         expect(within(select).getByRole('option', {name: 'Українська'})).toBeInTheDocument();
 
         act(() => {
-            fireEvent.change(select, {target: {value: 'en'}});
-        });
-        expect(getLanguage()).toBe('en');
-        expect(localStorage.getItem(LANGUAGE_STORAGE_KEY)).toBe('en');
-        expect(document.documentElement.lang).toBe('en');
-        expect(screen.getByRole('heading', {level: 1})).toHaveTextContent('Settings');
-
-        act(() => {
             fireEvent.change(select, {target: {value: 'uk'}});
         });
+        expect(getLanguage()).toBe('uk');
+        expect(localStorage.getItem(LANGUAGE_STORAGE_KEY)).toBe('uk');
+        expect(document.documentElement.lang).toBe('uk');
         expect(screen.getByRole('heading', {level: 1})).toHaveTextContent('Налаштування');
+
+        act(() => {
+            fireEvent.change(select, {target: {value: 'en'}});
+        });
+        expect(screen.getByRole('heading', {level: 1})).toHaveTextContent('Settings');
     });
 
-    it('неизвестное значение игнорируется', () => {
-        setLanguage('ru', {persist: false});
+    it('an unknown value is ignored', () => {
+        setLanguage('en', {persist: false});
         render(<LanguageSwitcher/>);
         act(() => {
             fireEvent.change(screen.getByRole('combobox'), {target: {value: 'de'}});
         });
-        expect(getLanguage()).toBe('ru');
+        expect(getLanguage()).toBe('en');
     });
 
-    it('в компактном переключателе украинский подписан UA, а не UK (это Великобритания)', () => {
+    it('in the compact switcher Ukrainian is labelled UA, not UK (that is the United Kingdom)', () => {
         render(<LanguageSwitcher compact/>);
         const labels = within(screen.getByRole('combobox')).getAllByRole('option').map((o) => o.textContent);
-        expect(labels).toEqual(['EN', 'UA', 'RU']);
-        // Код языка в приложении остаётся стандартным (ISO 639-1).
+        expect(labels).toEqual(['EN', 'UA']);
+        // The language code in the app stays standard (ISO 639-1).
         expect(within(screen.getByRole('combobox')).getByRole('option', {name: 'UA'})).toHaveAttribute('value', 'uk');
     });
 });

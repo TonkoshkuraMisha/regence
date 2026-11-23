@@ -1,9 +1,9 @@
 # --- FILE: src/services/moderation_report.py ---
 """
-Сводка по нарушениям для владельца и модераторов (таск 26.4, «отчёты о нарушениях»): за последние REPORT_DAYS суток —
-сколько заявок поступило и закрыто, разбивка по видам и решениям, очередь сейчас и возраст самой старой открытой
-заявки, число помеченных нарушителей и игроки, на которых жаловались чаще всего. Источник — таблицы reports и users;
-только чтение, ничего не меняет. Выдача — GET /moderation/summary (только модератор); тексты собирает клиент.
+Summary of violations for the owner and moderators (task 26.4, "violation reports"): over the last REPORT_DAYS days -
+how many reports arrived and were closed, a breakdown by kind and decision, the queue now and the age of the oldest open
+report, the number of flagged offenders and the players complained about most often. Source - the reports and users tables;
+read-only, changes nothing. Served by GET /moderation/summary (moderator only); the client assembles the texts.
 """
 
 from datetime import UTC, datetime, timedelta
@@ -14,13 +14,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.models.moderation import Report
 from src.models.user import User
 
-# Окно сводки в сутках и сколько игроков с наибольшим числом заявок показывать.
+# Summary window in days and how many players with the most reports to show.
 REPORT_DAYS = 30
 TOP_TARGETS = 5
 
 
 async def summary(db: AsyncSession, now: datetime | None = None) -> dict:
-    """Сводка {days, opened, resolved, open_now, oldest_open_hours, by_kind, by_action, cheaters, top_targets}."""
+    """Summary {days, opened, resolved, open_now, oldest_open_hours, by_kind, by_action, cheaters, top_targets}."""
     now = now or datetime.now(UTC)
     since = now - timedelta(days=REPORT_DAYS)
 
@@ -40,7 +40,7 @@ async def summary(db: AsyncSession, now: datetime | None = None) -> dict:
         oldest_hours = int((now - oldest).total_seconds() // 3600)
 
     cheaters = (await db.execute(select(func.count(User.id)).where(User.is_cheater.is_(True)))).scalar_one()
-    # Автоматические проверки флага и апелляции не считаются жалобами людей на игрока.
+    # Automatic flag checks and appeals are not counted as people's complaints against a player.
     top = (await db.execute(
         select(User.username, func.count(Report.id).label("n"))
         .join(User, User.id == Report.target_id)

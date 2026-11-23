@@ -1,5 +1,5 @@
 # --- FILE: tests/test_moderation.py ---
-"""Модерация (таск 17.4): жалобы, очередь модератора, решения, отключённый чат, проверка флага и апелляция."""
+"""Moderation (task 17.4): complaints, the moderator queue, decisions, disabled chat, flag review and appeal."""
 
 from datetime import UTC, datetime, timedelta
 
@@ -30,7 +30,7 @@ async def moderator(db_session):
 
 async def test_report_queue_and_chat_ban(client, db_session, token_user_1, token_user_2, test_user_1, test_user_2, moderator):
     mod, mod_token = moderator
-    body = {"target": "PLAYER2", "kind": "message", "reason": "abuse", "comment": "грубит", "message_text": "ты слабак"}
+    body = {"target": "PLAYER2", "kind": "message", "reason": "abuse", "comment": "rude", "message_text": "you are weak"}
     assert client.post(f"{API}/reports", json=body, headers=auth(token_user_1)).status_code == 201
     again = client.post(f"{API}/reports", json=body, headers=auth(token_user_1))
     assert again.status_code == 409 and again.json()["detail"]["code"] == "report_duplicate"
@@ -40,7 +40,7 @@ async def test_report_queue_and_chat_ban(client, db_session, token_user_1, token
     assert client.get(f"{API}/queue", headers=auth(token_user_1)).status_code == 403
     queue = client.get(f"{API}/queue", headers=auth(mod_token)).json()["reports"]
     assert [(r["reporter"], r["target"], r["message_text"], r["reports_on_target"]) for r in queue] == [
-        ("player1", "player2", "ты слабак", 1)]
+        ("player1", "player2", "you are weak", 1)]
 
     resolved = client.post(f"{API}/reports/{queue[0]['id']}/resolve", json={"action": "chat_ban"}, headers=auth(mod_token))
     assert resolved.json() == {"id": queue[0]["id"], "action": "chat_ban"}
@@ -48,7 +48,7 @@ async def test_report_queue_and_chat_ban(client, db_session, token_user_1, token
     assert moderation.chat_banned(test_user_2)
     status = client.get(f"{API}/me", headers=auth(token_user_2)).json()
     assert status["chat_banned_until"] is not None and status["is_moderator"] is False
-    # Автор жалобы получил «ответ на жалобу».
+    # The complaint's author received a "reply to the complaint".
     notes = (await db_session.execute(select(Notification).where(Notification.user_id == test_user_1.id))).scalars().all()
     assert [(n.kind, n.payload["action"]) for n in notes] == [("report_answer", "chat_ban")]
     assert client.post(f"{API}/reports/{queue[0]['id']}/resolve", json={"action": "dismiss"},
@@ -65,14 +65,14 @@ def test_chat_ban_expires():
 async def test_auto_flag_review_and_appeal(client, db_session, test_user_1, token_user_1, moderator):
     mod, mod_token = moderator
     await moderation.flag_for_review(db_session, test_user_1, None)
-    await moderation.flag_for_review(db_session, test_user_1, None)    # вторая заявка не дублируется
+    await moderation.flag_for_review(db_session, test_user_1, None)    # a second request is not duplicated
     test_user_1.is_cheater = True
     test_user_1.trust_factor = 20
     await db_session.commit()
     reviews = (await db_session.execute(select(Report).where(Report.kind == "cheat_review"))).scalars().all()
     assert len(reviews) == 1 and reviews[0].reporter_id is None
 
-    assert client.post(f"{API}/appeal", json={"comment": "играл сам"}, headers=auth(token_user_1)).status_code == 201
+    assert client.post(f"{API}/appeal", json={"comment": "played myself"}, headers=auth(token_user_1)).status_code == 201
     assert client.get(f"{API}/me", headers=auth(token_user_1)).json()["open_appeal"] is True
     queue = client.get(f"{API}/queue", headers=auth(mod_token)).json()["reports"]
     assert {r["kind"] for r in queue} == {"cheat_review", "appeal"}
@@ -80,14 +80,14 @@ async def test_auto_flag_review_and_appeal(client, db_session, test_user_1, toke
     client.post(f"{API}/reports/{appeal_id}/resolve", json={"action": "clear_cheater"}, headers=auth(mod_token))
     await db_session.refresh(test_user_1)
     assert test_user_1.is_cheater is False and test_user_1.trust_factor == 100
-    # Заявка автоматики по тому же флагу закрыта тем же решением.
+    # The automation request for the same flag is closed by the same decision.
     assert client.get(f"{API}/queue", headers=auth(mod_token)).json()["reports"] == []
     again = client.post(f"{API}/appeal", json={}, headers=auth(token_user_1))
     assert again.json()["detail"]["code"] == "appeal_not_flagged"
 
 
 async def test_anticheat_flag_creates_review(db_session):
-    """Настоящий путь: телеметрия партии → флаг автоматики → заявка в очередь модератора."""
+    """The real path: game telemetry -> automation flag -> a request in the moderator queue."""
     from src.models.game import Game, GameStatus
     from src.services.game_state import state_manager
 
@@ -110,7 +110,7 @@ async def test_anticheat_flag_creates_review(db_session):
     await db_session.refresh(cheater)
     await db_session.refresh(other)
     assert cheater.is_cheater is True
-    # Заявка — на каждого, кого пометила автоматика (по одной), с партией, по которой пометила.
+    # One request per player flagged by the automation, with the game it flagged by.
     flagged = {u.id for u in (cheater, other) if u.is_cheater}
     reviews = (await db_session.execute(select(Report).where(Report.kind == "cheat_review"))).scalars().all()
     assert {r.target_id for r in reviews} == flagged and len(reviews) == len(flagged)
@@ -118,7 +118,7 @@ async def test_anticheat_flag_creates_review(db_session):
 
 
 async def test_language_settings_and_translation_suggestion(client, db_session, token_user_1, test_user_1, moderator):
-    """Таск 17.7: язык в профиле, режим «помощник перевода», предложение исправления — в очередь модерации."""
+    """Task 17.7: profile language, the "translation helper" mode, a correction suggestion goes to the moderation queue."""
     _, mod_token = moderator
     me = client.get("/api/v1/profile/me", headers=auth(token_user_1)).json()
     assert me["language"] is None and me["translation_helper"] is False
@@ -144,7 +144,7 @@ async def test_language_settings_and_translation_suggestion(client, db_session, 
 
 
 def test_theme_preset_in_profile(client, token_user_1):
-    """Таск 18.3: тема-комплект хранится в профиле."""
+    """Task 18.3: the theme set is stored in the profile."""
     assert client.get("/api/v1/profile/me", headers=auth(token_user_1)).json()["theme_preset"] is None
     saved = client.patch("/api/v1/profile/me/settings", json={"theme_preset": "marble_hall"}, headers=auth(token_user_1))
     assert saved.json()["theme_preset"] == "marble_hall"
@@ -154,7 +154,7 @@ def test_theme_preset_in_profile(client, token_user_1):
 
 
 def test_avatar_in_profile_and_leaderboard(client, token_user_1):
-    """Таск 18.4: аватар из собственного набора хранится в профиле и виден другим."""
+    """Task 18.4: an avatar from the built-in set is stored in the profile and visible to others."""
     saved = client.patch("/api/v1/profile/me/settings", json={"avatar": "bN-3"}, headers=auth(token_user_1))
     assert saved.json()["avatar"] == "bN-3"
     assert client.get("/api/v1/profile/me", headers=auth(token_user_1)).json()["avatar"] == "bN-3"
@@ -166,7 +166,7 @@ def test_avatar_in_profile_and_leaderboard(client, token_user_1):
 
 
 async def test_periodic_review_queues_old_flags_once(db_session, test_user_1, test_user_2):
-    """Таск 26.4: флаг без решения дольше FLAG_REVIEW_AFTER_DAYS снова в очереди; свежий и уже открытый — нет."""
+    """Task 26.4: a flag undecided for over FLAG_REVIEW_AFTER_DAYS is requeued; a fresh or already open one is not."""
     now = datetime(2026, 11, 22, tzinfo=UTC)
     old, fresh = test_user_1, test_user_2
     clean = User(username="clean", hashed_password="x")
@@ -181,8 +181,8 @@ async def test_periodic_review_queues_old_flags_once(db_session, test_user_1, te
     assert await moderation.periodic_flag_review(db_session, now) == 1
     queued = (await db_session.execute(select(Report).where(Report.status == "open"))).scalars().all()
     assert [(r.target_id, r.kind, r.context) for r in queued] == [(old.id, "cheat_review", moderation.PERIODIC_CONTEXT)]
-    assert clean.is_cheater is False and old.is_cheater is True      # сам флаг не меняется — решает человек
-    assert await moderation.periodic_flag_review(db_session, now) == 0  # открытая проверка уже есть
+    assert clean.is_cheater is False and old.is_cheater is True      # the flag itself does not change; a human decides
+    assert await moderation.periodic_flag_review(db_session, now) == 0  # an open review already exists
 
 
 async def test_violations_summary_counts_and_is_moderator_only(
@@ -196,8 +196,8 @@ async def test_violations_summary_counts_and_is_moderator_only(
 
     add("player", test_user_2)
     add("player", test_user_2, status="resolved", action="warn")
-    add("cheat_review", test_user_2, status="resolved", action="dismiss")   # автоматика — не жалоба людей
-    add("player", test_user_2, days_ago=40)                                 # вне окна 30 суток, но ещё открыта
+    add("cheat_review", test_user_2, status="resolved", action="dismiss")   # automation, not a complaint from people
+    add("player", test_user_2, days_ago=40)                                 # outside the 30-day window but still open
     test_user_2.is_cheater = True
     await db_session.commit()
 

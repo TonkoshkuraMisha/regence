@@ -1,13 +1,13 @@
 // --- FILE: frontend/src/content/classics/index.ts ---
-// Партии мастеров с объяснениями (таск 14.7): JSON-файлы этой папки делает scripts/build_classics.py — ходы, оценки
-// движка, комментарии наставника (ключи каталога coach.*), остановки «что бы вы сыграли?». Вводный и итоговый тексты —
-// авторские, на трёх языках. Файлы грузятся по требованию: в основной бандл они не попадают.
+// Master games with explanations (task 14.7): the JSON files of this folder are produced by scripts/build_classics.py - moves, engine
+// evaluations, coach comments (catalog keys coach.*), "what would you play?" stops. The intro and summary texts are
+// authored, in several languages. Files load on demand: they do not enter the main bundle.
 
 import type {Language} from '../../i18n';
 import type {CoachComment} from '../../services/coach';
 
 export interface ClassicStop {
-    /** Полуход партии (0 — первый ход белых): позиция перед ним. */
+    /** Ply of the game (0 - White's first move): the position before it. */
     ply: number;
     move: string;
     best_cp: number;
@@ -23,9 +23,9 @@ export interface ClassicGame {
     year: string | null;
     result: string;
     moves: string[];
-    /** Оценка после каждого полухода, с точки зрения белых, в сантипешках. */
+    /** Evaluation after each ply, from White's point of view, in centipawns. */
     evals: number[];
-    /** Комментарий наставника к полуходу (ключ — номер полухода). */
+    /** Coach comment on a ply (key - ply number). */
     comments: Record<string, CoachComment>;
     stops: ClassicStop[];
     intro: Record<Language, string>;
@@ -48,7 +48,7 @@ export async function loadAllClassics(): Promise<ClassicGame[]> {
         .sort((a, b) => Number(a.year ?? 0) - Number(b.year ?? 0) || a.id.localeCompare(b.id));
 }
 
-/** Баллы за ответ на остановке — те же правила, что в «Угадай ход мастера» (src/services/guess.py). */
+/** Points for an answer at a stop - the same rules as in "Guess the master's move" (src/services/guess.py). */
 export function scoreStop(stop: ClassicStop, uci: string): { score: number; loss: number } {
     if (uci === stop.move) return {score: 100, loss: 0};
     const known = new Map(stop.lines.map(([move, cp]) => [move, cp]));

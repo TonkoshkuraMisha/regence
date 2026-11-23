@@ -1,12 +1,12 @@
 # --- FILE: tests/test_error_codes.py ---
 """
-Ошибки для клиента — коды, а не тексты (таск 11.0b).
+Errors for the client are codes, not texts (task 11.0b).
 
-* Реестр src/core/errors.py совпадает с разделом serverErrors в трёх каталогах клиента: одни и те же коды
-  и одни и те же параметры шаблонов. Новый код без перевода (или перевод без кода) этот тест уронит.
-* Каждый код, который сервер где-то отдаёт, есть в реестре, и каждый код реестра где-то используется.
-* Форматы ответов: HTTP — {"detail": {"code", "params", "message"}}, 422 — список без эха присланных значений,
-  429 — с параметром retry_after, WebSocket — событие error с кодом.
+* The src/core/errors.py registry matches the serverErrors section in the three client catalogs: the same codes
+  and the same template parameters. A new code without a translation (or a translation without a code) fails this test.
+* Every code the server emits anywhere is in the registry, and every registry code is used somewhere.
+* Response formats: HTTP - {"detail": {"code", "params", "message"}}, 422 - a list without echoing submitted values,
+  429 - with a retry_after parameter, WebSocket - an error event with a code.
 """
 
 import ast
@@ -34,7 +34,7 @@ LANGUAGES = ("en", "uk", "ru")
 def _catalog_section(language: str, section: str) -> dict[str, str]:
     text = (CATALOGS / f"{language}.ts").read_text(encoding="utf-8")
     match = re.search(rf"^    {section}: \{{\n(.*?)^    \}},$", text, re.M | re.S)
-    assert match, f"{language}.ts: нет раздела {section}"
+    assert match, f"{language}.ts: no section {section}"
     entries = {}
     for key, value in re.findall(r"^        (\w+): '((?:[^'\\]|\\.)*)',$", match.group(1), re.M):
         entries[key] = value.replace("\\'", "'")
@@ -45,7 +45,7 @@ def _placeholders(template: str) -> set[str]:
     return {name for _, name, _, _ in string.Formatter().parse(template) if name}
 
 
-# --- реестр и каталоги ----------------------------------------------------------------------------------------
+# --- registry and catalogs ------------------------------------------------------------------------------------
 
 @pytest.mark.parametrize("language", LANGUAGES)
 def test_catalog_has_exactly_the_registry_codes(language):
@@ -60,7 +60,7 @@ def test_catalog_texts_use_the_same_params_as_the_registry(language):
 
 
 def _codes_used_in_source() -> set[str]:
-    """Коды из вызовов, которые создают ошибки для клиента, и из полей "code"/reason ответов."""
+    """Codes from calls that create errors for the client, and from the "code"/reason fields of responses."""
     positional = {
         "ApiError": 1, "error_payload": 0, "validation_error": 0, "DomainError": 0, "DomainValueError": 0,
         "MatchmakingError": 0, "GameNotFinishedError": 0, "GameDataNotFoundError": 0,
@@ -77,10 +77,10 @@ def _codes_used_in_source() -> set[str]:
                 name = func.id if isinstance(func, ast.Name) else func.attr if isinstance(func, ast.Attribute) else ""
                 index = positional.get(name)
                 if name == "error" and not (isinstance(func, ast.Attribute) and getattr(func.value, "id", "") == "ctx"):
-                    index = None  # logger.error и т. п. — не ошибка для клиента
+                    index = None  # logger.error etc. - not an error for the client
                 if index is not None and len(node.args) > index:
                     arg = node.args[index]
-                    # ctx.error(result.get("code", "запасной_код")) — запасной код тоже отдаётся клиенту.
+                    # ctx.error(result.get("code", "fallback_code")) - the fallback code is also sent to the client.
                     if (isinstance(arg, ast.Call) and getattr(arg.func, "attr", "") == "get" and len(arg.args) == 2
                             and getattr(arg.args[0], "value", None) == "code"):
                         arg = arg.args[1]
@@ -89,11 +89,11 @@ def _codes_used_in_source() -> set[str]:
                 for keyword in node.keywords:
                     if keyword.arg == "reason" and isinstance(keyword.value, ast.Constant) and name == "SkippedPersonality":
                         used.add(keyword.value.value)
-                    # rate_limit(..., code="…") — свой код 429 у эндпоинтов без движка.
+                    # rate_limit(..., code="...") - its own 429 code for endpoints without an engine.
                     if keyword.arg == "code" and isinstance(keyword.value, ast.Constant) and name == "rate_limit":
                         used.add(keyword.value.value)
             if isinstance(node, ast.FunctionDef) and node.name == "rate_limit":
-                # Код 429 по умолчанию — значение параметра code.
+                # The default 429 code is the value of the code parameter.
                 for arg, default in zip(reversed(node.args.args), reversed(node.args.defaults), strict=False):
                     if arg.arg == "code" and isinstance(default, ast.Constant):
                         used.add(default.value)
@@ -106,11 +106,11 @@ def _codes_used_in_source() -> set[str]:
 
 def test_every_code_in_source_is_registered_and_every_registered_code_is_used():
     used = _codes_used_in_source()
-    assert used - set(ERROR_MESSAGES) == set(), "коды без записи в реестре"
-    assert set(ERROR_MESSAGES) - used == set(), "коды реестра, которые сервер никогда не отдаёт"
+    assert used - set(ERROR_MESSAGES) == set(), "codes without a registry entry"
+    assert set(ERROR_MESSAGES) - used == set(), "registry codes the server never emits"
 
 
-# --- построение ошибок ------------------------------------------------------------------------------------------
+# --- building errors --------------------------------------------------------------------------------------------
 
 def test_payload_carries_code_params_and_english_message():
     assert error_payload("rating_out_of_range", rating=1500, min=1600, max=1800) == {
@@ -124,7 +124,7 @@ def test_unknown_code_and_missing_params_are_programming_errors():
     with pytest.raises(KeyError):
         error_payload("no_such_code")
     with pytest.raises(KeyError):
-        error_payload("user_not_found")  # нет username
+        error_payload("user_not_found")  # no username
 
 
 def test_english_messages_contain_no_cyrillic():
@@ -156,7 +156,7 @@ def test_validation_error_formats_params_like_the_registry():
     assert error.message() == "No more than 20 opponents in the workshop — delete some"
 
 
-# --- ответы API -------------------------------------------------------------------------------------------------
+# --- API responses ----------------------------------------------------------------------------------------------
 
 def test_http_error_body(client):
     response = client.get("/api/v1/profile/nobody_like_this")
@@ -167,7 +167,7 @@ def test_http_error_body(client):
 def test_422_has_codes_and_does_not_echo_the_password(client):
     response = client.post("/api/v1/auth/register", json={"username": "Мorphy", "password": "pw7Zq"})
     assert response.status_code == 422
-    assert "pw7Zq" not in response.text and "Мorphy" not in response.text  # присланное не возвращается
+    assert "pw7Zq" not in response.text and "Мorphy" not in response.text  # what was submitted is not echoed back
     by_field = {item["loc"][-1]: item for item in response.json()["detail"]}
     assert by_field["username"]["type"] == "username_mixed_scripts"
     assert by_field["password"]["type"] == "string_too_short"

@@ -1,12 +1,12 @@
 # --- FILE: scripts/build_opening_books.py ---
 """
-Дебютные книги семи исторических ботов: из партий прототипа — в src/services/bots/books/<бот>.json.
+Opening books of the seven historical bots: from the prototype's games - into src/services/bots/books/<bot>.json.
 
-Откуда партии: PGN-файлы игрока в папках проекта с архивом (find_pgn_files_for_bot). Берутся только партии
-самого игрока (BOT_BOOK_CONFIG: фамилия и исключения для однофамильцев) и только его ходы на первых MAX_BOOK_PLY
-полуходах: для каждой позиции считается, сколько раз он сыграл каждый ход, — это и есть вес хода в книге.
+Where the games come from: the player's PGN files in project folders with the archive (find_pgn_files_for_bot). Only the
+player's own games are taken (BOT_BOOK_CONFIG: surname and exclusions for namesakes) and only his moves in the first
+MAX_BOOK_PLY plies: for every position it counts how many times he played each move - that is the move's weight in the book.
 
-Запуск из корня проекта: `python scripts/build_opening_books.py`. Книги мастеров второй волны собирает
+Run from the project root: `python scripts/build_opening_books.py`. Books of second-wave masters are built by
 scripts/build_master_books.py.
 """
 
@@ -18,7 +18,7 @@ from pathlib import Path
 import chess
 import chess.pgn
 
-# Жёсткая привязка к корню проекта (независимо от Working Directory в PyCharm)
+# Hard binding to the project root (independent of the Working Directory in PyCharm)
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
@@ -28,37 +28,37 @@ MAX_BOOK_PLY = 16
 
 BOT_BOOK_CONFIG = {
     "philidor": {
-        "identifiers": ("philidor", "филидор"),
+        "identifiers": ("philidor",),
         "surname_filter": "philidor",
         "exclude": (),
     },
     "labourdonnais": {
-        "identifiers": ("bourdonnais", "labourdonnais", "лабурдонне"),
+        "identifiers": ("bourdonnais", "labourdonnais"),
         "surname_filter": "bourdonnais",
         "exclude": (),
     },
     "staunton": {
-        "identifiers": ("staunton", "стаунтон"),
+        "identifiers": ("staunton",),
         "surname_filter": "staunton",
         "exclude": (),
     },
     "anderssen": {
-        "identifiers": ("anderssen", "андерсен"),
+        "identifiers": ("anderssen",),
         "surname_filter": "anderssen",
         "exclude": (),
     },
     "morphy": {
-        "identifiers": ("morphy", "морфи"),
+        "identifiers": ("morphy",),
         "surname_filter": "morphy",
         "exclude": ("alonzo", "ernest"),
     },
     "paulsen": {
-        "identifiers": ("paulsen", "паульсен"),
+        "identifiers": ("paulsen",),
         "surname_filter": "paulsen",
         "exclude": ("wilfried",),
     },
     "zukertort": {
-        "identifiers": ("zukertort", "цукерторт"),
+        "identifiers": ("zukertort",),
         "surname_filter": "zukertort",
         "exclude": (),
     },
@@ -67,8 +67,8 @@ BOT_BOOK_CONFIG = {
 
 def cleanup_misplaced_artifacts() -> None:
     """
-    Удаляет ошибочно созданную папку scripts/src (возникшую из-за запуска с CWD=scripts/)
-    и переносит все *_generated_book.json из корня в src/services/bots/books/.
+    Removes the mistakenly created scripts/src folder (caused by running with CWD=scripts/)
+    and moves all *_generated_book.json from the root into src/services/bots/books/.
     """
     BOOKS_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -79,7 +79,7 @@ def cleanup_misplaced_artifacts() -> None:
             if not target.exists():
                 shutil.move(str(stray_json), str(target))
         shutil.rmtree(accidental_scripts_src, ignore_errors=True)
-        print(f"[+] Очищена лишняя вложенная папка: {accidental_scripts_src}")
+        print(f"[+] Removed the stray nested folder: {accidental_scripts_src}")
 
     for bot_id in BOT_BOOK_CONFIG:
         legacy_root_json = PROJECT_ROOT / f"{bot_id}_generated_book.json"
@@ -87,13 +87,13 @@ def cleanup_misplaced_artifacts() -> None:
         if legacy_root_json.exists():
             if not target_json.exists() or legacy_root_json.stat().st_size > target_json.stat().st_size:
                 shutil.move(str(legacy_root_json), str(target_json))
-                print(f"[+] Перенесена книга из корня: {legacy_root_json.name} -> {target_json}")
+                print(f"[+] Moved the book from the root: {legacy_root_json.name} -> {target_json}")
             else:
                 legacy_root_json.unlink()
 
 
 def matches_player(header_name: str, surname: str, exclude: tuple[str, ...]) -> bool:
-    """Проверяет, соответствует ли имя игрока в заголовке PGN целевому мастеру."""
+    """Checks whether the player name in the PGN header matches the target master."""
     name_lower = (header_name or "").lower()
     if any(ex in name_lower for ex in exclude):
         return False
@@ -101,7 +101,7 @@ def matches_player(header_name: str, surname: str, exclude: tuple[str, ...]) -> 
 
 
 def process_pgn_stream(pgn_stream, surname: str, exclude: tuple[str, ...], book_additions: dict) -> int:
-    """Извлекает дебютные ходы мастера из потока PGN до заданного полухода."""
+    """Extracts the master's opening moves from a PGN stream up to the given ply."""
     games_processed = 0
     while True:
         try:
@@ -133,7 +133,7 @@ def process_pgn_stream(pgn_stream, surname: str, exclude: tuple[str, ...], book_
                     board.push(move)
                 except ValueError:
                     break
-                ply += 1  # noqa: SIM113 — считаем только успешно сыгранные ходы
+                ply += 1  # noqa: SIM113 - we count only successfully played moves
 
             games_processed += 1
         except Exception:
@@ -142,7 +142,7 @@ def process_pgn_stream(pgn_stream, surname: str, exclude: tuple[str, ...], book_
 
 
 def find_pgn_files_for_bot(identifiers: tuple[str, ...]) -> list[Path]:
-    """Ищет PGN-файлы чемпиона во всех возможных директориях проекта."""
+    """Looks for the champion's PGN files in all possible project directories."""
     search_dirs = [
         PROJECT_ROOT / "data",
         PROJECT_ROOT / "downloaded_pgns",
@@ -165,16 +165,16 @@ def find_pgn_files_for_bot(identifiers: tuple[str, ...]) -> list[Path]:
                 seen.add(resolved)
                 found.append(resolved)
 
-    # Если есть как объединённый файл (*_all_*.pgn), так и мелкие файлы из папки —
-    # отдаём приоритет объединённому файлу, чтобы не считать одни и те же партии дважды
-    combined = [p for p in found if "all" in p.name.lower() or "все партии" in p.name.lower()]
+    # If there is both a combined file (*_all_*.pgn) and small files from the folder -
+    # give priority to the combined file so as not to count the same games twice
+    combined = [p for p in found if "all" in p.name.lower()]
     if combined:
         return [max(combined, key=lambda p: p.stat().st_size)]
     return found
 
 
 def build_book_for_bot(bot_id: str) -> None:
-    """Собирает и сохраняет JSON-книгу дебютов для одного исторического бота."""
+    """Builds and saves the JSON opening book for one historical bot."""
     cfg = BOT_BOOK_CONFIG[bot_id]
     target_json = BOOKS_DIR / f"{bot_id}.json"
 
@@ -205,8 +205,8 @@ def build_book_for_bot(bot_id: str) -> None:
                 [
                     uci,
                     max(int((count / total_count) * 100), 1),
-                    # Число партий архива с этим ходом; фразу бота на языке игрока собирает клиент
-                    # (каталог botComments.book.<бот>).
+                    # Number of archive games with this move; the bot's phrase in the player's language is built by the client
+                    # (catalog botComments.book.<bot>).
                     count,
                 ]
                 for uci, count in sorted_moves
@@ -215,20 +215,20 @@ def build_book_for_bot(bot_id: str) -> None:
         with open(target_json, "w", encoding="utf-8") as out_f:
             json.dump(formatted_book, out_f, ensure_ascii=False, indent=2)
         print(
-            f"[+] {bot_id:13s}: спарсено партий из PGN: {total_games:4d} | "
-            f"Позиций в книге: {len(formatted_book):4d} -> {target_json.relative_to(PROJECT_ROOT)}"
+            f"[+] {bot_id:13s}: games parsed from PGN: {total_games:4d} | "
+            f"Positions in the book: {len(formatted_book):4d} -> {target_json.relative_to(PROJECT_ROOT)}"
         )
         return
 
-    # Если сырых PGN-файлов нет, но JSON-книга уже перенесена и лежит в src/services/bots/books/
+    # If there are no raw PGN files but the JSON book has already been moved and sits in src/services/bots/books/
     if existing_book:
         print(
-            f"[+] {bot_id:13s}: книга активна и проверена | "
-            f"Позиций в книге: {len(existing_book):4d} -> {target_json.relative_to(PROJECT_ROOT)}"
+            f"[+] {bot_id:13s}: book is active and verified | "
+            f"Positions in the book: {len(existing_book):4d} -> {target_json.relative_to(PROJECT_ROOT)}"
         )
         return
 
-    # Если нет ни PGN, ни JSON-книги — инициализируем JSON-файл базовым репертуаром из модуля бота
+    # If there is neither PGN nor a JSON book - initialise the JSON file with the base repertoire from the bot module
     try:
         module = __import__(f"src.services.bots.{bot_id}", fromlist=["*"])
         default_attr = f"DEFAULT_{bot_id.upper()}_BOOK"
@@ -241,21 +241,21 @@ def build_book_for_bot(bot_id: str) -> None:
             with open(target_json, "w", encoding="utf-8") as out_f:
                 json.dump(serializable, out_f, ensure_ascii=False, indent=2)
             print(
-                f"[~] {bot_id:13s}: создана базовая книга | "
-                f"Позиций в книге: {len(serializable):4d} -> {target_json.relative_to(PROJECT_ROOT)}"
+                f"[~] {bot_id:13s}: base book created | "
+                f"Positions in the book: {len(serializable):4d} -> {target_json.relative_to(PROJECT_ROOT)}"
             )
             return
     except Exception as exc:
-        print(f"[!] Ошибка инициализации базовой книги для {bot_id}: {exc}")
+        print(f"[!] Error initialising the base book for {bot_id}: {exc}")
 
 
 def main() -> None:
-    """Очищает артефакты и собирает дебютные книги для всех базовых ботов."""
-    print(f"=== Сборка и проверка дебютных книг (Корень: {PROJECT_ROOT}) ===")
+    """Cleans up artifacts and builds the opening books for all base bots."""
+    print(f"=== Building and verifying opening books (root: {PROJECT_ROOT}) ===")
     cleanup_misplaced_artifacts()
     for b_id in BOT_BOOK_CONFIG:
         build_book_for_bot(b_id)
-    print("=== Все дебютные книги готовы! ===")
+    print("=== All opening books are ready! ===")
 
 
 if __name__ == "__main__":

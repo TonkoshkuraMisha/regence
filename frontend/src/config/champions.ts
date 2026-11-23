@@ -1,7 +1,7 @@
 // --- FILE: frontend/src/config/champions.ts ---
-// Исторические боты и легенды шахмат: здесь только данные (годы, рейтинг, изображения). Имена, титулы и девизы
-// читаются из каталогов сообщений в момент обращения (геттеры), поэтому при смене языка они меняются без
-// перезагрузки страницы.
+// Historical bots and chess legends: only data here (years, rating, images). Names, titles and mottos
+// are read from the message catalogs at access time (getters), so on a language change they update without
+// a page reload.
 
 import philidorAvatar from '../assets/champions/philidor.jpg';
 import labourdonnaisAvatar from '../assets/champions/labourdonnais.jpg';
@@ -35,7 +35,7 @@ export type HistoricalBotId =
     | 'morphy'
     | 'paulsen'
     | 'zukertort'
-    // Мастера второй волны (таск 21.5): портреты — из раздела чемпионов.
+    // Second-wave masters (task 21.5): portraits come from the champions section.
     | 'steinitz'
     | 'lasker'
     | 'rubinstein'
@@ -44,7 +44,7 @@ export type HistoricalBotId =
     | 'chigorin' | 'tarrasch' | 'pillsbury' | 'marshall' | 'nimzowitsch' | 'reti' | 'tartakower'
     | 'botvinnik' | 'tal' | 'petrosian';
 
-/** Исторический бот или соперник из мастерской (персоналия с ползунками). */
+/** Historical bot or workshop opponent (a persona with sliders). */
 export type BotOpponentId = HistoricalBotId | 'custom';
 
 export interface HistoricalBotProfile {
@@ -120,10 +120,10 @@ export type ChampionId =
 
 export interface ChampionProfile {
     id: ChampionId;
-    /** Чемпион мира — годы обладания титулом; иначе (Рубинштейн, Керес, Геллер, Корчной) — годы выступлений. */
+    /** World champion - years of holding the title; otherwise (Rubinstein, Keres, Geller, Korchnoi) - years of activity. */
     worldChampion: boolean;
     from: number;
-    /** null — по сей день. */
+    /** null - to this day. */
     to: number | null;
     img: string;
     readonly name: string;

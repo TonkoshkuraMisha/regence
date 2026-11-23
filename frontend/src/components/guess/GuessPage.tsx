@@ -1,15 +1,15 @@
 // --- FILE: frontend/src/components/guess/GuessPage.tsx ---
-// «Угадай ход мастера» (таск 14.3): позиция из партии мастера, игрок делает ход — баллы, ход мастера, оценка
-// движка и объяснение наставника. Режимы: отдельные позиции и серия ходов из одной партии. /guess/:positionId —
-// конкретная позиция (переход из просмотра партии). Для начинающих — «выбор из вариантов»: ход мастера и ходы из строк
-// движка кнопками (сервер присылает их только в этом режиме). «Партия целиком» (?whole=1, ссылка из просмотра партии и
-// архива чемпиона) — все отобранные моменты одной партии по порядку ходов (GET /guess/game/{id}), в конце — счёт за
-// партию. После ответа доска свободна: позицию можно разыграть
+// "Guess the master's move" (task 14.3): a position from a master's game, the player makes a move: points, the master's move, the
+// engine evaluation and the coach's explanation. Modes: single positions and a series of moves from one game. /guess/:positionId is
+// a specific position (a jump from the game viewer). For beginners, "multiple choice": the master's move and moves from the engine
+// lines as buttons (the server sends them only in this mode). "Whole game" (?whole=1, a link from the game viewer and from the
+// champion archive) means all selected moments of one game in move order (GET /guess/game/{id}), with the score for the
+// game at the end. After the answer the board is free: the position can be played out
 // (usePositionExplorer).
-// Данные — services/guess.ts (/api/v1/guess/*, доступно и гостю; отбор позиций и баллы — сервер, src/services/guess.py).
-// Маршруты /guess и /guess/:positionId (App.tsx); переход с позиции приходит из просмотра партии.
-// Итог ответа: баллы (100 — совпал с мастером, от 80 — рядом), ход мастера, линии движка (|cp| от 90000 — мат) и
-// объяснение наставника; счёт сессии — средний балл (services/guess.ts, understanding).
+// Data comes from services/guess.ts (/api/v1/guess/*, also available to a guest; position selection and points are the server, src/services/guess.py).
+// Routes /guess and /guess/:positionId (App.tsx); the jump from a position comes from the game viewer.
+// Result of an answer: points (100 means the same as the master, 80 and up is close), the master's move, engine lines (|cp| from 90000 is mate) and
+// the coach's explanation; the session score is the average points (services/guess.ts, understanding).
 
 import {useCallback, useEffect, useState} from 'react';
 import {Link, useNavigate, useParams, useSearchParams} from 'react-router-dom';
@@ -27,10 +27,10 @@ import {PuzzleBoard} from '../puzzles/PuzzleBoard';
 import type {BoardArrow} from '../puzzles/PuzzleBoard';
 import {ExplorerControls, usePositionExplorer} from '../puzzles/usePositionExplorer';
 
-/** single — отдельные позиции; series — серия ходов одной партии. */
+/** single: individual positions; series: a series of moves of one game. */
 type Mode = 'single' | 'series';
 
-/** Предыдущие ходы партии с номерами («12… Nf6» для хода чёрных в начале списка) по номеру полухода первого. */
+/** Previous moves of the game with numbers ("12... Nf6" for a black move at the start of the list) by the ply number of the first one. */
 function movesText(position: GuessPosition): string {
     return position.previous.map((san, i) => {
         const ply = position.first_previous_ply + i;
@@ -48,7 +48,7 @@ export function GuessPage() {
     const {t} = useI18n();
     const navigate = useNavigate();
     const {positionId} = useParams<{ positionId?: string }>();
-    // Партия целиком: моменты партии по порядку (id позиций), баллы за эту партию и её конец.
+    // Whole game: the game's moments in order (position ids), points for this game and its end.
     const [search] = useSearchParams();
     const whole = search.get('whole') === '1';
     const [plan, setPlan] = useState<{ gameId: number; ids: number[] } | null>(null);
@@ -56,14 +56,14 @@ export function GuessPage() {
     const wholeLevel = guessLevel(gameScores.reduce((a, b) => a + b, 0), gameScores.length * 100);
     const [gameDone, setGameDone] = useState(false);
     const [mode, setMode] = useState<Mode>('single');
-    // Выбор из вариантов (режим для начинающих): позиции запрашиваются с кандидатами.
+    // Multiple choice (a beginner mode): positions are requested with candidates.
     const [choices, setChoices] = useState(false);
     const [position, setPosition] = useState<GuessPosition | null>(null);
     const [empty, setEmpty] = useState(false);
     const [answer, setAnswer] = useState<GuessAnswer | null>(null);
     const [played, setPlayed] = useState<string | null>(null);
     const [scores, setScores] = useState<number[]>([]);
-    // Три попытки: номер текущей, сколько подсказок взято и последняя подсказка (штраф к баллам берёт сервер).
+    // Three attempts: the number of the current one, how many hints were taken and the last hint (the server applies the point penalty).
     const [attempt, setAttempt] = useState(1);
     const [hints, setHints] = useState(0);
     const [hint, setHint] = useState<CoachComment | null>(null);
@@ -98,7 +98,7 @@ export function GuessPage() {
         }
     }, [positionId, choices]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // Партия целиком: план — отобранные моменты партии текущей позиции; новая партия — новый счёт.
+    // Whole game: the plan is the selected moments of the current position's game; a new game means a new score.
     useEffect(() => {
         if (!whole || !position || plan?.gameId === position.game_id) return;
         const gameId = position.game_id;
@@ -111,8 +111,8 @@ export function GuessPage() {
 
     const submit = async (uci: string) => {
         if (!position) return;
-        // Ответ уже дан — доска свободна: ход игрока начинает разбор с позиции (стрелки мастера и своего хода видны
-        // до первого хода разбора).
+        // The answer is already given: the board is free, the player's move starts analysis from the position (the master's arrows and the player's move are visible
+        // until the first analysis move).
         if (answer) {
             if (explorer.active) explorer.play(uci);
             else explorer.start(position.fen, [uci]);
@@ -148,7 +148,7 @@ export function GuessPage() {
     };
 
     const goNext = () => {
-        // Партия целиком: следующий момент этой партии, после последнего — итог партии.
+        // Whole game: the next moment of this game, after the last one the game summary.
         if (whole && plan && position) {
             const nextId = plan.ids[plan.ids.indexOf(position.id) + 1];
             if (nextId !== undefined) navigate(`/guess/${nextId}?whole=1`);

@@ -2,13 +2,13 @@
 
 """split_rating_by_time_control
 
-Один общий ELO-рейтинг заменён на отдельные пулю/блиц/рапид/классику (как на chess.com и
-lichess.org) — пуля и классика не сравнимы между собой, а общая цифра их смешивала. Категория
-определяется по base_time_ms/increment_ms партии (та же эвристика, что в
-src.services.rating.classify_time_control: оценка длительности — база + 40 добавлений).
+One shared ELO rating is replaced by separate bullet/blitz/rapid/classical ratings (as on chess.com and
+lichess.org) - bullet and classical are not comparable with each other, and the single number mixed them. The category
+is determined from the game's base_time_ms/increment_ms (the same heuristic as in
+src.services.rating.classify_time_control: estimated duration = base + 40 increments).
 
-Заодно заводится счётчик сыгранных рейтинговых партий по категориям — раньше он каждый раз
-пересчитывался запросом COUNT(*) по games при завершении партии.
+A counter of rated games played per category is also introduced - previously it was recomputed every time
+with a COUNT(*) query over games when a game finished.
 
 Revision ID: c3f8a2e1d9b7
 Revises: b7e3f1a9c2d4
@@ -50,15 +50,15 @@ def upgrade() -> None:
 
     bind = op.get_bind()
 
-    # Существующий общий рейтинг — стартовое значение для всех категорий сразу, иначе у уже
-    # игравших пользователей он бы сбросился к 1200 во всех категориях, кроме фактической.
+    # The existing shared rating is the starting value for all categories at once, otherwise for users who had
+    # already played it would reset to 1200 in all categories except the actual one.
     bind.execute(sa.text(
         "UPDATE users SET bullet_rating = rating, blitz_rating = rating, "
         "rapid_rating = rating, classical_rating = rating"
     ))
 
-    # Число уже сыгранных рейтинговых партий по категориям — иначе K-фактор ELO сразу после
-    # миграции считал бы всех новичками (K=40) вне зависимости от реальной истории партий.
+    # The number of rated games already played per category - otherwise the ELO K-factor right after
+    # the migration would treat everyone as a beginner (K=40) regardless of the real game history.
     rows = bind.execute(sa.text(
         "SELECT white_player_id, black_player_id, base_time_ms, increment_ms "
         "FROM games WHERE status = 'COMPLETED' AND is_rated = true"
@@ -82,7 +82,7 @@ def upgrade() -> None:
 def downgrade() -> None:
     op.add_column("users", sa.Column("rating", sa.Integer(), server_default="1200", nullable=False))
     bind = op.get_bind()
-    # Блиц — ближайший по смыслу к историческому единому рейтингу.
+    # Blitz is the closest in meaning to the historical single rating.
     bind.execute(sa.text("UPDATE users SET rating = blitz_rating"))
 
     for category in CATEGORIES:

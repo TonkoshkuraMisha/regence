@@ -1,8 +1,8 @@
 // --- FILE: frontend/src/components/__tests__/ChessboardBotFlow.test.tsx ---
-// Ход партии с ботом в Chessboard.tsx, не покрытый основными тестами: мат ставит игрок (итог, сохранение
-// партии, звук победы), возврат хода в партии с ботом и на свободной доске,
-// переход по ходу из списка и возврат к живой позиции. Бот отвечает заготовленными ходами (стаб /bots/move),
-// время — фальшивые таймеры; ход — щелчками через test/boardMoves.ts.
+// The course of a game with a bot in Chessboard.tsx not covered by the main tests: the player delivers mate (result, saving
+// the game, the victory sound), taking back a move in a game with a bot and on a free board,
+// going to a move from the list and returning to the live position. The bot answers with prepared moves (the /bots/move stub),
+// time is fake timers; moves are made by clicks through test/boardMoves.ts.
 
 import {act, fireEvent, render, screen} from '@testing-library/react';
 import {MemoryRouter} from 'react-router-dom';
@@ -29,7 +29,7 @@ vi.mock('../../services/soundEngine', async (importOriginal) => {
 
 const pieceAt = (square: string) => boardCell(square).querySelector('img')?.getAttribute('alt') ?? null;
 
-/** Ответы бота по порядку запросов: после последнего повторяется он же. */
+/** Bot replies in order of requests: after the last one it repeats itself. */
 async function startBotGame(replies: Array<{ uci: string; san: string }>) {
     let call = 0;
     const fetchMock = mockFetchRouter({
@@ -52,7 +52,7 @@ async function startBotGame(replies: Array<{ uci: string; san: string }>) {
     );
     await openBots();
     await act(async () => {
-        fireEvent.click(await screen.findByRole('button', {name: /Белыми/}));
+        fireEvent.click(await screen.findByRole('button', {name: /White/}));
     });
     return fetchMock;
 }
@@ -76,8 +76,8 @@ afterEach(() => {
     localStorage.clear();
 });
 
-describe('мат ставит игрок', () => {
-    it('партия заканчивается победой, итог сохраняется, звучит победа; по ходу из списка можно вернуться назад', async () => {
+describe('the player delivers mate', () => {
+    it('the game ends with a win, the result is saved, the victory sounds; one can go back by a move from the list', async () => {
         const fetchMock = await startBotGame([{uci: 'f7f6', san: 'f6'}, {uci: 'g7g5', san: 'g5'}]);
         await playMove('e2', 'e4');
         await botReplies();
@@ -85,31 +85,31 @@ describe('мат ставит игрок', () => {
         await botReplies();
         await playMove('d1', 'h5');
 
-        expect(screen.getByText(/Партия против .* окончена и сохранена.*\(1-0\)/)).toBeInTheDocument();
+        expect(screen.getByText(/The game against .* is over and saved to the archive \(1-0\)/)).toBeInTheDocument();
         expect(vi.mocked(soundEngine.play)).toHaveBeenCalledWith('victory');
         const saved = (fetchMock.mock.calls as unknown as [string][]).some(([url]) => String(url).includes('/bots/save-game'));
         expect(saved).toBe(true);
 
-        // Список ходов: щелчок по первому ходу показывает позицию после него, повторный по тому же — ничего не меняет.
+        // The move list: a click on the first move shows the position after it, a repeated one on the same — changes nothing.
         fireEvent.click(screen.getByText('e4'));
         expect(pieceAt('d4')).toBeNull();
         expect(pieceAt('e4')).toBe('wp');
         fireEvent.click(screen.getByText('e4'));
-        // Щелчок по последнему ходу возвращает к живой позиции.
+        // A click on the last move returns to the live position.
         fireEvent.click(screen.getByText('Qh5#'));
         expect(pieceAt('h5')).toBe('wq');
     });
 });
 
-describe('возврат хода', () => {
-    it('возврат хода в партии с ботом снимает свой ход и ответ бота', async () => {
+describe('taking back a move', () => {
+    it('taking back a move in a game with a bot removes one\'s own move and the bot reply', async () => {
         await startBotGame([{uci: 'e7e5', san: 'e5'}]);
         await playMove('e2', 'e4');
         await botReplies();
         expect(pieceAt('e5')).toBe('bp');
 
         await act(async () => {
-            fireEvent.click(screen.getByRole('button', {name: /Вернуть ход/}));
+            fireEvent.click(screen.getByRole('button', {name: /Take back/}));
         });
         expect(pieceAt('e5')).toBeNull();
         expect(pieceAt('e4')).toBeNull();
@@ -117,8 +117,8 @@ describe('возврат хода', () => {
     });
 });
 
-describe('свободная доска: возврат хода', () => {
-    it('кнопка «Отменить ход» откатывает последний ход', async () => {
+describe('free board: taking back a move', () => {
+    it('the "Undo move" button rolls back the last move', async () => {
         vi.stubGlobal('fetch', mockFetchRouter({
             '/profile/me': () => ({id: 1, username: 'TestPlayer', blitz_rating: 1500}),
             '/profile/matchmaking/queue': () => [],
@@ -133,7 +133,7 @@ describe('свободная доска: возврат хода', () => {
         await screen.findByTestId('new-game-open');
         await playMove('e2', 'e4');
         await act(async () => {
-            fireEvent.click(screen.getByRole('button', {name: /Отменить ход/}));
+            fireEvent.click(screen.getByRole('button', {name: /Undo move/}));
         });
         expect(pieceAt('e2')).toBe('wp');
         expect(pieceAt('e4')).toBeNull();

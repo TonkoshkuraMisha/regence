@@ -1,7 +1,7 @@
-// Библиотека партий (таск 27.1): /library — дерево коллекций слева, партии выбранной коллекции или результаты поиска
-// справа; партия открывается в обычном просмотре (/library/game/:id, GameViewer в режиме библиотеки).
-// Данные — services/library.ts (/api/v1/library: коллекции, партии, поиск). Адрес принимает ?structure= (структура
-// из Большого курса) и ?moves= (начало партии из репертуара) — сразу открывает поиск. Маршрут — App.tsx.
+// Game library (task 27.1): /library has a collection tree on the left, games of the selected collection or search results
+// on the right; a game opens in the ordinary viewer (/library/game/:id, GameViewer in library mode).
+// Data is services/library.ts (/api/v1/library: collections, games, search). The address accepts ?structure= (a structure
+// from the Great Course) and ?moves= (the start of a game from a repertoire) and opens the search at once. The route is in App.tsx.
 
 import {useEffect, useState} from 'react';
 import {Link, useSearchParams} from 'react-router-dom';
@@ -12,10 +12,10 @@ import {errorMessage} from '../../services/apiErrors';
 import {childrenOf, LIBRARY_PAGE, libraryApi, STRUCTURES, totalGames} from '../../services/library';
 import type {LibraryCollection, LibraryPage as Page, LibrarySearch} from '../../services/library';
 
-// Что показано справа: партии коллекции или результаты поиска.
+// What is shown on the right: games of a collection or search results.
 type View = { kind: 'collection'; id: number; name: string } | { kind: 'search'; search: LibrarySearch };
 
-/** Рекурсивное дерево коллекций; закрытые (не public) помечены замком, у каждой — число партий с вложенными. */
+/** Recursive collection tree; closed (non-public) ones are marked with a lock, each shows the number of games with nested ones. */
 function Tree({list, parent, open, selected, onToggle, onSelect}: {
     list: LibraryCollection[];
     parent: number | null;
@@ -53,13 +53,13 @@ function Tree({list, parent, open, selected, onToggle, onSelect}: {
     );
 }
 
-/** Страница /library: форма поиска, дерево коллекций и постраничный список партий (по LIBRARY_PAGE). */
+/** Page /library: a search form, a collection tree and a paged list of games (by LIBRARY_PAGE). */
 export function LibraryPage() {
     const {t} = useI18n();
     const [collections, setCollections] = useState<LibraryCollection[]>([]);
     const [open, setOpen] = useState<Set<number>>(new Set());
-    // ?structure=… — сразу поиск партий с этой пешечной структурой (модули Большого курса, 27.6);
-    // ?moves=… — партии с этим началом (узел репертуара, 27.10).
+    // ?structure=... opens a search of games with this pawn structure at once (Great Course modules, 27.6);
+    // ?moves=... games with this start (a repertoire node, 27.10).
     const [params] = useSearchParams();
     const initial: LibrarySearch = {};
     const paramStructure = params.get('structure') ?? '';

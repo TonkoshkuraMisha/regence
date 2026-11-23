@@ -1,10 +1,10 @@
-// Язык интерфейса в настоящем браузере: по умолчанию английский при любом языке браузера (решение владельца 22.11),
-// переключается в шапке без перезагрузки и запоминается — после перезагрузки страница остаётся на выбранном языке.
+// UI language in a real browser: English by default for any browser language (owner decision 22.11),
+// switches in the header without a reload and is remembered — after a reload the page stays in the chosen language.
 
 import {expect, test} from '@playwright/test';
 
-test.describe('язык интерфейса', () => {
-    test('украинский браузер всё равно получает английский; выбор украинского переживает перезагрузку', async ({browser}) => {
+test.describe('UI language', () => {
+    test('a Ukrainian browser still gets English; the choice of Ukrainian survives a reload', async ({browser}) => {
         const context = await browser.newContext({locale: 'uk-UA', storageState: {cookies: [], origins: []}});
         const page = await context.newPage();
         await page.goto('/');
@@ -23,7 +23,7 @@ test.describe('язык интерфейса', () => {
         await context.close();
     });
 
-    test('браузер на неподдерживаемом языке получает английский', async ({browser}) => {
+    test('a browser with an unsupported language gets English', async ({browser}) => {
         const context = await browser.newContext({locale: 'de-DE', storageState: {cookies: [], origins: []}});
         const page = await context.newPage();
         await page.goto('/');

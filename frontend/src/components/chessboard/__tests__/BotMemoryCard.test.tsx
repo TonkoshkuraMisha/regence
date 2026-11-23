@@ -1,4 +1,4 @@
-// Память ботов на карточке (таски 32.1–32.2): сила против игроков и «помнит вас» со счётом.
+// Bot memory on the card (tasks 32.1–32.2): strength against players and "remembers you" with a score.
 
 import {render, screen} from '@testing-library/react';
 import {MemoryRouter} from 'react-router-dom';
@@ -19,25 +19,25 @@ function panel(extra: Partial<Parameters<typeof HistoricalBotsPanel>[0]> = {}) {
     );
 }
 
-describe('память ботов на карточке', () => {
-    it('счёт с половинками', () => {
+describe('bot memory on the card', () => {
+    it('a score with halves', () => {
         expect([scorePoints(0), scorePoints(0.5), scorePoints(2.5), scorePoints(3)]).toEqual(['0', '½', '2½', '3']);
     });
 
-    it('постоянный соперник: бот помнит и избегает проигранных вариантов', () => {
+    it('a regular opponent: the bot remembers and avoids lost lines', () => {
         panel({
             live: {morphy: {rating: 1980, games: 64}},
             rivals: {morphy: {bot_id: 'morphy', games: 3, bot_points: 0.5, remembers: true}},
         });
-        expect(screen.getByTestId('bot-live-strength')).toHaveTextContent('Против игроков: 1980 (партий: 64)');
+        expect(screen.getByTestId('bot-live-strength')).toHaveTextContent('Against players: 1980 (games: 64)');
         const rivalry = screen.getByTestId('bot-rivalry');
-        expect(rivalry).toHaveTextContent('помнит вас: партий 3, счёт 2½ : ½');
-        expect(rivalry).toHaveTextContent('избегает вариантов');
+        expect(rivalry).toHaveTextContent('remembers you: games 3, score 2½ : ½');
+        expect(rivalry).toHaveTextContent('avoids the lines');
     });
 
-    it('одна партия — просто знакомство; без партий — строки нет', () => {
+    it('one game — just an acquaintance; no games — no line', () => {
         const {unmount} = panel({rivals: {morphy: {bot_id: 'morphy', games: 1, bot_points: 1, remembers: false}}});
-        expect(screen.getByTestId('bot-rivalry')).toHaveTextContent('Вы уже играли с');
+        expect(screen.getByTestId('bot-rivalry')).toHaveTextContent('You have played');
         unmount();
         panel();
         expect(screen.queryByTestId('bot-rivalry')).toBeNull();

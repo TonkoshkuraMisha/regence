@@ -1,19 +1,19 @@
 // --- FILE: frontend/src/components/gameViewer/ViewerAppearancePanel.tsx ---
-// Выбор фигур и доски прямо в просмотре партии (вынесено из GameViewer.tsx, таск 17.6). Наборы и темы — реестры
-// config/boardAppearance.ts; ещё не открытые награды (config/unlocks.ts) недоступны и показывают условие открытия.
-// Выбор сохраняет родитель (GameViewer.tsx), здесь только вид.
+// Choice of pieces and board right in the game viewer (extracted from GameViewer.tsx, task 17.6). Sets and themes are the registries of
+// config/boardAppearance.ts; rewards not yet unlocked (config/unlocks.ts) are unavailable and show the unlock condition.
+// The choice is saved by the parent (GameViewer.tsx), here is only the view.
 
 import {X} from 'lucide-react';
 import {BOARD_THEMES, PIECE_SETS} from '../../config/boardAppearance';
 import {useI18n} from '../../i18n';
 import {unlockText, useUnlocks} from '../../config/unlocks';
 
-// Вид кнопки выбора: активная подсвечена.
+// Look of a choice button: the active one is highlighted.
 const option = (active: boolean) => `py-1 px-1 rounded border text-xs font-bold transition cursor-pointer truncate ${
     active ? 'bg-amber-900/50 border-amber-400 text-amber-200' : 'bg-black/35 border-amber-900/40 text-boxwood/75 hover:text-amber-200'
 }`;
 
-/** Панель из двух рядов кнопок: набор фигур и тема доски; закрытые награды отключены, кроме уже выбранной. */
+/** Panel of two rows of buttons: piece set and board theme; locked rewards are disabled, except an already selected one. */
 export function ViewerAppearancePanel({pieceSetKey, themeKey, onPieceSetChange, onThemeChange, onClose}: {
     pieceSetKey: string; themeKey: string; onPieceSetChange: (id: string) => void; onThemeChange: (id: string) => void; onClose: () => void;
 }) {

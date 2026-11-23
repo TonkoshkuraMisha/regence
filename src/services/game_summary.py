@@ -1,38 +1,44 @@
 # --- FILE: src/services/game_summary.py ---
 """
-Итог партии (таск 11.5): тип партии по графику оценки и ключевые моменты — по уже готовому разбору, без движка.
+Game summary (task 11.5): the game type by the evaluation graph and key moments -- from the already finished analysis,
+without an engine.
 
-Типы (проверяются по порядку, первый подходящий):
-* ``seesaw`` — «качели»: решающий перевес (≥ LEAD_CP) переходил от одной стороны к другой не меньше двух раз;
-* ``decisive_blunder`` — «решила ошибка»: проигравший грубо ошибся, не уступая до этого, и после ошибки
-  перевес больше не возвращался к нему;
-* ``domination`` — «доминирование»: победитель ни разу не был заметно хуже и почти всю партию был лучше;
-* ``missed_win`` — «упущенная победа»: ничья, хотя одна из сторон имела выигрышный перевес (≥ WINNING_CP);
-* ``balanced`` — «равная борьба»: больше EQUAL_SHARE ходов позиция была равной (|оценка| < EQUAL_CP);
-* ``gradual`` — «постепенный перевес»: всё остальное — преимущество копилось без единого перелома.
+Types (checked in order, the first match wins):
+* ``seesaw`` -- "seesaw": a decisive advantage (>= LEAD_CP) passed from one side to the other at least twice;
+* ``decisive_blunder`` -- "decided by a mistake": the loser blundered badly without having been behind before, and after the
+  mistake
+  the advantage never returned to them;
+* ``domination`` -- "domination": the winner was never noticeably worse and was better for almost the whole game;
+* ``missed_win`` -- "missed win": a draw although one of the sides had a winning advantage (>= WINNING_CP);
+* ``balanced`` -- "even fight": the position was equal for more than EQUAL_SHARE of the moves (|evaluation| < EQUAL_CP);
+* ``gradual`` -- "gradual advantage": everything else -- the advantage built up without a single turning point.
 
-Оценки — с точки зрения белых, мат приводится к ±CLAMP_CP. Ключевые моменты каждой стороны: лучший ход (точный ход с
-самым большим улучшением оценки в свою пользу за пару полуходов — так засчитывается и наказание ошибки соперника) и
-худший (самая большая потеря).
+Evaluations are from White's point of view, mate is clamped to +-CLAMP_CP. Each side's key moments: the best move (an
+accurate move with
+the biggest evaluation improvement in its favour over a couple of plies -- this also counts punishing the opponent's mistake)
+and
+the worst (the biggest loss).
 
-Откуда данные: список ходов готового разбора (поле "moves" из games.analysis_json или разбора импортированной
-партии — у каждого хода оценка после него eval_cp, потеря cp_loss, цвет и номер полухода) и результат партии. Итог
-не хранится: считается при каждой выдаче разбора (src/api/analysis.py, src/api/game_import.py).
+Where the data comes from: the move list of the finished analysis (the "moves" field of games.analysis_json or of the
+imported game's analysis --
+each move has the evaluation after it eval_cp, the loss cp_loss, the colour and the ply number) and the game result. The
+summary
+is not stored: it is computed on every analysis delivery (src/api/analysis.py, src/api/game_import.py).
 """
 
 from collections.abc import Sequence
 
-# Все пороги — в сантипешках, оценка с точки зрения белых.
-LEAD_CP = 150           # перевес стороны: оценка не меньше этой в её пользу
-WINNING_CP = 300        # выигрышный перевес (для «упущенной победы»)
-EQUAL_CP = 100          # позиция равная: оценка по модулю меньше этой
-EQUAL_SHARE = 0.4       # «равная борьба»: равных позиций больше этой доли партии
-DOMINATION_SHARE = 0.7  # «доминирование»: победитель был лучше не меньше чем в этой доле позиций после дебюта
-BLUNDER_CP = 200        # потеря хода, с которой он считается решающей ошибкой
-CLAMP_CP = 1000         # оценки (в том числе мат) приводятся к ±этому значению
-OPENING_PLIES = 8       # столько первых полуходов не входит в долю «был лучше» для «доминирования»
-# Упущенный удар (таск B.5): соперник ошибся не меньше чем на MISSED_ERROR_CP, а ответ потерял не меньше
-# MISSED_REPLY_CP из этого — наказать было можно, но не наказали. В списке — не больше MAX_MISSED.
+# All thresholds are in centipawns, the evaluation from White's point of view.
+LEAD_CP = 150           # a side's advantage: the evaluation is at least this in its favour
+WINNING_CP = 300        # a winning advantage (for "missed win")
+EQUAL_CP = 100          # the position is equal: the evaluation modulus is below this
+EQUAL_SHARE = 0.4       # "even fight": equal positions make up more than this share of the game
+DOMINATION_SHARE = 0.7  # "domination": the winner was better in at least this share of positions after the opening
+BLUNDER_CP = 200        # the move loss from which it counts as a decisive mistake
+CLAMP_CP = 1000         # evaluations (including mate) are clamped to +-this value
+OPENING_PLIES = 8       # this many first plies are excluded from the "was better" share for "domination"
+# A missed shot (task B.5): the opponent erred by at least MISSED_ERROR_CP, and the reply lost at least
+# MISSED_REPLY_CP of it -- it was possible to punish but they did not. The list holds at most MAX_MISSED.
 MISSED_ERROR_CP = 150
 MISSED_REPLY_CP = 150
 MAX_MISSED = 5
@@ -43,12 +49,12 @@ def _clamp(value: int) -> int:
 
 
 def _winner(result: str | None) -> int:
-    """+1 — победили белые, −1 — чёрные, 0 — ничья или партия без результата."""
+    """+1 -- White won, -1 -- Black, 0 -- a draw or a game without a result."""
     return {"1-0": 1, "0-1": -1}.get(result or "", 0)
 
 
 def _leader(eval_cp: int) -> int:
-    """У кого перевес при этой оценке: +1 — у белых, −1 — у чёрных, 0 — ни у кого (меньше LEAD_CP)."""
+    """Who has the advantage at this evaluation: +1 -- White, -1 -- Black, 0 -- nobody (below LEAD_CP)."""
     if eval_cp >= LEAD_CP:
         return 1
     if eval_cp <= -LEAD_CP:
@@ -57,7 +63,10 @@ def _leader(eval_cp: int) -> int:
 
 
 def _lead_changes(evals: Sequence[int]) -> int:
-    """Сколько раз перевес перешёл от одной стороны к другой; равные позиции между ними переход не отменяют."""
+    """
+    How many times the advantage passed from one side to the other; equal positions between them do not cancel the
+    transition.
+    """
     changes = 0
     last = 0
     for value in evals:
@@ -72,9 +81,9 @@ def _lead_changes(evals: Sequence[int]) -> int:
 
 def _turning_point(moves: Sequence[dict], evals: Sequence[int], winner: int) -> int | None:
     """
-    Грубая ошибка проигравшего, после которой перевес победителя больше не уходил: номер полухода или None. Условия:
-    потеря хода не меньше BLUNDER_CP, перед ним у победителя не было и половины LEAD_CP, а после него и до конца
-    партии перевес победителя не опускался ниже LEAD_CP.
+    A gross mistake by the loser after which the winner's advantage never left: the ply number or None. Conditions:
+    the move loss is at least BLUNDER_CP, before it the winner did not have even half of LEAD_CP, and after it until the end of
+    the game the winner's advantage did not drop below LEAD_CP.
     """
     loser_color = "black" if winner == 1 else "white"
     previous = 0
@@ -83,7 +92,7 @@ def _turning_point(moves: Sequence[dict], evals: Sequence[int], winner: int) -> 
         previous = evals[index]
         if move.get("color") != loser_color or int(move.get("cp_loss", 0)) < BLUNDER_CP:
             continue
-        # До ошибки проигравший не был хуже, после — проиграно, и перевес уже не вернулся.
+        # Before the mistake the loser was not worse, after it the game is lost and the advantage never returned.
         if before * winner > LEAD_CP / 2:
             continue
         if all(value * winner >= LEAD_CP for value in evals[index:]):
@@ -93,9 +102,10 @@ def _turning_point(moves: Sequence[dict], evals: Sequence[int], winner: int) -> 
 
 def _key_moments(moves: Sequence[dict], evals: Sequence[int], color: str) -> dict:
     """
-    Лучший и худший ход стороны (номера полуходов или None). Лучший — ход с потерей не больше 10 и наибольшим
-    улучшением оценки за пару полуходов, если улучшение не меньше 50; худший — ход с наибольшей потерей, если она не
-    меньше 50.
+    A side's best and worst moves (ply numbers or None). The best is a move with a loss of at most 10 and the biggest
+    evaluation improvement over a couple of plies, if the improvement is at least 50; the worst is the move with the biggest
+    loss, if it is
+    at least 50.
     """
     sign = 1 if color == "white" else -1
     best_ply: int | None = None
@@ -106,14 +116,15 @@ def _key_moments(moves: Sequence[dict], evals: Sequence[int], color: str) -> dic
         if move.get("color") != color:
             continue
         loss = int(move.get("cp_loss", 0))
-        # Выигрыш считается от позиции до хода соперника: ход, наказавший его ошибку, — тоже лучший момент.
+        # The gain is counted from the position before the opponent's move: the move that punished their mistake is also a
+        # best moment.
         baseline = evals[index - 2] if index >= 2 else 0
         gain = (evals[index] - baseline) * sign
         if loss <= 10 and gain > best_gain:
             best_gain, best_ply = gain, int(move.get("ply", index + 1))
         if loss > worst_loss:
             worst_loss, worst_ply = loss, int(move.get("ply", index + 1))
-    # «Лучший ход» без заметного выигрыша и «худший» без заметной потери — не моменты.
+    # A "best move" without a noticeable gain and a "worst" without a noticeable loss are not moments.
     return {
         "best_ply": best_ply if best_gain >= 50 else None,
         "worst_ply": worst_ply if worst_loss >= 50 else None,
@@ -121,7 +132,7 @@ def _key_moments(moves: Sequence[dict], evals: Sequence[int], color: str) -> dic
 
 
 def _missed_punishments(moves: Sequence[dict]) -> list[dict]:
-    """Полуходы, где сторона не наказала крупную ошибку соперника, — от самых дорогих."""
+    """Plies where a side did not punish the opponent's big mistake -- the most costly first."""
     missed: list[dict] = []
     for previous, move in zip(moves, moves[1:], strict=False):
         if previous.get("color") == move.get("color"):
@@ -134,9 +145,11 @@ def _missed_punishments(moves: Sequence[dict]) -> list[dict]:
 
 def summarize(moves: Sequence[dict], result: str | None) -> dict | None:
     """
-    Итог по ходам разбора (moves из analysis_json) и результату партии. Пустая партия — None. Возвращает тип партии
-    (kind), полуход решающей ошибки, число переходов перевеса, долю равных позиций, ключевые моменты сторон и
-    упущенные удары. Партия без победителя (ничья, прервана) решающей ошибки и «доминирования» не имеет.
+    A summary by the analysis moves (moves from analysis_json) and the game result. An empty game -- None. Returns the game
+    type
+    (kind), the ply of the decisive mistake, the number of advantage transitions, the share of equal positions, the sides'
+    key moments and
+    the missed shots. A game without a winner (draw, interrupted) has no decisive mistake and no "domination".
     """
     if not moves:
         return None

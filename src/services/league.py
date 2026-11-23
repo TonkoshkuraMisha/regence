@@ -1,17 +1,19 @@
 # --- FILE: src/services/league.py ---
 """
-Команды и сезонная лига (таск 17.2). Сезон — календарный месяц (UTC). Очки дают законченные рейтинговые партии
-между людьми из РАЗНЫХ команд, сыгранные в сезоне (состав команды — текущий):
+Teams and the seasonal league (task 17.2). A season is a calendar month (UTC). Points are given by finished rated games
+between humans from DIFFERENT teams played in the season (the team roster is the current one):
 
-* победа: 2 + (рейтинг соперника − свой) / 200, округлённо, от 1 до 4 — победа над сильным стоит больше;
-* ничья: 1, а с соперником сильнее на DRAW_BONUS_GAP и больше — 2;
-* поражение: 0.
+* win: 2 + (opponent's rating - own) / 200, rounded, from 1 to 4 -- a win over a strong opponent is worth more;
+* draw: 1, and against an opponent stronger by DRAW_BONUS_GAP or more -- 2;
+* loss: 0.
 
-Рейтинги — на начало партии (games.white_initial_rating / black_initial_rating); если рейтинг в партии не записан,
-берётся 1200. Партия относится к сезону по времени окончания (games.finished_at). Таблиц с очками нет: очки
-считаются при каждом запросе по таблице games и текущим составам (teams, team_members), поэтому переход игрока в
-другую команду переносит с ним и его очки сезона. Ключ сезона и его границы (season_bounds) использует и Кубок
-конференций (src/services/conferences.py).
+Ratings are at the start of the game (games.white_initial_rating / black_initial_rating); if the rating is not recorded in
+the game,
+1200 is used. A game belongs to a season by its end time (games.finished_at). There are no points tables: points
+are computed on every request from the games table and the current rosters (teams, team_members), so a player's move to
+another team carries their season points with them. The season key and its bounds (season_bounds) are also used by the
+Conference
+Cup (src/services/conferences.py).
 """
 
 from datetime import UTC, datetime
@@ -24,29 +26,30 @@ from src.models.game import Game, GameStatus
 from src.models.team import Team, TeamMember
 from src.models.user import User
 
-# Ничья с соперником, который сильнее на столько пунктов рейтинга или больше, приносит 2 очка вместо 1.
+# A draw against an opponent stronger by this many rating points or more brings 2 points instead of 1.
 DRAW_BONUS_GAP = 200
-# Допустимая длина названия команды в знаках (после сжатия пробелов).
+# The allowed team name length in characters (after collapsing spaces).
 NAME_MIN, NAME_MAX = 3, 30
 
 
 def win_points(mine: int, opponent: int) -> int:
     """
-    Очки лиги за победу: 2 плюс по очку за каждые 200 пунктов перевеса соперника в рейтинге (минус — за свой
-    перевес), в границах от 1 до 4. Округление — round Python: ровно половина округляется к чётному.
+    League points for a win: 2 plus a point for every 200 points of the opponent's rating advantage (minus -- for one's own
+    advantage), within 1 to 4. Rounding is Python's round: exactly a half rounds to even.
     """
     return max(1, min(4, 2 + round((opponent - mine) / 200)))
 
 
 def draw_points(mine: int, opponent: int) -> int:
-    """Очки лиги за ничью: 1, а с соперником сильнее на DRAW_BONUS_GAP и больше — 2."""
+    """League points for a draw: 1, and against an opponent stronger by DRAW_BONUS_GAP or more -- 2."""
     return 2 if opponent - mine >= DRAW_BONUS_GAP else 1
 
 
 def season_bounds(season: str | None = None, now: datetime | None = None) -> tuple[str, datetime, datetime]:
     """
-    (ключ «ГГГГ-ММ», начало, конец) сезона; по умолчанию — текущий месяц. Начало — первое число месяца в 00:00 UTC,
-    конец — первое число следующего месяца (не входит в сезон).
+    (the key "YYYY-MM", start, end) of the season; by default -- the current month. The start is the first day of the month
+    at 00:00 UTC,
+    the end is the first day of the next month (not part of the season).
     """
     if season:
         year, month = (int(part) for part in season.split("-"))
@@ -59,7 +62,7 @@ def season_bounds(season: str | None = None, now: datetime | None = None) -> tup
 
 
 async def team_of(db: AsyncSession, user_id: int) -> Team | None:
-    """Команда игрока (игрок состоит не больше чем в одной) или None."""
+    """The player's team (a player belongs to at most one) or None."""
     return (await db.execute(
         select(Team).join(TeamMember, TeamMember.team_id == Team.id).where(TeamMember.user_id == user_id)
     )).scalar_one_or_none()
@@ -67,8 +70,8 @@ async def team_of(db: AsyncSession, user_id: int) -> Team | None:
 
 async def create_team(db: AsyncSession, user: User, name: str) -> Team:
     """
-    Создаёт команду: имя от NAME_MIN до NAME_MAX знаков, уникальное без учёта регистра; игрок не должен состоять в
-    другой команде. Создатель становится владельцем и первым участником.
+    Creates a team: a name from NAME_MIN to NAME_MAX characters, unique case-insensitively; the player must not belong to
+    another team. The creator becomes the owner and the first member.
     """
     clean = " ".join(name.split())
     if not NAME_MIN <= len(clean) <= NAME_MAX:
@@ -87,7 +90,7 @@ async def create_team(db: AsyncSession, user: User, name: str) -> Team:
 
 
 async def join_team(db: AsyncSession, user: User, team_id: int) -> Team:
-    """Вступление в команду; игрок, уже состоящий в какой-либо команде, получает отказ."""
+    """Joining a team; a player who already belongs to any team is refused."""
     team = await db.get(Team, team_id)
     if team is None:
         raise DomainError("team_not_found")
@@ -100,8 +103,9 @@ async def join_team(db: AsyncSession, user: User, team_id: int) -> Team:
 
 async def leave_team(db: AsyncSession, user: User) -> None:
     """
-    Выйти из команды. Вышел последний участник — команда удаляется; вышел владелец — владельцем становится участник,
-    вступивший раньше остальных. Игрок без команды — отказ team_not_member.
+    Leave a team. When the last member leaves, the team is deleted; when the owner leaves, the member who joined earlier than
+    the others becomes
+    the owner. A player without a team -- refusal team_not_member.
     """
     member = (await db.execute(select(TeamMember).where(TeamMember.user_id == user.id))).scalar_one_or_none()
     if member is None:
@@ -122,9 +126,9 @@ async def leave_team(db: AsyncSession, user: User) -> None:
 
 async def season_points(db: AsyncSession, season: str | None = None) -> tuple[str, dict[int, int], dict[int, int]]:
     """
-    (сезон, очки по командам, очки по игрокам) — по партиям сезона между разными командами. Берутся законченные
-    рейтинговые партии (не симуляции), у которых оба игрока сейчас состоят в командах; партии внутри одной команды и
-    партии без обычного результата пропускаются.
+    (season, points by teams, points by players) -- from the season's games between different teams. Finished rated
+    games (not simulations) are taken where both players currently belong to teams; games within one team and
+    games without an ordinary result are skipped.
     """
     key, start, end = season_bounds(season)
     team_by_user = {uid: tid for uid, tid in (await db.execute(select(TeamMember.user_id, TeamMember.team_id))).all()}
@@ -156,7 +160,7 @@ async def season_points(db: AsyncSession, season: str | None = None) -> tuple[st
 
 
 async def table(db: AsyncSession, season: str | None = None) -> dict:
-    """Таблица лиги за сезон: команды по убыванию очков, с числом участников и местом."""
+    """The league table for a season: teams by descending points, with the number of members and the place."""
     key, team_points, _ = await season_points(db, season)
     rows = (await db.execute(
         select(Team.id, Team.name, func.count(TeamMember.id)).join(TeamMember, TeamMember.team_id == Team.id)
@@ -170,7 +174,7 @@ async def table(db: AsyncSession, season: str | None = None) -> dict:
 
 
 async def team_view(db: AsyncSession, team_id: int, season: str | None = None) -> dict:
-    """Страница команды: состав по убыванию очков за сезон и сумма очков команды."""
+    """A team page: the roster by descending season points and the team's total points."""
     team = await db.get(Team, team_id)
     if team is None:
         raise DomainError("team_not_found")

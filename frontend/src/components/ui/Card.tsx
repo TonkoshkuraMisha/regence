@@ -1,33 +1,33 @@
 // --- FILE: frontend/src/components/ui/Card.tsx ---
-// Карточка (общие компоненты дизайна, план владельца 18.11; docs/design-system.md) — одна форма для разделов школы,
-// турниров, режимов задач: иконка, название, короткое описание, метка состояния, прогресс и действие внизу. Виды:
-// default — обычная, muted — второстепенная (закрытый турнир, «скоро»), hero — главная на странице (например,
-// «Большой курс»). С to карточка целиком — ссылка; с onClick — кнопка; иначе — просто блок (тогда действия передаются
-// в footer). CardGrid — сетка карточек: одна колонка на телефоне, две на планшете, три на широком экране (или две — cols=2).
+// Card (shared design components, owner plan of 18.11; docs/design-system.md) - one shape for school sections,
+// tournaments and puzzle modes: icon, title, short description, status badge, progress and an action at the bottom. Variants:
+// default - regular, muted - secondary (closed tournament, "coming soon"), hero - the main one on a page (for example,
+// "Grand Course"). With to the whole card is a link; with onClick - a button; otherwise just a block (then actions go
+// into footer). CardGrid - a card grid: one column on a phone, two on a tablet, three on a wide screen (or two - cols=2).
 
 import type {ReactNode} from 'react';
 import {Link} from 'react-router-dom';
 
-// Вид карточки (см. заголовок файла).
+// Card variant (see the file header).
 export type CardVariant = 'default' | 'muted' | 'hero';
 
-// Фон и рамка по видам карточки.
+// Background and border per card variant.
 const VARIANTS: Record<CardVariant, string> = {
     default: 'bg-acacia/80 border-acacia-light/60',
     muted: 'bg-black/25 border-amber-900/40 opacity-80',
     hero: 'bg-gradient-to-br from-amber-900/60 to-acacia border-amber-500/80',
 };
-// Добавка для кликабельных карточек: подсветка рамки, лёгкий подъём и рамка фокуса с клавиатуры.
+// Addition for clickable cards: border highlight, slight lift and a keyboard focus ring.
 const INTERACTIVE = 'hover:border-amber-400 hover:-translate-y-px transition focus-visible:outline-2 focus-visible:outline-amber-300';
 
-// Свойства карточки; badge, footer и children необязательны.
+// Card properties; badge, footer and children are optional.
 interface CardProps {
     title: ReactNode;
     description?: ReactNode;
     icon?: ReactNode;
-    /** Метка в правом верхнем углу (Badge): «пройдено», «новое», «закрыто». */
+    /** Badge in the top right corner (Badge): "completed", "new", "closed". */
     badge?: ReactNode;
-    /** Нижняя часть: прогресс, кнопки. */
+    /** Bottom part: progress, buttons. */
     footer?: ReactNode;
     variant?: CardVariant;
     to?: string;
@@ -36,7 +36,7 @@ interface CardProps {
     children?: ReactNode;
 }
 
-/** Карточка: корневой элемент выбирается по to / onClick (ссылка, кнопка или блок). */
+/** Card: the root element is chosen by to / onClick (link, button or block). */
 export function Card({title, description, icon, badge, footer, variant = 'default', to, onClick, testId, children}: CardProps) {
     const body = (
         <>
@@ -69,7 +69,7 @@ export function Card({title, description, icon, badge, footer, variant = 'defaul
     return <div data-testid={testId} className={classes}>{body}</div>;
 }
 
-/** Сетка карточек: 1 / 2 / 3 колонки по ширине экрана (cols=2 — не больше двух). */
+/** Card grid: 1 / 2 / 3 columns by screen width (cols=2 - at most two). */
 export function CardGrid({children, cols = 3}: { children: ReactNode; cols?: 2 | 3 }) {
     return <div className={`grid gap-3 sm:grid-cols-2 ${cols === 3 ? 'lg:grid-cols-3' : ''}`}>{children}</div>;
 }

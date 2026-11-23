@@ -1,32 +1,32 @@
 // --- FILE: frontend/src/components/puzzles/puzzleModes.ts ---
-// Режимы страницы задач и их группы (дизайн страницы задач, план владельца 18.11). Восемь режимов раньше стояли
-// одинаковыми кнопками в одной сетке; теперь они разложены по смыслу:
-//   solve  — «Решать»: задачи базы по рейтингу, задача дня, забег на время;
-//   train  — «Тренироваться»: путь по приёмам, упражнения-генераторы, защита, «Спасите партию»;
-//   review — «Свои партии»: «Мои ошибки», позиции из собственных партий игрока.
-// Новый режим — строка в MODE_GROUPS и иконка в MODE_ICONS; подписи берутся из puzzles.modes.*, пояснения — из
-// puzzles.modeInfo.*, названия групп — из puzzles.modeGroups.* (три языка).
-// Чистые данные без сети и состояния; используют PuzzlesPage.tsx и PuzzleModePicker.tsx.
+// Puzzle page modes and their groups (puzzle page design, owner's plan 18.11). The eight modes used to stand
+// as identical buttons in one grid; now they are laid out by meaning:
+//   solve  - "Solve": database puzzles by rating, the daily puzzle, a timed run;
+//   train  - "Train": a path through techniques, generator exercises, defence, "Save the game";
+//   review - "Your games": "My mistakes", positions from the player's own games.
+// A new mode is a row in MODE_GROUPS and an icon in MODE_ICONS; labels come from puzzles.modes.*, explanations from
+// puzzles.modeInfo.*, group names from puzzles.modeGroups.* (all language catalogs).
+// Pure data without network or state; used by PuzzlesPage.tsx and PuzzleModePicker.tsx.
 
 import type {LucideIcon} from 'lucide-react';
 import {BookOpen, CalendarDays, Dumbbell, Handshake, History, Shield, Target, Timer} from 'lucide-react';
 
-/** Режимы страницы задач; значение попадает в ключи puzzles.modes.* и в data-testid кнопок. */
+/** Puzzle page modes; the value goes into the puzzles.modes.* keys and into the buttons' data-testid. */
 export type Mode = 'rated' | 'themes' | 'defense' | 'save' | 'drills' | 'personal' | 'daily' | 'timed';
-/** Группа вкладок режимов (ключ puzzles.modeGroups.*). */
+/** Group of mode tabs (puzzles.modeGroups.* key). */
 export type ModeGroupId = 'solve' | 'train' | 'review';
 
-/** Группы режимов в порядке показа: порядок строк задаёт порядок вкладок и карточек. */
+/** Mode groups in display order: the row order sets the order of tabs and cards. */
 export const MODE_GROUPS: { id: ModeGroupId; modes: Mode[] }[] = [
     {id: 'solve', modes: ['rated', 'daily', 'timed']},
     {id: 'train', modes: ['themes', 'drills', 'defense', 'save']},
     {id: 'review', modes: ['personal']},
 ];
 
-/** Все режимы в порядке групп: проверка перехода на страницу с готовым режимом (ежедневная разминка). */
+/** All modes in group order: checking a jump to the page with a ready mode (the daily warm-up). */
 export const MODES: Mode[] = MODE_GROUPS.flatMap((group) => group.modes);
 
-/** Иконка каждого режима (lucide-react) для вкладок и карточек; запись обязательна для каждого Mode. */
+/** Icon of each mode (lucide-react) for tabs and cards; an entry is required for every Mode. */
 export const MODE_ICONS: Record<Mode, LucideIcon> = {
     rated: Target,
     daily: CalendarDays,

@@ -1,4 +1,4 @@
-"""«Узнай структуру» (таск 27.9): позиции из размеченных партий библиотеки, скелеты как запас, варианты ответа."""
+""""Recognise the structure" (task 27.9): positions from the library's labelled games, skeletons as a fallback, options."""
 
 import random
 
@@ -21,14 +21,14 @@ def test_skeletons_are_recognised():
 def test_build_fills_with_skeletons_and_has_four_options():
     questions = sq.build([], 10, random.Random(1))
     assert len(questions) == 10
-    assert len({q.answer for q in questions}) == 10  # разные структуры подряд
+    assert len({q.answer for q in questions}) == 10  # different structures in a row
     for q in questions:
         assert len(q.options) == sq.OPTIONS and q.answer in q.options and len(set(q.options)) == sq.OPTIONS
         assert q.game_id is None
 
 
 async def test_endpoint_uses_library_games(client, db_session):
-    collection = await library.ensure_collection(db_session, "Структуры")
+    collection = await library.ensure_collection(db_session, "Structures")
     await library.import_games(db_session, collection, library.read_text(FRENCH))
     await db_session.commit()
     body = client.get(API, params={"count": 3, "seed": 5}).json()

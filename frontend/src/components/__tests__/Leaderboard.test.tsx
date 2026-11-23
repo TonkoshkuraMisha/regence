@@ -1,5 +1,5 @@
-// Таблица лидеров: загрузка по категории, переключение вкладок, переход в профиль, пустой
-// список и ошибка сети.
+// The leaderboard: loading by category, switching tabs, going to a profile, an empty
+// list and a network error.
 
 import {fireEvent, render, screen, waitFor} from '@testing-library/react';
 import {MemoryRouter, Route, Routes, useParams} from 'react-router-dom';
@@ -29,7 +29,7 @@ const okJson = (data: unknown) => ({ok: true, status: 200, json: async () => dat
 
 function ProfileStub() {
     const {username} = useParams();
-    return <div>Профиль: {username}</div>;
+    return <div>Profile: {username}</div>;
 }
 
 function renderLeaderboard() {
@@ -38,7 +38,7 @@ function renderLeaderboard() {
             <Routes>
                 <Route path="/leaderboard" element={<Leaderboard/>}/>
                 <Route path="/profile/:username" element={<ProfileStub/>}/>
-                <Route path="/" element={<div>Главная</div>}/>
+                <Route path="/" element={<div>Home</div>}/>
             </Routes>
         </MemoryRouter>,
     );
@@ -49,62 +49,62 @@ afterEach(() => {
 });
 
 describe('Leaderboard', () => {
-    it('по умолчанию показывает блиц и всех игроков с рейтингом', async () => {
+    it('by default shows blitz and all players with a rating', async () => {
         const fetchMock = stubLeaderboardFetch((category) => okJson(TOP_BY_CATEGORY[category] ?? []));
         renderLeaderboard();
 
         expect(await screen.findByText('Magnus')).toBeInTheDocument();
         expect(screen.getByText('2100')).toBeInTheDocument();
         expect(screen.getByText('bob')).toBeInTheDocument();
-        // 4-е место — номер, а не медаль.
+        // The 4th place — a number, not a medal.
         expect(screen.getByText('4')).toBeInTheDocument();
         expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('category=blitz'), expect.anything());
-        expect(screen.getByText(/по рейтингу Эло — блиц/)).toBeInTheDocument();
+        expect(screen.getByText(/by Elo rating — blitz/)).toBeInTheDocument();
     });
 
-    it('вкладка категории перезагружает список', async () => {
+    it('a category tab reloads the list', async () => {
         const fetchMock = stubLeaderboardFetch((category) => okJson(TOP_BY_CATEGORY[category] ?? []));
         renderLeaderboard();
         await screen.findByText('Magnus');
 
-        fireEvent.click(screen.getByRole('button', {name: 'Пуля'}));
+        fireEvent.click(screen.getByRole('button', {name: 'Bullet'}));
 
         expect(await screen.findByText('Speedy')).toBeInTheDocument();
         expect(screen.queryByText('Magnus')).not.toBeInTheDocument();
         expect(fetchMock).toHaveBeenLastCalledWith(expect.stringContaining('category=bullet'), expect.anything());
-        expect(screen.getByText(/по рейтингу Эло — пуля/)).toBeInTheDocument();
+        expect(screen.getByText(/by Elo rating — bullet/)).toBeInTheDocument();
     });
 
-    it('клик по строке открывает профиль игрока с экранированным именем', async () => {
+    it('a click on a row opens the player profile with an escaped name', async () => {
         stubLeaderboardFetch((category) => okJson(TOP_BY_CATEGORY[category] ?? []));
         renderLeaderboard();
 
         fireEvent.click(await screen.findByText('Alice B'));
 
-        expect(await screen.findByText('Профиль: Alice B')).toBeInTheDocument();
+        expect(await screen.findByText('Profile: Alice B')).toBeInTheDocument();
     });
 
-    it('кнопка «На доску» ведёт на главную', async () => {
+    it('the "To the board" button leads to the home page', async () => {
         stubLeaderboardFetch(() => okJson([]));
         renderLeaderboard();
 
-        fireEvent.click(screen.getByRole('button', {name: /На доску/}));
+        fireEvent.click(screen.getByRole('button', {name: /To the board/}));
 
-        expect(await screen.findByText('Главная')).toBeInTheDocument();
+        expect(await screen.findByText('Home')).toBeInTheDocument();
     });
 
-    it('пустой ответ — сообщение о пустом списке', async () => {
+    it('an empty answer — a message about an empty list', async () => {
         stubLeaderboardFetch(() => okJson([]));
         renderLeaderboard();
 
-        expect(await screen.findByText('Список лидеров пока пуст.')).toBeInTheDocument();
+        expect(await screen.findByText('The leaderboard is empty so far.')).toBeInTheDocument();
     });
 
-    it('ошибка сервера показывается пользователю', async () => {
+    it('a server error is shown to the user', async () => {
         stubLeaderboardFetch(() => ({ok: false, status: 500, json: async () => ({})}) as Response);
         renderLeaderboard();
 
-        expect(await screen.findByText('Не удалось загрузить таблицу лидеров')).toBeInTheDocument();
-        await waitFor(() => expect(screen.getByText('Список лидеров пока пуст.')).toBeInTheDocument());
+        expect(await screen.findByText('Could not load the leaderboard')).toBeInTheDocument();
+        await waitFor(() => expect(screen.getByText('The leaderboard is empty so far.')).toBeInTheDocument());
     });
 });

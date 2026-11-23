@@ -1,13 +1,14 @@
 """
-Ежедневная разминка (таск 22.2) — 10–15 минут из уже имеющихся тренировок, без новых таблиц:
+Daily warm-up (task 22.2) - 10-15 minutes from existing training, without new tables:
 
-1. 5 задач по самым слабым темам (карта навыков 22.1; без данных — базовые темы);
-2. 1 тренажёр зрения или счёта (19.x) — тот, что игрок делал реже всего;
-3. повторение дебютов по расписанию (20.2), если есть карточки к повторению;
-4. 1 «ваша ошибка» (13.5), если есть позиции из своих партий к повторению.
+1. 5 puzzles on the weakest themes (skills map 22.1; without data - basic themes);
+2. 1 a vision or counting trainer (19.x) - the one the player did least often;
+3. repetition of openings by schedule (20.2), if there are cards to repeat;
+4. 1 "your mistake" (13.5), if there are positions from own games to repeat.
 
-Шаг засчитывается по самим тренировкам за сегодня (UTC), поэтому подделать его нечем. День разминки выполнен, если
-решено 5 задач и пройден тренажёр; серия — сколько дней подряд так было (сегодняшний день ещё может быть в работе).
+A step is credited from the trainings themselves for today (UTC), so there is nothing to fake it with. A warm-up day is done if
+5 puzzles are solved and a trainer is completed; the streak is how many days in a row this was so (today may still be in
+progress).
 """
 
 from collections import Counter
@@ -22,32 +23,32 @@ from src.models.trainer import TrainerResult
 from src.models.user import User
 from src.services import skills
 
-# Задач в день: норматив выполненной разминки и цель шага «задачи».
+# Puzzles per day: the norm of a completed warm-up and the goal of the "puzzles" step.
 PUZZLES = 5
-# Сколько самых слабых тем (skills.tactics) берётся для шага «задачи».
+# How many of the weakest themes (skills.tactics) are taken for the "puzzles" step.
 WEAK_THEMES = 3
-# Темы по умолчанию, когда по игроку ещё нет данных карты навыков.
+# Default themes when there is no skills map data on the player yet.
 DEFAULT_THEMES = ("fork", "pin", "back_rank_mate")
-# Тренажёры зрения и счёта (trainer_results.trainer), из которых выбирается один на день.
+# Vision and counting trainers (trainer_results.trainer), of which one is chosen per day.
 TRAINERS = ("coord_find", "coord_name", "blind_where", "calc_checks", "calc_exchange", "calc_square",
             "memory_position", "knight_route")
-# Окно в днях, в которое считается серия: она не длиннее этого значения.
+# Window in days in which the streak is counted: it is no longer than this value.
 STREAK_DAYS = 60
 
 
 def day_of(moment: datetime) -> date:
-    """Календарный день (UTC); момент без часового пояса считается UTC."""
+    """Calendar day (UTC); a moment without a time zone is treated as UTC."""
     return (moment if moment.tzinfo else moment.replace(tzinfo=UTC)).astimezone(UTC).date()
 
 
 async def _days(db: AsyncSession, column, user_column, user_id: int, since: datetime) -> Counter[date]:
-    """Сколько записей (попыток задач или тренажёров) у игрока в каждый день начиная с since."""
+    """How many records (puzzle attempts or trainers) the player has on each day starting from since."""
     rows = (await db.execute(select(column).where(user_column == user_id, column >= since))).scalars().all()
     return Counter(day_of(moment) for moment in rows if moment is not None)
 
 
 async def streak_status(db: AsyncSession, user_id: int, now: datetime) -> tuple[bool, int]:
-    """Выполнена ли разминка сегодня и длина серии (дни подряд, включая сегодня, если выполнена)."""
+    """Whether the warm-up is done today and the streak length (days in a row, including today if done)."""
     today = day_of(now)
     start = datetime(today.year, today.month, today.day, tzinfo=UTC)
     since = start - timedelta(days=STREAK_DAYS)
@@ -67,8 +68,8 @@ async def streak_status(db: AsyncSession, user_id: int, now: datetime) -> tuple[
 
 async def plan(db: AsyncSession, user: User, now: datetime) -> dict:
     """
-    План разминки на сегодня: шаги (задачи по слабым темам, тренажёр, повторение дебютов, своя ошибка), что уже
-    выполнено и сколько дней подряд разминка сделана.
+    Warm-up plan for today: steps (puzzles on weak themes, a trainer, opening repetition, own mistake), what is already
+    done and how many days in a row the warm-up has been done.
     """
     today = day_of(now)
     start = datetime(today.year, today.month, today.day, tzinfo=UTC)
@@ -120,14 +121,14 @@ async def plan(db: AsyncSession, user: User, now: datetime) -> dict:
 
 
 def utcnow() -> datetime:
-    """Текущее время UTC; вынесено, чтобы тесты и вызывающие могли подменить часы."""
+    """Current time in UTC; extracted so that tests and callers can replace the clock."""
     return datetime.now(UTC)
 
 
 async def send_reminders(db: AsyncSession, now: datetime) -> int:
     """
-    Напоминание о разминке (плановая задача Celery beat, раз в день): игрокам с идущей серией, которые сегодня ещё
-    не размялись; не больше одного напоминания в день. Возвращает число отправленных.
+    Warm-up reminder (a scheduled Celery beat task, once a day): to players with a running streak who have not yet warmed
+    up today; no more than one reminder a day. Returns the number sent.
     """
     from src.models.social import Notification
     from src.services import notifications

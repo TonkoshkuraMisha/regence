@@ -1,10 +1,10 @@
 // --- FILE: frontend/src/components/social/SocialHeader.tsx ---
-// Шапка (таск 17.1): поиск игрока и центр уведомлений (колокольчик). Колокольчик спрашивает сервер раз в
-// POLL_MS и сразу — по событию "notification" из сокета (он открыт на главной доске). Непрочитанные личные сообщения
-// (таск 30.1) входят в число на колокольчике; первая строка списка ведёт в «Сообщения».
-// Данные: socialApi.search, notifications и markRead (services/social.ts, /api/v1/social) и messagesApi.unread
-// (services/messages.ts); обновляется ещё по сокетному событию direct_message и window-событию regence:dm-changed.
-// Рисуется в App.tsx.
+// Header (task 17.1): player search and the notification centre (bell). The bell polls the server every
+// POLL_MS and immediately on the "notification" socket event (the socket is open on the main board). Unread direct messages
+// (task 30.1) count toward the bell number; the first list row leads to "Messages".
+// Data: socialApi.search, notifications and markRead (services/social.ts, /api/v1/social) and messagesApi.unread
+// (services/messages.ts); also refreshed on the direct_message socket event and the regence:dm-changed window event.
+// Rendered in App.tsx.
 
 import {useCallback, useEffect, useRef, useState} from 'react';
 import {Link, useNavigate} from 'react-router-dom';
@@ -17,15 +17,15 @@ import {notificationLink, socialApi} from '../../services/social';
 import type {AppNotification, Inbox, PlayerCard} from '../../services/social';
 import {PLAYER_SEARCH_MAX} from '../../config/textLimits';
 
-// Период опроса уведомлений (мс), если событие сокета не пришло.
+// Notification polling period (ms) in case no socket event arrives.
 export const POLL_MS = 30_000;
 
-/** Минуты базового времени из полезной нагрузки уведомления; нет числа — «?». */
+/** Base-time minutes from the notification payload; no number - "?". */
 function minutes(ms: unknown): string {
     return typeof ms === 'number' ? String(Math.round(ms / 60000)) : '?';
 }
 
-/** Текст уведомления по его виду; строки берутся из каталога social.notify.*, неизвестный вид — ответ на жалобу. */
+/** Notification text by kind; strings come from the social.notify.* catalogue, an unknown kind is a report reply. */
 export function notificationText(n: AppNotification, t: ReturnType<typeof useI18n>['t']): string {
     const p = n.payload;
     if (n.kind === 'challenge') {
@@ -45,7 +45,7 @@ export function notificationText(n: AppNotification, t: ReturnType<typeof useI18
     return t('social.notify.reportAnswer');
 }
 
-/** Поиск игрока по началу имени (от двух знаков, с задержкой 250 мс) с переходом в профиль. */
+/** Player search by name prefix (from two characters, 250 ms debounce) with navigation to the profile. */
 export function PlayerSearch() {
     const {t} = useI18n();
     const [open, setOpen] = useState(false);
@@ -100,7 +100,7 @@ export function PlayerSearch() {
     );
 }
 
-/** Колокольчик: число непрочитанных (уведомления плюс личные сообщения, показ до «9+»); открытие списка помечает уведомления прочитанными. */
+/** Bell: unread count (notifications plus direct messages, shown up to "9+"); opening the list marks notifications as read. */
 export function NotificationBell() {
     const {t} = useI18n();
     const navigate = useNavigate();

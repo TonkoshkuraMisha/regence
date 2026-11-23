@@ -1,9 +1,9 @@
 # --- FILE: tests/integration/conftest.py ---
 """
-Общие фикстуры интеграционных тестов на настоящем PostgreSQL: пустая схема из моделей на каждый тест и фабрика
-сессий без пула соединений (у каждой конкурирующей сессии — своё соединение, иначе гонки не настоящие).
-Адрес базы — переменная TEST_DATABASE_URL (в CI её задаёт .github/workflows/ci.yml); без неё тесты модулей
-пропускаются их собственной отметкой skipif.
+Shared fixtures for integration tests on a real PostgreSQL: an empty schema built from the models for each test and a
+session factory without a connection pool (each competing session has its own connection, otherwise the races are fake).
+The database address is the TEST_DATABASE_URL variable (set in CI by .github/workflows/ci.yml); without it the
+module tests are skipped by their own skipif marker.
 """
 
 import os
@@ -19,7 +19,7 @@ DATABASE_URL = os.getenv("TEST_DATABASE_URL")
 
 @pytest.fixture
 async def pg():
-    """Фабрика сессий настоящей базы; схема создаётся заново перед тестом и удаляется после."""
+    """Session factory for the real database; the schema is recreated before a test and dropped after."""
     engine = create_async_engine(DATABASE_URL, poolclass=NullPool)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)

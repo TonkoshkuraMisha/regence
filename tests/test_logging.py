@@ -1,8 +1,8 @@
 # --- FILE: tests/test_logging.py ---
 """
-Журналы (src/core/logging_setup.py, src/api/client_errors.py): контекст записи, формат json, номер запроса
-X-Request-ID, отчёты клиента об ошибках и след WebSocket. Журнал перехватывается обработчиком, который форматирует
-запись в момент выпуска — когда контекст ещё привязан (caplog хранит только готовые записи без контекста).
+Logs (src/core/logging_setup.py, src/api/client_errors.py): record context, json format, the request id
+X-Request-ID, client error reports and the WebSocket trace. The log is captured by a handler that formats
+the record at emit time, while the context is still bound (caplog keeps only finished records without context).
 """
 
 import json
@@ -18,7 +18,7 @@ CLIENT_ERRORS = "/api/v1/client-errors"
 
 
 class _Capture(logging.Handler):
-    """Складывает записи как json-словари, отформатированные сразу при выпуске."""
+    """Collects records as json dicts formatted immediately at emit time."""
 
     def __init__(self) -> None:
         super().__init__(logging.DEBUG)
@@ -97,7 +97,7 @@ def test_response_carries_request_id_and_access_line_is_logged(client, captured)
     assert res.headers["X-Request-ID"]
     mine = [row for row in captured.named("http_request") if row["request_id"] == res.headers["X-Request-ID"]]
     assert mine and mine[0]["route"] == "/health" and mine[0]["status"] == res.status_code
-    assert mine[0]["level"] == "DEBUG"  # опрос здоровья не засоряет журнал
+    assert mine[0]["level"] == "DEBUG"  # the health poll does not clutter the log
 
 
 def test_safe_client_request_id_is_kept_and_unsafe_is_replaced(client):
@@ -151,7 +151,7 @@ def test_client_errors_over_the_limit_are_dropped_silently(client, captured, mon
     monkeypatch.setattr(settings, "RATE_LIMIT_CLIENT_ERRORS", 2)
     body = {"kind": "error", "message": "m", "url": "/"}
     statuses = [client.post(CLIENT_ERRORS, json=body).status_code for _ in range(4)]
-    assert statuses == [204, 204, 204, 204]  # клиенту о лимите не сообщаем
+    assert statuses == [204, 204, 204, 204]  # the client is not told about the limit
     assert len(captured.named("client_error")) == 2
 
 
@@ -177,7 +177,7 @@ async def test_websocket_leaves_a_trail(client, captured, monkeypatch):
     action = captured.named("ws_action")[0]
     assert action["action"] == "leave_queue" and action["game_id"] == 5 and action["outcome"] == "ok"
     assert captured.named("ws_disconnected")
-    # game_id не «прилипает» к следующим строкам соединения
+    # game_id does not "stick" to the connection's following lines
     assert "game_id" not in captured.named("ws_disconnected")[0]
 
 

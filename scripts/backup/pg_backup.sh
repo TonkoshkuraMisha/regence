@@ -1,22 +1,22 @@
 #!/bin/sh
-# Резервное копирование PostgreSQL для docker-compose.prod.yml (сервис backup).
+# PostgreSQL backup for docker-compose.prod.yml (the backup service).
 #
-#   pg_backup.sh loop     — снимок сразу и затем каждые BACKUP_INTERVAL_HOURS часов (по умолчанию)
-#   pg_backup.sh once     — один снимок
-#   pg_backup.sh verify   — восстановить последний снимок во временную базу и проверить его
-#   pg_backup.sh restore FILE — восстановить снимок в рабочую базу (останавливайте api и worker!)
+#   pg_backup.sh loop     - a snapshot right away and then every BACKUP_INTERVAL_HOURS hours (default)
+#   pg_backup.sh once     - one snapshot
+#   pg_backup.sh verify   - restore the latest snapshot into a temporary database and check it
+#   pg_backup.sh restore FILE - restore a snapshot into the working database (stop api and worker first!)
 #
-# Снимки — pg_dump в custom-формате (сжатый, восстанавливается pg_restore выборочно и параллельно),
-# имя regence_YYYYmmdd_HHMMSS.dump. Файл пишется во временный и переименовывается только после
-# успешного pg_dump: оборванный снимок никогда не выглядит готовым. Снимки старше
-# BACKUP_KEEP_DAYS дней удаляются.
+# Snapshots are pg_dump in custom format (compressed, restored selectively and in parallel by pg_restore),
+# named regence_YYYYmmdd_HHMMSS.dump. The file is written to a temporary name and renamed only after
+# a successful pg_dump: an interrupted snapshot never looks complete. Snapshots older than
+# BACKUP_KEEP_DAYS days are deleted.
 #
-# В режиме loop раз в BACKUP_VERIFY_EVERY_DAYS суток (7; 0 — выключено) после снимка сама запускается проверка
-# восстановления. Сбой снимка или проверки пишется в журнал строкой «ERROR» и, если задан BACKUP_ALERT_WEBHOOK_URL,
-# уходит POST-запросом с текстом (Slack/Telegram-мост/любой приёмник). Время последней проверки — файл
-# .last_verify в BACKUP_DIR. Копия снимков вне сервера — отдельный сервис backup-offsite (DEPLOY, раздел 5).
+# In loop mode, once every BACKUP_VERIFY_EVERY_DAYS days (7; 0 - off) a restore check is started after the snapshot.
+# A failure of the snapshot or the check is written to the log as an "ERROR" line and, if BACKUP_ALERT_WEBHOOK_URL is set,
+# sent as a POST request with text (Slack/Telegram bridge/any receiver). The time of the last check is the file
+# .last_verify in BACKUP_DIR. The off-server copy of snapshots is a separate backup-offsite service (DEPLOY, section 5).
 #
-# Переменные: POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB, PGHOST (db), BACKUP_DIR (/backups),
+# Variables: POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB, PGHOST (db), BACKUP_DIR (/backups),
 # BACKUP_INTERVAL_HOURS (24), BACKUP_KEEP_DAYS (14), BACKUP_VERIFY_EVERY_DAYS (7), BACKUP_ALERT_WEBHOOK_URL.
 set -eu
 
@@ -32,8 +32,8 @@ CHECK_DB="${POSTGRES_DB}_restore_check"
 
 log() { echo "$(date -u '+%Y-%m-%dT%H:%M:%SZ') backup: $*"; }
 
-# Оповещение о сбое: строка в журнал всегда, POST на вебхук — если он задан. Сбой самого оповещения
-# не должен ронять расписание, поэтому его ошибка только пишется в журнал.
+# Failure alert: a line in the log always, a POST to the webhook if it is set. A failure of the alert itself
+# must not bring down the schedule, so its error is only written to the log.
 alert() {
     log "ERROR: $*"
     [ -n "$ALERT_URL" ] || return 0
@@ -65,7 +65,7 @@ backup_once() {
     find "$BACKUP_DIR" -name '*.partial' -type f -mmin +60 -delete
 }
 
-# Снимок, который не восстанавливается, хуже отсутствия снимка: о проблеме узнают в день аварии.
+# A snapshot that cannot be restored is worse than no snapshot: the problem is discovered on the day of an outage.
 verify_latest() {
     file="$(latest_backup)"
     [ -n "$file" ] || { alert "no snapshots in $BACKUP_DIR"; return 1; }
@@ -84,8 +84,8 @@ verify_latest() {
     return "$status"
 }
 
-# Плановая проверка: не чаще раза в VERIFY_EVERY_DAYS суток. Отметка времени ставится и при провале,
-# чтобы сломанный снимок не поднимал тревогу после каждого снимка, а раз в период.
+# Scheduled check: not more often than once every VERIFY_EVERY_DAYS days. The timestamp is set on failure too,
+# so that a broken snapshot does not raise an alarm after every snapshot but once per period.
 verify_if_due() {
     [ "$VERIFY_EVERY_DAYS" -gt 0 ] || return 0
     if [ -f "$VERIFY_STAMP" ] && [ -z "$(find "$VERIFY_STAMP" -mtime +"$((VERIFY_EVERY_DAYS - 1))" 2>/dev/null)" ]; then
@@ -122,7 +122,7 @@ case "${1:-loop}" in
         wait_for_db
         log "every ${INTERVAL_HOURS}h into $BACKUP_DIR, keeping ${KEEP_DAYS} days"
         while true; do
-            # Сбой одного снимка не останавливает расписание: следующая попытка — через интервал.
+            # A failure of one snapshot does not stop the schedule: the next attempt is after the interval.
             backup_once || true
             verify_if_due
             sleep "$((INTERVAL_HOURS * 3600))"

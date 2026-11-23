@@ -1,5 +1,5 @@
 # --- FILE: tests/test_arena_league.py ---
-"""Месячная лига арен (таск 33.5): правила порядка и настоящий путь клиента GET /api/v1/arenas/league."""
+"""Monthly arena league (task 33.5): ordering rules and the real client path GET /api/v1/arenas/league."""
 
 from datetime import UTC, datetime, timedelta
 
@@ -28,7 +28,7 @@ def test_rank_orders_by_score_then_best_arena_then_fewer_arenas():
 
 
 def test_league_categories_come_from_the_arena_schedule():
-    # Швейцарки (10+5, 15+10 — рапид) в лигу не идут, арены расписания — пуля и блиц.
+    # Swiss events (10+5, 15+10 — rapid) do not go into the league, scheduled arenas are bullet and blitz.
     assert arena_league.LEAGUE_CATEGORIES == ("bullet", "blitz")
 
 
@@ -52,12 +52,12 @@ async def test_league_through_the_real_client_path(client, db_session, test_user
         return ArenaPlayer(arena_id=item.id, user_id=user.id, score=score, games=games, rating=1500)
 
     db_session.add_all([
-        player(blitz_a, test_user_1, 6), player(blitz_b, test_user_1, 5),          # 11 за две арены
-        player(blitz_a, others[0], 8),                                              # 8 за одну
-        player(blitz_b, others[1], 0, games=0),                                     # вошёл, но не играл — не в лиге
-        player(bullet, others[1], 20),                                              # другая категория
-        player(october, others[0], 30),                                             # другой сезон
-        player(swiss, others[0], 30),                                               # швейцарка
+        player(blitz_a, test_user_1, 6), player(blitz_b, test_user_1, 5),          # 11 across two arenas
+        player(blitz_a, others[0], 8),                                              # 8 across one
+        player(blitz_b, others[1], 0, games=0),                                     # joined, never played: not in the league
+        player(bullet, others[1], 20),                                              # another category
+        player(october, others[0], 30),                                             # another season
+        player(swiss, others[0], 30),                                               # Swiss
     ])
     await db_session.commit()
 

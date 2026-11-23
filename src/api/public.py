@@ -1,11 +1,12 @@
 # --- FILE: src/api/public.py ---
 """
-Открытое API только для чтения (таск 24.3): профиль игрока, его партии и рейтинги, таблица лидеров, сила ботов.
+Open read-only API (task 24.3): the player's profile, their games and ratings, the leaderboard, bot strength.
 
-То же, что и так видно на сайте без входа, — в устойчивом виде для своих программ и исследований: адреса под
-/api/v1/public не меняются без смены версии. Ничего личного: ни почты, ни настроек, ни незавершённых партий;
-удалённые аккаунты профиля не имеют. Лимит — RATE_LIMIT_PUBLIC_API запросов за окно с адреса (или на игрока, если
-запрос с токеном); оценок движка и ходов здесь нет, поэтому честной игре API не мешает.
+The same as what is visible on the site without login anyway - in a stable form for one's own programs and research: addresses
+under
+/api/v1/public do not change without a version change. Nothing personal: no e-mail, no settings, no unfinished games;
+deleted accounts have no profile. The limit is RATE_LIMIT_PUBLIC_API requests per window per address (or per player if
+the request has a token); there are no engine evaluations or moves here, so the API does not interfere with fair play.
 """
 
 from fastapi import APIRouter, Depends, Query
@@ -66,14 +67,14 @@ def _game_view(game: Game, white: str, black: str) -> dict:
 
 @router.get("")
 async def index():
-    """Что есть в API и каков лимит запросов."""
+    """What is in the API and what the request limit is."""
     return {"version": VERSION, "read_only": True, "endpoints": list(ENDPOINTS),
             "rate_limit": {"requests": settings.RATE_LIMIT_PUBLIC_API, "window_s": settings.RATE_LIMIT_WINDOW_S}}
 
 
 @router.get("/players/{username}")
 async def player(username: str, db: AsyncSession = Depends(get_db)):
-    """Открытый API: профиль игрока — рейтинги по категориям, лестница, число партий."""
+    """Open API: the player's profile - ratings by category, the ladder, the number of games."""
     user = await _player(db, username)
     games = await db.scalar(select(func.count(Game.id)).where(*profile._archive_conditions(user.id))) or 0
     return {
@@ -100,9 +101,9 @@ async def _games(db: AsyncSession, user: User, limit: int, offset: int, rated: b
 
 @router.get("/players/{username}/games")
 async def player_games(username: str, limit: int = Query(20, ge=1, le=MAX_GAMES), offset: int = Query(0, ge=0),
-                       rated: bool | None = Query(None, description="Только рейтинговые (true) или только товарищеские"),
+                       rated: bool | None = Query(None, description="Only rated (true) or only casual"),
                        db: AsyncSession = Depends(get_db)):
-    """Завершённые партии игрока, от новых к старым."""
+    """The player's finished games, from newest to oldest."""
     user = await _player(db, username)
     total, rows = await _games(db, user, limit, offset, rated)
     return {"total": total, "offset": offset, "games": [_game_view(game, white, black) for game, white, black in rows]}
@@ -111,7 +112,7 @@ async def player_games(username: str, limit: int = Query(20, ge=1, le=MAX_GAMES)
 @router.get("/players/{username}/games.pgn", response_class=PlainTextResponse)
 async def player_games_pgn(username: str, limit: int = Query(50, ge=1, le=MAX_PGN_GAMES), offset: int = Query(0, ge=0),
                            rated: bool | None = Query(None), db: AsyncSession = Depends(get_db)):
-    """Те же партии одним PGN-файлом."""
+    """The same games as a single PGN file."""
     user = await _player(db, username)
     total, rows = await _games(db, user, limit, offset, rated)
     text = "\n\n".join((game.pgn or "").strip() for game, _, _ in rows)
@@ -140,7 +141,7 @@ async def game_pgn(game_id: int, db: AsyncSession = Depends(get_db)):
 
 @router.get("/games/{game_id}")
 async def game(game_id: int, db: AsyncSession = Depends(get_db)):
-    """Завершённая партия: кто играл, итог, контроль. Идущие партии не отдаются."""
+    """A finished game: who played, the result, the time control. Games in progress are not served."""
     record = await _finished_game(db, game_id)
     white = await db.get(User, record.white_player_id)
     black = await db.get(User, record.black_player_id)
@@ -157,7 +158,7 @@ async def leaderboard(category: RatingCategory = Query("blitz"), limit: int = Qu
 
 @router.get("/bots")
 async def bots(db: AsyncSession = Depends(get_db)):
-    """Сила ботов: заявленная и измеренная (с ±95 % и числом партий), сведения о калибровке и её журналы."""
+    """Bot strength: declared and measured (with ±95 % and the number of games), calibration information and its logs."""
     catalog = await bots_api.get_bot_catalog(db)
     fields = ("id", "declared_rating", "rating", "measured", "games", "ci95", "live")
     return {

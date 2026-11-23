@@ -1,6 +1,6 @@
 // --- FILE: frontend/src/services/__tests__/http.test.ts ---
-// Общий запрос к API (services/http.ts): адрес /api/v1, токен входа и Content-Type для JSON-тела, ответ 204 без тела,
-// отказ сервера — UiError с кодом ошибки, нет сети — UiError «нет связи».
+// The shared API request (services/http.ts): the /api/v1 address, the login token and Content-Type for a JSON body, a 204 reply without a body,
+// a server refusal — a UiError with the error code, no network — a "no connection" UiError.
 
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import {UiError} from '../apiErrors';
@@ -23,7 +23,7 @@ afterEach(() => {
 });
 
 describe('apiRequest', () => {
-    it('адрес /api/v1, токен входа и JSON-тело с заголовком', async () => {
+    it('the /api/v1 address, the login token and a JSON body with a header', async () => {
         setToken('jwt');
         const fetchMock = stubFetch({json: async () => ({id: 7})});
         const result = await apiRequest<{ id: number }>('/feed/posts', {method: 'POST', body: JSON.stringify({body: 'hi'})});
@@ -34,7 +34,7 @@ describe('apiRequest', () => {
         expect(init.headers).toEqual({'Content-Type': 'application/json', Authorization: 'Bearer jwt', 'X-Request-ID': expect.stringMatching(/^[a-z0-9]{16}$/)});
     });
 
-    it('без входа и без тела — без заголовков; свои заголовки дополняют общие', async () => {
+    it('without login and without a body — no headers; own headers complement the shared ones', async () => {
         const fetchMock = stubFetch({});
         await apiRequest('/watch/archive');
         await apiRequest('/watch/archive', {headers: {'X-Test': '1'}});
@@ -42,14 +42,14 @@ describe('apiRequest', () => {
         expect((fetchMock.mock.calls[1] as unknown as [string, RequestInit])[1].headers).toEqual({'X-Request-ID': expect.any(String), 'X-Test': '1'});
     });
 
-    it('204 — без тела', async () => {
+    it('204 — without a body', async () => {
         stubFetch({status: 204, json: async () => {
             throw new Error('no body');
         }});
         await expect(apiRequest('/imports/1', {method: 'DELETE'})).resolves.toBeUndefined();
     });
 
-    it('запасной текст может зависеть от статуса: 429 без тела — «слишком много попыток»', async () => {
+    it('the fallback text can depend on the status: 429 without a body — "too many attempts"', async () => {
         stubFetch({ok: false, status: 429, json: async () => {
             throw new Error('not json');
         }});
@@ -58,7 +58,7 @@ describe('apiRequest', () => {
         expect((refused as UiError).ui).toEqual(expect.objectContaining({key: 'auth.tooManyAttempts'}));
     });
 
-    it('отказ сервера — UiError с кодом; нет сети — «нет связи»', async () => {
+    it('a server refusal — a UiError with a code; no network — "no connection"', async () => {
         stubFetch({ok: false, status: 404, json: async () => ({detail: {code: 'puzzle_not_found', message: 'Puzzle not found'}})});
         const refused = await apiRequest('/feed/posts/1').catch((err: unknown) => err);
         expect(refused).toBeInstanceOf(UiError);

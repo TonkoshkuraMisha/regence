@@ -1,13 +1,13 @@
-# Профиль силы исторических ботов по фазам партии
+# Strength profile of the historical bots by game phase
 
-Скрипт: `scripts/measure_bot_phases.py` (бот против себя, оценщик Stockfish глубины 10; 3 партии на бота, потери ограничены 1000 сп).
-Ячейка таблицы: средняя потеря в сантипешках / доля ходов с потерей >200 сп / доля ходов с потерей >100 сп.
-Полная таблица — `bot_phase_profile_table.md`.
+Script: `scripts/measure_bot_phases.py` (bot against itself, Stockfish depth-10 evaluator; 3 games per bot, losses capped at 1000 cp).
+Table cell: average loss in centipawns / share of moves with a loss >200 cp / share of moves with a loss >100 cp.
+Full table: `bot_phase_profile_table.md`.
 
-## Выводы
-- Профиль **неровный**: в ходах 21+ средняя потеря у большинства ботов 50–75 сп, зевки >200 сп — 5–9% ходов, ошибки >100 сп — 15–22%; в книге и первых ходах 6–30 сп.
-- Исключения-ровные: `lasker` (10/33/37), `tal` (8/14/30) — у них потери малы во всех фазах.
-- Рост потерь после книги — следствие подбора ходов Stockfish на UCI_Elo без модели ошибок по рейтингу и фазе.
-- Выборка мала (3 партии), цифры ориентировочные; для приёмки нужен прогон ≥50 партий на бота.
+## Findings
+- The profile is **uneven**: from move 21 on, the average loss for most bots is 50-75 cp, blunders >200 cp are 5-9% of moves, mistakes >100 cp are 15-22%; in the book and the first moves it is 6-30 cp.
+- Even exceptions: `lasker` (10/33/37), `tal` (8/14/30) - their losses are small in every phase.
+- The growth of losses after the book is a consequence of Stockfish move selection at UCI_Elo without an error model by rating and phase.
+- The sample is small (3 games), so the figures are indicative; acceptance requires a run of at least 50 games per bot.
 
-Вывод для собственного движка regence-engine: модель ошибок должна быть единой по всей партии (задача M11).
+Conclusion for the regence-engine own engine: the error model must be uniform across the whole game (task M11).

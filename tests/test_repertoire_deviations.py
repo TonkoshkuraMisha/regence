@@ -1,4 +1,4 @@
-"""Отклонения от репертуара в партиях (таск 20.3): свой ход не тот, новый ход соперника, конец линии, перестановки."""
+"""Repertoire deviations in games (task 20.3): own move differs, new opponent move, end of line, transpositions."""
 
 import chess
 import pytest
@@ -50,7 +50,7 @@ def test_kinds_of_deviation():
 def test_transposition_is_recognised():
     rep, edges = tree("white", "d4 d5 Nf3 Nf6 c4", "d4 Nf6 Nf3 d5")
     found = deviations.find(rep, edges, game("d4 Nf6 Nf3 d5 c4 e6"))
-    # Вторая линия кончается в позиции первой — партия идёт дальше по первой (c4) до конца подготовки.
+    # The second line ends in the first one's position - the game continues along the first (c4) to the end of preparation.
     assert (found.kind, found.ply) == ("end", 6)
 
 
@@ -69,18 +69,18 @@ async def games(db_session, test_user_1, test_user_2):
 
 
 async def test_api_deviations_and_focus(client, games, token_user_1, token_user_2, monkeypatch):
-    rep = client.post(API, headers=auth(token_user_1), json={"color": "white", "name": "Испанская"}).json()
+    rep = client.post(API, headers=auth(token_user_1), json={"color": "white", "name": "Ruy Lopez"}).json()
     client.post(f"{API}/{rep['id']}/lines", headers=auth(token_user_1),
                 json={"moves": ["e2e4", "e7e5", "g1f3", "b8c6", "f1b5"]})
-    client.post(API, headers=auth(token_user_1), json={"starter": "caro_kann"})  # чёрные — не про эту партию
+    client.post(API, headers=auth(token_user_1), json={"starter": "caro_kann"})  # the Black repertoire is not about this game
 
     body = client.get(f"{API}/game/{games['done']}/deviations", headers=auth(token_user_1)).json()
     assert body["color"] == "white" and len(body["results"]) == 1
     result = body["results"][0]
     assert (result["name"], result["kind"], result["ply"], result["played"], result["expected"]) == \
-        ("Испанская", "you_left", 5, "Bc4", ["Bb5"])
+        ("Ruy Lopez", "you_left", 5, "Bc4", ["Bb5"])
 
-    # Соперник смотрит свою партию — его репертуаров нет; чужой игрок и незаконченная партия — 404.
+    # The opponent views their own game - they have no repertoires; a stranger and an unfinished game give 404.
     assert client.get(f"{API}/game/{games['done']}/deviations", headers=auth(token_user_2)).json() == \
         {"color": "black", "results": []}
     assert client.get(f"{API}/game/{games['live']}/deviations", headers=auth(token_user_1)).status_code == 404
@@ -89,6 +89,6 @@ async def test_api_deviations_and_focus(client, games, token_user_1, token_user_
                         json={"position": result["position"]})
     assert focus.json() == {"ok": True}
     review = client.get(f"{API}/{rep['id']}/drill", headers=auth(token_user_1)).json()
-    assert review["cards"][0]["position"] == result["position"]  # просроченная карточка — первой
+    assert review["cards"][0]["position"] == result["position"]  # the overdue card comes first
     assert client.post(f"{API}/{rep['id']}/drill/focus", headers=auth(token_user_1),
                        json={"position": "nope"}).status_code == 404

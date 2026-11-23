@@ -734,12 +734,10 @@
   }
  ],
  "intro": {
-  "ru": "Защита Нимцовича, система с 4.e3. На 25-м ходу чёрные выигрывают пешку (25...Qxa4) и дальше реализуют перевес.",
   "uk": "Захист Німцовича, система з 4.e3. На 25-му ході чорні виграють пішака (25...Qxa4) і далі реалізують перевагу.",
   "en": "A Nimzo-Indian Defence, the 4.e3 system. On move 25 Black wins a pawn (25...Qxa4) and then converts the advantage."
  },
  "summary": {
-  "ru": "Лишняя пешка превращается в победу через активность: ладья чёрных идёт вперёд (43...Rb4) и забирает пешки 44...Rxg4 и 46...Rxh5. Урок: реализуя лишнюю пешку, упрощайте позицию и активизируйте ладью — пешки соперника станут её целями.",
   "uk": "Зайвий пішак перетворюється на перемогу через активність: тура чорних іде вперед (43...Rb4) і забирає пішаків 44...Rxg4 і 46...Rxh5. Урок: реалізуючи зайвого пішака, спрощуйте позицію й активізуйте туру — пішаки суперника стануть її цілями.",
   "en": "The extra pawn turns into a win through activity: Black's rook advances (43...Rb4) and picks up pawns with 44...Rxg4 and 46...Rxh5. Lesson: when converting an extra pawn, simplify and activate your rook — the opponent's pawns become its targets."
  }

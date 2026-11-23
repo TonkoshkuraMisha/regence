@@ -2,7 +2,7 @@
 
 """puzzle_timed_records
 
-Личные рекорды режима задач на время (таск 13.3): решено задач за 3 и за 5 минут.
+Personal records of the timed puzzle mode (task 13.3): puzzles solved in 3 and in 5 minutes.
 
 Revision ID: b3d5f7a9c1e4
 Revises: a7c9e1f3b5d2

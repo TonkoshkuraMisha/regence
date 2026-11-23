@@ -1,5 +1,5 @@
 # --- FILE: tests/test_onboarding.py ---
-"""Первый вход (таск 17.8): стартовый рейтинг по ответам при регистрации и пометка временного рейтинга."""
+"""First login (task 17.8): starting rating from registration answers and the provisional-rating flag."""
 
 import pytest
 from sqlalchemy import select
@@ -14,7 +14,7 @@ PASSWORD = "secret123"
 
 @pytest.mark.parametrize("experience, strength, expected", [
     ("new", None, 600),
-    ("new", "over_1800", 600),  # «только узнал правила» сильнее оценки силы
+    ("new", "over_1800", 600),  # "just learned the rules" outweighs the strength self-assessment
     ("casual", None, 1000),
     ("regular", None, 1200),
     ("casual", "1400_1800", 1550),

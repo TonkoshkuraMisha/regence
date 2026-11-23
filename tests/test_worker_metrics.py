@@ -1,8 +1,8 @@
 # --- FILE: tests/test_worker_metrics.py ---
 """
-Метрики воркера Celery (задача 4 плана 18.11): главный процесс воркера отдаёт /metrics, в multiprocess-режиме — сумму
-файлов дочерних процессов; время движка, набранное в дочернем процессе, видно в ответе. Порт 0 — сервер не
-запускается. Сигналы Celery подключены к этим функциям.
+Celery worker metrics (task 4 of the 18.11 plan): the worker's main process serves /metrics, in multiprocess mode the sum of
+the child processes' files; engine time accumulated in a child process is visible in the response. Port 0 - the server is not
+started. Celery signals are connected to these functions.
 """
 
 import os
@@ -26,7 +26,7 @@ def test_worker_serves_the_sum_of_child_process_files(monkeypatch, tmp_path):
     served = {}
     monkeypatch.setattr("prometheus_client.start_http_server",
                         lambda port, registry: served.update(port=port, registry=registry))
-    # «Дочерний процесс» пишет время движка в файл каталога, как это делает Counter в multiprocess-режиме.
+    # "Child process" writes engine time to a file in the directory, as Counter does in multiprocess mode.
     monkeypatch.setattr(values, "ValueClass", values.MultiProcessValue(lambda: 4242))
     counter = Counter("regence_engine_seconds_probe", "probe", ["kind"], registry=CollectorRegistry())
     counter.labels("analysis").inc(7.5)

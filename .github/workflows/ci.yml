@@ -57,15 +57,15 @@ jobs:
           uv sync --frozen
           echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
 
-      # Правила и исключения — в pyproject.toml. Любое замечание роняет сборку.
+      # Rules and exceptions are in pyproject.toml. Any finding fails the build.
       - name: Lint (ruff)
         run: ruff check . --output-format github
 
       - name: Type check (mypy)
         run: mypy
 
-      # Миграции применяются на отдельной пустой базе, затем alembic check сверяет
-      # получившуюся схему с моделями: модель изменили, а миграцию забыли — сборка падает.
+      # Migrations are applied to a separate empty database, then alembic check compares
+      # the resulting schema with the models: if a model changed and the migration was forgotten, the build fails.
       - name: Migrations apply cleanly and match the models
         env:
           REDIS_HOST: localhost
@@ -92,10 +92,10 @@ jobs:
           POSTGRES_SERVER: localhost
           POSTGRES_PORT: 5432
           POSTGRES_DB: ci_db
-          # Гонки на настоящих PostgreSQL и Redis (tests/integration): FOR UPDATE, WATCH/MULTI.
+          # Races against real PostgreSQL and Redis (tests/integration): FOR UPDATE, WATCH/MULTI.
           TEST_DATABASE_URL: postgresql+asyncpg://ci_user:ci_password@localhost:5432/ci_db
           TEST_REDIS_URL: redis://localhost:6379/15
-        # Порог покрытия (fail_under) — в pyproject.toml.
+        # The coverage threshold (fail_under) is in pyproject.toml.
         run: |
           python -m pytest -v --cov --cov-report=term
 
@@ -123,7 +123,7 @@ jobs:
       - name: Run linter (oxlint)
         run: npm run lint
 
-      # Пороги покрытия — frontend/vite.config.ts (test.coverage.thresholds).
+      # Coverage thresholds are in frontend/vite.config.ts (test.coverage.thresholds).
       - name: Run unit tests with coverage (vitest)
         run: npm run test:coverage
 
@@ -143,8 +143,8 @@ jobs:
           sed -i '/^SECRET_KEY=/d; /^ENVIRONMENT=/d; /^HTTP_PORT=/d' .env
           echo "SECRET_KEY=$(python3 -c 'import secrets; print(secrets.token_urlsafe(48))')" >> .env
           echo "HTTP_PORT=8080" >> .env
-          # E2E регистрирует трёх игроков, а при повторе упавшего сценария — ещё столько же:
-          # лимит «5 регистраций в час с IP» на одноразовом стенде только мешает.
+          # E2E registers three players, and when a failed scenario is retried, as many again:
+          # the "5 registrations per hour per IP" limit only gets in the way on a throwaway stand.
           echo "RATE_LIMIT_REGISTER_PER_IP=50" >> .env
 
       - name: Validate compose file
@@ -180,14 +180,14 @@ jobs:
           docker compose -f docker-compose.prod.yml exec -T api python -c \
             "from src.services.bots.base import resolve_stockfish_path as r; assert r(), 'no stockfish'; print(r())"
           docker compose -f docker-compose.prod.yml ps worker | grep -q "Up"
-          # Метрики: внутри сети compose отдаются (сумма по процессам uvicorn), снаружи через nginx — нет.
+          # Metrics: inside the compose network they are served (sum over uvicorn processes), from outside through nginx - they are not.
           docker compose -f docker-compose.prod.yml exec -T api python -c "import urllib.request as u; b = u.urlopen('http://127.0.0.1:8000/metrics').read().decode(); assert 'route=\"/api/v1/auth/login\"' in b, b[:3000]"
           if curl -fsS http://localhost:8080/metrics | grep -q "regence_"; then
             echo "/metrics is exposed through nginx"; exit 1
           fi
 
-      # Сервис backup снимает БД при старте; снимок по запросу и его восстановление во временную
-      # базу должны проходить — иначе о сломанных бэкапах узнали бы только в день аварии.
+      # The backup service takes a DB snapshot at start; an on-demand snapshot and its restore into a temporary
+      # database must pass - otherwise broken backups would only be discovered on the day of an outage.
       - name: Database backup and restore check
         run: |
           set -e
@@ -197,16 +197,16 @@ jobs:
           grep -Eq "users=[1-9][0-9]* " verify.log
           ls -l backups/
 
-      # Идущая арена для сценария арены в E2E (frontend/e2e/social-arena.e2e.ts): расписание может не ставить
-      # арену на время прогона, поэтому создаём разовую и передаём её номер сценарию.
+      # A running arena for the arena E2E scenario (frontend/e2e/social-arena.e2e.ts): the schedule may not put
+      # an arena in place for the duration of the run, so we create a one-off one and pass its number to the scenario.
       - name: Create a running arena for E2E
         run: |
           id=$(docker compose -f docker-compose.prod.yml exec -T api python scripts/e2e_arena.py | tail -1)
           test -n "$id"
           echo "E2E_ARENA_ID=$id" >> "$GITHUB_ENV"
 
-      # E2E (Playwright, frontend/e2e): два браузера — регистрация, вызов по ссылке, мат, реванш; сообщения, лента и
-      # партия арены.
+      # E2E (Playwright, frontend/e2e): two browsers - registration, challenge by link, mate, rematch; messages, feed and
+      # an arena game.
       - name: Set up Node.js for E2E
         uses: actions/setup-node@v7
         with:
@@ -234,9 +234,9 @@ jobs:
             frontend/test-results
           retention-days: 7
 
-      # Небольшая нагрузка через nginx (20 одновременных партий): регрессия, ломающая игру под
-      # параллельной нагрузкой или резко замедляющая ход, роняет сборку. Клиент — внутри контейнера api:
-      # там уже есть websockets, httpx и chess. Полный прогон — DEPLOY.md, раздел 7.
+      # Light load through nginx (20 simultaneous games): a regression that breaks the game under
+      # parallel load or sharply slows down a move fails the build. The client runs inside the api container:
+      # websockets, httpx and chess are already there. Full run - DEPLOY.md, section 7.
       - name: WebSocket load test (small)
         run: |
           docker compose -f docker-compose.prod.yml exec -T api sh -c             "python -m scripts.loadtest.seed_users --count 40 > /tmp/tokens.json &&              python scripts/loadtest/ws_load.py --base-url http://web --tokens /tmp/tokens.json                --games 20 --moves 20 --think-min 0.1 --think-max 0.3 --max-p95-ms 1000"

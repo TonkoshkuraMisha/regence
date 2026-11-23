@@ -1,11 +1,11 @@
 // --- FILE: frontend/src/services/soundEngine.ts ---
-// Звуки интерфейса. Все звуки синтезируются в браузере (Web Audio) — готовых записей в проекте нет; наборы звуков
-// (SOUND_SETS) — это профили синтеза. Какой звук у хода, определяется по его записи (resolveMoveSound); звук шаха —
-// только в учебных разделах (isLearningPath), в партиях — обычный звук хода.
-// Настройки хранятся только в браузере (localStorage): regence_sound_muted — звук выключен, regence_sound_set —
-// выбранный набор. На сервер они не отправляются.
+// Interface sounds. All sounds are synthesized in the browser (Web Audio) — the project has no ready-made recordings; sound sets
+// (SOUND_SETS) are synthesis profiles. Which sound a move gets is determined by its notation (resolveMoveSound); the check sound is
+// only in learning sections (isLearningPath), in games — the ordinary move sound.
+// Settings are stored only in the browser (localStorage): regence_sound_muted — sound off, regence_sound_set —
+// the selected set. They are not sent to the server.
 
-/** События интерфейса, у которых есть звук: ходы, сигналы партии (начало, итог, предложение, чат) и предупреждения. */
+/** Interface events that have a sound: moves, game signals (start, result, offer, chat) and warnings. */
 export type SoundEventType =
     | 'move'
     | 'capture'
@@ -27,21 +27,21 @@ const MUTE_STORAGE_KEY = 'regence_sound_muted';
 const SOUND_SET_STORAGE_KEY = 'regence_sound_set';
 
 /**
- * Наборы звуков (таск 18.3) — профили синтеза, а не записи: высота и громкость стука, высота и тембр сигналов.
- * Предупреждающие сигналы (нелегальный ход, мало времени) тембр не меняют — их нужно узнавать в любом наборе.
+ * Sound sets (task 18.3) — synthesis profiles, not recordings: pitch and volume of the thud, pitch and timbre of the signals.
+ * Warning signals (illegal move, low time) do not change timbre — they must be recognizable in any set.
  */
 export interface SoundSet {
-    /** Множитель высоты стука фигуры (центральной частоты фильтра шума). */
+    /** Multiplier of the piece-thud pitch (center frequency of the noise filter). */
     knock: number;
-    /** Множитель громкости стука и мелодичных сигналов. */
+    /** Multiplier of the thud and melodic signal volume. */
     volume: number;
-    /** Множитель высоты мелодичных сигналов (синус и треугольник). */
+    /** Multiplier of the melodic signal pitch (sine and triangle). */
     pitch: number;
-    /** Форма волны мелодичных сигналов; null — у каждого сигнала своя, как задано в play(). */
+    /** Waveform of melodic signals; null — each signal has its own, as set in play(). */
     wave: OscillatorType | null;
 }
 
-/** Четыре набора; wood — исходный (все множители равны единице). Названия наборов — в каталоге переводов. */
+/** Four sets; wood — the original (all multipliers equal one). Set names are in the translation catalog. */
 export const SOUND_SETS = {
     wood: {knock: 1, volume: 1, pitch: 1, wave: null},
     marble: {knock: 1.6, volume: 0.85, pitch: 1.12, wave: 'sine'},
@@ -51,7 +51,7 @@ export const SOUND_SETS = {
 
 export type SoundSetId = keyof typeof SOUND_SETS;
 
-/** Известен ли набор: значение из localStorage могло остаться от другой версии. */
+/** Whether the set is known: a value in localStorage may be left over from another version. */
 export function isSoundSetId(value: unknown): value is SoundSetId {
     return typeof value === 'string' && Object.prototype.hasOwnProperty.call(SOUND_SETS, value);
 }
@@ -79,7 +79,7 @@ class SoundEngine {
             try {
                 localStorage.setItem(SOUND_SET_STORAGE_KEY, id);
             } catch {
-                // Хранилище недоступно — набор действует до перезагрузки.
+                // Storage unavailable — the set stays in effect until reload.
             }
         }
     }
@@ -101,8 +101,8 @@ class SoundEngine {
     }
 
     /**
-     * AudioContext создаётся при первом звуке, а не при загрузке: браузеры не дают звучать до действия игрока, и
-     * контекст, созданный раньше, остаётся «приостановленным» — поэтому здесь же он возобновляется.
+     * AudioContext is created on the first sound, not at load: browsers do not allow sound before a player action, and
+     * a context created earlier stays "suspended" — so it is resumed here.
      */
     private getContext(): AudioContext | null {
         if (typeof window === 'undefined') return null;
@@ -122,9 +122,9 @@ class SoundEngine {
     }
 
     /**
-     * Один тон: частота freq (с плавным уходом к endFreq, если задана), длительность, задержка от «сейчас», форма
-     * волны и пиковая громкость. Профиль набора применяется только к синусу и треугольнику: пила и меандр —
-     * предупреждающие сигналы, они звучат одинаково в любом наборе.
+     * One tone: frequency freq (with a smooth glide to endFreq if given), duration, delay from "now", waveform
+     * and peak volume. The set profile applies only to sine and triangle: sawtooth and square are
+     * warning signals and sound the same in any set.
      */
     private playTone(
         freq: number,
@@ -168,9 +168,9 @@ class SoundEngine {
     }
 
     /**
-     * Стук фигуры о доску: короткий всплеск шума через полосовой фильтр. Звуки синтезируются
-     * целиком — готовых записей в проекте нет (см. ATTRIBUTION.md), поэтому нет и вопросов
-     * о лицензии на них.
+     * Piece thud on the board: a short noise burst through a band-pass filter. Sounds are synthesized
+     * entirely — the project has no ready-made recordings (see ATTRIBUTION.md), so there are no
+     * licensing questions about them.
      */
     private playKnock(volume: number = 0.5, centerFreq: number = 950, delaySec: number = 0): void {
         const ctx = this.getContext();
@@ -184,7 +184,7 @@ class SoundEngine {
         const buffer = ctx.createBuffer(1, frameCount, ctx.sampleRate);
         const samples = buffer.getChannelData(0);
         for (let i = 0; i < frameCount; i++) {
-            // Шум с быстрым спадом: резкая атака и короткий «деревянный» хвост.
+            // Noise with a fast decay: a sharp attack and a short "wooden" tail.
             samples[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / frameCount, 3);
         }
 
@@ -206,11 +206,11 @@ class SoundEngine {
         gain.connect(ctx.destination);
         source.start(startTime);
 
-        // Низкий «корпус» удара — без него стук звучит как щелчок.
+        // A low "body" of the impact — without it the thud sounds like a click.
         this.playTone(centerFreq / 5.5, 0.06, delaySec, 'triangle', volume * 0.3, centerFreq / 11);
     }
 
-    /** Медный голос фанфар: пила через фильтр с лёгким вибрато — «труба» синтезом, без записей. */
+    /** Brass fanfare voice: a sawtooth through a filter with light vibrato — a "trumpet" by synthesis, without recordings. */
     private brass(freq: number, start: number, duration: number, gain = 0.07): void {
         const ctx = this.getContext();
         if (!ctx) return;
@@ -244,14 +244,14 @@ class SoundEngine {
     }
 
     /**
-     * Фанфары призёру турнира (решение владельца, 17.11): победителю — торжественный сигнал с аккордом в конце,
-     * серебру и бронзе — короче. Звук выключен — тишина.
+     * Fanfares for a tournament prizewinner (owner decision, 17.11): for the winner — a solemn signal with a chord at the end,
+     * for silver and bronze — shorter. Sound off — silence.
      */
     public playFanfare(place: number): void {
         if (this.muted) return;
         const chord = (notes: number[], start: number, duration: number) =>
             notes.forEach((freq) => this.brass(freq, start, duration, 0.05));
-        // До мажор: C5 E5 G5 C6.
+        // C major: C5 E5 G5 C6.
         const [c5, e5, g5, c6] = [523.25, 659.25, 783.99, 1046.5];
         if (place === 1) {
             this.brass(g5 / 2, 0, 0.16);
@@ -274,7 +274,7 @@ class SoundEngine {
         }
     }
 
-    /** Сыграть звук события; при выключенном звуке — ничего. Ноты и длительности заданы прямо здесь, по событию. */
+    /** Play an event sound; with sound off — nothing. Notes and durations are set right here, per event. */
     public play(event: SoundEventType): void {
         if (this.muted) return;
 
@@ -284,7 +284,7 @@ class SoundEngine {
                 break;
 
             case 'capture':
-                // Взятие: два удара подряд — фигура снята, фигура поставлена.
+                // Capture: two thuds in a row — the piece is removed, the piece is placed.
                 this.playKnock(0.55, 1500);
                 this.playKnock(0.6, 800, 0.045);
                 break;
@@ -368,38 +368,38 @@ class SoundEngine {
     }
 }
 
-/** Единственный экземпляр на вкладку: настройки читаются из localStorage при загрузке модуля. */
+/** Single instance per tab: settings are read from localStorage when the module loads. */
 export const soundEngine = new SoundEngine();
 
 /**
- * Звук шаха — только в обучении (решение владельца, 17.11): в уроках, задачах и тренажёрах он подсказывает, что
- * король под ударом, а в партиях — рейтинговых, с ботами, турнирных, любых — раздражает и отвлекает. Режим
- * переключает App по адресу страницы (isLearningPath); вне обучения ход с шахом звучит как обычный ход или взятие.
+ * Check sound — only in learning (owner decision, 17.11): in lessons, puzzles and trainers it hints that the
+ * king is under attack, while in games — rated, vs bots, tournament, any — it annoys and distracts. The mode is
+ * toggled by App from the page address (isLearningPath); outside learning a checking move sounds like an ordinary move or capture.
  */
 let checkSounds = false;
 
-/** Включить или выключить звук шаха; вызывает App при каждой смене адреса страницы. */
+/** Turn the check sound on or off; App calls it on every page address change. */
 export function setCheckSounds(enabled: boolean): void {
     checkSounds = enabled;
 }
 
-/** Звучит ли сейчас шах отдельным сигналом. */
+/** Whether check currently sounds as a separate signal. */
 export function checkSoundsEnabled(): boolean {
     return checkSounds;
 }
 
-/** Начала адресов учебных разделов (совпадение целиком или с продолжением через «/»). */
+/** Prefixes of learning-section addresses (an exact match or a continuation after "/"). */
 const LEARNING_PATHS = ['/learn', '/puzzles', '/train', '/workout', '/programs', '/guess'];
 
-/** Обучающий раздел: школа и курс, задачи, тренажёры, разминка, программы, «Угадай ход»; и тренировка репертуара. */
+/** Learning section: school and course, puzzles, trainers, warm-up, programs, "Guess the move"; and repertoire training. */
 export function isLearningPath(pathname: string): boolean {
     if (/^\/repertoire\/[^/]+\/drill\/?$/.test(pathname)) return true;
     return LEARNING_PATHS.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
 }
 
 /**
- * Определяет подходящий звуковой эффект хода по его нотации SAN. Проверки идут по старшинству: шах или мат (только
- * когда звук шаха включён), превращение, рокировка, взятие; всё остальное — обычный ход.
+ * Determines the suitable move sound effect from its SAN notation. Checks go in order of precedence: check or mate (only
+ * when the check sound is on), promotion, castling, capture; everything else is an ordinary move.
  */
 export function resolveMoveSound(san?: string | null): SoundEventType {
     if (!san) return 'move';

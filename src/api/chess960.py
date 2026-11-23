@@ -1,10 +1,11 @@
 """
-Шахматы Фишера (таск 21.3): новая расстановка и ход игрока с ответом бота. Ход бота — работа движка: тот же лимит,
-что у /bots/move, и правило честной игры (во время партии с человеком — 409).
+Fischer chess (task 21.3): a new setup and the player's move with the bot's reply. The bot's move is engine work: the same
+limit
+as /bots/move, and the fair-play rule (during a game with a human - 409).
 
-Сервер партию не хранит: клиент каждый раз присылает номер расстановки и все сделанные ходы, сервер переигрывает
-их (src/services/chess960.py) и отвечает новым состоянием. Доступно без входа; эти эндпоинты в базу ничего не
-пишут. Партии Фишера между людьми идут иначе — по приглашению через WebSocket (src/services/matchmaker.py).
+The server does not store the game: the client each time sends the setup number and all moves made, the server replays
+them (src/services/chess960.py) and answers with the new state. Available without login; these endpoints write nothing to the
+database. Fischer games between people go differently - by invitation via WebSocket (src/services/matchmaker.py).
 """
 
 import asyncio
@@ -23,7 +24,7 @@ BOT_DEPENDENCIES = [Depends(rate_limit("bot_move", "RATE_LIMIT_BOT_MOVE")), Depe
 
 
 class GameIn(BaseModel):
-    """Партия целиком, как её знает клиент: номер расстановки, сделанные ходы (UCI) и уровень бота."""
+    """The whole game as the client knows it: the setup number, the moves made (UCI) and the bot level."""
     number: int = Field(..., ge=0, le=959)
     moves: list[str] = Field(default_factory=list, max_length=c960.MAX_PLIES)
     level: int = Field(2, ge=1, le=len(c960.LEVELS))
@@ -34,7 +35,8 @@ class MoveIn(GameIn):
 
 
 def _state(game: c960.Game, bot_uci: str | None = None) -> dict:
-    """Состояние партии для клиента: позиция, ходы, итог (если партия кончилась) и ход бота, если он только что сделан."""
+    """Game state for the client: the position, moves, the result (if the game ended) and the bot move, if it has just been
+    made."""
     result, termination = c960.outcome(game.board)
     return {"number": game.number, "fen": game.board.fen(), "moves": [m.uci() for m in game.board.move_stack],
             "sans": game.sans, "result": result, "termination": termination, "bot_move": bot_uci,
@@ -42,7 +44,8 @@ def _state(game: c960.Game, bot_uci: str | None = None) -> dict:
 
 
 async def _bot_reply(game: c960.Game, level: int) -> dict:
-    """Ход бота в текущей позиции (если партия не кончилась) и новое состояние; движок занят или недоступен — 503."""
+    """The bot's move in the current position (if the game has not ended) and the new state; engine busy or unavailable -
+    503."""
     if c960.outcome(game.board)[0] is not None:
         return _state(game)
     try:
@@ -64,14 +67,14 @@ def _replay(payload: GameIn) -> c960.Game:
 
 @router.get("/new")
 async def new_game(number: int | None = Query(None, ge=0, le=959)):
-    """Расстановка: номер (0–959; 518 — обычная) или случайная."""
+    """A setup: a number (0-959; 518 is the standard one) or a random one."""
     game = c960.replay(c960.random_number() if number is None else number, [])
     return _state(game)
 
 
 @router.post("/move", dependencies=BOT_DEPENDENCIES)
 async def move(payload: MoveIn):
-    """Ход игрока и ответ бота: партия переигрывается из присланных ходов, нелегальный ход или расстановка — 400."""
+    """The player's move and the bot's reply: the game is replayed from the submitted moves, an illegal move or setup - 400."""
     game = _replay(payload)
     try:
         game.sans.append(c960.push(game.board, payload.move))
@@ -82,5 +85,5 @@ async def move(payload: MoveIn):
 
 @router.post("/bot-move", dependencies=BOT_DEPENDENCIES)
 async def bot_turn(payload: GameIn):
-    """Ход бота в текущей позиции — когда игрок за чёрных (бот начинает)."""
+    """The bot's move in the current position - when the player has Black (the bot starts)."""
     return await _bot_reply(_replay(payload), payload.level)

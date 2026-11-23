@@ -1,9 +1,9 @@
 // --- FILE: frontend/src/components/chessboard/NewGameDialog.tsx ---
-// Окно «Новая партия» игрового зала (схема владельца 18.11): шаги «С кем → Время → Начать» вместо того, чтобы держать
-// все настройки в левой колонке. Окно только ведёт по шагам и помнит выбор; сами панели (контроль времени, поиск
-// соперника и вызов друга, каталог ботов, мастерская, лестница) передаёт игровой зал — их правила не менялись.
-// Выбор «с кем» хранится в localStorage (regence_new_game_who): повторно окно открывается сразу на шаге «Начать»,
-// и новая партия начинается в два щелчка. Закрывает окно игровой зал, когда партия началась.
+// "New game" window of the game hall (owner's scheme 18.11): steps "Who with -> Time -> Start" instead of keeping
+// all settings in the left column. The window only leads through the steps and remembers the choice; the panels themselves (time control, opponent
+// search and friend challenge, bot catalog, workshop, ladder) are passed by the game hall; their rules have not changed.
+// The "who with" choice is stored in localStorage (regence_new_game_who): on reopening the window goes straight to the "Start" step,
+// and a new game starts in two clicks. The game hall closes the window once the game has started.
 
 import {useEffect, useState} from 'react';
 import type {ReactNode} from 'react';
@@ -21,18 +21,18 @@ function savedOpponent(): Opponent | null {
         const value = localStorage.getItem(STORAGE_KEY);
         return value === 'human' || value === 'bot' ? value : null;
     } catch {
-        return null;  // хранилище недоступно (приватный режим) — окно начнёт с первого шага
+        return null;  // storage unavailable (private mode): the window starts from the first step
     }
 }
 
 interface Props {
     open: boolean;
     onClose: () => void;
-    /** Шаг «Время»: выбор контроля времени. */
+    /** "Time" step: choice of time control. */
     timeControl: ReactNode;
-    /** Шаг «Начать» с человеком: тип партии, поиск соперника, вызов друга. */
+    /** "Start" step with a human: game type, opponent search, challenge a friend. */
     human: ReactNode;
-    /** Шаг «Начать» с ботом: исторические мастера, мастерская, лестница. */
+    /** "Start" step with a bot: historical masters, workshop, ladder. */
     bots: ReactNode;
 }
 
@@ -41,7 +41,7 @@ export function NewGameDialog({open, onClose, timeControl, human, bots}: Props) 
     const [opponent, setOpponent] = useState<Opponent | null>(savedOpponent);
     const [step, setStep] = useState<Step>(opponent ? 'start' : 'who');
 
-    // При каждом открытии выбор читается заново: с запомненным соперником — сразу к старту, иначе — с первого шага.
+    // On every opening the choice is read again: with a remembered opponent, straight to the start, otherwise from the first step.
     useEffect(() => {
         if (!open) return;
         const saved = savedOpponent();
@@ -54,7 +54,7 @@ export function NewGameDialog({open, onClose, timeControl, human, bots}: Props) 
         try {
             localStorage.setItem(STORAGE_KEY, next);
         } catch {
-            // не запомнили — в следующий раз окно просто начнёт с первого шага
+            // not remembered: next time the window simply starts from the first step
         }
         setStep('time');
     };

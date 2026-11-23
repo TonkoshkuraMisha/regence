@@ -7,9 +7,9 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import {sentryVitePlugin} from '@sentry/vite-plugin'
 
-// Source maps для Sentry (проект regence-web): включаются только при сборке с токеном SENTRY_AUTH_TOKEN (выкладка,
-// см. DEPLOY.md, раздел 6). Карты загружаются в Sentry и удаляются из сборки — наружу сайт их не отдаёт; без токена
-// (разработка, CI) сборка обычная, ничего не отправляется. Организация и проект — SENTRY_ORG / SENTRY_PROJECT.
+// Source maps for Sentry (project regence-web): enabled only when built with the SENTRY_AUTH_TOKEN token (deployment,
+// see DEPLOY.md, section 6). Maps are uploaded to Sentry and removed from the build - the site does not serve them; without the token
+// (development, CI) the build is normal, nothing is sent. Organization and project - SENTRY_ORG / SENTRY_PROJECT.
 const sentryToken = process.env.SENTRY_AUTH_TOKEN
 
 export default defineConfig({
@@ -24,7 +24,7 @@ export default defineConfig({
             sourcemaps: {filesToDeleteAfterUpload: ['./dist/**/*.map']},
         })] : []),
     ],
-    // hidden: карты есть, но ссылки на них в файлах сборки нет; без токена карты не нужны вовсе.
+    // hidden: maps exist, but the build files have no references to them; without the token the maps are not needed at all.
     build: {sourcemap: sentryToken ? 'hidden' : false},
     server: {
         host: '127.0.0.1',
@@ -33,17 +33,17 @@ export default defineConfig({
     },
     test: {
         environment: 'jsdom',
-        // storage.ts — первым: на Node 25+ подменяет собственный localStorage Node хранилищем jsdom.
+        // storage.ts - first: on Node 25+ replaces Node's own localStorage with the jsdom storage.
         setupFiles: ['./src/test/storage.ts', './src/test/setup.ts'],
-        // npm run test:coverage (в CI): покрытие считается по всему src/, а не только по файлам,
-        // которые импортируют тесты, — иначе непокрытые компоненты не попали бы в отчёт вовсе.
+        // npm run test:coverage (in CI): coverage is computed over all of src/, not only over the files
+        // imported by tests - otherwise uncovered components would not get into the report at all.
         coverage: {
             provider: 'v8',
             include: ['src/**/*.{ts,tsx}'],
             exclude: ['src/**/__tests__/**', 'src/test/**', 'src/main.tsx', 'src/**/*.d.ts'],
             reporter: ['text-summary', 'text'],
             thresholds: {
-                // Замер 22.11.2026: строки и операторы ~98,8%, ветки ~90,6%, функции ~92,6% — пороги с запасом в 2–5 пунктов.
+                // Measured 22.11.2026: lines and statements ~98.8%, branches ~90.6%, functions ~92.6% - thresholds with a margin of 2-5 points.
                 statements: 96,
                 branches: 87,
                 functions: 89,

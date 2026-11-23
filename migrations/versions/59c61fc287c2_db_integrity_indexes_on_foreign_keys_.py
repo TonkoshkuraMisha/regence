@@ -4,12 +4,12 @@ Revision ID: 59c61fc287c2
 Revises: f7a3d1c9e582
 Create Date: 2026-11-18 07:10:54.557345
 
-Индексы — на каждую ссылку, по которой идёт каскад или SET NULL при удалении игрока, партии или выборка (без них
-удаление игрока читало бы целиком arena_games, reports, tournament_players …). RESTRICT — у ссылок партий и ходов
-на игроков: игрока с партиями не удаляют, аккаунт обезличивается (src/services/account.py); поведение то же, что
-было по умолчанию (NO ACTION), теперь записано явно. CHECK — значения-перечисления из кортежей в моделях
-(src/models/base.one_of). Перед созданием CHECK миграция ищет строки с недопустимым значением и останавливается с
-их списком, а не ломает данные молча.
+Indexes go on every reference that is cascaded or SET NULL when a player or game is deleted, or that is used for lookups (without them
+deleting a player would read arena_games, reports, tournament_players ... in full). RESTRICT is used for game and move references
+to players: a player with games is not deleted, the account is anonymised (src/services/account.py); the behaviour is the same as
+the default (NO ACTION) used to be, now written explicitly. CHECK constraints cover enum-like values from the tuples in the models
+(src/models/base.one_of). Before creating a CHECK the migration looks for rows with an invalid value and stops with
+their list instead of silently breaking data.
 """
 from collections.abc import Sequence
 
@@ -22,7 +22,7 @@ down_revision: str | Sequence[str] | None = 'f7a3d1c9e582'
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
-# (таблица, колонка) — индекс ix_<таблица>_<колонка>.
+# (table, column) - index ix_<table>_<column>.
 INDEXES = (
     ('arena_games', 'white_id'), ('arena_games', 'black_id'),
     ('feedback', 'user_id'), ('feedback', 'moderator_id'),
@@ -34,13 +34,13 @@ INDEXES = (
     ('reports', 'reporter_id'), ('reports', 'game_id'), ('reports', 'moderator_id'),
     ('tournament_games', 'game_id'), ('tournament_players', 'user_id'),
 )
-# (таблица, колонка, ссылка на таблицу) — внешний ключ <таблица>_<колонка>_fkey становится RESTRICT.
+# (table, column, referenced table) - the foreign key <table>_<column>_fkey becomes RESTRICT.
 RESTRICT = (
     ('games', 'white_player_id', 'users'), ('games', 'black_player_id', 'users'), ('games', 'winner_id', 'users'),
     ('moves', 'game_id', 'games'), ('moves', 'player_id', 'users'),
 )
 RESULTS = ('1-0', '0-1', '1/2-1/2', '*')
-# Снимок наборов на момент миграции (дальше наборы живут в моделях, новое значение — новая миграция).
+# Snapshot of the value sets at the time of the migration (afterwards the sets live in the models, a new value needs a new migration).
 CHECKS = (
     ('arenas', 'format', ('arena', 'swiss')),
     ('arena_games', 'result', RESULTS),

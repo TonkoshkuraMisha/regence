@@ -1,8 +1,8 @@
 // --- FILE: frontend/src/components/__tests__/Chessboard.test.tsx ---
-// Поведенческие тесты пяти ключевых сценариев перед декомпозицией Chessboard.tsx (задача 7.13
-// из ToDo.md): ход, премув, флаг, сдача, реванш. Гоняем их через партию с историческим ботом —
-// она не требует реального WebSocket-рукопожатия и использует тот же executeMove/клок/премув,
-// что и настоящий PvP.
+// Behavioural tests of the five key scenarios before decomposing Chessboard.tsx (task 7.13
+// from ToDo.md): a move, a premove, the flag, resignation, a rematch. We run them through a game against a historical bot —
+// it needs no real WebSocket handshake and uses the same executeMove/clock/premove
+// as a real PvP.
 
 import {act, fireEvent, render, screen, waitFor} from '@testing-library/react';
 import {MemoryRouter} from 'react-router-dom';
@@ -37,7 +37,7 @@ vi.mock('../../services/soundEngine', async (importOriginal) => {
     };
 });
 
-const BOT_MOVE_DEFAULT = {uci: 'e7e5', san: 'e5', fen_after: '', source: 'book', comment: 'Классика.', thinking_time_ms: 10};
+const BOT_MOVE_DEFAULT = {uci: 'e7e5', san: 'e5', fen_after: '', source: 'book', comment: 'Classical.', thinking_time_ms: 10};
 
 function renderChessboard() {
     return render(
@@ -50,7 +50,7 @@ function renderChessboard() {
 
 function squareEl(square: string): HTMLElement {
     const el = document.querySelector(`[data-square="${square}"]`);
-    if (!el) throw new Error(`Клетка ${square} не найдена на доске`);
+    if (!el) throw new Error(`Square ${square} not found on the board`);
     return el as HTMLElement;
 }
 
@@ -71,7 +71,7 @@ async function startBotGame(color: 'white' | 'black', botReply: Partial<typeof B
     renderChessboard();
     await openBots();
 
-    const startButton = await screen.findByRole('button', {name: color === 'white' ? /Белыми/ : /Чёрными/});
+    const startButton = await screen.findByRole('button', {name: color === 'white' ? /White/ : /Black/});
     await act(async () => {
         fireEvent.click(startButton);
     });
@@ -89,8 +89,8 @@ afterEach(() => {
     localStorage.clear();
 });
 
-describe('«Новая партия» по шагам (схема владельца 18.11)', () => {
-    it('первый раз — соперник, время, старт; партия началась — окно закрылось; дальше окно открывается сразу на старте', async () => {
+describe('"New game" step by step (owner scheme 18.11)', () => {
+    it('the first time — opponent, time, start; the game began — the window closed; afterwards the window opens right at the start', async () => {
         vi.stubGlobal('fetch', mockFetchRouter({
             '/profile/me': () => ({id: 1, username: 'TestPlayer', blitz_rating: 1500}),
             '/profile/matchmaking/queue': () => [],
@@ -99,9 +99,9 @@ describe('«Новая партия» по шагам (схема владель
             '/bots/move': () => BOT_MOVE_DEFAULT,
         }));
         renderChessboard();
-        // В колонке нет ни каталога ботов, ни поиска соперника — только кнопка окна.
-        expect(screen.queryByRole('button', {name: /Белыми/})).toBeNull();
-        expect(screen.queryByRole('button', {name: /Найти соперника/})).toBeNull();
+        // The column has neither a bot catalogue nor an opponent search — only the window button.
+        expect(screen.queryByRole('button', {name: /White/})).toBeNull();
+        expect(screen.queryByRole('button', {name: /Find an opponent/})).toBeNull();
 
         fireEvent.click(await screen.findByTestId('new-game-open'));
         expect(screen.getByTestId('new-game-step-who')).toHaveAttribute('aria-current', 'step');
@@ -110,15 +110,15 @@ describe('«Новая партия» по шагам (схема владель
         expect(screen.getByTestId('new-game-step-time')).toHaveAttribute('aria-current', 'step');
         fireEvent.click(screen.getByTestId('new-game-next'));
         await act(async () => {
-            fireEvent.click(await screen.findByRole('button', {name: /Белыми/}));
+            fireEvent.click(await screen.findByRole('button', {name: /White/}));
         });
         expect(screen.queryByTestId('new-game')).toBeNull();
-        expect(screen.getByTestId('new-game-open')).toBeDisabled();  // идёт партия — новую не начать
+        expect(screen.getByTestId('new-game-open')).toBeDisabled();  // a game is on — a new one cannot be started
         expect(screen.getByTestId('opponent-note')).toBeInTheDocument();
         expect(localStorage.getItem('regence_new_game_who')).toBe('bot');
     });
 
-    it('запомненный «человек» — окно сразу на поиске соперника; Esc закрывает', async () => {
+    it('a remembered "person" — the window opens right at the opponent search; Esc closes', async () => {
         vi.stubGlobal('fetch', mockFetchRouter({
             '/profile/me': () => ({id: 1, username: 'TestPlayer', blitz_rating: 1500}),
             '/profile/matchmaking/queue': () => [],
@@ -129,14 +129,14 @@ describe('«Новая партия» по шагам (схема владель
         renderChessboard();
         fireEvent.click(await screen.findByTestId('new-game-open'));
         expect(screen.getByTestId('new-game-start-human')).toBeInTheDocument();
-        expect(screen.getByRole('button', {name: /Найти соперника/})).toBeInTheDocument();
+        expect(screen.getByRole('button', {name: /Find an opponent/})).toBeInTheDocument();
         fireEvent.keyDown(window, {key: 'Escape'});
         expect(screen.queryByTestId('new-game')).toBeNull();
     });
 });
 
-describe('ход', () => {
-    it('ход человека на свободную клетку применяется и попадает в журнал ходов', async () => {
+describe('move', () => {
+    it('a human move to a free square is applied and goes into the move log', async () => {
         await startBotGame('white');
 
         clickSquare('e2');
@@ -146,108 +146,108 @@ describe('ход', () => {
     });
 });
 
-describe('премув', () => {
-    it('ход на чужом ходу ставится в очередь и исполняется, когда наступает очередь игрока', async () => {
+describe('premove', () => {
+    it('a move on the opponent\'s turn is queued and executed when it becomes the player\'s turn', async () => {
         await startBotGame('black', {uci: 'e2e4', san: 'e4', thinking_time_ms: 200});
 
-        // Белыми играет бот — сейчас не наш ход, клик должен поставить премув, а не ход.
+        // The bot plays White — it is not our turn now, a click must set a premove, not a move.
         clickSquare('e7');
         clickSquare('e5');
 
-        expect(screen.getByText(/Предход: e7 → e5/)).toBeInTheDocument();
+        expect(screen.getByText(/Premove: e7 → e5/)).toBeInTheDocument();
 
-        // Бот отвечает, премув должен автоматически исполниться.
+        // The bot replies, the premove must be executed automatically.
         await act(async () => {
             await vi.advanceTimersByTimeAsync(300);
         });
 
         await waitFor(() => {
-            expect(screen.queryByText(/Предход:/)).not.toBeInTheDocument();
+            expect(screen.queryByText(/Premove:/)).not.toBeInTheDocument();
         });
         expect(screen.getByText('e5')).toBeInTheDocument();
     });
 
-    it('цепочка: второй предход — фигурой с поля первого, исполняются по одному', async () => {
+    it('a chain: the second premove — with the piece from the first one\'s square, executed one by one', async () => {
         await startBotGame('black', {uci: 'e2e4', san: 'e4', thinking_time_ms: 200});
         clickSquare('g8');
         clickSquare('f6');
-        // Конь уже стоит на f6 «в предходе» — его можно вести дальше.
+        // The knight already stands on f6 "in a premove" — it can be moved on.
         expect(squareEl('f6').querySelector('img')).not.toBeNull();
         clickSquare('f6');
         clickSquare('g4');
-        expect(screen.getByTestId('premove-queue').textContent).toBe('Предход: g8 → f6 · Предход: f6 → g4');
+        expect(screen.getByTestId('premove-queue').textContent).toBe('Premove: g8 → f6 · Premove: f6 → g4');
 
         await act(async () => {
             await vi.advanceTimersByTimeAsync(300);
         });
-        // Бот ответил e4 — исполнен первый предход, второй ждёт следующего хода соперника.
-        await waitFor(() => expect(screen.getByTestId('premove-queue').textContent).toBe('Предход: f6 → g4'));
+        // The bot replied e4 — the first premove is executed, the second waits for the opponent's next move.
+        await waitFor(() => expect(screen.getByTestId('premove-queue').textContent).toBe('Premove: f6 → g4'));
         expect(screen.getByText('Nf6')).toBeInTheDocument();
     });
 });
 
-describe('флаг', () => {
-    it('истечение времени завершает партию с ботом поражением по флагу', async () => {
+describe('flag', () => {
+    it('running out of time ends the game with a bot by a loss on the flag', async () => {
         await startBotGame('white');
 
-        // Тикает каждые 50мс и вычитает реально прошедшее время — 3 минуты с запасом.
+        // It ticks every 50 ms and subtracts the really elapsed time — 3 minutes with a margin.
         await act(async () => {
             await vi.advanceTimersByTimeAsync(3 * 60 * 1000 + 2000);
         });
 
-        expect(screen.getByText(/Флажок упал!.*\(0-1\)/)).toBeInTheDocument();
+        expect(screen.getByText(/Flag fell!.*\(0-1\)/)).toBeInTheDocument();
     });
 });
 
-describe('сдача', () => {
-    it('подтверждённая сдача завершает партию поражением игрока', async () => {
+describe('resignation', () => {
+    it('a confirmed resignation ends the game with the player\'s loss', async () => {
         vi.spyOn(window, 'confirm').mockReturnValue(true);
         await startBotGame('white');
 
         await act(async () => {
-            fireEvent.click(screen.getByRole('button', {name: /Сдаться/}));
+            fireEvent.click(screen.getByRole('button', {name: /Resign/}));
         });
 
-        expect(screen.getByText(/Вы сдались.*\(0-1\)/)).toBeInTheDocument();
+        expect(screen.getByText(/You resigned.*\(0-1\)/)).toBeInTheDocument();
     });
 
-    it('отменённое подтверждение не завершает партию', async () => {
+    it('a cancelled confirmation does not end the game', async () => {
         vi.spyOn(window, 'confirm').mockReturnValue(false);
         await startBotGame('white');
 
         await act(async () => {
-            fireEvent.click(screen.getByRole('button', {name: /Сдаться/}));
+            fireEvent.click(screen.getByRole('button', {name: /Resign/}));
         });
 
-        expect(screen.queryByText(/Вы сдались/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/You resigned/)).not.toBeInTheDocument();
     });
 });
 
-describe('реванш', () => {
-    it('реванш с ботом стартует новую партию с противоположным цветом игрока', async () => {
+describe('rematch', () => {
+    it('a rematch with a bot starts a new game with the opposite colour of the player', async () => {
         vi.spyOn(window, 'confirm').mockReturnValue(true);
         await startBotGame('white');
 
-        // a8 первой в DOM — доска не перевёрнута (мы играем белыми).
+        // a8 is first in the DOM — the board is not flipped (we play White).
         expect(squareEl('a8')).toBeInTheDocument();
 
         await act(async () => {
-            fireEvent.click(screen.getByRole('button', {name: /Сдаться/}));
+            fireEvent.click(screen.getByRole('button', {name: /Resign/}));
         });
-        expect(screen.getByText(/Вы сдались/)).toBeInTheDocument();
+        expect(screen.getByText(/You resigned/)).toBeInTheDocument();
 
         await act(async () => {
-            fireEvent.click(screen.getByRole('button', {name: /Реванш/}));
+            fireEvent.click(screen.getByRole('button', {name: /Rematch/}));
         });
 
-        // Реванш меняет цвет игрока на чёрный — доска переворачивается, h1 теперь первая.
+        // The rematch changes the player's colour to Black — the board flips, h1 is now first.
         expect(squareEl('h1')).toBeInTheDocument();
-        expect(screen.queryByText(/Вы сдались/)).not.toBeInTheDocument();
-        expect(screen.getByRole('button', {name: /Сдаться/})).toBeInTheDocument();
+        expect(screen.queryByText(/You resigned/)).not.toBeInTheDocument();
+        expect(screen.getByRole('button', {name: /Resign/})).toBeInTheDocument();
     });
 });
 
-describe('сбой связи с сервером в партии с ботом', () => {
+describe('a connection failure with the server in a game with a bot', () => {
     function stubBotFetch(moveReplies: Array<() => Promise<Response>>) {
         const base = mockFetchRouter({
             '/profile/me': () => ({id: 1, username: 'TestPlayer', blitz_rating: 1500}),
@@ -276,13 +276,13 @@ describe('сбой связи с сервером в партии с ботом'
     async function startAsBlack() {
         renderChessboard();
         await openBots();
-        const startButton = await screen.findByRole('button', {name: /Чёрными/});
+        const startButton = await screen.findByRole('button', {name: /Black/});
         await act(async () => {
             fireEvent.click(startButton);
         });
     }
 
-    it('бот повторяет запрос после сетевой ошибки и 500 и всё-таки ходит', async () => {
+    it('the bot repeats the request after a network error and a 500 and still moves', async () => {
         const moveCalls = stubBotFetch([
             () => Promise.reject(new TypeError('Failed to fetch')),
             () => Promise.resolve({ok: false, status: 500, headers: new Headers(), json: async () => ({})} as unknown as Response),
@@ -298,7 +298,7 @@ describe('сбой связи с сервером в партии с ботом'
         await waitFor(() => expect(screen.getByText('e4')).toBeInTheDocument());
     });
 
-    it('при долгом сбое бот сообщает, что ждёт связи, а не молчит', async () => {
+    it('on a long failure the bot says it is waiting for the connection rather than staying silent', async () => {
         stubBotFetch([() => Promise.reject(new TypeError('Failed to fetch'))]);
         await startAsBlack();
 
@@ -306,13 +306,13 @@ describe('сбой связи с сервером в партии с ботом'
             await vi.advanceTimersByTimeAsync(4000);
         });
 
-        expect(screen.getByText(/Нет связи с сервером/)).toBeInTheDocument();
+        expect(screen.getByText(/No connection to the server/)).toBeInTheDocument();
     });
 
-    it('постоянная ошибка (4xx) показывается, бот не повторяет запрос бесконечно', async () => {
+    it('a permanent error (4xx) is shown, the bot does not repeat the request endlessly', async () => {
         const moveCalls = stubBotFetch([() => Promise.resolve({
             ok: false, status: 400, headers: new Headers(),
-            json: async () => ({detail: 'Некорректная позиция'}),
+            json: async () => ({detail: 'Invalid position'}),
         } as unknown as Response)]);
         await startAsBlack();
 
@@ -321,11 +321,11 @@ describe('сбой связи с сервером в партии с ботом'
         });
 
         expect(moveCalls).toHaveLength(1);
-        expect(screen.getByText(/Бот не смог сделать ход: Некорректная позиция/)).toBeInTheDocument();
+        expect(screen.getByText(/The bot could not make a move: Invalid position/)).toBeInTheDocument();
     });
 });
 
-describe('партия с ботом с произвольной позиции', () => {
+describe('a game with a bot from an arbitrary position', () => {
     const KQ_VS_K = 'k7/7Q/1K6/8/8/8/8/8 w - - 0 57';
 
     function stubBotApi() {
@@ -342,43 +342,43 @@ describe('партия с ботом с произвольной позиции'
     }
 
     async function loadFen(fen: string) {
-        fireEvent.change(await screen.findByLabelText('Позиция в записи FEN'), {target: {value: fen}});
+        fireEvent.change(await screen.findByLabelText('Position in FEN'), {target: {value: fen}});
         await act(async () => {
-            fireEvent.click(screen.getByRole('button', {name: /Поставить/}));
+            fireEvent.click(screen.getByRole('button', {name: /Set up/}));
         });
     }
 
-    it('позиция из FEN ставится на свободную доску, некорректная — отклоняется', async () => {
+    it('a position from FEN is put on the free board, an incorrect one is rejected', async () => {
         stubBotApi();
         renderChessboard();
 
-        await loadFen('совсем не fen');
-        expect(screen.getByRole('alert')).toHaveTextContent('Некорректная позиция');
+        await loadFen('not a fen at all');
+        expect(screen.getByRole('alert')).toHaveTextContent('Invalid position');
 
         await loadFen(KQ_VS_K);
         expect(screen.queryByRole('alert')).not.toBeInTheDocument();
         expect(squareEl('h7').querySelector('img')?.getAttribute('alt')).toBe('wq');
         expect(squareEl('e2').querySelector('img')).toBeNull();
-        // Сброс возвращает обычную расстановку даже без сделанных ходов.
+        // Reset returns the ordinary setup even without moves made.
         await act(async () => {
-            fireEvent.click(screen.getByRole('button', {name: /Сбросить доску/}));
+            fireEvent.click(screen.getByRole('button', {name: /Reset board/}));
         });
         expect(squareEl('e2').querySelector('img')?.getAttribute('alt')).toBe('wp');
     });
 
-    it('партия с ботом начинается с позиции на доске и сохраняется вместе с ней', async () => {
+    it('a game with a bot starts from the position on the board and is saved together with it', async () => {
         const fetchMock = stubBotApi();
         renderChessboard();
         await openBots();
         await loadFen(KQ_VS_K);
 
-        expect(screen.getByLabelText('Начать с позиции на доске')).toBeChecked();
+        expect(screen.getByLabelText('Start from the position on the board')).toBeChecked();
         await act(async () => {
-            fireEvent.click(screen.getByRole('button', {name: /Белыми/}));
+            fireEvent.click(screen.getByRole('button', {name: /White/}));
         });
         expect(squareEl('h7').querySelector('img')?.getAttribute('alt')).toBe('wq');
 
-        // Qa7# — мат; партия уходит на сервер с начальной позицией.
+        // Qa7# — mate; the game goes to the server with the start position.
         clickSquare('h7');
         clickSquare('a7');
 
@@ -388,51 +388,51 @@ describe('партия с ботом с произвольной позиции'
         const saveCall = (fetchMock.mock.calls as unknown as [string, RequestInit][]).find(([url]) => String(url).includes('/bots/save-game'))!;
         const body = JSON.parse((saveCall as unknown as [string, RequestInit])[1].body as string);
         expect(body).toMatchObject({start_fen: KQ_VS_K, moves_uci: ['h7a7'], result: '1-0'});
-        // Журнал нумерует ход по позиции: 57-й, а не первый.
+        // The log numbers the move by the position: the 57th, not the first.
         expect(screen.getByText('57.')).toBeInTheDocument();
     });
 
-    it('без галочки партия начинается с обычной расстановки', async () => {
+    it('without the checkbox the game starts from the ordinary setup', async () => {
         const fetchMock = stubBotApi();
         renderChessboard();
         await openBots();
         await loadFen(KQ_VS_K);
-        fireEvent.click(screen.getByLabelText('Начать с позиции на доске'));
+        fireEvent.click(screen.getByLabelText('Start from the position on the board'));
 
         await act(async () => {
-            fireEvent.click(screen.getByRole('button', {name: /Белыми/}));
+            fireEvent.click(screen.getByRole('button', {name: /White/}));
         });
 
         expect(squareEl('e2').querySelector('img')?.getAttribute('alt')).toBe('wp');
         expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/bots/save-game'))).toBe(false);
     });
 
-    it('фора: партия с ботом начинается без коня соперника (таск 21.1)', async () => {
+    it('odds: a game with a bot starts without the opponent\'s knight (task 21.1)', async () => {
         stubBotApi();
         renderChessboard();
         await openBots();
-        await screen.findByRole('button', {name: /Белыми/});
+        await screen.findByRole('button', {name: /White/});
         fireEvent.change(screen.getByTestId('odds-kind'), {target: {value: 'knight'}});
         expect(screen.getByTestId('odds-giver')).toHaveValue('opponent');
         await act(async () => {
-            fireEvent.click(screen.getByRole('button', {name: /Белыми/}));
+            fireEvent.click(screen.getByRole('button', {name: /White/}));
         });
-        // Играю белыми, фору даёт соперник — у чёрных нет коня b8, у белых всё на месте.
+        // I play White, the opponent gives the odds — Black has no b8 knight, White has everything in place.
         expect(squareEl('b8').querySelector('img')).toBeNull();
         expect(squareEl('b1').querySelector('img')?.getAttribute('alt')).toBe('wn');
     });
 
-    it('на обычной расстановке выбора «с позиции» нет', async () => {
+    it('on the ordinary setup there is no "from a position" choice', async () => {
         stubBotApi();
         renderChessboard();
         await openBots();
-        await screen.findByRole('button', {name: /Белыми/});
-        expect(screen.queryByLabelText('Начать с позиции на доске')).not.toBeInTheDocument();
+        await screen.findByRole('button', {name: /White/});
+        expect(screen.queryByLabelText('Start from the position on the board')).not.toBeInTheDocument();
     });
 });
 
-describe('мастерская соперников', () => {
-    it('партия с архетипом: ходы через /custom-move с конфигом, сохранение как bot_id custom', async () => {
+describe('opponent workshop', () => {
+    it('a game with an archetype: moves through /custom-move with the config, saving as bot_id custom', async () => {
         vi.spyOn(window, 'confirm').mockReturnValue(true);
         const fetchMock = mockFetchRouter({
             '/profile/me': () => ({id: 1, username: 'TestPlayer', blitz_rating: 1500}),
@@ -456,10 +456,10 @@ describe('мастерская соперников', () => {
         renderChessboard();
         await openBots();
 
-        fireEvent.click(await screen.findByRole('tab', {name: 'Мастерская'}));
-        fireEvent.click(await screen.findByRole('button', {name: /Торопыга/}));
+        fireEvent.click(await screen.findByRole('tab', {name: 'Workshop'}));
+        fireEvent.click(await screen.findByRole('button', {name: /Rusher/}));
         await act(async () => {
-            fireEvent.click(screen.getByRole('button', {name: /Чёрными/}));
+            fireEvent.click(screen.getByRole('button', {name: /Black/}));
         });
         await act(async () => {
             await vi.advanceTimersByTimeAsync(200);
@@ -470,12 +470,12 @@ describe('мастерская соперников', () => {
         expect(moveBody.config.target_elo).toBe(700);
         expect(moveBody.bot_id).toBeUndefined();
         await waitFor(() => expect(screen.getByText('e4')).toBeInTheDocument());
-        expect(screen.getAllByText('Торопыга').length).toBeGreaterThan(0);
-        // Реплика бота пришла ключом и показана из каталога.
-        expect(screen.getByText('Развиваем фигуры — каждый темп на счету.')).toBeInTheDocument();
+        expect(screen.getAllByText('Rusher').length).toBeGreaterThan(0);
+        // The bot remark came by key and is shown from the catalogue.
+        expect(screen.getByText('Developing the pieces — every tempo counts.')).toBeInTheDocument();
 
         await act(async () => {
-            fireEvent.click(screen.getByRole('button', {name: /Сдаться/}));
+            fireEvent.click(screen.getByRole('button', {name: /Resign/}));
         });
         const saveCall = (fetchMock.mock.calls as unknown as [string, RequestInit][]).find(([url]) => String(url).includes('/bots/save-game'));
         const saveBody = JSON.parse(String(saveCall?.[1].body));
@@ -483,8 +483,8 @@ describe('мастерская соперников', () => {
     });
 });
 
-describe('клубная лестница', () => {
-    it('партия лестницы: соперник от сервера, без возврата хода, итог в статусе', async () => {
+describe('club ladder', () => {
+    it('a ladder game: an opponent from the server, no take back, the result in the status', async () => {
         vi.spyOn(window, 'confirm').mockReturnValue(true);
         const ladderState = {
             rating: 1000, games: 0, step: 0, total: 2, active_opponent: null,
@@ -507,15 +507,15 @@ describe('клубная лестница', () => {
             '/bots/move': () => BOT_MOVE_DEFAULT,
             '/bots/save-game': () => ({
                 game_id: 1001, status: 'finished', result: '0-1',
-                ladder: {counted: true, reason: null, delta: -6, rating: 994, step: 0, promoted: false, opponent: 'Морфи'},
+                ladder: {counted: true, reason: null, delta: -6, rating: 994, step: 0, promoted: false, opponent: 'Morphy'},
             }),
         });
         vi.stubGlobal('fetch', fetchMock);
         renderChessboard();
         await openBots();
 
-        fireEvent.click(await screen.findByRole('tab', {name: 'Лестница'}));
-        const white = await screen.findByRole('button', {name: /Белыми/});
+        fireEvent.click(await screen.findByRole('tab', {name: 'Ladder'}));
+        const white = await screen.findByRole('button', {name: /White/});
         await act(async () => {
             fireEvent.click(white);
         });
@@ -525,20 +525,20 @@ describe('клубная лестница', () => {
         await act(async () => {
             await vi.advanceTimersByTimeAsync(200);
         });
-        expect(screen.getByRole('button', {name: /Вернуть ход/})).toBeDisabled();
+        expect(screen.getByRole('button', {name: /Take back/})).toBeDisabled();
 
         await act(async () => {
-            fireEvent.click(screen.getByRole('button', {name: /Сдаться/}));
+            fireEvent.click(screen.getByRole('button', {name: /Resign/}));
         });
         const saveCall = (fetchMock.mock.calls as unknown as [string, RequestInit][])
             .find(([url]) => String(url).includes('/bots/save-game'));
         expect(JSON.parse(String(saveCall?.[1].body))).toMatchObject({bot_id: 'morphy', ladder: true, player_color: 'white'});
-        expect(await screen.findByText('Лестница: рейтинг 994 (-6).')).toBeInTheDocument();
+        expect(await screen.findByText('Ladder: rating 994 (-6).')).toBeInTheDocument();
     });
 });
 
-describe('клавиатура', () => {
-    it('стрелки листают ходы, обработчик регистрируется один раз', async () => {
+describe('keyboard', () => {
+    it('arrows page through the moves, the handler is registered once', async () => {
         const addListener = vi.spyOn(window, 'addEventListener');
         vi.stubGlobal('fetch', mockFetchRouter({
             '/profile/me': () => ({id: 1, username: 'TestPlayer', blitz_rating: 1500}),
@@ -549,7 +549,7 @@ describe('клавиатура', () => {
         renderChessboard();
         await screen.findByTestId('new-game-open');
 
-        // Свободная доска: ход сразу после хода — стрелка должна видеть уже обновлённую историю.
+        // Free board: a move right after a move — the arrow must see the already updated history.
         clickSquare('e2');
         clickSquare('e4');
         fireEvent.keyDown(window, {key: 'ArrowLeft'});
@@ -564,7 +564,7 @@ describe('клавиатура', () => {
     });
 });
 
-describe('игра с наставником', () => {
+describe('play with the mentor', () => {
     const BLUNDER = {
         available: true, cp_loss: 320, classification: 'Blunder', symbol: '??', eval_before: 30, eval_after: -290,
         best_move_uci: 'd2d4', reply_uci: 'd8h4', missed_tactic: false,
@@ -590,14 +590,14 @@ describe('игра с наставником', () => {
         }));
         renderChessboard();
         await openBots();
-        const startButton = await screen.findByRole('button', {name: /Белыми/});
+        const startButton = await screen.findByRole('button', {name: /White/});
         await act(async () => {
             fireEvent.click(startButton);
         });
         return {calls};
     }
 
-    it('зевок: партия не ждёт совета, «Почему?» рисует стрелку, «Переходить» возвращает позицию до хода', async () => {
+    it('a blunder: the game does not wait for advice, "Why?" draws an arrow, "Take the move back" returns the position before the move', async () => {
         const {calls} = await startCoachedGame(BLUNDER);
         clickSquare('f2');
         clickSquare('f3');
@@ -606,13 +606,13 @@ describe('игра с наставником', () => {
         await act(async () => {
             await vi.advanceTimersByTimeAsync(1500);
         });
-        // Решение владельца 18.11: наставник советует, но не останавливает — бот отвечает, не дожидаясь игрока.
+        // Owner decision 18.11: the mentor advises but does not stop — the bot replies without waiting for the player.
         expect(calls.some((url) => url.includes('/bots/move'))).toBe(true);
 
         fireEvent.click(screen.getByTestId('coach-why'));
         expect(screen.getByTestId('coach-arrow-threat')).toBeInTheDocument();
 
-        // Предупреждение пропустить нельзя: вкладка «Наставник» открылась сама (вкладки справа, план владельца 18.11).
+        // The warning cannot be skipped: the "Mentor" tab opened by itself (tabs on the right, owner plan 18.11).
         expect(screen.getByTestId('side-tab-coach')).toHaveAttribute('aria-selected', 'true');
         expect(screen.getByTestId('side-panel-coach')).toHaveClass('contents');
         expect(screen.getByTestId('side-panel-moves')).toHaveClass('hidden');
@@ -620,15 +620,15 @@ describe('игра с наставником', () => {
         fireEvent.click(screen.getByTestId('coach-takeback'));
         expect(screen.queryByTestId('coach-warning')).toBeNull();
         expect(screen.queryByText('f3')).toBeNull();
-        // Ответил — колонка вернулась к ходам.
+        // Answered — the column returned to the moves.
         await waitFor(() => expect(screen.getByTestId('side-tab-moves')).toHaveAttribute('aria-selected', 'true'));
     });
 
-    it('вкладки справа: ходы, наставник и рентген; скрытая вкладка остаётся в разметке', async () => {
+    it('tabs on the right: moves, mentor and x-ray; a hidden tab stays in the markup', async () => {
         renderChessboard();
-        const tabs = await screen.findAllByRole('tab', {name: /Ходы|Наставник|Рентген/});
+        const tabs = await screen.findAllByRole('tab', {name: /Moves|Coach|X-ray/});
         expect(tabs.map((tab) => tab.getAttribute('data-testid'))).toEqual(['side-tab-moves', 'side-tab-coach', 'side-tab-xray']);
-        expect(screen.queryByTestId('side-tab-chat')).toBeNull();  // чат — только в партии с человеком
+        expect(screen.queryByTestId('side-tab-chat')).toBeNull();  // chat — only in a game with a person
         expect(screen.getByTestId('side-panel-moves')).toHaveClass('contents');
         fireEvent.click(screen.getByTestId('side-tab-xray'));
         expect(screen.getByTestId('side-panel-xray')).toHaveClass('contents');
@@ -636,7 +636,7 @@ describe('игра с наставником', () => {
         expect(screen.getByTestId('side-panel-coach')).toBeInTheDocument();
     });
 
-    it('ход оставлен — бот отвечает, партия сохраняется учебной', async () => {
+    it('a move is left — the bot replies, the game is saved as a training one', async () => {
         const {calls} = await startCoachedGame(BLUNDER);
         clickSquare('f2');
         clickSquare('f3');
@@ -645,7 +645,7 @@ describe('игра с наставником', () => {
         expect(screen.getByTestId('coach-assisted')).toBeInTheDocument();
     });
 
-    it('хороший ход — без предупреждения, бот отвечает сразу', async () => {
+    it('a good move — no warning, the bot replies at once', async () => {
         const {calls} = await startCoachedGame({...BLUNDER, cp_loss: 0, classification: 'Best', eval_after: 30});
         clickSquare('e2');
         clickSquare('e4');
@@ -654,8 +654,8 @@ describe('игра с наставником', () => {
     });
 });
 
-describe('итог партии', () => {
-    it('после мата: итог с типом партии и рекомендацией, «Сыграть» начинает новую партию', async () => {
+describe('game summary', () => {
+    it('after a mate: the summary with the game type and a recommendation, "Play" starts a new game', async () => {
         const replies = [
             {...BOT_MOVE_DEFAULT, uci: 'e7e5', san: 'e5'},
             {...BOT_MOVE_DEFAULT, uci: 'd8h4', san: 'Qh4#'},
@@ -689,7 +689,7 @@ describe('итог партии', () => {
         renderChessboard();
         await openBots();
         await act(async () => {
-            fireEvent.click(await screen.findByRole('button', {name: /Белыми/}));
+            fireEvent.click(await screen.findByRole('button', {name: /White/}));
         });
         clickSquare('f2');
         clickSquare('f3');
@@ -698,13 +698,13 @@ describe('итог партии', () => {
         clickSquare('g4');
 
         const summary = await screen.findByTestId('game-summary');
-        await waitFor(() => expect(summary.textContent).toContain('Решила одна ошибка'));
-        expect(summary.textContent).toContain('Перелом: 2. g4');
-        // Кнопки конца партии — над итогом, а не под ним за краем колонки (отзыв владельца 18.11).
-        const review = screen.getByRole('button', {name: /Разбор партии/});
+        await waitFor(() => expect(summary.textContent).toContain('Decided by one mistake'));
+        expect(summary.textContent).toContain('Turning point: 2. g4');
+        // The end-of-game buttons are above the summary, not under it beyond the column edge (owner feedback 18.11).
+        const review = screen.getByRole('button', {name: /Game review/});
         expect(review.compareDocumentPosition(summary) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-        // Проиграл Филидору (1850 по умолчанию) — следующий соперник слабее среди исторических ботов нет,
-        // поэтому ближайший по силе.
+        // Lost to Philidor (1850 by default) — there is no weaker next opponent among the historical bots,
+        // so the nearest by strength.
         expect(screen.getByTestId('summary-recommendation').textContent).toMatch(/\(\d{4}\)/);
 
         await act(async () => {
@@ -715,8 +715,8 @@ describe('итог партии', () => {
     });
 });
 
-describe('рентген доски', () => {
-    it('на свободной доске доступен и рисует контроль полей', async () => {
+describe('board x-ray', () => {
+    it('on a free board it is available and draws square control', async () => {
         vi.stubGlobal('fetch', mockFetchRouter({
             '/profile/me': () => ({id: 1, username: 'TestPlayer', blitz_rating: 1500}),
             '/profile/matchmaking/queue': () => [],
@@ -728,7 +728,7 @@ describe('рентген доски', () => {
         expect(screen.getByTestId('xray-control-f3').textContent).toBe('+3');
     });
 
-    it('в партии с ботом — только при включённом наставнике', async () => {
+    it('in a game with a bot — only with the mentor on', async () => {
         await startBotGame('white');
         expect(screen.queryByTestId('xray-panel')).toBeNull();
         fireEvent.click(screen.getByTestId('coach-toggle'));
@@ -736,8 +736,8 @@ describe('рентген доски', () => {
     });
 });
 
-describe('первая партия после регистрации (таск 17.8)', () => {
-    it('архетип по стартовому рейтингу, игрок — белыми', async () => {
+describe('the first game after registration (task 17.8)', () => {
+    it('an archetype by the starting rating, the player is White', async () => {
         const archetypeOf = (id: string, rating: number) => ({
             id, config: {...DEFAULT_CONFIG, target_elo: rating},
             declared_rating: rating, rating, measured: true, games: 80, ci95: 100,
@@ -760,7 +760,7 @@ describe('первая партия после регистрации (таск 
             </MemoryRouter>,
         );
 
-        await waitFor(() => expect(screen.getAllByText('Торопыга').length).toBeGreaterThan(0));
+        await waitFor(() => expect(screen.getAllByText('Rusher').length).toBeGreaterThan(0));
         clickSquare('e2');
         clickSquare('e4');
         await act(async () => {
@@ -772,8 +772,8 @@ describe('первая партия после регистрации (таск 
     });
 });
 
-describe('партия турнира', () => {
-    it('стартует с турнирным контролем, без возврата хода, результат уходит в турнир', async () => {
+describe('tournament game', () => {
+    it('starts with the tournament control, without take back, the result goes to the tournament', async () => {
         vi.spyOn(window, 'confirm').mockReturnValue(true);
         const fetchMock = mockFetchRouter({
             '/profile/me': () => ({id: 1, username: 'TestPlayer', blitz_rating: 1500}),
@@ -808,38 +808,38 @@ describe('партия турнира', () => {
             </MemoryRouter>,
         );
 
-        // Плашка турнира над партией: тур и соперник; таблица — поверх доски, без ухода со страницы.
-        expect(await screen.findByTestId('tournament-bar')).toHaveTextContent('против');
+        // The tournament bar above the game: round and opponent; the table over the board, without leaving the page.
+        expect(await screen.findByTestId('tournament-bar')).toHaveTextContent('vs');
         fireEvent.click(screen.getByTestId('tournament-bar-table'));
         expect(screen.getByTestId('tournament-standings-overlay')).toBeInTheDocument();
         expect(screen.queryByTestId('back-to-tournament')).toBeNull();
-        expect(screen.getAllByText('02:30').length).toBeGreaterThan(0);  // 2,5 минуты — укороченный контроль переигровки
+        expect(screen.getAllByText('02:30').length).toBeGreaterThan(0);  // 2.5 minutes — the shortened control of the tiebreak
 
         clickSquare('e2');
         clickSquare('e4');
         await act(async () => {
             await vi.advanceTimersByTimeAsync(200);
         });
-        expect(screen.getByRole('button', {name: /Вернуть ход/})).toBeDisabled();
+        expect(screen.getByRole('button', {name: /Take back/})).toBeDisabled();
 
         await act(async () => {
-            fireEvent.click(screen.getByRole('button', {name: /Сдаться/}));
+            fireEvent.click(screen.getByRole('button', {name: /Resign/}));
         });
         const saveCall = (fetchMock.mock.calls as unknown as [string, RequestInit][])
             .find(([url]) => String(url).includes('/bots/save-game'));
         expect(JSON.parse(String(saveCall?.[1].body))).toMatchObject({
             bot_id: 'morphy', player_color: 'white', tournament_game_id: 31, base_time_ms: 150000, increment_ms: 1000,
         });
-        // Все турниры рейтинговые (15.4): игрок видит изменение рейтинга.
-        expect(await screen.findByText(/Рейтинг: 1500 → 1488 \(-12\)/)).toBeInTheDocument();
-        // После партии — путь в турнир; реванша в турнире нет.
+        // All tournaments are rated (15.4): the player sees the rating change.
+        expect(await screen.findByText(/Rating: 1500 → 1488 \(-12\)/)).toBeInTheDocument();
+        // After the game — the way back to the tournament; there is no rematch in a tournament.
         expect(await screen.findByTestId('back-to-tournament')).toHaveAttribute('href', '/tournaments/7');
-        expect(screen.queryByRole('button', {name: /Реванш/})).toBeNull();
+        expect(screen.queryByRole('button', {name: /Rematch/})).toBeNull();
     });
 });
 
-describe('партия с мастером прошлого из каталога (таск 28.5)', () => {
-    it('играет характером мастера, на доске — его имя, в архив — имя из PGN', async () => {
+describe('a game with a past master from the catalogue (task 28.5)', () => {
+    it('plays with the master\'s character, his name on the board, the name from the PGN to the archive', async () => {
         vi.spyOn(window, 'confirm').mockReturnValue(true);
         const fetchMock = mockFetchRouter({
             '/profile/me': () => ({id: 1, username: 'TestPlayer', blitz_rating: 1500}),
@@ -853,7 +853,7 @@ describe('партия с мастером прошлого из каталог�
         });
         vi.stubGlobal('fetch', fetchMock);
         const guestGame = {
-            name: 'Пауль Керес', savedName: 'Keres, Paul', config: {...DEFAULT_CONFIG, target_elo: 2400}, color: 'white',
+            name: 'Paul Keres', savedName: 'Keres, Paul', config: {...DEFAULT_CONFIG, target_elo: 2400}, color: 'white',
         };
         render(
             <MemoryRouter initialEntries={[{pathname: '/', state: {guestGame}}]}>
@@ -861,7 +861,7 @@ describe('партия с мастером прошлого из каталог�
             </MemoryRouter>,
         );
 
-        await waitFor(() => expect(screen.getAllByText('Пауль Керес').length).toBeGreaterThan(0));
+        await waitFor(() => expect(screen.getAllByText('Paul Keres').length).toBeGreaterThan(0));
         clickSquare('e2');
         clickSquare('e4');
         await act(async () => {
@@ -872,17 +872,17 @@ describe('партия с мастером прошлого из каталог�
         expect(JSON.parse(String(moveCall?.[1].body)).config.target_elo).toBe(2400);
 
         await act(async () => {
-            fireEvent.click(screen.getByRole('button', {name: /Сдаться/}));
+            fireEvent.click(screen.getByRole('button', {name: /Resign/}));
         });
         const saveCall = calls.find(([url]) => String(url).includes('/bots/save-game'));
-        // Сервер узнаёт мастера по имени из PGN; партия — вне турнира.
+        // The server recognises the master by the name from the PGN; the game is outside a tournament.
         const saved = JSON.parse(String(saveCall?.[1].body));
         expect(saved).toMatchObject({bot_id: 'custom', personality_name: 'Keres, Paul', player_color: 'white'});
         expect(saved.tournament_game_id).toBeUndefined();
     });
 });
 
-describe('пометки правой кнопкой (таск B.1)', () => {
+describe('right-button marks (task B.1)', () => {
     function rightDrag(from: string, to: string, init: Record<string, unknown> = {}) {
         document.elementsFromPoint = () => [squareEl(from)];
         fireEvent.pointerDown(squareEl(from), {pointerType: 'mouse', button: 2});
@@ -890,17 +890,17 @@ describe('пометки правой кнопкой (таск B.1)', () => {
         fireEvent.pointerUp(squareEl(to), {pointerType: 'mouse', button: 2, ...init});
     }
 
-    it('стрелка в живой партии, ход её снимает; при выбранной фигуре правая кнопка снимает выбор и рисует', async () => {
+    it('an arrow in a live game, a move clears it; with a piece selected the right button clears the selection and draws', async () => {
         await startBotGame('white');
         rightDrag('g1', 'f3', {altKey: true});
         expect(screen.getByTestId('note-arrow-g1-f3').getAttribute('data-color')).toBe('blue');
 
         clickSquare('e2');
         rightDrag('d2', 'd4');
-        fireEvent.contextMenu(squareEl('d4'));  // браузер присылает его вслед за правой кнопкой
+        fireEvent.contextMenu(squareEl('d4'));  // the browser sends it after the right button
         expect(screen.getByTestId('note-arrow-d2-d4')).toBeInTheDocument();
 
-        clickSquare('e4');  // выбор снят — хода e2-e4 нет, пометки на месте
+        clickSquare('e4');  // the selection is cleared — there is no move e2-e4, the marks are in place
         expect(screen.getByTestId('note-arrow-d2-d4')).toBeInTheDocument();
 
         clickSquare('e2');
@@ -908,16 +908,16 @@ describe('пометки правой кнопкой (таск B.1)', () => {
         await waitFor(() => expect(screen.queryByTestId('board-annotations')).toBeNull());
     });
 
-    it('пока стоит предход, правая кнопка отменяет его и стрелку не рисует', async () => {
+    it('while a premove stands, the right button cancels it and draws no arrow', async () => {
         await startBotGame('black');
         clickSquare('e7');
-        clickSquare('e5');  // ход белых ещё не сделан — это предход
+        clickSquare('e5');  // White has not moved yet — this is a premove
         rightDrag('d7', 'd5');
         expect(screen.queryByTestId('note-arrow-d7-d5')).toBeNull();
     });
 });
 
-describe('ничья с ботом (таск 21.4)', () => {
+describe('draw with a bot (task 21.4)', () => {
     async function gameWithDrawAnswer(accepted: boolean) {
         const fetchMock = mockFetchRouter({
             '/profile/me': () => ({id: 1, username: 'TestPlayer', blitz_rating: 1500}),
@@ -932,7 +932,7 @@ describe('ничья с ботом (таск 21.4)', () => {
         renderChessboard();
         await openBots();
         await act(async () => {
-            fireEvent.click(await screen.findByRole('button', {name: /Белыми/}));
+            fireEvent.click(await screen.findByRole('button', {name: /White/}));
         });
         clickSquare('e2');
         clickSquare('e4');
@@ -946,29 +946,29 @@ describe('ничья с ботом (таск 21.4)', () => {
     const call = (fetchMock: ReturnType<typeof mockFetchRouter>, part: string) =>
         (fetchMock.mock.calls as unknown as [string, RequestInit][]).find(([url]) => String(url).includes(part));
 
-    it('бот принял — ничья по соглашению сохраняется', async () => {
+    it('the bot accepted — a draw by agreement is saved', async () => {
         const fetchMock = await gameWithDrawAnswer(true);
-        expect(await screen.findByText(/принял ничью/)).toBeInTheDocument();
+        expect(await screen.findByText(/accepted the draw/)).toBeInTheDocument();
         const offer = JSON.parse(String(call(fetchMock, '/bots/draw-offer')![1].body));
         expect(offer).toMatchObject({bot_id: 'philidor', bot_color: 'black'});
         await waitFor(() => expect(call(fetchMock, '/bots/save-game')).toBeTruthy());
         expect(JSON.parse(String(call(fetchMock, '/bots/save-game')![1].body))).toMatchObject({termination: 'agreement', result: '1/2-1/2'});
     });
 
-    it('бот отклонил — партия продолжается', async () => {
+    it('the bot declined — the game goes on', async () => {
         const fetchMock = await gameWithDrawAnswer(false);
-        expect(await screen.findByText(/отклонил ничью/)).toBeInTheDocument();
+        expect(await screen.findByText(/declined the draw/)).toBeInTheDocument();
         expect(call(fetchMock, '/bots/save-game')).toBeUndefined();
     });
 });
 
-describe('доступность доски (таск 26.3)', () => {
-    it('ход с клавиатуры: Tab на доску, стрелки, Enter; ход и ответ бота объявляются словами', async () => {
+describe('board accessibility (task 26.3)', () => {
+    it('a move from the keyboard: Tab to the board, arrows, Enter; the move and the bot reply are announced in words', async () => {
         await startBotGame('white');
         const start = squareEl('a8');
-        expect(start).toHaveAttribute('tabindex', '0');           // в порядок Tab входит одна клетка
+        expect(start).toHaveAttribute('tabindex', '0');           // one square enters the Tab order
         expect(squareEl('e2')).toHaveAttribute('tabindex', '-1');
-        expect(squareEl('e2')).toHaveAttribute('aria-label', 'e2, белая пешка');
+        expect(squareEl('e2')).toHaveAttribute('aria-label', 'e2, white pawn');
         start.focus();
         const press = (key: string) => fireEvent.keyDown(document.activeElement as HTMLElement, {key});
         for (let i = 0; i < 6; i++) press('ArrowDown');
@@ -981,21 +981,21 @@ describe('доступность доски (таск 26.3)', () => {
         await act(async () => {
             press(' ');
         });
-        expect(squareEl('e4')).toHaveAttribute('aria-label', 'e4, белая пешка');
-        await waitFor(() => expect(screen.getByTestId('move-announcer')).toHaveTextContent('Чёрные: пешка e7 — e5'),
+        expect(squareEl('e4')).toHaveAttribute('aria-label', 'e4, white pawn');
+        await waitFor(() => expect(screen.getByTestId('move-announcer')).toHaveTextContent('Black: pawn e7 to e5'),
             {timeout: 5000});
     });
 
-    it('позиция словами по кнопке', async () => {
+    it('position in words by a button', async () => {
         await startBotGame('white');
         fireEvent.click(screen.getByTestId('describe-position'));
-        expect(screen.getByTestId('position-words')).toHaveTextContent(/^Белые: король на e1; ферзь на d1;/);
+        expect(screen.getByTestId('position-words')).toHaveTextContent(/^White: king on e1; queen on d1;/);
     });
 });
 
 
-describe('продолжение партии с ботом после перезагрузки', () => {
-    it('снимок восстанавливает позицию партии, а не начальную расстановку', async () => {
+describe('continuing a game with a bot after a reload', () => {
+    it('the snapshot restores the game position, not the initial setup', async () => {
         vi.stubGlobal('fetch', mockFetchRouter({
             '/profile/me': () => ({id: 1, username: 'TestPlayer', blitz_rating: 1500}),
             '/profile/matchmaking/queue': () => [],
@@ -1010,7 +1010,7 @@ describe('продолжение партии с ботом после пере�
             ladder: false, tournamentGameId: null, tournamentId: null,
         });
         renderChessboard();
-        // Конь на f3 и пешка на e5 — позиция из снимка, а не начальная расстановка.
+        // A knight on f3 and a pawn on e5 — the position from the snapshot, not the initial setup.
         await waitFor(() => expect(squareEl('f3').querySelector('img,svg,[data-piece]')).not.toBeNull());
         expect(squareEl('e2').querySelector('img,svg,[data-piece]')).toBeNull();
     });

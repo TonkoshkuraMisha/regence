@@ -1,15 +1,15 @@
 // --- FILE: frontend/src/components/gameViewer/NavigationControls.tsx ---
-// Кнопки перехода по партии и переворот доски (вынесено из GameViewer.tsx, таск 17.6). Подписи — каталог viewer.*;
-// состояния нет, ход меняет родитель (GameViewer.tsx) через onGo.
+// Buttons for moving through a game and flipping the board (extracted from GameViewer.tsx, task 17.6). Labels are the viewer.* catalog;
+// there is no state, the parent (GameViewer.tsx) changes the move through onGo.
 
 import {ChevronFirst, ChevronLast, ChevronLeft, ChevronRight, RefreshCw} from 'lucide-react';
 import type {ReactNode} from 'react';
 import {useI18n} from '../../i18n';
 
-// Общий вид кнопок панели навигации.
+// Common look of the navigation panel buttons.
 const BUTTON = 'p-1.5 bg-acacia rounded hover:bg-boxwood hover:text-acacia-dark transition cursor-pointer';
 
-/** Иконка-кнопка с подписью для подсказки и экранного диктора. */
+/** Icon button with a label for the tooltip and the screen reader. */
 function NavButton({label, onClick, children, className = ''}: { label: string; onClick: () => void; children: ReactNode; className?: string }) {
     return (
         <button onClick={onClick} className={`${BUTTON} ${className}`} title={label} aria-label={label}>
@@ -18,7 +18,7 @@ function NavButton({label, onClick, children, className = ''}: { label: string; 
     );
 }
 
-/** viewIndex — показанный полуход (-1 — начальная позиция); onGo вызывается только при смене хода. */
+/** viewIndex is the shown ply (-1 is the starting position); onGo is called only when the move changes. */
 export function NavigationControls({viewIndex, total, onGo, onFlip}: {
     viewIndex: number; total: number; onGo: (index: number) => void; onFlip: () => void;
 }) {

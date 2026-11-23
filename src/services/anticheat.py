@@ -1,23 +1,26 @@
 # --- FILE: src/services/anticheat.py ---
 """
-Античит по телеметрии ходов: после партии оценивает ритм игры и меняет фактор доверия игрока.
+Anti-cheat from move telemetry: after a game it evaluates the rhythm of play and changes the player's trust factor.
 
-Откуда данные: таблица moves — время на ход по часам сервера, потеря фокуса окна и предходы (от клиента).
-Основной сигнал — ровный «машинный» ритм: среднее время хода от 1,5 до 15 секунд при малом разбросе (коэффициент
-вариации до 0,12 — штраф 40, до 0,22 — 22). Потеря фокуса окна сообщается клиентом и подделывается, поэтому сама
-по себе не штрафует, а только усиливает штраф, когда ритм уже похож на движок: доля ходов с потерей фокуса от
-0,35 — ещё 12, от 0,50 — 25, от 0,75 — 45, и ещё 15, если доля от 0,65 при вариации до 0,20. Предход исключается
-из ритма, только если сервер сам видит почти мгновенный ход (trusted_premove).
+Data source: table moves — time per move by the server clock, window focus loss and premoves (from the client).
+The main signal is an even "machine" rhythm: average move time from 1.5 to 15 seconds with a small spread (coefficient
+of variation up to 0.12 — penalty 40, up to 0.22 — 22). Window focus loss is reported by the client and can be forged, so on
+its own
+it does not penalise, but only strengthens the penalty when the rhythm already looks like an engine: a share of moves with
+focus loss from
+0.35 — another 12, from 0.50 — 25, from 0.75 — 45, and another 15 if the share is from 0.65 with variation up to 0.20. A
+premove is excluded
+from the rhythm only if the server itself sees an almost instant move (trusted_premove).
 
-Пороги ритма и фокуса записаны числами в compute_telemetry_penalty; из настроек (src/core/config.py) читается
-только AC_PREMOVE_MAX_ELAPSED_MS.
+The rhythm and focus thresholds are written as numbers in compute_telemetry_penalty; only AC_PREMOVE_MAX_ELAPSED_MS is
+read from the settings (src/core/config.py).
 
-Итог: штраф вычитается из users.trust_factor (начинается со 100); ниже CHEATER_TRUST_THRESHOLD ставится флаг
-is_cheater и создаётся заявка модератору (src/services/moderation.py) — решение принимает человек. Партия
-оценивается один раз (отметка в Redis, ключ anticheat:evaluated:{game_id}). Запросы движка с адреса игрока во время
-партии только записываются как сигнал для разбора — штрафа за них нет. Вызывается при завершении партии
-(src/services/game_state.py). Там же сводка ритма по сторонам пишется в games.telemetry_summary (telemetry_summary):
-сырые ходы moves хранятся только RETENTION_DAYS (src/services/telemetry_retention.py).
+Result: the penalty is subtracted from users.trust_factor (starts at 100); below CHEATER_TRUST_THRESHOLD the flag
+is_cheater is set and a report to the moderator is created (src/services/moderation.py) — a human makes the decision. A game
+is evaluated once (a marker in Redis, key anticheat:evaluated:{game_id}). Engine requests from the player's address during a
+game are only recorded as a signal for review — there is no penalty for them. Called when a game finishes
+(src/services/game_state.py). Also there the per-side rhythm summary is written to games.telemetry_summary (telemetry_summary):
+the raw moves are kept only RETENTION_DAYS (src/services/telemetry_retention.py).
 """
 
 import logging
@@ -32,21 +35,23 @@ from src.models.user import User
 
 logger = logging.getLogger(__name__)
 
-# Меньше стольких ходов игрока в партии — ритм не оценивается, штрафа нет.
+# Fewer than this many player moves in a game — the rhythm is not evaluated, no penalty.
 MIN_MOVES_FOR_ANALYSIS = 5
-# Доля ходов с потерей фокуса считается по ходам после этого номера хода (первые ходы партии не учитываются).
+# The share of moves with focus loss is computed over moves after this move number (the first moves of the game are not
+# counted).
 OPENING_MOVE_CUTOFF = 8
-# Фактор доверия ниже этого значения — флаг is_cheater и заявка модератору.
+# Trust factor below this value — the is_cheater flag and a report to the moderator.
 CHEATER_TRUST_THRESHOLD = 30
-# Срок жизни отметки «партия уже оценена» в Redis (90 дней): в этот срок повторная оценка не штрафует.
+# Lifetime of the "game already evaluated" marker in Redis (90 days): within this period repeated evaluation does not penalise.
 EVALUATED_MARKER_TTL_S = 90 * 24 * 60 * 60
 
 
 def trusted_premove(client_flag, server_elapsed_ms: int) -> bool:
     """
-    Премув исключает ход из анализа ритма, поэтому флаг клиента принимаем, только если сервер
-    сам видит почти мгновенный ход (не дольше settings.AC_PREMOVE_MAX_ELAPSED_MS, по умолчанию 600 мс). Иначе читер
-    мог бы пометить премувом все ходы.
+    A premove excludes a move from the rhythm analysis, so the client flag is accepted only if the server
+    itself sees an almost instant move (no longer than settings.AC_PREMOVE_MAX_ELAPSED_MS, 600 ms by default). Otherwise a
+    cheater
+    could mark all moves as premoves.
     """
     from src.core.config import settings
 
@@ -55,10 +60,11 @@ def trusted_premove(client_flag, server_elapsed_ms: int) -> bool:
 
 async def _claim_first_evaluation(game_id: int) -> bool:
     """
-    True, если партия оценивается впервые. Отметка хранится в Redis (SET NX), а не в памяти
-    процесса: после рестарта или на другом воркере штраф за ту же партию не начислится снова. Ключ —
-    anticheat:evaluated:{game_id}, срок — EVALUATED_MARKER_TTL_S. Redis недоступен — False: партия считается уже
-    оценённой и штраф не начисляется.
+    True if the game is evaluated for the first time. The marker is stored in Redis (SET NX), not in the memory of the
+    process: after a restart or on another worker the penalty for the same game will not be applied again. The key is
+    anticheat:evaluated:{game_id}, the lifetime is EVALUATED_MARKER_TTL_S. Redis unavailable — False: the game is considered
+    already
+    evaluated and no penalty is applied.
     """
     from src.db import redis as redis_module
 
@@ -69,13 +75,13 @@ async def _claim_first_evaluation(game_id: int) -> bool:
         return bool(claimed)
     except Exception as exc:
         logger.warning("Anti-cheat idempotency marker unavailable for game %s: %s", game_id, exc)
-        return False  # без отметки не штрафуем: повторный штраф хуже пропущенного
+        return False  # without a marker we do not penalise: a repeated penalty is worse than a missed one
 
 
 def calculate_blur_ratio(moves: list[Move]) -> float:
     """
-    Считает долю ходов с потерей фокуса окна (window_blurred_before_move == True)
-    после 8-го хода. Если после 8-го хода менее 3 ходов, оценивает все ходы игрока.
+    Computes the share of moves with window focus loss (window_blurred_before_move == True)
+    after the 8th move. If there are fewer than 3 moves after the 8th move, all of the player's moves are evaluated.
     """
     if not moves:
         return 0.0
@@ -89,9 +95,9 @@ def calculate_blur_ratio(moves: list[Move]) -> float:
 
 def calculate_timing_cv(moves: list[Move]) -> tuple[float, float]:
     """
-    Считает коэффициент вариации времени ходов (CV = std_dev / mean),
-    исключая предходы (is_premove == True) и ходы без записанного времени. Возвращает (cv, mean_time_ms).
-    Если таких ходов меньше трёх — (1.0, 0.0): по этим значениям штраф не начисляется.
+    Computes the coefficient of variation of move times (CV = std_dev / mean),
+    excluding premoves (is_premove == True) and moves without a recorded time. Returns (cv, mean_time_ms).
+    If there are fewer than three such moves — (1.0, 0.0): no penalty is applied for these values.
     """
     normal_times = [
         float(m.time_taken_ms)
@@ -102,7 +108,7 @@ def calculate_timing_cv(moves: list[Move]) -> tuple[float, float]:
     if len(normal_times) < 3:
         return 1.0, 0.0
 
-    # Времена отфильтрованы по > 0, поэтому среднее строго положительно и деление безопасно.
+    # The times are filtered by > 0, so the mean is strictly positive and the division is safe.
     mean_time = sum(normal_times) / len(normal_times)
     variance = sum((t - mean_time) ** 2 for t in normal_times) / len(normal_times)
     std_dev = math.sqrt(variance)
@@ -111,9 +117,9 @@ def calculate_timing_cv(moves: list[Move]) -> tuple[float, float]:
 
 def compute_telemetry_penalty(moves: list[Move]) -> dict:
     """
-    Вычисляет штраф к фактору доверия по паттернам Tab-Switch и Timing Variance для ходов одного игрока в одной
-    партии. Возвращает штраф и измеренные величины (доля ходов с потерей фокуса, вариация и среднее время хода).
-    Меньше MIN_MOVES_FOR_ANALYSIS ходов — штраф 0. Наибольший возможный штраф за партию — 40 + 45 + 15 = 100.
+    Computes the trust-factor penalty from the Tab-Switch and Timing Variance patterns for one player's moves in one
+    game. Returns the penalty and the measured values (share of moves with focus loss, variation and average move time).
+    Fewer than MIN_MOVES_FOR_ANALYSIS moves — penalty 0. The largest possible penalty per game is 40 + 45 + 15 = 100.
     """
     if len(moves) < MIN_MOVES_FOR_ANALYSIS:
         return {
@@ -126,10 +132,10 @@ def compute_telemetry_penalty(moves: list[Move]) -> dict:
     blur_ratio = calculate_blur_ratio(moves)
     timing_cv, mean_time_ms = calculate_timing_cv(moves)
 
-    # Основной сигнал — ритм ходов, который измеряет сервер (time_taken_ms — серверное время
-    # между ходами). Потеря фокуса окна сообщается клиентом и подделывается в обе стороны,
-    # поэтому сама по себе не штрафует (иначе страдают честные игроки со вторым монитором)
-    # и лишь усиливает штраф, когда серверный ритм уже похож на движок.
+    # The main signal is the move rhythm measured by the server (time_taken_ms is the server time
+    # between moves). Window focus loss is reported by the client and can be forged in both directions,
+    # so on its own it does not penalise (otherwise honest players with a second monitor suffer)
+    # and only strengthens the penalty when the server rhythm already looks like an engine.
     timing_penalty = 0
     is_engine_pacing = 1500.0 <= mean_time_ms <= 15000.0
     if is_engine_pacing:
@@ -161,9 +167,9 @@ def compute_telemetry_penalty(moves: list[Move]) -> dict:
 
 def telemetry_summary(game: Game, moves: list[Move]) -> dict[str, dict]:
     """
-    Сводка телеметрии партии по сторонам ({"white": …, "black": …}) — то, что остаётся в games.telemetry_summary
-    после удаления сырых ходов (src/services/telemetry_retention.py): число ходов и предходов, наибольшая задержка
-    сети и величины compute_telemetry_penalty (штраф, доля потери фокуса, вариация и среднее время хода).
+    Telemetry summary of a game by side ({"white": ..., "black": ...}) — what remains in games.telemetry_summary
+    after the raw moves are deleted (src/services/telemetry_retention.py): number of moves and premoves, the largest network
+    delay and the compute_telemetry_penalty values (penalty, focus-loss share, variation and average move time).
     """
     summary: dict[str, dict] = {}
     for color, player_id in (("white", game.white_player_id), ("black", game.black_player_id)):
@@ -179,11 +185,12 @@ def telemetry_summary(game: Game, moves: list[Move]) -> dict[str, dict]:
 
 async def evaluate_game_telemetry(db: AsyncSession, game_id: int, force: bool = False) -> dict[int, dict]:
     """
-    Анализирует телеметрию завершённой партии для обоих игроков,
-    снижает user.trust_factor при аномалиях и выставляет is_cheater = True при trust_factor < 30.
-    Идемпотентна по game_id (повторный вызов для той же партии не штрафует игрока дважды); force=True пропускает
-    проверку отметки и штрафует заново. Ходы берутся из таблицы moves. Возвращает по каждому игроку измеренные
-    величины, число запросов движка с его адреса за партию, фактор доверия и флаг; партии или её ходов нет — {}.
+    Analyses the telemetry of a finished game for both players,
+    lowers user.trust_factor on anomalies and sets is_cheater = True when trust_factor < 30.
+    Idempotent by game_id (a repeated call for the same game does not penalise the player twice); force=True skips
+    the marker check and penalises again. Moves are taken from the moves table. Returns for each player the measured
+    values, the number of engine requests from their address during the game, the trust factor and the flag; no game or no
+    moves — {}.
     """
     from src.api.fair_play import engine_requests_during_game
 
@@ -199,7 +206,8 @@ async def evaluate_game_telemetry(db: AsyncSession, game_id: int, force: bool = 
         return {}
 
     already_evaluated = not force and not await _claim_first_evaluation(game_id)
-    # Сводка — сразу: сырые ходы удалит задача хранения через RETENTION_DAYS, а сводка останется у партии.
+    # The summary goes first: the raw moves will be deleted by the retention task after RETENTION_DAYS, while the summary stays
+    # with the game.
     game.telemetry_summary = telemetry_summary(game, all_moves)
 
     moves_by_player: dict[int, list[Move]] = {
@@ -223,7 +231,8 @@ async def evaluate_game_telemetry(db: AsyncSession, game_id: int, force: bool = 
             user.trust_factor = max(0, int(user.trust_factor) - penalty)
             if user.trust_factor < CHEATER_TRUST_THRESHOLD:
                 if not user.is_cheater:
-                    # Флаг ставит автоматика, но решение проверяет модератор (таск 17.4): заявка в очередь.
+                    # The flag is set automatically, but a moderator reviews the decision (task 17.4): a report goes to the
+                    # queue.
                     from src.services.moderation import flag_for_review
                     await flag_for_review(db, user, game_id)
                 user.is_cheater = True
@@ -237,8 +246,8 @@ async def evaluate_game_telemetry(db: AsyncSession, game_id: int, force: bool = 
                     metrics["timing_cv"],
                 )
 
-        # Запросы движка другим аккаунтом с адреса игрока во время партии: только сигнал для
-        # разбора — в одной сети могут быть разные люди, поэтому штрафа за него нет.
+        # Engine requests by another account from the player's address during the game: only a signal for
+        # review — different people may share a network, so there is no penalty for it.
         engine_requests = await engine_requests_during_game(game_id, player_id)
         if engine_requests and not already_evaluated:
             logger.warning(

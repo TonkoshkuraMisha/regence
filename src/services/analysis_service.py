@@ -1,22 +1,25 @@
 # --- FILE: src/services/analysis_service.py ---
 """
-Разбор партии движком: оценка каждого хода, классификация, точность сторон.
+Engine analysis of a game: evaluation of every move, classification, accuracy of each side.
 
-Как считается: партия проходится по ходам, позиция до и после хода оценивается Stockfish из пула
-(src/services/engine_pool.py; глубина 10, не дольше 0,06 с на позицию, оценка обрезается до ±2000 сантипешек);
-если бинарника нет или он не запускается — статическим оценщиком (static_board_eval_cp из bots/base.py). Потеря
-хода в сантипешках даёт класс: до 10 или ход совпал с первой линией движка — лучший, до 45 — хороший, до 95 —
-неточность (?!), до 199 — ошибка (?), от 200 — грубая ошибка (??). Точность стороны (0–100 %) — среднее точностей
-её ходов (calculate_move_accuracy). К ходам добавляются комментарии наставника (src/services/coach.py) — только
-когда считал настоящий движок.
+How it is computed: the game is walked move by move, the position before and after the move is evaluated by Stockfish from the
+pool
+(src/services/engine_pool.py; depth 10, at most 0.06 s per position, the evaluation is clamped to +-2000 centipawns);
+if the binary is missing or fails to start — by the static evaluator (static_board_eval_cp from bots/base.py). The
+move's loss in centipawns gives a class: up to 10 or the move matched the engine's first line — best, up to 45 — good, up to 95
+—
+inaccuracy (?!), up to 199 — mistake (?), from 200 — blunder (??). A side's accuracy (0-100 %) is the mean of the accuracies of
+its moves (calculate_move_accuracy). Coach comments (src/services/coach.py) are added to the moves — only
+when a real engine did the computing.
 
-Где хранится: готовый разбор — games.analysis_json; он действителен, пока совпадают версия формата
-(ANALYSIS_FORMAT_VERSION) и число ходов. Считается в фоне после партии (src/worker/tasks.py) или по кнопке.
-Разбор идущей партии запрещён — он работал бы как подсказка (GameNotFinishedError). Партии с других сайтов
-разбирает evaluate_pgn, их разбор сохраняет вызывающий модуль (src/services/game_import.py).
+Where it is stored: the finished analysis is games.analysis_json; it is valid while the format version
+(ANALYSIS_FORMAT_VERSION) and the move count match. It is computed in the background after the game (src/worker/tasks.py) or on
+a button press.
+Analysis of a game in progress is forbidden — it would work as a hint (GameNotFinishedError). Games from other sites
+are analysed by evaluate_pgn, and their analysis is saved by the calling module (src/services/game_import.py).
 
-Здесь же — вход для совета, подсказки и проверки хода наставником (AnalysisService.advise / hint / check_move),
-которые пользуются общим кэшем оценок src/services/move_check.py.
+Also here: the entry point for the coach's advice, hint and move check (AnalysisService.advise / hint / check_move),
+which use the shared evaluation cache src/services/move_check.py.
 """
 
 import asyncio
@@ -45,13 +48,13 @@ logger = logging.getLogger(__name__)
 
 def classify_move_by_cp_loss(cp_loss: int, is_best_move: bool = False) -> tuple[str, str]:
     """
-    Классифицирует ход по потере сантипешек (cp_loss):
-    - Best: 0..10 cp (или точное совпадение с первой линией движка)
+    Classifies a move by centipawn loss (cp_loss):
+    - Best: 0..10 cp (or an exact match with the engine's first line)
     - Good: 11..45 cp
     - Inaccuracy (?!): 46..95 cp
     - Mistake (?): 96..199 cp
     - Blunder (??): >= 200 cp
-    Возвращает пару (название класса, знак): знак лучшего хода — "!", хорошего — пустая строка.
+    Returns a pair (class name, sign): the sign of the best move is "!", of a good move — an empty string.
     """
     loss = max(0, int(cp_loss))
     if is_best_move or loss <= 10:
@@ -67,8 +70,8 @@ def classify_move_by_cp_loss(cp_loss: int, is_best_move: bool = False) -> tuple[
 
 def calculate_move_accuracy(cp_loss: int) -> float:
     """
-    Формула точности одного хода (0..100%) на основе потери сантипешек: убывающая экспонента, 0 cp — 100 %, 100 cp —
-    около 66 %, 200 cp — около 43 %.
+    Single-move accuracy formula (0..100%) based on centipawn loss: a decaying exponential, 0 cp — 100 %, 100 cp —
+    about 66 %, 200 cp — about 43 %.
     """
     loss = max(0.0, float(cp_loss))
     raw = 103.1668 * math.exp(-0.004 * loss) - 3.1669
@@ -77,8 +80,9 @@ def calculate_move_accuracy(cp_loss: int) -> float:
 
 def calculate_accuracy(cp_losses: list[int]) -> float:
     """
-    Рассчитывает общую точность игрока в партии (0..100%) по списку потерь сантипешек: среднее арифметическое точностей
-    отдельных ходов. Пустой список (у стороны не было ходов) — 100.
+    Computes a player's overall accuracy in a game (0..100%) from the list of centipawn losses: the arithmetic mean of the
+    accuracies
+    of individual moves. An empty list (the side had no moves) — 100.
     """
     if not cp_losses:
         return 100.0
@@ -87,17 +91,17 @@ def calculate_accuracy(cp_losses: list[int]) -> float:
 
 
 PHASES = ("opening", "middlegame", "endgame")
-# Дебют — первые 10 ходов (по номеру хода на доске), пока на доске ещё не эндшпиль. Эндшпиль — одно из двух:
-# ферзей нет и у каждой стороны фигур не больше чем на 8 очков — ладья с лёгкой фигурой
-# (src/services/positional.is_endgame), либо фигур обеих сторон вместе не больше чем на ENDGAME_TOTAL_MATERIAL очков
-# (26 — например, по две ладьи и лёгкой фигуре у каждой стороны). Очки — positional.PIECE_POINTS: конь и слон — 3,
-# ладья — 5, ферзь — 9; пешки и короли не считаются. Всё остальное — миттельшпиль.
+# Opening — the first 10 moves (by board move number) while the board is not yet an endgame. Endgame is one of two things:
+# no queens and each side has at most 8 points of pieces — a rook with a minor piece
+# (src/services/positional.is_endgame), or both sides' pieces together are at most ENDGAME_TOTAL_MATERIAL points
+# (26 — for example, two rooks and a minor piece per side). Points — positional.PIECE_POINTS: knight and bishop — 3,
+# rook — 5, queen — 9; pawns and kings are not counted. Everything else is middlegame.
 OPENING_MOVES = 10
 ENDGAME_TOTAL_MATERIAL = 26
 
 
 def game_phase(board: chess.Board) -> str:
-    """Фаза партии в позиции перед ходом: код из PHASES. Проверка на эндшпиль идёт первой, раньше счёта ходов."""
+    """Game phase in the position before the move: a code from PHASES. The endgame check goes first, before move counting."""
     from src.services.positional import PIECE_POINTS, is_endgame
 
     total = sum(len(board.pieces(pt, color)) * points
@@ -108,7 +112,7 @@ def game_phase(board: chess.Board) -> str:
 
 
 def format_eval_display(eval_white_cp: int, mate_white: int | None = None) -> str:
-    """Форматирует оценку с точки зрения Белых для шкалы EvalBar (+1.4, -0.8, M3, -M2)."""
+    """Formats an evaluation from White's point of view for the EvalBar scale (+1.4, -0.8, M3, -M2)."""
     if mate_white is not None and mate_white != 0:
         return f"M{mate_white}" if mate_white > 0 else f"-M{abs(mate_white)}"
     pawns = eval_white_cp / 100.0
@@ -116,15 +120,15 @@ def format_eval_display(eval_white_cp: int, mate_white: int | None = None) -> st
     return f"{sign}{pawns:.1f}"
 
 
-# Версия формата analysis_json. 2 — у каждого хода есть комментарий наставника ("coach", таск 11.2). Кэш другой
-# версии считается устаревшим и пересчитывается при следующем запросе разбора.
+# Version of the analysis_json format. 2 — every move has a coach comment ("coach", task 11.2). A cache of a different
+# version is considered stale and is recomputed on the next analysis request.
 ANALYSIS_FORMAT_VERSION = 2
 
 
 def attach_coach_comments(start_board: chess.Board, moves_report: list[dict], best_moves_uci: list[str | None]) -> None:
     """
-    Комментарии наставника к ходам разбора (на месте, в moves_report[i]["coach"]). best_moves_uci[i] — лучший ход
-    движка в позиции перед i-м ходом, best_moves_uci[i + 1] — лучший ответ соперника после него.
+    Coach comments for the analysis moves (in place, in moves_report[i]["coach"]). best_moves_uci[i] is the engine's best move
+    in the position before move i, best_moves_uci[i + 1] is the opponent's best reply after it.
     """
     board = start_board.copy(stack=False)
     for idx, item in enumerate(moves_report):
@@ -136,10 +140,12 @@ def attach_coach_comments(start_board: chess.Board, moves_report: list[dict], be
 
 def _evaluate_board_sequence_sync(pgn_text: str, depth: int = 10) -> dict:
     """
-    Синхронный проход по всем позициям партии со Stockfish или статическим fallback-оценщиком; вызывается в отдельном
-    потоке (evaluate_pgn). Движок берётся из пула один раз на всю партию и возвращается в пул по окончании прохода.
-    Возвращает отчёт: версия формата, имя движка, итоги сторон ("white", "black") и список ходов ("moves") с оценкой
-    после хода, потерей, классом, фазой и комментарием наставника. Нечитаемый PGN — DomainValueError pgn_parse_failed.
+    Synchronous pass over all positions of the game with Stockfish or the static fallback evaluator; called in a separate
+    thread (evaluate_pgn). The engine is taken from the pool once for the whole game and returned to the pool when the pass
+    ends.
+    Returns a report: format version, engine name, side totals ("white", "black") and a list of moves ("moves") with the
+    evaluation
+    after the move, loss, class, phase and coach comment. An unreadable PGN — DomainValueError pgn_parse_failed.
     """
     pgn_game = read_pgn_game(pgn_text)
     if pgn_game is None:
@@ -155,25 +161,27 @@ def _evaluate_board_sequence_sync(pgn_text: str, depth: int = 10) -> dict:
     engine_stack = contextlib.ExitStack()
 
     if sf_path and os.path.exists(sf_path):
-        # EngineBusyError намеренно не перехватывается: под нагрузкой лучше вернуть 503, чем
-        # закэшировать в БД анализ статическим оценщиком вместо Stockfish.
+        # EngineBusyError is deliberately not caught: under load it is better to return 503 than to
+        # cache in the DB an analysis made by the static evaluator instead of Stockfish.
         try:
             engine = engine_stack.enter_context(get_engine_pool(sf_path).acquire())
             engine_label = engine.id.get("name", "Stockfish")
         except EngineUnavailableError as exc:
-            logger.warning("Не удалось запустить Stockfish (%s), используем fallback: %s", sf_path, exc)
+            logger.warning("Failed to start Stockfish (%s), using fallback: %s", sf_path, exc)
             engine = None
 
-    # Оценки каждой позиции с точки зрения Белых (индекс 0 = стартовая позиция)
+    # Evaluations of each position from White's point of view (index 0 = starting position)
     evals_white_cp: list[int] = []
     mates_white: list[int | None] = []
     best_moves_uci: list[str | None] = []
 
     def eval_single_board(b: chess.Board) -> tuple[int, int | None, str | None]:
         """
-        Оценка одной позиции за белых: сантипешки, «мат в N» (или None) и лучший ход. Мат и конец партии определяются
-        без движка (мат на доске — ±10000 и «мат» ±1, ничья — 0); иначе считает движок, а без него или при его сбое
-        на этой позиции — статический оценщик (лучший ход — тот, после которого статическая оценка выше).
+        Evaluation of one position for White: centipawns, "mate in N" (or None) and the best move. Mate and game end are
+        determined
+        without the engine (mate on the board — +-10000 and "mate" +-1, draw — 0); otherwise the engine computes, and without
+        it or on its failure
+        at this position — the static evaluator (the best move is the one after which the static evaluation is higher).
         """
         if b.is_checkmate():
             mate_val = -1 if b.turn == chess.WHITE else 1
@@ -197,7 +205,7 @@ def _evaluate_board_sequence_sync(pgn_text: str, depth: int = 10) -> dict:
             except Exception:
                 pass
 
-        # Fallback без бинарника Stockfish
+        # Fallback without the Stockfish binary
         best_uci = None
         best_side_score = -100000.0
         for candidate in b.legal_moves:
@@ -226,8 +234,8 @@ def _evaluate_board_sequence_sync(pgn_text: str, depth: int = 10) -> dict:
 
         for mv in mainline_moves:
             colors.append("white" if board.turn == chess.WHITE else "black")
-            # Номер хода берём с доски: партия с произвольной позиции может начинаться
-            # не с первого хода и с хода чёрных.
+            # The move number is taken from the board: a game from an arbitrary position may start
+            # not with the first move and with a Black move.
             move_numbers.append(board.fullmove_number)
             phases.append(game_phase(board))
             san_list.append(board.san(mv))
@@ -238,7 +246,7 @@ def _evaluate_board_sequence_sync(pgn_text: str, depth: int = 10) -> dict:
             mates_white.append(mate_i)
             best_moves_uci.append(best_i)
     finally:
-        engine_stack.close()  # возвращает движок в пул
+        engine_stack.close()  # returns the engine to the pool
 
     moves_report: list[dict] = []
     white_losses: list[int] = []
@@ -264,8 +272,9 @@ def _evaluate_board_sequence_sync(pgn_text: str, depth: int = 10) -> dict:
         is_exact_best = recommended_uci is not None and recommended_uci == uci_played
         if is_exact_best:
             cp_loss = 0
-        # В точность — та же потеря, что в разборе хода: лучший ход движка не теряет ничего, даже если оценки
-        # соседних позиций разошлись из-за глубины (раньше такой шум снижал точность).
+        # For accuracy — the same loss as in the single-move analysis: the engine's best move loses nothing, even if the
+        # evaluations
+        # of neighbouring positions diverged because of depth (such noise used to lower accuracy).
         (white_losses if mover_color == "white" else black_losses).append(cp_loss)
 
         label, symbol = classify_move_by_cp_loss(cp_loss, is_best_move=is_exact_best)
@@ -288,7 +297,7 @@ def _evaluate_board_sequence_sync(pgn_text: str, depth: int = 10) -> dict:
         })
 
     def phase_accuracy(color: str) -> dict[str, float | None]:
-        """Точность стороны по фазам (таск B.5); фаза без её ходов — None."""
+        """A side's accuracy by phase (task B.5); a phase without its moves — None."""
         result: dict[str, float | None] = {}
         for phase in PHASES:
             losses = [m["cp_loss"] for m in moves_report if m["color"] == color and m["phase"] == phase]
@@ -296,7 +305,7 @@ def _evaluate_board_sequence_sync(pgn_text: str, depth: int = 10) -> dict:
         return result
 
     def build_side_summary(losses: list[int], side_counts: dict[str, int], color: str) -> dict:
-        """Итог стороны: точность за партию и по фазам, число ходов каждого класса и средняя потеря в сантипешках."""
+        """Side total: accuracy for the game and by phase, number of moves of each class and the average loss in centipawns."""
         avg_loss = round(sum(losses) / len(losses), 1) if losses else 0.0
         return {
             "accuracy": calculate_accuracy(losses),
@@ -309,8 +318,8 @@ def _evaluate_board_sequence_sync(pgn_text: str, depth: int = 10) -> dict:
             "avg_cp_loss": avg_loss,
         }
 
-    # Наставник объясняет ходы только по оценке настоящего движка: «лучший ход» статического оценщика
-    # бывает плохим, и советовать по нему нельзя.
+    # The coach explains moves only from a real engine's evaluation: the static evaluator's "best move"
+    # is sometimes bad, and advice must not be based on it.
     if engine is not None:
         attach_coach_comments(start_board, moves_report, best_moves_uci)
     else:
@@ -327,24 +336,24 @@ def _evaluate_board_sequence_sync(pgn_text: str, depth: int = 10) -> dict:
 
 
 class GameNotFinishedError(DomainError):
-    """Анализ идущей партии запрещён: он работал бы как подсказка движка игрокам."""
+    """Analysis of a game in progress is forbidden: it would work as an engine hint for the players."""
 
 
 class GameDataNotFoundError(DomainError, LookupError):
-    """Партии или её PGN нет."""
+    """The game or its PGN does not exist."""
 
 
 _FINISHED_STATUSES = (GameStatus.COMPLETED, GameStatus.ABORTED)
 
 
 def ensure_game_finished(game: Game) -> None:
-    """Отказ GameNotFinishedError (game_not_finished), если партия не завершена и не прервана."""
+    """Raises GameNotFinishedError (game_not_finished) if the game is neither finished nor aborted."""
     if game.status not in _FINISHED_STATUSES:
         raise GameNotFinishedError("game_not_finished", game_id=game.id)
 
 
 def _count_mainline_plies(pgn_text: str) -> int:
-    """Число полуходов главной линии PGN; -1 для нечитаемого PGN — с ним не совпадёт ни один сохранённый разбор."""
+    """Number of half-moves in the PGN main line; -1 for an unreadable PGN — no saved analysis will match it."""
     pgn_game = read_pgn_game(pgn_text)
     if pgn_game is None:
         return -1
@@ -352,7 +361,7 @@ def _count_mainline_plies(pgn_text: str) -> int:
 
 
 def is_current_analysis(data: object, pgn_text: str) -> bool:
-    """Кэш разбора годится: текущая версия формата и ходов столько же, сколько в итоговом PGN партии."""
+    """The cache is usable: the current format version and as many moves as in the game's final PGN."""
     return (
         isinstance(data, dict)
         and data.get("format_version") == ANALYSIS_FORMAT_VERSION
@@ -362,23 +371,25 @@ def is_current_analysis(data: object, pgn_text: str) -> bool:
 
 
 async def evaluate_pgn(pgn_text: str) -> dict:
-    """Полный разбор PGN вне таблицы games (партии с других сайтов, таск 24.1); движок — из пула."""
+    """Full analysis of a PGN outside the games table (games from other sites, task 24.1); the engine comes from the pool."""
     return await asyncio.to_thread(_evaluate_board_sequence_sync, pgn_text, 10)
 
 
 class AnalysisService:
     """
-    Разбор по запросу: оценка позиции, совет, подсказка, проверка хода и полный разбор партии. Единственный экземпляр
-    — analysis_service в конце модуля.
+    On-demand analysis: position evaluation, advice, hint, move check and full game analysis. The single instance
+    is analysis_service at the end of the module.
     """
     async def analyze_position(self, db: AsyncSession, moves: list[str], start_fen: str | None = None) -> dict:
         """
-        Оценка позиции после списка ходов (SAN или UCI) от обычной расстановки или от start_fen: оценка за белых и
-        лучший ход. Первый нечитаемый или невозможный ход обрывает список — оценивается позиция перед ним. Считает
-        Stockfish из пула (глубина 10, до 0,1 с); без движка — статическая оценка без лучшего хода. Занятый пул
-        (EngineBusyError) не перехватывается — маршрут отвечает отказом. Параметр db не используется.
+        Evaluation of the position after a list of moves (SAN or UCI) from the standard setup or from start_fen: evaluation for
+        White and
+        the best move. The first unreadable or impossible move ends the list — the position before it is evaluated. Computed by
+        Stockfish from the pool (depth 10, up to 0.1 s); without the engine — a static evaluation without a best move. A busy
+        pool
+        (EngineBusyError) is not caught — the route responds with a refusal. The db parameter is not used.
         """
-        board = board_from_start_fen(start_fen)  # InvalidStartPositionError для невозможной позиции
+        board = board_from_start_fen(start_fen)  # InvalidStartPositionError for an impossible position
         for move_str in moves:
             try:
                 board.push_san(move_str)
@@ -392,7 +403,7 @@ class AnalysisService:
         eval_cp = int(static_board_eval_cp(board, chess.WHITE))
         best_move = None
 
-        if sf_path and not board.is_game_over():  # resolve_stockfish_path уже проверил файл
+        if sf_path and not board.is_game_over():  # resolve_stockfish_path has already checked the file
             def _run_pos():
                 with get_engine_pool(sf_path).acquire() as eng:
                     info = eng.analyse(board, chess.engine.Limit(depth=10, time=0.1))
@@ -405,7 +416,7 @@ class AnalysisService:
             try:
                 eval_cp, best_move = await asyncio.to_thread(_run_pos)
             except EngineUnavailableError as exc:
-                logger.warning("Stockfish недоступен, отдаём статическую оценку: %s", exc)
+                logger.warning("Stockfish unavailable, returning static evaluation: %s", exc)
 
         return {
             "fen": board.fen(),
@@ -415,22 +426,23 @@ class AnalysisService:
         }
 
     async def advise(self, fen: str) -> dict:
-        """Совет наставника по позиции (таск 11.2); оценка — из общего кэша (src/services/move_check.py)."""
+        """Coach advice for a position (task 11.2); the evaluation comes from the shared cache (src/services/move_check.py)."""
         return await move_check.advise(fen)
 
     async def hint(self, fen: str, step: int) -> dict:
-        """Подсказка по ступеням (таск 11.4)."""
+        """Tiered hint (task 11.4)."""
         return await move_check.hint(fen, step)
 
     async def check_move(self, fen: str, move_uci: str) -> dict:
-        """Проверка хода в игре с наставником (таск 11.3)."""
+        """Move check in a game with the coach (task 11.3)."""
         return await move_check.check_move(fen, move_uci)
 
     async def analyze_full_game(self, db: AsyncSession, game_id: int, force: bool = False) -> dict:
         """
-        Полный разбор законченной партии. Готовый разбор берётся из games.analysis_json, если он актуален
-        (is_current_analysis) и пересчёт не запрошен; иначе партия разбирается заново и результат сохраняется. Идущая
-        партия — отказ GameNotFinishedError.
+        Full analysis of a finished game. A ready analysis is taken from games.analysis_json if it is current
+        (is_current_analysis) and no recomputation is requested; otherwise the game is analysed again and the result is saved.
+        A game
+        in progress is refused with GameNotFinishedError.
         """
         result = await db.execute(select(Game).where(Game.id == game_id))
         game = result.scalars().first()
@@ -438,7 +450,7 @@ class AnalysisService:
             raise GameDataNotFoundError("pgn_not_found", game_id=game_id)
         ensure_game_finished(game)
 
-        # Если анализ уже сохранён в БД и не запрошен пересчёт — отдаём мгновенно из кэша
+        # If the analysis is already stored in the DB and no recomputation is requested — return instantly from the cache
         cached_raw = getattr(game, "analysis_json", None)
         if cached_raw and not force:
             try:
@@ -446,8 +458,8 @@ class AnalysisService:
                 if is_current_analysis(cached_data, game.pgn):
                     cached_data["game_id"] = game_id
                     return cached_data
-                # Кэш не соответствует итоговому PGN (например, сохранён по незавершённой партии
-                # до запрета анализа идущих игр) — пересчитываем.
+                # The cache does not match the final PGN (for example, saved for an unfinished game
+                # before the ban on analysing games in progress) — recompute.
             except Exception:
                 pass
 
@@ -460,7 +472,7 @@ class AnalysisService:
                 await db.commit()
             except Exception as exc:
                 await db.rollback()
-                logger.warning("Не удалось сохранить кэш анализа в БД: %s", exc)
+                logger.warning("Failed to save the analysis cache to the DB: %s", exc)
 
         return report
 

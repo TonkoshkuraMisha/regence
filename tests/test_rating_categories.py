@@ -1,8 +1,8 @@
 # --- FILE: tests/test_rating_categories.py ---
 """
-Рейтинг разделён по категориям контроля времени (пуля/блиц/рапид/классика) — одна партия
-меняет только свою категорию, а счётчик сыгранных партий для K-фактора ELO хранится на
-пользователе, а не считается запросом COUNT(*) при каждом завершении.
+Rating is split by time-control category (bullet/blitz/rapid/classical) - one game
+changes only its own category, and the played-games counter for the ELO K-factor is stored on
+the user instead of being computed with a COUNT(*) query on every game completion.
 """
 
 import pytest
@@ -14,13 +14,13 @@ from src.services.rating import classify_time_control
 
 
 @pytest.mark.parametrize(("base_time_ms", "increment_ms", "expected"), [
-    (60_000, 0, "bullet"),          # 1 мин
+    (60_000, 0, "bullet"),          # 1 min
     (120_000, 1_000, "bullet"),     # 2+1
-    (180_000, 0, "blitz"),          # 3 мин — ровно на границе пули/блица
+    (180_000, 0, "blitz"),          # 3 min - exactly on the bullet/blitz boundary
     (300_000, 3_000, "blitz"),      # 5+3
-    (600_000, 0, "rapid"),          # 10 мин
+    (600_000, 0, "rapid"),          # 10 min
     (900_000, 10_000, "rapid"),     # 15+10
-    (1_800_000, 0, "classical"),    # 30 мин без добавления — за порогом рапида
+    (1_800_000, 0, "classical"),    # 30 min without increment - beyond the rapid threshold
     (1_800_000, 20_000, "classical"),  # 30+20
 ])
 def test_classify_time_control_matches_lichess_thresholds(base_time_ms, increment_ms, expected):
@@ -44,7 +44,7 @@ async def _rated_game(db_session, white: User, black: User, base_time_ms: int, i
 
 
 async def test_finish_game_only_moves_the_rating_of_its_own_category(db_session):
-    """Блиц-партия не трогает пулю/рапид/классику того же игрока."""
+    """A blitz game does not touch the same player's bullet/rapid/classical ratings."""
     white = User(
         username="cat_white", hashed_password="pw", bullet_rating=1300,
         blitz_rating=1500, rapid_rating=1700, classical_rating=1900,
@@ -58,20 +58,20 @@ async def test_finish_game_only_moves_the_rating_of_its_own_category(db_session)
     await db_session.refresh(white)
     await db_session.refresh(black)
 
-    game = await _rated_game(db_session, white, black, base_time_ms=180_000, increment_ms=0)  # блиц
+    game = await _rated_game(db_session, white, black, base_time_ms=180_000, increment_ms=0)  # blitz
     await state_manager.finish_game(db_session, game.id, "1-0", termination="checkmate")
 
     await db_session.refresh(white)
     await db_session.refresh(black)
 
-    assert white.blitz_rating != 1500  # своя категория изменилась
+    assert white.blitz_rating != 1500  # its own category changed
     assert black.blitz_rating != 1500
     assert (white.bullet_rating, white.rapid_rating, white.classical_rating) == (1300, 1700, 1900)
     assert (black.bullet_rating, black.rapid_rating, black.classical_rating) == (1300, 1700, 1900)
 
 
 async def test_games_played_counter_increments_per_category(db_session):
-    """Счётчик сыгранных партий растёт по категории — без запроса COUNT(*) при завершении."""
+    """The played-games counter grows per category - without a COUNT(*) query on completion."""
     white = User(username="count_white", hashed_password="pw")
     black = User(username="count_black", hashed_password="pw")
     db_session.add_all([white, black])
@@ -90,12 +90,12 @@ async def test_games_played_counter_increments_per_category(db_session):
 
     assert white.blitz_games_played == 3
     assert black.blitz_games_played == 3
-    # Другая категория для тех же игроков не затронута.
+    # Another category for the same players is unaffected.
     assert white.bullet_games_played == 0
 
 
 async def test_finish_game_ignores_unrated_games_played(db_session):
-    """Неформальная (is_rated=False) партия не двигает рейтинг и не увеличивает счётчик."""
+    """An unrated (is_rated=False) game neither moves the rating nor increments the counter."""
     white = User(username="casual_white", hashed_password="pw")
     black = User(username="casual_black", hashed_password="pw")
     db_session.add_all([white, black])
@@ -139,7 +139,7 @@ async def test_leaderboard_ranks_by_requested_category(client, db_session):
     assert rapid_top[0]["username"] == "rapid_star"
     assert rapid_top[0]["rating"] == 2200
 
-    # Без параметра category — то же, что явный блиц (значение по умолчанию).
+    # Without the category parameter - same as explicit blitz (the default).
     default_top = client.get("/api/v1/profile/leaderboard").json()
     blitz_top = client.get("/api/v1/profile/leaderboard?category=blitz").json()
     assert default_top == blitz_top

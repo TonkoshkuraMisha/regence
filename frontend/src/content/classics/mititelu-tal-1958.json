@@ -802,12 +802,10 @@
   }
  ],
  "intro": {
-  "ru": "Защита Нимцовича, система с 4.e3 и 5.Ne2. Около 20-го хода перевес даже у белых, но Таль находит контригру.",
   "uk": "Захист Німцовича, система з 4.e3 і 5.Ne2. Близько 20-го ходу перевага навіть у білих, але Таль знаходить контргру.",
   "en": "A Nimzo-Indian Defence, the 4.e3 system with 5.Ne2. Around move 20 White is even better, but Tal finds counterplay."
  },
  "summary": {
-  "ru": "Ферзь чёрных проникает к королю (31...Qh3), ладья переходит на королевский фланг по шестой горизонтали (34...Re6, 35...Rf6), и после 37.Bg2 удар 37...Rxf1+ решает партию. Урок: перевод ладьи по горизонтали — классический способ подключить её к атаке на короля.",
   "uk": "Ферзь чорних проникає до короля (31...Qh3), тура переходить на королівський фланг шостою горизонталлю (34...Re6, 35...Rf6), і після 37.Bg2 удар 37...Rxf1+ вирішує партію. Урок: переведення тури горизонталлю — класичний спосіб підключити її до атаки на короля.",
   "en": "Black's queen gets close to the king (31...Qh3), the rook swings to the kingside along the sixth rank (34...Re6, 35...Rf6), and after 37.Bg2 the blow 37...Rxf1+ decides the game. Lesson: a rook lift along a rank is the classic way to bring the rook into a king attack."
  }

@@ -1,46 +1,46 @@
 // --- FILE: frontend/src/components/puzzles/usePositionExplorer.tsx ---
-// Свободный разбор после ответа (отзыв владельца 18.11): когда задача или вопрос тренажёра решены, доска не
-// застывает со стрелкой — на ней стоит сделанный ход, и позицию можно доиграть за обе стороны, вернуть ход назад или
-// вернуться к позиции задачи. Ходы проверяет chess.js (законность — та же, что на доске PuzzleBoard). Хук хранит
-// только линию от позиции задачи; оценки и подсказок движка нет — это не анализ, а «подвигать фигуры» (честная игра
-// не затрагивается: во время своей партии с человеком тренажёры и так закрыты правилами раздела).
-// Только состояние в памяти (без сети и localStorage). Подключают PuzzlesPage, DefenseTrainer, GeneratedDrills,
-// GuessPage, learn/MateCourse и trainers/{CalcGames, MiniatureGame, StructureQuiz}.
+// Free review after an answer (owner's feedback 18.11): when a puzzle or a trainer question is solved, the board does not
+// freeze with an arrow: the move made stands on it, and the position can be played out for both sides, a move taken back or
+// a return made to the puzzle position. Moves are checked by chess.js (legality is the same as on the PuzzleBoard board). The hook keeps
+// only the line from the puzzle position; there are no engine evaluations or hints: it is not analysis but "moving the pieces" (fair play
+// is not affected: during one's own game against a human the trainers are closed anyway by the section's rules).
+// In-memory state only (no network or localStorage). Used by PuzzlesPage, DefenseTrainer, GeneratedDrills,
+// GuessPage, learn/MateCourse and trainers/{CalcGames, MiniatureGame, StructureQuiz}.
 
 import {useCallback, useMemo, useState} from 'react';
 import {Chess} from 'chess.js';
 import {RotateCcw, Undo2} from 'lucide-react';
 import {useI18n} from '../../i18n';
 
-/** Линия разбора: позиция задачи и ходы UCI, сыгранные от неё (стартовая позиция не меняется). */
+/** Review line: the puzzle position and the UCI moves played from it (the starting position does not change). */
 interface Line {
     start: string;
     moves: string[];
 }
 
-/** Интерфейс хука: что показывать на доске и как менять линию разбора. */
+/** Hook interface: what to show on the board and how to change the review line. */
 export interface PositionExplorer {
-    /** Разбор включён (после ответа). */
+    /** Review is on (after an answer). */
     active: boolean;
-    /** Позиция на доске: стартовая + сыгранные ходы. */
+    /** Position on the board: the starting one plus the played moves. */
     fen: string | null;
-    /** Последний ход линии — для подсветки на доске. */
+    /** Last move of the line, for highlighting on the board. */
     lastMove: { from: string; to: string } | null;
-    /** Сколько ходов сыграно от позиции задачи. */
+    /** How many moves have been played from the puzzle position. */
     plies: number;
-    /** Включить разбор с позиции fen, сразу сыграв ходы moves (например, ответ игрока). */
+    /** Turn the review on from position fen, playing the moves moves at once (for example, the player's answer). */
     start: (fen: string, moves?: string[]) => void;
-    /** Сыграть ход UCI за сторону, чья очередь; незаконный — false, доска не меняется. */
+    /** Play a UCI move for the side to move; an illegal one gives false and the board does not change. */
     play: (uci: string) => boolean;
-    /** Вернуть один ход назад. */
+    /** Take one move back. */
     back: () => void;
-    /** Вернуться к позиции задачи (линия очищается, разбор остаётся включённым). */
+    /** Return to the puzzle position (the line is cleared, the review stays on). */
     reset: () => void;
-    /** Выключить разбор (новая задача или упражнение). */
+    /** Turn the review off (a new puzzle or exercise). */
     stop: () => void;
 }
 
-/** Позиция после ходов линии; незаконные ходы в конце отбрасываются. */
+/** Position after the line's moves; illegal moves at the end are dropped. */
 function replay(line: Line): { fen: string; last: { from: string; to: string } | null; plies: number } {
     const game = new Chess(line.start);
     let last: { from: string; to: string } | null = null;
@@ -57,14 +57,14 @@ function replay(line: Line): { fen: string; last: { from: string; to: string } |
     return {fen: game.fen(), last, plies};
 }
 
-/** Хук свободного разбора: хранит только линию ходов, позицию на доске каждый раз пересчитывает replay(). */
+/** Free review hook: keeps only the move line, the board position is recomputed by replay() each time. */
 export function usePositionExplorer(): PositionExplorer {
     const [line, setLine] = useState<Line | null>(null);
     const view = useMemo(() => (line ? replay(line) : null), [line]);
 
     const start = useCallback((fen: string, moves: string[] = []) => {
-        // Позиция, которую chess.js не принимает (например, одна фигура без королей в «Сколько ходов?»), — разбор не
-        // включается: доска остаётся как была.
+        // A position that chess.js does not accept (for example, a single piece without kings in "How many moves?"): the review is not
+        // turned on, the board stays as it was.
         try {
             new Chess(fen);
         } catch {
@@ -95,7 +95,7 @@ export function usePositionExplorer(): PositionExplorer {
     };
 }
 
-/** Кнопки разбора под доской: ход назад и к позиции задачи; подсказка, что доска свободна. */
+/** Review buttons under the board: a move back and to the puzzle position; a hint that the board is free. */
 export function ExplorerControls({explorer}: { explorer: PositionExplorer }) {
     const {t} = useI18n();
     if (!explorer.active) return null;

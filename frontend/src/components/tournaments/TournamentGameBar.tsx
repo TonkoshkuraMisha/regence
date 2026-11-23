@@ -1,11 +1,11 @@
 // --- FILE: frontend/src/components/tournaments/TournamentGameBar.tsx ---
-// Навигация турнирной партии: плашка над партией «турнир · тур N из M · соперник» с таблицей поверх доски (уйти с
-// доски посреди партии нельзя — брошенная партия засчитывается поражением), а после партии — «Следующая партия»,
-// «Таблица турнира» и ожидание, пока боты доигрывают тур. ContinueTournaments — на главной: турниры, где ждут
-// партию игрока, чтобы вернуться в них и после перезагрузки страницы.
-// Данные: services/tournaments.ts — getTournament (опрос раз в BAR_POLL_MS, пока ждём итог партии и боты доигрывают
-// тур), startMyGame (сервер сам начинает партию и засчитывает брошенную поражением), listTournaments (для
-// ContinueTournaments). Рисуется в Chessboard.tsx; праздник призёра — TournamentCelebration.tsx.
+// Tournament game navigation: a bar above the game "tournament · round N of M · opponent" with a table over the board (leaving
+// the board mid-game is not possible - an abandoned game counts as a loss), and after the game - "Next game",
+// "Tournament table" and waiting while the bots finish the round. ContinueTournaments - on the main page: tournaments waiting for
+// the player's game, so they can return to them even after a page reload.
+// Data: services/tournaments.ts - getTournament (polled every BAR_POLL_MS while we wait for the game result and the bots finish
+// the round), startMyGame (the server starts the game itself and counts an abandoned one as a loss), listTournaments (for
+// ContinueTournaments). Rendered in Chessboard.tsx; the prize-winner celebration - TournamentCelebration.tsx.
 
 import {useCallback, useEffect, useState} from 'react';
 import {Link, useNavigate} from 'react-router-dom';
@@ -23,21 +23,21 @@ import {eventTitle} from '../../services/timeMachine';
 import {tournamentRows, tournamentStats, tournamentSummary} from '../../services/tournamentResults';
 import {markCelebrated, shouldCelebrate, TournamentCelebration} from './TournamentCelebration';
 
-// Период опроса сервера (мс), пока после партии ждём запись итога и доигрывание тура ботами.
+// Server polling period (ms) while after the game we wait for the result to be recorded and the bots to finish the round.
 export const BAR_POLL_MS = 3000;
 
-/** Название турнира для плашки и праздника: историческое — по ключу события, обычное — «формат · размер». */
+/** Tournament name for the bar and the celebration: historic - by the event key, ordinary - "format · size". */
 export function tournamentTitle(t: Pick<Tournament, 'event_key' | 'format' | 'size'>, tr: I18n['t']): string {
     return t.event_key ? eventTitle(t.event_key, tr) : `${tr(`tournaments.formats.${t.format}`)} · ${t.size}`;
 }
 
-/** Таблица поверх доски: очки и места (круговой, швейцарка) либо участники и выбывшие (сетка на выбывание). */
+/** Table over the board: points and places (round robin, Swiss) or participants and eliminated (knockout bracket). */
 function StandingsOverlay({tournament, onClose}: { tournament: Tournament; onClose: () => void }) {
     const {t} = useI18n();
     const name = (seat: number) => participantName(tournament.players.find((p) => p.seat === seat)!, t);
     const rows = tournament.standings.length > 0
         ? tournament.standings.map((s) => ({seat: s.seat, place: s.place, points: String(s.points)}))
-        // Сетка на выбывание: таблицы очков нет — участники и кто выбыл.
+        // Knockout bracket: no points table - participants and who was eliminated.
         : tournament.players.map((p) => ({seat: p.seat, place: p.place ?? p.seat, points: p.eliminated_round ? '×' : ''}));
     return (
         <div role="dialog" aria-label={t('tournaments.crosstable')} data-testid="tournament-standings-overlay"
@@ -65,7 +65,7 @@ function StandingsOverlay({tournament, onClose}: { tournament: Tournament; onClo
 }
 
 /**
- * tournamentGameId — партия турнира, которую игрок играет (или только что сыграл); gameOver — партия закончилась.
+ * tournamentGameId - the tournament game the player is playing (or has just played); gameOver - the game has ended.
  */
 export function TournamentGameBar({tournamentId, tournamentGameId, gameOver}: {
     tournamentId: number;
@@ -86,7 +86,7 @@ export function TournamentGameBar({tournamentId, tournamentGameId, gameOver}: {
     const current = tournament?.games.find((g) => g.id === tournamentGameId) ?? null;
     const next = tournament && gameOver ? myPendingGame(tournament) : null;
     const nextReady = next !== null && next.id !== tournamentGameId;
-    // После партии ждём, пока сервер запишет её итог и боты доиграют тур.
+    // After the game we wait until the server records its result and the bots finish the round.
     const waiting = Boolean(gameOver && tournament && tournament.status === 'active' && !nextReady
         && (current?.result == null || botGamesRunning(tournament)));
     useEffect(() => {
@@ -95,7 +95,7 @@ export function TournamentGameBar({tournamentId, tournamentGameId, gameOver}: {
         return () => window.clearTimeout(timer);
     }, [waiting, tournament, load]);
 
-    // Последняя партия сыграна, турнир закончен — экран итогов прямо у доски (один раз на турнир).
+    // The last game is played, the tournament is over - the results screen right at the board (once per tournament).
     const myPlace = tournament?.players.find((p) => p.seat === tournament.my_seat)?.place ?? null;
     const [celebrating, setCelebrating] = useState(false);
     useEffect(() => {
@@ -179,7 +179,7 @@ export function TournamentGameBar({tournamentId, tournamentGameId, gameOver}: {
     );
 }
 
-/** Главная: турниры, где ждут партию игрока (и после перезагрузки страницы). */
+/** Main page: tournaments waiting for the player's game (also after a page reload). */
 export function ContinueTournaments() {
     const {t} = useI18n();
     const [ready, setReady] = useState<TournamentSummary[]>([]);

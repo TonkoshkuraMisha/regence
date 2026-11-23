@@ -1,8 +1,8 @@
 // --- FILE: frontend/src/components/trainers/BoardPuzzleGames.tsx ---
-// Головоломки на доске (таск 19.4): расстановки (ферзи, ладьи, слоны, кони, доминирование) и «Обход конём».
-// Доска N×N своя, щелчками: работает и на телефоне.
-// Данные: чистые правила trainers/boardPuzzles.ts (задачи, проверки, подсказка по правилу Варнсдорфа); найденные решения расстановок
-// запоминаются в localStorage (SOLUTIONS_KEY); цвета клеток — тема доски из config/boardAppearance.ts. Запускается из TrainersPage.tsx.
+// Board puzzles (task 19.4): placements (queens, rooks, bishops, knights, domination) and the "Knight's tour".
+// Its own N×N board, by clicks: works on a phone too.
+// Data: pure rules trainers/boardPuzzles.ts (tasks, checks, a hint by Warnsdorff's rule); found placement solutions
+// are remembered in localStorage (SOLUTIONS_KEY); square colours - the board theme from config/boardAppearance.ts. Launched from TrainersPage.tsx.
 
 import {useMemo, useState} from 'react';
 import {useI18n} from '../../i18n';
@@ -14,14 +14,14 @@ import {
 import type {Cell, Piece} from '../../trainers/boardPuzzles';
 import type {TrainerGameProps} from './trainerGame';
 
-/** Значки фигур на доске расстановок. */
+/** Piece glyphs on the placement board. */
 const GLYPH: Record<Piece, string> = {Q: '♛', R: '♜', B: '♝', N: '♞'};
-/** Буквы вертикалей для атрибута data-cell клеток. */
+/** File letters for the squares' data-cell attribute. */
 const FILES = 'abcdefgh';
 
 /**
- * Доска size×size из кнопок. Подпись и подсветка клетки приходят из render: bad — конфликт, dim — не прикрыта,
- * hint — подсказка, last — текущая.
+ * A size×size board of buttons. The square label and highlight come from render: bad - a conflict, dim - not covered,
+ * hint - a hint, last - the current one.
  */
 function Grid({size, render, onCell}: { size: number; render: (cell: Cell) => { label?: string; tone?: 'bad' | 'dim' | 'hint' | 'last' }; onCell: (cell: Cell) => void }) {
     const theme = BOARD_THEMES[getSavedBoardThemeKey()] ?? BOARD_THEMES.walnut;
@@ -48,10 +48,10 @@ function Grid({size, render, onCell}: { size: number; render: (cell: Cell) => { 
     );
 }
 
-/** localStorage-ключ найденных решений расстановки id (список ключей решений); только в этом браузере. */
+/** localStorage key of found placement solutions of id (a list of solution keys); only in this browser. */
 const SOLUTIONS_KEY = (id: string) => `regence_placement_solutions_${id}`;
 
-/** Найденные ранее решения расстановки; недоступное хранилище — пустой список. */
+/** Previously found placement solutions; unavailable storage - an empty list. */
 function readSolutions(id: string): string[] {
     try {
         return JSON.parse(localStorage.getItem(SOLUTIONS_KEY(id)) ?? '[]') as string[];
@@ -61,8 +61,8 @@ function readSolutions(id: string): string[] {
 }
 
 /**
- * Расстановка count фигур: без боя друг друга (independent) или так, чтобы прикрыть все клетки (dominate). Очки — 100 минус 10
- * за ошибку, не меньше 10. Для ферзей показано число всех решений.
+ * Placement of count pieces: not attacking each other (independent) or so as to cover all squares (dominate). Score - 100 minus 10
+ * per mistake, at least 10. For queens the number of all solutions is shown.
  */
 export function PlacementGame({level, onFinish}: TrainerGameProps) {
     const {t} = useI18n();
@@ -92,7 +92,7 @@ export function PlacementGame({level, onFinish}: TrainerGameProps) {
             try {
                 localStorage.setItem(SOLUTIONS_KEY(puzzle.id), JSON.stringify(all));
             } catch {
-                // без хранилища счётчик живёт до перезагрузки
+                // without storage the counter lives until reload
             }
             onFinish(Math.max(10, 100 - nextMistakes * 10), nextMistakes);
         }
@@ -120,8 +120,8 @@ export function PlacementGame({level, onFinish}: TrainerGameProps) {
 }
 
 /**
- * Обход конём доски tourSize(level): очки — CLOSED_TOUR_SCORE (замкнутый) или OPEN_TOUR_SCORE минус 5 за подсказку, не более 90.
- * Недопустимый ход — ошибка, ход не принимается.
+ * Knight's tour of the board tourSize(level): score - CLOSED_TOUR_SCORE (closed) or OPEN_TOUR_SCORE minus 5 per hint, at most 90.
+ * An illegal move is a mistake, the move is not accepted.
  */
 export function KnightTourGame({level, onFinish}: TrainerGameProps) {
     const {t} = useI18n();

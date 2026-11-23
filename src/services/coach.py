@@ -1,24 +1,25 @@
 # --- FILE: src/services/coach.py ---
 """
-Наставник словами (таск 11.2): из фактов детектора мотивов (src/services/mentor_service.py) и линии движка
-собирается объяснение хода — что не так с ходом, что теперь грозит, в чём идея лучшего хода, — и стрелки для
-доски.
+The coach in words (task 11.2): from the facts of the motif detector (src/services/mentor_service.py) and the engine line
+an explanation of a move is built — what is wrong with the move, what is now threatened, what the idea of the best move is —
+together with arrows for
+the board.
 
-Сервер не пишет текст: объяснение — список предложений ``{"key", "params"}``, ключи — шаблоны каталога
-``coach`` на клиенте (три языка). У каждого шаблона несколько формулировок (``.v1``, ``.v2``); какую взять,
-решает позиция, а не случай, поэтому один и тот же разбор всегда читается одинаково.
+The server writes no text: the explanation is a list of sentences ``{"key", "params"}``, the keys are templates of the
+``coach`` catalog on the client (three languages). Each template has several wordings (``.v1``, ``.v2``); which one to take is
+decided by the position, not by chance, so the same analysis always reads the same way.
 
-Фигуры и поля в параметрах — фигурной нотацией («♘f7», «♕d8»), как в шахматной литературе: она одинаково
-читается на любом языке и не требует склонять названия фигур.
+Pieces and squares in parameters use figurine notation ("♘f7", "♕d8"), as in chess literature: it reads the same
+in any language and does not require declining piece names.
 
-Главный принцип детектора остаётся: ложное объяснение хуже молчания. Мотив называется причиной ошибки,
-только если его подтверждает лучший ответ соперника по движку (вилку — взятием одной из целей, висящую
-фигуру — её взятием; найденный детектором мат подтверждения не требует). Если подтверждения нет, наставник говорит
-только то, в чём уверен: оценку хода и лучший ход.
+The detector's main principle stands: a false explanation is worse than silence. A motif is named as the cause of a mistake
+only if the opponent's best reply by the engine confirms it (a fork — by capturing one of the targets, a hanging
+piece — by capturing it; a mate found by the detector needs no confirmation). If there is no confirmation, the coach says
+only what it is sure of: the evaluation of the move and the best move.
 
-Кто вызывает: разбор партии (analysis_service.attach_coach_comments → comment_for_move) и наставник в игре
-(src/services/move_check.py → advice_for_position, hint_for_position). Лучший ход и ответ соперника приходят от
-движка снаружи; сам модуль движок не вызывает и в базу не ходит.
+Callers: game analysis (analysis_service.attach_coach_comments → comment_for_move) and the in-game coach
+(src/services/move_check.py → advice_for_position, hint_for_position). The best move and the opponent's reply come from
+the engine outside; the module itself does not call the engine and does not touch the database.
 """
 
 import zlib
@@ -29,24 +30,24 @@ import chess
 from src.services.mentor_service import PIECE_VALUE, Motif, analyze_move, detect_motifs
 from src.services.positional import move_idea, positional_features
 
-# Формулировок на каждый шаблон: ключи «coach.<группа>.<код>.v1» … «.vN».
+# Wordings per template: keys "coach.<group>.<code>.v1" … ".vN".
 VARIANTS = 2
 
-# Знаки фигур для параметров предложений: по цвету и виду фигуры.
+# Piece signs for sentence parameters: by piece colour and kind.
 FIGURINES = {
     chess.WHITE: {chess.KING: "♔", chess.QUEEN: "♕", chess.ROOK: "♖", chess.BISHOP: "♗", chess.KNIGHT: "♘", chess.PAWN: "♙"},
     chess.BLACK: {chess.KING: "♚", chess.QUEEN: "♛", chess.ROOK: "♜", chess.BISHOP: "♝", chess.KNIGHT: "♞", chess.PAWN: "♟"},
 }
 
-# Шаблоны и их параметры: (группа, код) → имена параметров. Каталоги клиента обязаны иметь ровно эти ключи
-# с ровно этими параметрами (tests/test_coach.py).
+# Templates and their parameters: (group, code) → parameter names. The client catalogs must have exactly these keys
+# with exactly these parameters (tests/test_coach.py).
 TEMPLATES: dict[tuple[str, str], tuple[str, ...]] = {
-    # Оценка сделанного хода — первое предложение комментария к неточности, ошибке, зевку.
+    # Evaluation of the move made — the first sentence of a comment on an inaccuracy, mistake, blunder.
     ("verdict", "inaccuracy"): ("move",),
     ("verdict", "mistake"): ("move",),
     ("verdict", "blunder"): ("move",),
-    # Угроза: тактика одной стороны против другой. В комментарии к ходу — то, что ошибочный ход позволил сопернику
-    # (грозит сходившему); в совете — то, чем соперник грозит игроку, который сейчас ходит.
+    # Threat: one side's tactic against the other. In a move comment — what the erroneous move allowed the opponent
+    # (threatens the side that moved); in advice — what the opponent threatens the player who is on move now.
     ("threat", "mate_in"): ("n", "move"),
     ("threat", "mate_threat"): ("piece", "square"),
     ("threat", "hanging"): ("piece",),
@@ -57,10 +58,10 @@ TEMPLATES: dict[tuple[str, str], tuple[str, ...]] = {
     ("threat", "trapped"): ("piece",),
     ("threat", "overloaded"): ("defender", "target1", "target2"),
     ("threat", "back_rank"): ("king", "square"),
-    # Упущенная возможность: она была до хода и пропала.
+    # Missed opportunity: it existed before the move and is gone.
     ("missed", "mate_in"): ("n", "move"),
     ("missed", "hanging"): ("piece",),
-    # Идея лучшего хода.
+    # The idea of the best move.
     ("best", "mate"): ("move",),
     ("best", "fork"): ("move", "attacker", "target1", "target2"),
     ("best", "skewer"): ("move", "attacker", "front", "behind"),
@@ -73,13 +74,13 @@ TEMPLATES: dict[tuple[str, str], tuple[str, ...]] = {
     ("best", "trapped"): ("move", "piece"),
     ("best", "capture"): ("move", "piece"),
     ("best", "generic"): ("move",),
-    # Позиционная идея лучшего хода, когда тактики нет (таск B.4, src/services/positional.py).
+    # Positional idea of the best move when there is no tactic (task B.4, src/services/positional.py).
     ("best", "pos_castle"): ("move",),
     ("best", "pos_open_file"): ("move", "file"),
     ("best", "pos_outpost"): ("move", "square"),
     ("best", "pos_king_active"): ("move",),
     ("best", "pos_passed_push"): ("move",),
-    # Удачный ход с тактикой.
+    # A good move with a tactic.
     ("good", "checkmate"): ("move",),
     ("good", "fork"): ("attacker", "target1", "target2"),
     ("good", "skewer"): ("attacker", "front", "behind"),
@@ -90,11 +91,11 @@ TEMPLATES: dict[tuple[str, str], tuple[str, ...]] = {
     ("good", "double_check"): ("move",),
     ("good", "mate_threat"): ("piece", "square"),
     ("good", "trapped"): ("piece",),
-    # Совет по позиции (POST /analysis/advice).
+    # Advice on a position (POST /analysis/advice).
     ("advice", "chance_mate"): ("n", "move"),
     ("advice", "chance_capture"): ("piece",),
     ("advice", "quiet"): (),
-    # Позиционные признаки, когда угроз нет (таск B.4).
+    # Positional features when there are no threats (task B.4).
     ("advice", "pos_king_center"): (),
     ("advice", "pos_king_holes"): ("square",),
     ("advice", "pos_passed_enemy"): ("square",),
@@ -106,7 +107,7 @@ TEMPLATES: dict[tuple[str, str], tuple[str, ...]] = {
     ("advice", "pos_backward_enemy"): ("square",),
     ("advice", "pos_bad_bishop"): ("square",),
     ("advice", "pos_doubled_own"): ("file",),
-    # Подсказка по ступеням (таск 11.4). Ступень 1 — намёк без полей и фигур, ступень 2 — какой фигурой ходить.
+    # Tiered hint (task 11.4). Step 1 — a nudge without squares and pieces, step 2 — which piece to move.
     ("hint", "mate"): ("n",),
     ("hint", "fork"): (),
     ("hint", "skewer"): (),
@@ -120,7 +121,7 @@ TEMPLATES: dict[tuple[str, str], tuple[str, ...]] = {
     ("hint", "capture"): (),
     ("hint", "defend"): (),
     ("hint", "quiet"): (),
-    # Ступень 1 в спокойной позиции — позиционная идея без полей и фигур (таск B.4).
+    # Step 1 in a quiet position — a positional idea without squares and pieces (task B.4).
     ("hint", "pos_castle"): (),
     ("hint", "pos_open_file"): (),
     ("hint", "pos_outpost"): (),
@@ -129,17 +130,18 @@ TEMPLATES: dict[tuple[str, str], tuple[str, ...]] = {
     ("hint", "piece"): ("piece",),
 }
 
-# Классы хода из разбора (analysis_service.classify_move_by_cp_loss): плохие — с кодом шаблона оценки, хорошие —
-# комментируются, только если ход создал тактику.
+# Move classes from the analysis (analysis_service.classify_move_by_cp_loss): bad ones — with an evaluation template code, good
+# ones —
+# are commented only if the move created a tactic.
 BAD_CLASSIFICATIONS = {"Inaccuracy": "inaccuracy", "Mistake": "mistake", "Blunder": "blunder"}
 GOOD_CLASSIFICATIONS = {"Best", "Good"}
 
-# Какую угрозу назвать первой, если ход позволил несколько: от самой опасной.
+# Which threat to name first if the move allowed several: from the most dangerous.
 THREAT_PRIORITY = (
     "mate_in", "mate_threat", "fork", "skewer", "trapped", "hanging", "pin_absolute", "overloaded",
     "back_rank", "pin_relative",
 )
-# Идея лучшего хода / удачного хода: от самой сильной.
+# Idea of the best / a good move: from the strongest.
 IDEA_PRIORITY = (
     "double_check", "discovered_check", "fork", "skewer", "mate_threat", "trapped", "discovered_attack",
     "pin_absolute", "pin_relative",
@@ -147,7 +149,7 @@ IDEA_PRIORITY = (
 
 
 def all_message_keys() -> dict[str, tuple[str, ...]]:
-    """Все ключи каталога, которые может отдать наставник, с их параметрами."""
+    """All catalog keys the coach can emit, with their parameters."""
     return {
         f"coach.{group}.{code}.v{variant}": params
         for (group, code), params in TEMPLATES.items()
@@ -157,9 +159,9 @@ def all_message_keys() -> dict[str, tuple[str, ...]]:
 
 def _sentence(group: str, code: str, seed: str, **params: str | int) -> dict:
     """
-    Одно предложение объяснения: ключ шаблона с номером формулировки и параметры. Формулировку выбирает контрольная
-    сумма от seed (FEN позиции) и кода шаблона — для одной позиции она всегда одна и та же. Параметры, не совпавшие
-    с объявленными в TEMPLATES, — KeyError: это ошибка в коде, а не в данных.
+    One sentence of the explanation: a template key with a wording number and parameters. The wording is chosen by a checksum
+    of seed (the position FEN) and the template code — for one position it is always the same. Parameters that do not match
+    those declared in TEMPLATES raise KeyError: this is a bug in the code, not in the data.
     """
     expected = TEMPLATES[(group, code)]
     if set(params) != set(expected):
@@ -169,19 +171,19 @@ def _sentence(group: str, code: str, seed: str, **params: str | int) -> dict:
 
 
 def _arrow(from_square: chess.Square, to_square: chess.Square, kind: str) -> dict:
-    """Стрелка для доски клиента; kind — "best" (лучший ход), "threat" (угроза) или "idea" (идея хода)."""
+    """An arrow for the client board; kind is "best" (best move), "threat" (threat) or "idea" (move idea)."""
     return {"from": chess.square_name(from_square), "to": chess.square_name(to_square), "kind": kind}
 
 
 def piece_label(board: chess.Board, square: chess.Square) -> str:
-    """«♘f7» — фигура на поле фигурной нотацией (пустое поле — просто имя поля)."""
+    """'♘f7' — a piece on a square in figurine notation (an empty square is just the square name)."""
     piece = board.piece_at(square)
     name = chess.square_name(square)
     return f"{FIGURINES[piece.color][piece.piece_type]}{name}" if piece else name
 
 
 def figurine_san(board: chess.Board, move: chess.Move) -> str:
-    """SAN хода с фигурками вместо букв (Nf3 → ♘f3, e8=Q → e8=♕)."""
+    """SAN of a move with figurines instead of letters (Nf3 → ♘f3, e8=Q → e8=♕)."""
     san = board.san(move)
     figurines = FIGURINES[board.turn]
     letters = {"K": chess.KING, "Q": chess.QUEEN, "R": chess.ROOK, "B": chess.BISHOP, "N": chess.KNIGHT}
@@ -194,7 +196,7 @@ def figurine_san(board: chess.Board, move: chess.Move) -> str:
 
 
 def _move_from_motif(board: chess.Board, motif: Motif) -> chess.Move | None:
-    """Ход из мотива мата (поле «откуда» и поле «куда»), если он легален в этой позиции."""
+    """The move from a mate motif (the from square and the to square), if it is legal in this position."""
     if not motif.targets:
         return None
     for move in board.legal_moves:
@@ -205,9 +207,11 @@ def _move_from_motif(board: chess.Board, motif: Motif) -> chess.Move | None:
 
 def _caused_by(motif: Motif, move: chess.Move, board_after: chess.Board) -> bool:
     """
-    Мотив создан именно этим ходом: его ведёт пошедшая фигура, или ход открыл линию дальнобойной фигуре (ушёл
-    с линии между ней и целью), или это вскрытие по определению. Мотив, который возник в позиции «сам» (король
-    отошёл, и где-то на доске сложилась связка), идеей хода не считается.
+    The motif was created by this very move: it is led by the piece that moved, or the move opened a line for a long-range
+    piece (moved away
+    from the line between it and the target), or it is a discovered attack by definition. A motif that arose in the position
+    "by itself" (the king
+    moved away, and a pin formed somewhere on the board) is not considered the move's idea.
     """
     if motif.code in ("discovered_attack", "discovered_check", "double_check"):
         return True
@@ -221,26 +225,26 @@ def _caused_by(motif: Motif, move: chess.Move, board_after: chess.Board) -> bool
 
 def _material_lost(motif: Motif, played: chess.Move, board_before: chess.Board) -> bool:
     """
-    Незащищённая фигура — настоящая потеря, а не размен: если ход сам взял фигуру на этом поле, соперник
-    отыгрывает её не с выигрышем, пока забранное не меньше того, что он выиграет взятием.
+    An unprotected piece is a real loss, not a trade: if the move itself captured a piece on this square, the opponent
+    wins it back not at a gain as long as what was taken is not less than what he wins by the capture.
     """
     if motif.square != played.to_square or not board_before.is_capture(played):
         return True
     captured = board_before.piece_at(played.to_square)
-    captured_value = PIECE_VALUE[captured.piece_type] if captured else PIECE_VALUE[chess.PAWN]  # на проходе
+    captured_value = PIECE_VALUE[captured.piece_type] if captured else PIECE_VALUE[chess.PAWN]  # en passant
     return (motif.value or 0) > captured_value
 
 
 def _first(motifs: Iterable[Motif], priority: tuple[str, ...]) -> list[Motif]:
-    """Мотивы, коды которых есть в списке priority, в порядке этого списка; остальные отбрасываются."""
+    """Motifs whose codes are in the priority list, in the order of this list; the others are discarded."""
     ranked = [m for m in motifs if m.code in priority]
     return sorted(ranked, key=lambda m: priority.index(m.code))
 
 
-# --- описание мотивов ------------------------------------------------------------------------------------
+# --- description of motifs ------------------------------------------------------------------------------------
 
 def _tactic_params(board: chess.Board, motif: Motif) -> dict[str, str]:
-    """Параметры шаблонов вилки, связки, сквозного удара, перегрузки, вскрытия (по позиции ``board``)."""
+    """Parameters of the templates for a fork, pin, skewer, overload, discovered attack (for the position ``board``)."""
     code = motif.code
     if code == "fork":
         return {
@@ -272,7 +276,7 @@ def _tactic_params(board: chess.Board, motif: Motif) -> dict[str, str]:
 
 
 def _tactic_arrows(motif: Motif, kind: str) -> tuple[list[dict], list[dict]]:
-    """Стрелки «кто бьёт → что» и подсветка целей."""
+    """Arrows "who attacks → what" and highlighting of targets."""
     arrows: list[dict] = []
     highlights: list[dict] = []
     code = motif.code
@@ -295,12 +299,12 @@ def _tactic_arrows(motif: Motif, kind: str) -> tuple[list[dict], list[dict]]:
     return arrows, highlights
 
 
-# --- что грозит --------------------------------------------------------------------------------------------
+# --- what is threatened --------------------------------------------------------------------------------------------
 
 def _confirmed_by_reply(motif: Motif, reply: chess.Move | None) -> bool:
     """
-    Подтверждает ли лучший ответ соперника, что мотив — настоящая причина: ответ использует именно его.
-    Без ответа движка (нет оценки) подтверждения нет — только мат, он не требует подтверждения.
+    Whether the opponent's best reply confirms that the motif is the real cause: the reply uses exactly it.
+    Without an engine reply (no evaluation) there is no confirmation — only mate, which needs none.
     """
     if motif.code == "mate_in":
         return True
@@ -322,9 +326,10 @@ def _confirmed_by_reply(motif: Motif, reply: chess.Move | None) -> bool:
 
 def _threat_sentence(board: chess.Board, motif: Motif, seed: str) -> tuple[dict, list[dict], list[dict]]:
     """
-    Предложение «что грозит», его стрелки и подсветка: мотив в пользу ``motif.color`` против другой стороны. В
-    комментарии к ходу ``motif.color`` — сторона, которая ходит в ``board`` (позиция после хода); в совете — сторона,
-    которая не ходит (мат в совете сюда не попадает).
+    The "what is threatened" sentence, its arrows and highlighting: a motif in favour of ``motif.color`` against the other
+    side. In a
+    move comment ``motif.color`` is the side that is on move in ``board`` (the position after the move); in advice — the side
+    that is not on move (mate does not get here in advice).
     """
     code = motif.code
     if code == "mate_in":
@@ -345,10 +350,10 @@ def _threat_sentence(board: chess.Board, motif: Motif, seed: str) -> tuple[dict,
     return _sentence("threat", code, seed, **_tactic_params(board, motif)), arrows, highlights
 
 
-# --- комментарий к ходу партии --------------------------------------------------------------------------------
+# --- comment on a game move --------------------------------------------------------------------------------
 
 def _idea_of(board_before: chess.Board, move: chess.Move, before_motifs: list[Motif]) -> Motif | None:
-    """Самая сильная тактика, которую создаёт сам ход (не существовавшая до него)."""
+    """The strongest tactic created by the move itself (one that did not exist before it)."""
     board_after = board_before.copy(stack=False)
     board_after.push(move)
     facts = analyze_move(board_before, move, before_motifs=before_motifs)
@@ -359,9 +364,10 @@ def _idea_of(board_before: chess.Board, move: chess.Move, before_motifs: list[Mo
 def _best_idea(board_before: chess.Board, best: chess.Move, seed: str,
                before_motifs: list[Motif]) -> tuple[list[dict], list[dict], list[dict]]:
     """
-    Предложения про упущенное и про лучший ход, стрелки и подсветка. Порядок выбора: лучший ход матует; упущенный
-    мат или незащищённая фигура, которую лучший ход берёт; тактика, созданная лучшим ходом; иначе — взятие,
-    позиционная идея (positional.move_idea) или общая фраза.
+    Sentences about what was missed and about the best move, arrows and highlighting. Selection order: the best move mates; a
+    missed
+    mate or an unprotected piece that the best move captures; a tactic created by the best move; otherwise — a capture,
+    a positional idea (positional.move_idea) or a general phrase.
     """
     mover = board_before.turn
     sentences: list[dict] = []
@@ -374,7 +380,7 @@ def _best_idea(board_before: chess.Board, best: chess.Move, seed: str,
     if board_after.is_checkmate():
         return [_sentence("best", "mate", seed, move=move)], arrows, highlights
 
-    # Упущенное: мат или незащищённая фигура, которые лучший ход и использует.
+    # Missed: a mate or an unprotected piece that the best move uses.
     for motif in before_motifs:
         if motif.color != mover:
             continue
@@ -416,11 +422,12 @@ def comment_for_move(
         classification: str,
 ) -> dict | None:
     """
-    Комментарий наставника к ходу партии: ``{"comment": [...], "arrows": [...], "highlights": [...]}`` или
-    None, если сказать нечего (обычный хорошо сыгранный ход). ``best_uci`` — лучший ход движка в позиции до хода,
-    ``reply_uci`` — лучший ответ соперника после сделанного хода (по нему проверяются причины ошибки);
-    ``classification`` — класс хода из разбора. Хороший ход комментируется, только если он матует или создаёт
-    тактику; плохой — оценкой, одной подтверждённой угрозой и идеей лучшего хода.
+    Coach comment on a game move: ``{"comment": [...], "arrows": [...], "highlights": [...]}`` or
+    None if there is nothing to say (an ordinary well-played move). ``best_uci`` is the engine's best move in the position
+    before the move,
+    ``reply_uci`` — the opponent's best reply after the move made (the causes of the mistake are checked against it);
+    ``classification`` — the move class from the analysis. A good move is commented only if it mates or creates
+    a tactic; a bad one — with an evaluation, one confirmed threat and the idea of the best move.
     """
     if played not in board_before.legal_moves:
         return None
@@ -450,7 +457,7 @@ def comment_for_move(
     arrows: list[dict] = []
     highlights: list[dict] = []
 
-    # Что грозит после хода — только подтверждённое ответом движка.
+    # What is threatened after the move — only what is confirmed by the engine's reply.
     reply = _legal(board_after, reply_uci)
     facts = analyze_move(board_before, played, before_motifs=before_motifs)
     for motif in _first(facts.allowed, THREAT_PRIORITY):
@@ -473,7 +480,7 @@ def comment_for_move(
 
 
 def _legal(board: chess.Board, uci: str | None) -> chess.Move | None:
-    """Ход из записи UCI, если он легален в позиции; пустая, нечитаемая запись или нелегальный ход — None."""
+    """The move from a UCI string if it is legal in the position; an empty, unreadable string or an illegal move — None."""
     if not uci:
         return None
     try:
@@ -483,12 +490,12 @@ def _legal(board: chess.Board, uci: str | None) -> chess.Move | None:
     return move if move in board.legal_moves else None
 
 
-# --- совет по позиции ------------------------------------------------------------------------------------------
+# --- advice on a position ------------------------------------------------------------------------------------------
 
 def advice_for_position(board: chess.Board, best_uci: str | None) -> dict:
     """
-    Совет для стороны, которая ходит: что грозит ей (тактика соперника), что есть у неё самой (мат, незащищённая
-    фигура соперника) и в чём идея лучшего хода. Без движка — только факты детектора.
+    Advice for the side to move: what threatens it (the opponent's tactic), what it has itself (mate, an unprotected
+    opponent piece) and what the idea of the best move is. Without an engine — only the detector's facts.
     """
     seed = board.fen()
     mover = board.turn
@@ -498,7 +505,7 @@ def advice_for_position(board: chess.Board, best_uci: str | None) -> dict:
     highlights: list[dict] = []
 
     own = [m for m in motifs if m.color == mover]
-    # Есть мат — больше ни о чём говорить не нужно.
+    # There is a mate — nothing else needs to be said.
     mate = next((m for m in own if m.code == "mate_in"), None)
     if mate is not None:
         move = _move_from_motif(board, mate)
@@ -510,7 +517,7 @@ def advice_for_position(board: chess.Board, best_uci: str | None) -> dict:
                 "highlights": [],
             }
 
-    # Что грозит игроку: тактика в пользу соперника (если бы ходил он).
+    # What threatens the player: a tactic in the opponent's favour (if he were on move).
     threats = [m for m in motifs if m.color != mover and m.code != "mate_in"]
     for motif in _first(threats, THREAT_PRIORITY):
         sentence, threat_arrows, threat_highlights = _threat_sentence(board, motif, seed)
@@ -532,7 +539,7 @@ def advice_for_position(board: chess.Board, best_uci: str | None) -> dict:
             sentences.append(_sentence("advice", "chance_capture", seed, piece=piece_label(board, loose.square)))
             highlights.append({"square": chess.square_name(loose.square), "kind": "target"})
 
-    # Угроз нет — одно слово о позиции: что важнее всего в структуре (таск B.4).
+    # No threats — one word about the position: what matters most in the structure (task B.4).
     if not any(m.color != mover and m.code != "mate_in" for m in motifs):
         features = positional_features(board, mover)
         if features:
@@ -545,12 +552,12 @@ def advice_for_position(board: chess.Board, best_uci: str | None) -> dict:
     return {"comment": sentences, "arrows": arrows, "highlights": highlights}
 
 
-# Число ступеней подсказки; номер ступени вне 1…HINT_STEPS приводится к ближайшей границе.
+# Number of hint steps; a step number outside 1…HINT_STEPS is brought to the nearest bound.
 HINT_STEPS = 3
 
 
 def _nudge(board: chess.Board, best: chess.Move | None, motifs: list[Motif], seed: str) -> dict:
-    """Ступень 1: в чём суть позиции, без названия полей и фигур."""
+    """Step 1: the essence of the position, without naming squares and pieces."""
     mover = board.turn
     own = [m for m in motifs if m.color == mover]
     mate = next((m for m in own if m.code == "mate_in"), None)
@@ -578,7 +585,7 @@ def _nudge(board: chess.Board, best: chess.Move | None, motifs: list[Motif], see
     return _sentence("hint", "quiet", seed)
 
 
-# Признак позиции → идея хода для намёка без движка: о чём подумать, если лучший ход неизвестен.
+# Position feature → the move idea for a nudge without an engine: what to think about if the best move is unknown.
 _FEATURE_NUDGES = {
     "king_center": "castle", "open_file": "open_file", "outpost": "outpost", "king_active": "king_active",
     "passed_own": "passed_push",
@@ -587,8 +594,8 @@ _FEATURE_NUDGES = {
 
 def _positional_nudge(board: chess.Board, best: chess.Move | None) -> str | None:
     """
-    Позиционная идея для ступени 1: с лучшим ходом — его идея (move_idea), без движка — главный признак позиции,
-    у которого есть идея хода. Поля и фигуры не называются.
+    Positional idea for step 1: with a best move — its idea (move_idea), without an engine — the main feature of the position,
+    which has a move idea. Squares and pieces are not named.
     """
     if best is not None:
         idea = move_idea(board, best)
@@ -601,9 +608,9 @@ def _positional_nudge(board: chess.Board, best: chess.Move | None) -> str | None
 
 def hint_for_position(board: chess.Board, best_uci: str | None, step: int) -> dict:
     """
-    Подсказка по ступеням: 1 — намёк словами (тема), 2 — какой фигурой ходить (поле подсвечено), 3 — полный совет со
-    стрелкой лучшего хода. Ступени раньше третьей не раскрывают ход. Без лучшего хода (нет движка) вторая ступень
-    невозможна — сразу полный совет по фактам детектора.
+    Tiered hint: 1 — a nudge in words (a theme), 2 — which piece to move (the square is highlighted), 3 — full advice with
+    an arrow of the best move. Steps before the third do not reveal the move. Without a best move (no engine) the second step
+    is impossible — straight to the full advice from the detector's facts.
     """
     step = max(1, min(HINT_STEPS, step))
     seed = board.fen()

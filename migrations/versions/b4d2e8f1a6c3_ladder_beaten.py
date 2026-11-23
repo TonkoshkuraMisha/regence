@@ -4,11 +4,11 @@ Revision ID: b4d2e8f1a6c3
 Revises: c9a4e7d2f5b8
 Create Date: 2026-11-18 12:00:00.000000
 
-Ступень игрока была индексом в списке соперников, поэтому новых соперников нельзя было вставить в лестницу, не
-сдвинув прогресс. Теперь хранится множество пройденных ступеней (ключей соперников). Перенос: по прежнему
-users.ladder_step игроку проставляются пройденными первые ladder_step ступеней прежнего списка — он заморожен ниже
-(OLD_RUNGS: 17 ступеней в порядке, в котором их видели игроки до 18.11.2026). Откат возвращает номер ступени:
-сколько ступеней прежнего списка пройдено подряд с начала.
+A player's rung used to be an index into the list of opponents, so new opponents could not be inserted into the ladder without
+shifting progress. Now a set of beaten rungs (opponent keys) is stored. Transfer: by the old
+users.ladder_step the first ladder_step rungs of the old list are marked as beaten for the player - the list is frozen below
+(OLD_RUNGS: 17 rungs in the order in which players saw them before 18.11.2026). The downgrade restores the rung number:
+how many rungs of the old list were beaten in a row from the start.
 """
 from collections.abc import Sequence
 
@@ -21,8 +21,8 @@ down_revision: str | Sequence[str] | None = 'c9a4e7d2f5b8'
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
-# Лестница до 18.11.2026 (ladder.rungs() до этой миграции): десять архетипов мастерской и семь исторических
-# ботов по измеренной силе.
+# The ladder before 18.11.2026 (ladder.rungs() before this migration): ten workshop archetypes and seven historical
+# bots by measured strength.
 OLD_RUNGS = (
     'archetype:rusher', 'archetype:quiet', 'archetype:pawn_keeper', 'archetype:cavalier', 'archetype:centralist',
     'archetype:fortress', 'archetype:adventurer', 'archetype:strategist', 'labourdonnais', 'philidor',

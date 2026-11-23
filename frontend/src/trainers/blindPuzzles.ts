@@ -1,8 +1,8 @@
 // --- FILE: frontend/src/trainers/blindPuzzles.ts ---
-// Задачи вслепую и визуализация (таск 19.6). Источник — остановки «что бы вы сыграли?» в партиях классики (14.7): у
-// каждой известен лучший ход и оценки альтернатив. Показывается позиция за N полуходов до остановки, затем доска
-// скрывается, N ходов объявляются нотацией, и игрок делает ход на пустой доске (оценка — как в остановках классики).
-// «Где фигура?»: после тех же N ходов указать поле названной фигуры.
+// Blind puzzles and visualization (task 19.6). Source - "what would you play?" stops in classic games (14.7): each
+// has a known best move and evaluations of alternatives. The position N plies before the stop is shown, then the board
+// is hidden, N moves are announced in notation, and the player makes a move on an empty board (evaluated as in classic stops).
+// "Where is the piece?": after the same N moves, point to the square of the named piece.
 
 import {Chess} from 'chess.js';
 import type {ClassicGame, ClassicStop} from '../content/classics';
@@ -12,14 +12,14 @@ export interface BlindTask {
     game: ClassicGame;
     stop: ClassicStop;
     startFen: string;
-    /** Объявляемые ходы в SAN, с номерами («12. Nf3», «12… e5»). */
+    /** Announced moves in SAN, with numbers ("12. Nf3", "12... e5"). */
     moves: string[];
     finalFen: string;
-    /** Сторона, которая ходит в итоговой позиции. */
+    /** Side that moves in the final position. */
     side: 'white' | 'black';
 }
 
-/** N — уровень (1–10 полуходов вслепую). */
+/** N - level (1-10 plies blind). */
 export function blindPlies(level: number): number {
     return Math.min(10, Math.max(1, level));
 }
@@ -53,7 +53,7 @@ export interface WhereQuestion {
     square: string;
 }
 
-/** «Где фигура?»: фигура, единственная такого вида и цвета на доске, — по возможности из тех, что ходили вслепую. */
+/** "Where is the piece?": a piece that is the only one of its kind and color on the board - preferably among those that moved blind. */
 export function whereQuestion(task: BlindTask, seed: number): WhereQuestion {
     const board = new Chess(task.finalFen);
     const placed: WhereQuestion[] = [];
@@ -65,6 +65,6 @@ export function whereQuestion(task: BlindTask, seed: number): WhereQuestion {
     const moved = new Set<string>();
     for (const san of task.moves) moved.add(replay.move(san.split(' ').pop()!).to);
     const preferred = unique.filter((p) => moved.has(p.square) && p.type !== 'k');
-    const pool = preferred.length ? preferred : unique;   // короли уникальны всегда — вопрос найдётся
+    const pool = preferred.length ? preferred : unique;   // kings are always unique - a question will be found
     return pool[Math.floor(rng(seed + 7)() * pool.length)];
 }

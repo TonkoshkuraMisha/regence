@@ -1,8 +1,8 @@
 // --- FILE: frontend/src/components/tools/PositionEditor.tsx ---
-// Редактор позиции (таск 16.4): расстановка фигур щелчком (выбранная фигура из палитры или ластик), очередь хода,
-// права рокировки (недоступные по расстановке — выключены), проверка корректности по правилам (chess.js).
-// Без сети: результат — FEN, который родитель получает через onUse. Используется в ToolsPage.tsx (вкладка редактора)
-// и в тренажёре памяти (trainers/MemoryGames.tsx берёт fenOf для показа расстановки игрока).
+// Position editor (task 16.4): placing pieces by click (the selected palette piece or an eraser), side to move,
+// castling rights (those unavailable for the placement are disabled), validity check by the rules (chess.js).
+// No network: the result is a FEN which the parent receives via onUse. Used in ToolsPage.tsx (the editor tab)
+// and in the memory trainer (trainers/MemoryGames.tsx takes fenOf to show the player's placement).
 
 import {useMemo, useState} from 'react';
 import {Chess} from 'chess.js';
@@ -12,11 +12,11 @@ import {validateFen} from '../chessboard/boardUtils';
 import {PuzzleBoard} from '../puzzles/PuzzleBoard';
 import {STANDARD_FEN} from '../../services/pgnExport';
 
-// Палитра: фигуры белых (заглавные) и чёрных (строчные) в обозначениях FEN; кисть 'x' — ластик.
+// Palette: white pieces (uppercase) and black pieces (lowercase) in FEN notation; brush 'x' is the eraser.
 const PIECES = ['K', 'Q', 'R', 'B', 'N', 'P', 'k', 'q', 'r', 'b', 'n', 'p'] as const;
-// Значки фигур для кнопок палитры (текста для игрока здесь нет).
+// Piece glyphs for the palette buttons (no player-facing text here).
 const GLYPHS: Record<string, string> = {K: '♔', Q: '♕', R: '♖', B: '♗', N: '♘', P: '♙', k: '♚', q: '♛', r: '♜', b: '♝', n: '♞', p: '♟'};
-// Четыре права рокировки: на каких полях должны стоять король и ладья, чтобы право можно было включить.
+// The four castling rights: on which squares the king and rook must stand for the right to be enabled.
 const CASTLING = [
     {flag: 'K', king: 'e1', rook: 'h1', piece: 'K', rookPiece: 'R'},
     {flag: 'Q', king: 'e1', rook: 'a1', piece: 'K', rookPiece: 'R'},
@@ -24,10 +24,10 @@ const CASTLING = [
     {flag: 'q', king: 'e8', rook: 'a8', piece: 'k', rookPiece: 'r'},
 ] as const;
 
-// Расстановка: поле («e4») → фигура в обозначении FEN.
+// Placement: square ("e4") -> piece in FEN notation.
 type Placement = Record<string, string>;
 
-/** Расстановка из первой части FEN. */
+/** Placement from the first part of a FEN. */
 export function placementOf(fen: string): Placement {
     const result: Placement = {};
     fen.split(' ')[0].split('/').forEach((row, i) => {
@@ -40,7 +40,7 @@ export function placementOf(fen: string): Placement {
     return result;
 }
 
-/** FEN из расстановки: права рокировки остаются только те, что возможны по положению короля и ладьи; взятия на проходе нет. */
+/** FEN from a placement: castling rights remain only those possible by king and rook position; no en passant. */
 export function fenOf(placement: Placement, turn: 'w' | 'b', castling: string): string {
     const rows: string[] = [];
     for (let rank = 8; rank >= 1; rank--) {
@@ -62,7 +62,7 @@ export function fenOf(placement: Placement, turn: 'w' | 'b', castling: string): 
     return `${rows.join('/')} ${turn} ${rights || '-'} - 0 1`;
 }
 
-/** Ошибка позиции (ключ каталога) или null: короли, пешки на крайних горизонталях, шах стороне, которая не ходит. */
+/** Position error (catalogue key) or null: kings, pawns on the edge ranks, check against the side not to move. */
 export function positionProblem(placement: Placement, fen: string): string | null {
     const pieces = Object.entries(placement);
     if (pieces.filter(([, p]) => p === 'K').length !== 1 || pieces.filter(([, p]) => p === 'k').length !== 1) return 'tools.editor.needKings';
@@ -78,13 +78,13 @@ export function positionProblem(placement: Placement, fen: string): string | nul
     return null;
 }
 
-// initialFen — с чего начать (текущая позиция доски); onUse — получить готовый FEN, вызывается только для корректной позиции.
+// initialFen - where to start (the board's current position); onUse - receive the ready FEN, called only for a valid position.
 interface Props {
     initialFen: string;
     onUse: (fen: string) => void;
 }
 
-/** Редактор: доска-холст, палитра, очередь хода, права рокировки и вердикт positionProblem. */
+/** Editor: canvas board, palette, side to move, castling rights and the positionProblem verdict. */
 export function PositionEditor({initialFen, onUse}: Props) {
     const {t} = useI18n();
     const [placement, setPlacement] = useState<Placement>(() => placementOf(initialFen));

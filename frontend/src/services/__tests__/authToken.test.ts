@@ -1,9 +1,9 @@
-// Токен входа в памяти и refresh-cookie (таск 17.5).
+// The login token in memory and the refresh cookie (task 17.5).
 
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {clearToken, getToken, logout, onTokenChange, refreshSession, restoreSession, setToken} from '../authToken';
 
-/** JWT с полем exp (подпись клиенту не нужна). */
+/** A JWT with an exp field (the client does not need the signature). */
 function jwt(expSeconds: number): string {
     const b64 = (value: object) => btoa(JSON.stringify(value)).replace(/=+$/, '');
     return `${b64({alg: 'HS256'})}.${b64({sub: '1', exp: expSeconds})}.signature`;
@@ -22,8 +22,8 @@ afterEach(() => {
     localStorage.clear();
 });
 
-describe('сессия входа', () => {
-    it('при загрузке убирает старый токен из localStorage и восстанавливает вход по cookie', async () => {
+describe('login session', () => {
+    it('on load removes the old token from localStorage and restores the login by cookie', async () => {
         localStorage.setItem('token', 'old-day-long-jwt');
         const fetchMock = vi.fn(async () => ok({access_token: 'fresh'}));
         vi.stubGlobal('fetch', fetchMock);
@@ -36,14 +36,14 @@ describe('сессия входа', () => {
         expect(init).toMatchObject({method: 'POST', credentials: 'include'});
     });
 
-    it('одновременные обновления делят один запрос', async () => {
+    it('simultaneous refreshes share one request', async () => {
         const fetchMock = vi.fn(async () => ok({access_token: 'fresh'}));
         vi.stubGlobal('fetch', fetchMock);
         await Promise.all([refreshSession(), refreshSession(), refreshSession()]);
         expect(fetchMock).toHaveBeenCalledOnce();
     });
 
-    it('без сессии — гость; неудача не стирает вход, случившийся во время запроса', async () => {
+    it('without a session — a guest; a failure does not erase a login that happened during the request', async () => {
         let answer: (r: Response) => void = () => undefined;
         vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>((resolve) => {
             answer = resolve;
@@ -60,12 +60,12 @@ describe('сессия входа', () => {
         expect(getToken()).toBeNull();
     });
 
-    it('токен обновляется за минуту до истечения', async () => {
+    it('the token is refreshed a minute before expiry', async () => {
         vi.useFakeTimers();
         vi.setSystemTime(new Date('2026-11-14T12:00:00Z'));
         const fetchMock = vi.fn(async () => ok({access_token: 'next'}));
         vi.stubGlobal('fetch', fetchMock);
-        setToken(jwt(Date.now() / 1000 + 15 * 60));  // 15 минут
+        setToken(jwt(Date.now() / 1000 + 15 * 60));  // 15 minutes
 
         await vi.advanceTimersByTimeAsync(13 * 60 * 1000);
         expect(fetchMock).not.toHaveBeenCalled();
@@ -74,7 +74,7 @@ describe('сессия входа', () => {
         expect(getToken()).toBe('next');
     });
 
-    it('выход сразу забывает токен и стирает сессию на сервере', async () => {
+    it('logout forgets the token at once and erases the session on the server', async () => {
         const fetchMock = vi.fn(async () => ({ok: true, status: 204}) as Response);
         vi.stubGlobal('fetch', fetchMock);
         const seen: (string | null)[] = [];

@@ -1,7 +1,8 @@
 # --- FILE: src/models/arena.py ---
 """
-Арены — турниры между людьми (таск 17.2): идут заданное время, игроки играют партию за партией с теми, кто тоже ждёт;
-очки за партию, серия побед удваивает очки («огонь»). Правила — src/services/arena.py.
+Arenas - tournaments between people (task 17.2): run for a set time, players play game after game against those who are also
+waiting;
+points per game, a win streak doubles the points ("fire"). The rules are in src/services/arena.py.
 """
 
 from datetime import datetime
@@ -11,49 +12,52 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from src.models.base import Base, one_of
 
-# Форматы турнира между людьми (src/services/arena.py, arena_schedule.Slot.format).
+# Formats of a tournament between people (src/services/arena.py, arena_schedule.Slot.format).
 ARENA_FORMATS = ("arena", "swiss", "match")
-# Итог партии арены; «*» — отменённая или не засчитанная партия, NULL — партия ещё идёт.
+# The result of an arena game; "*" - a cancelled or uncounted game, NULL - the game is still in progress.
 ARENA_GAME_RESULTS = ("1-0", "0-1", "1/2-1/2", "*")
 
 
 class Arena(Base):
     """
-    Турнир между людьми: арена по времени, швейцарка по турам или матч двух конференций (два тура, пары по доскам —
-    src/services/conference_match_rules.py). Создаётся по расписанию
-    (src/services/arena_schedule.py) или как следующее деление переполненной арены (parent_id).
+    A tournament between people: a timed arena, a Swiss by rounds or a match of two conferences (two rounds, pairings by boards
+    -
+    src/services/conference_match_rules.py). Created by the schedule
+    (src/services/arena_schedule.py) or as the next division of an overflowing arena (parent_id).
     """
     __tablename__ = "arenas"
     __table_args__ = (one_of("arenas", "format", ARENA_FORMATS),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    # Код расписания (например, «blitz-3+2»), чтобы не создавать одну и ту же арену дважды; пусто — разовая арена.
+    # The schedule code (for example "blitz-3+2"), so as not to create the same arena twice; empty - a one-off arena.
     schedule_key: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
     base_time_ms: Mapped[int] = mapped_column(Integer)
     increment_ms: Mapped[int] = mapped_column(Integer, default=0)
     starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
     ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
-    # arena — играешь, пока идёт время; swiss — заданное число туров, пары по очкам (src/services/arena.py); match —
-    # матч конференций: хозяин — conference, гость — opponent_conference.
+    # arena - play while the time runs; swiss - a set number of rounds, pairings by points (src/services/arena.py); match -
+    # a conference match: the host is conference, the guest is opponent_conference.
     format: Mapped[str] = mapped_column(String(16), default="arena", server_default="arena")
     rounds: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     current_round: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
-    # Швейцарка закончена (все туры сыграны или участников не хватило) — момент окончания.
+    # The Swiss has finished (all rounds were played or there were not enough participants) - the moment of finishing.
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    # Деления при переполнении (33.2): второе и дальше — арены с parent_id первой: те же время и правила, своя таблица.
+    # Divisions on overflow (33.2): the second and further ones are arenas with the parent_id of the first: the same time and
+    # rules, their own table.
     division: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
     parent_id: Mapped[int | None] = mapped_column(ForeignKey("arenas.id", ondelete="CASCADE"), nullable=True, index=True)
-    # Конференция, по расписанию которой идёт арена (33.4, src/services/arena_schedule.py); пусто — разовая арена.
+    # The conference whose schedule the arena runs by (33.4, src/services/arena_schedule.py); empty - a one-off arena.
     conference: Mapped[str | None] = mapped_column(String(16), nullable=True)
-    # Матч конференций: конференция-гость (хозяин — conference); у остальных форматов пусто.
+    # A conference match: the guest conference (the host is conference); empty for other formats.
     opponent_conference: Mapped[str | None] = mapped_column(String(16), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class ArenaPlayer(Base):
     """
-    Участник арены: очки, число партий и побед, текущая серия побед, а также рейтинг и конференция на момент входа —
-    они не меняются до конца арены.
+    An arena participant: points, number of games and wins, the current win streak, and also the rating and conference at the
+    moment of joining -
+    they do not change until the end of the arena.
     """
     __tablename__ = "arena_players"
     __table_args__ = (UniqueConstraint("arena_id", "user_id", name="uq_arena_player"),)
@@ -64,36 +68,39 @@ class ArenaPlayer(Base):
     score: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     games: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     wins: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
-    # Побед подряд: начиная с arena.FIRE_AFTER (двух) следующая партия приносит вдвое больше очков.
+    # Consecutive wins: starting from arena.FIRE_AFTER (two) the next game brings twice as many points.
     streak: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
-    # Рейтинг в категории арены на момент входа — для пар и таблицы.
+    # The rating in the arena's category at the moment of joining - for pairings and the table.
     rating: Mapped[int] = mapped_column(Integer)
-    # Швейцарка: свободных туров при нечётном числе игроков (каждому — не больше одного).
+    # Swiss: bye rounds with an odd number of players (each gets at most one).
     byes: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
-    # Конференция игрока на момент входа (33.6): его очки идут в её зачёт; пусто — страна в профиле не указана.
+    # The player's conference at the moment of joining (33.6): their points go to its standings; empty - no country is set in
+    # the profile.
     conference: Mapped[str | None] = mapped_column(String(16), nullable=True)
-    # Матч конференций: доска игрока в составе своей стороны (с 1); пусто — запасной или состав ещё не объявлен.
+    # A conference match: the player's board within their side (from 1); empty - a reserve or the line-up is not announced yet.
     board: Mapped[int | None] = mapped_column(Integer, nullable=True)
     joined_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class ArenaReminder(Base):
-    """Напоминание о начале арены (33.4): игрок нажал «напомнить» — незадолго до старта придёт уведомление."""
+    """A reminder about the arena start (33.4): the player pressed "remind" - shortly before the start a notification will
+    arrive."""
     __tablename__ = "arena_reminders"
     __table_args__ = (UniqueConstraint("arena_id", "user_id", name="uq_arena_reminder"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     arena_id: Mapped[int] = mapped_column(ForeignKey("arenas.id", ondelete="CASCADE"), index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
-    # Момент отправки уведомления; пусто — ещё не отправлено.
+    # The moment the notification was sent; empty - not sent yet.
     sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class ArenaGame(Base):
     """
-    Партия арены: ссылка на партию в games, кто играл каким цветом, результат и очки сторон. Пока result пуст, партия
-    идёт — итоги арены её ждут.
+    An arena game: a reference to the game in games, who played which colour, the result and the points of the sides. While
+    result is empty the game
+    is in progress - the arena results wait for it.
     """
     __tablename__ = "arena_games"
     __table_args__ = (one_of("arena_games", "result", ARENA_GAME_RESULTS),)
@@ -106,19 +113,19 @@ class ArenaGame(Base):
     result: Mapped[str | None] = mapped_column(String(8), nullable=True)
     white_points: Mapped[int | None] = mapped_column(Integer, nullable=True)
     black_points: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    # «Берсерк» (33.3): сторона до своего первого хода взяла половину времени без добавки — победа даёт лишнее очко.
+    # "Berserk" (33.3): the side took half the time without increment before its first move - a win gives an extra point.
     white_berserk: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     black_berserk: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
-    # Тур швейцарки (у арены — 0).
+    # The Swiss round (0 for an arena).
     round: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class ArenaAward(Base):
     """
-    Призовое место в законченной арене или швейцарке (таск 33.5): тройка таблицы итогов. Записывает плановая задача
-    arena_awards (src/services/arena_awards.py), когда итоги окончательные; дальше из этой записи — уведомление
-    призёру, кубки в профиле и достижения «призёр арены» / «победитель арены».
+    A prize place in a finished arena or Swiss (task 33.5): the top three of the results table. Written by the scheduled task
+    arena_awards (src/services/arena_awards.py) when the results are final; then from this record - a notification to
+    the winner, cups in the profile and the "arena prize-winner" / "arena winner" achievements.
     """
     __tablename__ = "arena_awards"
     __table_args__ = (
@@ -127,9 +134,10 @@ class ArenaAward(Base):
     )
 
     arena_id: Mapped[int] = mapped_column(ForeignKey("arenas.id", ondelete="CASCADE"), primary_key=True)
-    # Место в таблице итогов: 1, 2 или 3 (строкой — общий помощник one_of для CHECK).
+    # The place in the results table: 1, 2 or 3 (as a string - the shared one_of helper for CHECK).
     place: Mapped[str] = mapped_column(String(1), primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
-    # Категория контроля арены (rating.classify_time_control): по ней кубки в профиле делятся на пулю, блиц и т. д.
+    # The arena's time-control category (rating.classify_time_control): by it cups in the profile are split into bullet, blitz,
+    # etc.
     category: Mapped[str] = mapped_column(String(16))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

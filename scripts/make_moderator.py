@@ -1,8 +1,8 @@
 # --- FILE: scripts/make_moderator.py ---
 """
-Роль модератора (таск 17.4): выдать или снять.
+Moderator role (task 17.4): grant or revoke.
 
-    python scripts/make_moderator.py <имя игрока> [--revoke]
+    python scripts/make_moderator.py <player name> [--revoke]
 """
 
 import argparse
@@ -14,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 
 async def main(username: str, revoke: bool) -> None:
-    """Выдаёт или отзывает роль модератора у указанного пользователя."""
+    """Grants or revokes the moderator role for the given user."""
     from sqlalchemy import func, select
 
     from src.db.session import AsyncSessionLocal
@@ -23,10 +23,10 @@ async def main(username: str, revoke: bool) -> None:
     async with AsyncSessionLocal() as db:
         user = (await db.execute(select(User).where(func.lower(User.username) == username.lower()))).scalar_one_or_none()
         if user is None:
-            raise SystemExit(f"Игрок {username} не найден")
+            raise SystemExit(f"Player {username} not found")
         user.is_moderator = not revoke
         await db.commit()
-        print(f"{user.username}: модератор = {user.is_moderator}")
+        print(f"{user.username}: moderator = {user.is_moderator}")
 
 
 if __name__ == "__main__":

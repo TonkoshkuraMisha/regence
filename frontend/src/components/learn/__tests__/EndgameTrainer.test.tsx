@@ -1,5 +1,5 @@
-// Эндшпильный тренажёр (таск 14.4): данные упражнений, ответ идеального защитника, упущенный выигрыш, мат против
-// оптимума, удержанная ничья; запасной ответ движка при недоступных таблицах. Таблицы подменены.
+// Endgame trainer (task 14.4): exercise data, the perfect defender's reply, a missed win, mate against
+// the optimum, a held draw; the engine's fallback reply when the tablebases are unavailable. The tables are mocked.
 
 import {render, screen} from '@testing-library/react';
 import {MemoryRouter, Route, Routes} from 'react-router-dom';
@@ -29,8 +29,8 @@ function open(id: string) {
 
 afterEach(() => vi.unstubAllGlobals());
 
-describe('данные упражнений', () => {
-    it('34 законные позиции, у матов — оптимум не больше лимита', () => {
+describe('exercise data', () => {
+    it('34 legal positions, for mates — the optimum is within the limit', () => {
         expect(EXERCISES).toHaveLength(34);
         for (const e of EXERCISES) {
             const game = new Chess(e.fen);
@@ -40,52 +40,52 @@ describe('данные упражнений', () => {
         }
     });
 
-    it('список по целям', () => {
+    it('a list by goals', () => {
         render(<MemoryRouter><EndgamesPage/></MemoryRouter>);
         expect(screen.getAllByTestId(/^endgame-/)).toHaveLength(34);
-        expect(screen.getByTestId('endgame-lucena')).toHaveTextContent('Лусены');
+        expect(screen.getByTestId('endgame-lucena')).toHaveTextContent('Lucena');
     });
 });
 
-describe('игра против таблиц', () => {
-    it('ход игрока — защитник отвечает лучшим ходом, счётчик растёт', async () => {
+describe('playing against the tables', () => {
+    it('the player\'s move — the defender replies with the best move, the counter grows', async () => {
         const fetchMock = stubProbe(() => ({category: 'loss', dtm: -16, dtz: -16,
             best: {uci: 'e5e4', san: 'Ke4', category: 'win', dtm: 15, dtz: 15}}));
         open('kq_center');
         await playMove('b1', 'f1');
-        expect(await screen.findByTestId('endgame-moves')).toHaveTextContent('Ходов: 1 · оптимум 9 · лимит 17');
+        expect(await screen.findByTestId('endgame-moves')).toHaveTextContent('Moves: 1 · optimum 9 · limit 17');
         expect(cell('e4').querySelector('img')?.getAttribute('alt')).toBe('bk');
         const body = JSON.parse(String((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body));
         expect(body.fen).toContain('8/8/8/4k3/8/8/8/K4Q2 b');
     });
 
-    it('ход, упускающий выигрыш, — задание не выполнено', async () => {
+    it('a move that lets the win slip — the task is not completed', async () => {
         stubProbe(() => ({category: 'draw', dtm: 0, dtz: 0, best: {uci: 'e5e4', san: 'Ke4', category: 'draw', dtm: 0, dtz: 0}}));
         open('kq_center');
         await playMove('b1', 'b8');
-        expect(await screen.findByTestId('endgame-result')).toHaveTextContent('упустил выигрыш');
+        expect(await screen.findByTestId('endgame-result')).toHaveTextContent('let the win slip');
     });
 
-    it('защита: ход, который проигрывает, — провал', async () => {
+    it('defence: a move that loses — a failure', async () => {
         stubProbe(() => ({category: 'win', dtm: 9, dtz: 9, best: null}));
         open('kp_opposition_def');
         await playMove('e8', 'd7');
-        expect(await screen.findByTestId('endgame-result')).toHaveTextContent('проигрывает');
+        expect(await screen.findByTestId('endgame-result')).toHaveTextContent('That move loses');
     });
 });
 
-describe('таблицы недоступны — отвечает движок', () => {
-    it('спорная оценка движка не обрывает задание, видна пометка', async () => {
+describe('tablebases unavailable — the engine replies', () => {
+    it('a disputed engine evaluation does not break the task, a note is visible', async () => {
         stubProbe(() => ({category: 'maybe-win', dtm: null, dtz: null, source: 'engine',
             best: {uci: 'e5e4', san: 'Ke4', category: null, dtm: null, dtz: null}}));
         open('kq_center');
         await playMove('b1', 'f1');
-        expect(await screen.findByTestId('endgame-engine-fallback')).toHaveTextContent('Таблицы эндшпиля сейчас недоступны');
+        expect(await screen.findByTestId('endgame-engine-fallback')).toHaveTextContent('The endgame tablebases are unavailable right now');
         expect(screen.queryByTestId('endgame-result')).toBeNull();
         expect(cell('e4').querySelector('img')?.getAttribute('alt')).toBe('bk');
     });
 
-    it('правила вердикта: таблицам — строго, движку — только явная оценка', () => {
+    it('verdict rules: for the tables — strict, for the engine — only a clear evaluation', () => {
         const probe = (category: string, source: 'tablebase' | 'engine') => ({category, dtm: null, dtz: null, best: null, source});
         expect(trainerVerdict(probe('maybe-loss', 'tablebase'), true)).toBe('winLost');
         expect(trainerVerdict(probe('maybe-loss', 'engine'), true)).toBe('continue');

@@ -1,8 +1,8 @@
 // --- FILE: frontend/src/components/chessboard/AuxBoard.tsx ---
-// Вспомогательная доска (таск 11.4): копия позиции партии, где игрок разыгрывает варианты за обе стороны,
-// пока соперник думает. На партию не влияет; «К позиции партии» — снова текущая позиция. Открывается из панели
-// наставника (CoachPanel), то есть только в партии с ботом и на свободной доске. Всё считается в браузере
-// (chess.js), сервер не участвует.
+// Auxiliary board (task 11.4): a copy of the game position where the player plays out variations for both sides
+// while the opponent is thinking. It does not affect the game; "To game position" restores the current position. Opened from the
+// coach panel (CoachPanel), so only in a game against a bot and on the free board. Everything is computed in the browser
+// (chess.js), the server is not involved.
 
 import {useEffect, useState} from 'react';
 import type {PointerEvent as ReactPointerEvent, ReactNode} from 'react';
@@ -16,20 +16,20 @@ import {XrayOverlay} from '../xray/XrayOverlay';
 import type {XrayMode} from '../xray/useXraySettings';
 
 interface Props {
-    /** Текущая позиция партии. */
+    /** Current game position. */
     fen: string;
     flipped: boolean;
     lightColor: string;
     darkColor: string;
     renderPiece: (piece: { type: string; color: string }) => ReactNode;
     onClose: () => void;
-    /** Режимы «Рентгена» основной доски (таск B.5); не передано — слоя нет (рентген в этой партии недоступен). */
+    /** X-ray modes of the main board (task B.5); not passed means no layer (x-ray is unavailable in this game). */
     xrayModes?: Set<XrayMode>;
-    /** «Показать за соперника»: рентген за сторону, которая не ходит на вспомогательной доске. */
+    /** "Show for the opponent": x-ray for the side that is not to move on the auxiliary board. */
     xrayForOpponent?: boolean;
 }
 
-/** Поле вспомогательной доски под точкой экрана. */
+/** Square of the auxiliary board under a screen point. */
 function auxSquareAt(x: number, y: number): string | null {
     const elements = typeof document.elementsFromPoint === 'function' ? document.elementsFromPoint(x, y) : [];
     const cell = elements.find((el) => el instanceof HTMLElement && el.dataset.auxSquare);
@@ -45,22 +45,22 @@ interface Drag {
     moved: boolean;
 }
 
-// Сдвиг указателя, с которого нажатие считается перетаскиванием, а не щелчком по фигуре.
+// Pointer travel after which a press counts as a drag rather than a click on a piece.
 const DRAG_THRESHOLD_PX = 4;
 
 /**
- * Вспомогательная доска. Берёт позицию партии (fen) один раз — при открытии и по кнопке «К позиции партии»;
- * дальше ходы партии её не двигают, чтобы разбираемый вариант не пропал.
+ * Auxiliary board. Takes the game position (fen) once: on opening and on the "To game position" button;
+ * afterwards game moves do not move it, so the variation being studied is not lost.
  */
 export function AuxBoard({fen, flipped, lightColor, darkColor, renderPiece, onClose, xrayModes, xrayForOpponent = false}: Props) {
     const {t} = useI18n();
-    // Позиция, с которой начат разбор, и сыгранные на доске ходы (SAN): доска строится из них заново.
+    // Position the analysis started from and the moves played on the board (SAN): the board is rebuilt from them.
     const [sourceFen, setSourceFen] = useState(fen);
     const [moves, setMoves] = useState<string[]>([]);
     const [selected, setSelected] = useState<string | null>(null);
-    // Превращение пешки ждёт выбора фигуры (раньше всегда ферзь — недопревращение не разыграть).
+    // A pawn promotion waits for a piece choice (it used to be always a queen, so underpromotion could not be played).
     const [promotion, setPromotion] = useState<PendingPromotion | null>(null);
-    // Перетаскивание фигуры (таск B.5): как на основной доске, ход — по полю под указателем при отпускании.
+    // Piece dragging (task B.5): as on the main board, the move goes to the square under the pointer on release.
     const [drag, setDrag] = useState<Drag | null>(null);
 
     const board = new Chess(sourceFen);
@@ -98,7 +98,7 @@ export function AuxBoard({fen, flipped, lightColor, darkColor, renderPiece, onCl
         setSelected(piece && piece.color === board.turn() ? square : null);
     };
 
-    /** Ход from → to, если он легален; превращение — через выбор фигуры. */
+    /** Move from -> to if it is legal; promotion goes through a piece choice. */
     const attempt = (from: string, to: string) => {
         const candidates = board.moves({square: from as never, verbose: true}).filter((m) => m.to === to);
         if (candidates.length === 0) return;
@@ -114,8 +114,8 @@ export function AuxBoard({fen, flipped, lightColor, darkColor, renderPiece, onCl
         setDrag({from: square, startX: event.clientX, startY: event.clientY, x: event.clientX, y: event.clientY, moved: false});
     };
 
-    // Пока фигуру тащат, движение и отпускание ловятся на window: указатель может уйти за край доски. Эффект
-    // намеренно без списка зависимостей — подписка обновляется на каждом рендере и видит свежие drag и attempt.
+    // While a piece is being dragged, movement and release are caught on window: the pointer may leave the board edge. The effect
+    // deliberately has no dependency list: the subscription refreshes on every render and sees fresh drag and attempt.
     useEffect(() => {
         if (!drag) return;
         const move = (event: PointerEvent) => setDrag((current) => current && {
@@ -138,7 +138,7 @@ export function AuxBoard({fen, flipped, lightColor, darkColor, renderPiece, onCl
     });  // eslint-disable-line react-hooks/exhaustive-deps
 
     const dragged = drag?.moved ? board.get(drag.from as never) : null;
-    // Сторона рентгена: обычно та, чей ход на этой доске; при «Показать за соперника» — противоположная.
+    // X-ray side: usually the one to move on this board; with "Show for the opponent" it is the opposite.
     const xraySide = board.turn() === (xrayForOpponent ? 'w' : 'b') ? 'b' : 'w';
 
     const undo = () => {

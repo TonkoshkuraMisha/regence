@@ -2,15 +2,15 @@
 
 """normalize_stored_pgn
 
-Архив партий чемпионов, импортированный на Windows, хранил PGN с пустой строкой после каждой
-строки: файл архива записывался в текстовом режиме поверх уже виндовых переводов строк (\\r\\r\\n).
-По стандарту PGN пустая строка завершает партию, поэтому сервер видел партию из одного заголовка
-без ходов, и разбор движком «успешно» возвращал пустой анализ с точностью 100 %.
+The archive of champions' games imported on Windows stored PGN with a blank line after every
+line: the archive file was written in text mode on top of already Windows line endings (\\r\\r\\n).
+By the PGN standard a blank line ends the game, so the server saw a game consisting of a single header
+without moves, and the engine parse "successfully" returned an empty analysis with 100 % accuracy.
 
-Миграция приводит такие PGN к каноническому виду (заголовки подряд, одна пустая строка, ходы),
-тем же алгоритмом, что src.services.game_engine.normalize_pgn_text (скопирован сюда, чтобы
-миграция не зависела от будущих правок кода). Пустые анализы пересчитаются сами: кэш анализа
-сверяет число ходов с PGN. Даунгрейд ничего не делает — портить данные обратно незачем.
+The migration brings such PGNs to the canonical form (headers in a row, one blank line, moves),
+with the same algorithm as src.services.game_engine.normalize_pgn_text (copied here so that
+the migration does not depend on future code changes). Empty analyses are recomputed on their own: the analysis cache
+compares the number of moves with the PGN. The downgrade does nothing - there is no reason to corrupt data back.
 
 Revision ID: a4d2e8f1c6b9
 Revises: c3f8a2e1d9b7
@@ -60,7 +60,7 @@ def upgrade() -> None:
         if not rows:
             break
         last_id = rows[-1].id
-        # Целые PGN (блок заголовков + блок ходов) не трогаем — только испорченные.
+        # Whole PGNs (header block + move block) are left alone - only the corrupted ones.
         updates = [
             {"row_id": row.id, "new_pgn": _normalize(row.pgn)}
             for row in rows
@@ -74,7 +74,7 @@ def upgrade() -> None:
 
 
 def _has_blank_line_inside(pgn_text: str) -> bool:
-    """Лишняя пустая строка внутри заголовков или ходов — признак испорченного PGN."""
+    """An extra blank line inside the headers or the moves is a sign of a corrupted PGN."""
     blocks = [b for b in re.split(r"\n\s*\n", _LINE_BREAK_RE.sub("\n", pgn_text).strip()) if b.strip()]
     return len(blocks) > 2
 

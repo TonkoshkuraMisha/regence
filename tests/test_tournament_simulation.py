@@ -1,5 +1,5 @@
 # --- FILE: tests/test_tournament_simulation.py ---
-"""Симуляция партий ботов между собой в турнире (таск 15.2)."""
+"""Simulation of bot-versus-bot games in a tournament (task 15.2)."""
 
 import chess
 import pytest
@@ -29,7 +29,7 @@ def fools_mate(white, black):
 
 
 class FirstMoveBot:
-    """Детерминированный «бот»: первый легальный ход по алфавиту."""
+    """Deterministic "bot": the first legal move in alphabetical order."""
 
     def choose_move(self, fen):
         board = chess.Board(fen)
@@ -40,7 +40,7 @@ def test_bot_games_of_the_first_round_are_queued(client, token_user_1, published
     t = create(client, token_user_1)
     bot_games = [g for g in t["games"] if g["round"] == 1 and t["my_seat"] not in (g["white_seat"], g["black_seat"])]
     assert published_simulations == [g["id"] for g in bot_games]
-    assert len(bot_games) == 1  # в туре на четверых одна партия ботов, вторая — игрока
+    assert len(bot_games) == 1  # in a round of four there is one bot game, the other is the player's
 
 
 @pytest.mark.asyncio
@@ -49,7 +49,7 @@ async def test_simulated_game_is_saved_marked_and_recorded(client, db_session, t
     tgame_id = next(g["id"] for g in t["games"] if g["round"] == 1 and t["my_seat"] not in (g["white_seat"], g["black_seat"]))
 
     follow_up = await sim.simulate(db_session, tgame_id, play=fools_mate)
-    assert follow_up == []  # тур не закрыт: партия игрока не сыграна
+    assert follow_up == []  # the round is not closed: the player's game has not been played
 
     tgame = await db_session.get(TournamentGame, tgame_id)
     await db_session.refresh(tgame)
@@ -60,7 +60,7 @@ async def test_simulated_game_is_saved_marked_and_recorded(client, db_session, t
     assert f'[White "{sim._pgn_name(players[tgame.white_seat])}"]' in game.pgn
     assert "Qh4#" in game.pgn and game.termination == "checkmate"
 
-    # Повторная постановка той же партии не играет её второй раз.
+    # Queueing the same game again does not play it a second time.
     assert await sim.simulate(db_session, tgame_id, play=fools_mate) == []
     assert (await db_session.execute(select(func.count(Game.id)))).scalar_one() == 1
 
@@ -89,7 +89,7 @@ async def test_next_round_bot_games_open_after_the_players_game(
 
 @pytest.mark.asyncio
 async def test_bots_only_round_continues_by_itself(client, db_session, token_user_1):
-    # На выбывание из 8: игрок (слабейший) играет с первым номером, три матча — боты между собой.
+    # Knockout of 8: the player (the weakest) plays seed 1, the three other matches are bots against each other.
     bots = ["morphy", "philidor", "staunton", "anderssen", "paulsen", "zukertort"]
     participants = [{"kind": "bot", "id": b} for b in bots] + [{"kind": "archetype", "id": "combinator"}]
     t = client.post(API, headers=auth(token_user_1),
@@ -97,10 +97,10 @@ async def test_bots_only_round_continues_by_itself(client, db_session, token_use
     tournament = await db_session.get(Tournament, t["id"])
     queue = [g.id for g in await service.simulatable_games(db_session, tournament)]
     assert len(queue) == 3
-    while queue:  # как воркер: каждая сыгранная партия возвращает следующие
+    while queue:  # like a worker: every game played returns the next ones
         queue = queue[1:] + await sim.simulate(db_session, queue[0], play=fools_mate)
     await db_session.refresh(tournament)
-    assert tournament.current_round == 1  # ждём партию игрока
+    assert tournament.current_round == 1  # waiting for the player's game
 
 
 @pytest.mark.asyncio
@@ -114,7 +114,7 @@ async def test_simulated_game_hidden_from_bot_archive(client, db_session, token_
     white = (await db_session.get(User, game.white_player_id)).username
     archive = client.get(f"/api/v1/profile/{white}/games").json()
     assert archive["total"] == 0 and archive["items"] == []
-    # А сама партия открывается по ссылке из турнира.
+    # And the game itself opens via the link from the tournament.
     assert "Qh4#" in client.get(f"/api/v1/profile/games/{game.id}/pgn").text
 
 
@@ -141,7 +141,7 @@ def test_simulation_bots_search_shallower():
 
     morphy = TournamentPlayer(seat=1, kind="bot", bot_key="morphy", rating=1900)
     bot = sim.bot_for(morphy)
-    assert bot is not BOT_INSTANCES["morphy"]  # общий экземпляр бота не трогаем
+    assert bot is not BOT_INSTANCES["morphy"]  # we do not touch the shared bot instance
     assert bot.search_depth <= sim.SIM_MAX_DEPTH and bot.time_limit <= sim.SIM_TIME_LIMIT_S
     archetype = sim.bot_for(TournamentPlayer(seat=2, kind="archetype", bot_key="archetype:rusher", rating=700))
     assert archetype.search_depth <= sim.SIM_MAX_DEPTH

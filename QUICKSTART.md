@@ -1,10 +1,10 @@
 <!-- --- FILE: QUICKSTART.md --- -->
 
-# Быстрый старт и восстановление regence на новом хосте
+# Quick start and recovery of regence on a new host
 
-## 1. Установка с нуля (Холодный старт на новом ПК)
+## 1. Installation from scratch (cold start on a new PC)
 
-### Шаг 1. Клонирование и переменные окружения
+### Step 1. Clone and environment variables
 
     git clone https://github.com/TonkoshkuraMisha/regence.git regence
     cd regence
@@ -13,22 +13,22 @@
     Copy-Item .env.example .env -ErrorAction SilentlyContinue
     Copy-Item frontend/.env.example frontend/.env -ErrorAction SilentlyContinue
 
-### Шаг 2. Поднятие базы данных и Redis
+### Step 2. Bring up the database and Redis
 
     docker compose up -d db redis
     docker compose ps
 
-### Шаг 3. Настройка Python-окружения, миграций и движка Stockfish (Бэкенд)
+### Step 3. Set up the Python environment, migrations and the Stockfish engine (backend)
 
-    uv sync                       # создаёт .venv: Python 3.14 из .python-version, пакеты строго по uv.lock
+    uv sync                       # creates .venv: Python 3.14 from .python-version, packages strictly per uv.lock
     .\.venv\Scripts\Activate.ps1
-    python scripts/setup_stockfish.py     # движок Stockfish в bin/ (без него работают все тесты, но не боты и разбор)
-    python scripts/download_champions.py  # портреты шахматистов со свободной лицензией (Викисклад)
-    alembic upgrade head                  # схема базы
-    python -m scripts.import_puzzles      # задачи из data/puzzles/ в базу (повторный запуск безопасен)
-    python -m src.db.seed                 # по желанию: архив партий чемпионов мира
+    python scripts/setup_stockfish.py     # the Stockfish engine into bin/ (all tests work without it, but bots and analysis do not)
+    python scripts/download_champions.py  # freely licensed portraits of chess players (Wikimedia Commons)
+    alembic upgrade head                  # database schema
+    python -m scripts.import_puzzles      # puzzles from data/puzzles/ into the database (re-running is safe)
+    python -m src.db.seed                 # optional: archive of world champions' games
 
-### Шаг 4. Установка пакетов Фронтенда
+### Step 4. Install the frontend packages
 
     cd frontend
     npm install
@@ -36,71 +36,71 @@
 
 ---
 
-## 2. Ежедневный запуск
+## 2. Daily start
 
-### Вариант А — Автоматический (одной командой из корня на любом ПК)
+### Option A - automatic (one command from the root on any PC)
 
     .\start_dev.ps1
 
-Для остановки фоновых серверов:
+To stop the background servers:
 
     Get-Job | Stop-Job; Get-Job | Remove-Job
 
-### Вариант Б — Ручной (в 4 терминалах)
+### Option B - manual (in 4 terminals)
 
-**Терминал 1 — Инфраструктура (Docker):**
+**Terminal 1 - infrastructure (Docker):**
 
     docker compose up -d db redis
 
-**Терминал 2 — Бэкенд (FastAPI):**
+**Terminal 2 - backend (FastAPI):**
 
     .\.venv\Scripts\Activate.ps1
     alembic upgrade head
     python -m uvicorn src.main:app --host 127.0.0.1 --port 8000 --reload
 
-**Терминал 3 — Celery-воркер (разбор партий и партии ботов в турнирах):**
+**Terminal 3 - Celery worker (game analysis and bot games in tournaments):**
 
     .\.venv\Scripts\Activate.ps1
     celery -A src.worker.celery_app worker --loglevel=INFO --pool=solo -Q analysis,simulation
 
-`--pool=solo` нужен на Windows: пул prefork у Celery там не работает. Очередей две: `analysis` (разбор партий,
-индекс позиций, напоминания) и `simulation` (партии ботов между собой) — в разработке их слушает один воркер.
+`--pool=solo` is needed on Windows: the Celery prefork pool does not work there. There are two queues: `analysis` (game analysis,
+position index, reminders) and `simulation` (bot-vs-bot games) - in development one worker listens to both.
 
-Плановые задачи (напоминания о разминке и о начале арены, самоигра ботов) запускает отдельный процесс; в обычной
-разработке он не нужен, `start_dev.ps1` его не поднимает:
+Scheduled tasks (warm-up and arena-start reminders, bot self-play) are run by a separate process; in ordinary
+development it is not needed, `start_dev.ps1` does not start it:
 
     celery -A src.worker.celery_app beat --loglevel=INFO
 
-**Терминал 4 — Фронтенд (Vite):**
+**Terminal 4 - frontend (Vite):**
 
     cd frontend
     npm run dev
 
-* **Фронтенд:** [http://127.0.0.1:3000](http://127.0.0.1:3000)
+* **Frontend:** [http://127.0.0.1:3000](http://127.0.0.1:3000)
 * **Swagger API:** [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
 
 ---
 
-## Продакшен
+## Production
 
-Развёртывание в Docker (nginx, API, Celery, PostgreSQL, Redis) — см. [DEPLOY.md](DEPLOY.md).
+Deployment in Docker (nginx, API, Celery, PostgreSQL, Redis) - see [DEPLOY.md](DEPLOY.md).
 
 ---
 
-## 3. Проверка здоровья проекта (Линтеры и Тесты)
+## 3. Project health check (linters and tests)
 
-**Бэкенд:**
+**Backend:**
 
     .\.venv\Scripts\Activate.ps1
-    uv sync                               # dev-инструменты (ruff, mypy, pytest-cov) ставятся по умолчанию
-    ruff check .                          # линтер (правила — pyproject.toml)
-    mypy                                  # проверка типов src/
-    python -m pytest --cov                # тесты и покрытие (порог — pyproject.toml)
+    uv sync                               # dev tools (ruff, mypy, pytest-cov) are installed by default
+    ruff check .                          # linter (rules in pyproject.toml)
+    mypy                                  # type check of src/
+    python -m pytest --cov                # tests and coverage (threshold in pyproject.toml)
 
-Тестам не нужны ни PostgreSQL, ни Redis, ни Stockfish: база — SQLite в памяти, Redis и движок подменены. Один
-раздел: `python -m pytest tests/test_arena.py -q`. Какой тест какой раздел проверяет — `docs/ARCHITECTURE.md`, §4.
+The tests need neither PostgreSQL, nor Redis, nor Stockfish: the database is in-memory SQLite, Redis and the engine are replaced. One
+section: `python -m pytest tests/test_arena.py -q`. Which test covers which section - `docs/ARCHITECTURE.md`, section 4.
 
-**Фронтенд:**
+**Frontend:**
 
     cd frontend
     npm run lint

@@ -1,17 +1,17 @@
-// Наставник в разборе партии на настоящем Stockfish: партия с детским матом, разбор, комментарии к матующему
-// ходу и к грубой ошибке перед ним, стрелки на доске.
+// The mentor in game review on a real Stockfish: a game with a scholar's mate, the review, comments on the mating
+// move and on the blunder before it, arrows on the board.
 
 import {expect, test} from '@playwright/test';
 
 const PASSWORD = 'e2e-pass-12345';
 
-test('разбор партии: наставник объясняет зевок и мат', async ({page, request}) => {
+test('game review: the mentor explains the blunder and the mate', async ({page, request}) => {
     const username = `coach_${Date.now().toString(36)}`;
     expect((await request.post('/api/v1/auth/register', {data: {username, password: PASSWORD, accept_terms: true}})).ok()).toBe(true);
     const login = await request.post('/api/v1/auth/login', {form: {username, password: PASSWORD}});
     const {access_token: token} = await login.json();
 
-    // 1. e4 e5 2. Bc4 Nc6 3. Qh5 Nf6?? 4. Qxf7# — игрок белыми против Морфи.
+    // 1. e4 e5 2. Bc4 Nc6 3. Qh5 Nf6?? 4. Qxf7# — the player with White against Morphy.
     const saved = await request.post('/api/v1/bots/save-game', {
         headers: {Authorization: `Bearer ${token}`},
         data: {
@@ -24,16 +24,16 @@ test('разбор партии: наставник объясняет зево�
     const {game_id: gameId} = await saved.json();
 
     await page.goto(`/game/${gameId}`);
-    // Сохранённую партию сразу разбирает Celery-воркер: если он успел раньше, чем открылась страница, разбор уже
-    // показан и кнопки «Компьютерный анализ» нет (так тест падал в CI, где воркер свободен). Иначе — запустить.
-    const analyze = page.getByRole('button', {name: 'Компьютерный анализ'});
+    // The saved game is reviewed by the Celery worker right away: if it was faster than the page opening, the review is already
+    // shown and there is no "Computer analysis" button (the test failed that way in CI, where the worker is free). Otherwise, start it.
+    const analyze = page.getByRole('button', {name: 'Computer analysis'});
     const coach = page.getByTestId('coach-comment');
     await expect(analyze.or(coach).first()).toBeVisible({timeout: 30_000});
     if (await analyze.isVisible()) await analyze.click();
 
-    await expect(coach).toContainText('мат', {timeout: 60_000});  // матующий ход: «♕xf7# — мат!»
+    await expect(coach).toContainText('checkmate', {timeout: 60_000});  // the mating move: "♕xf7# — checkmate!"
 
-    await page.getByTitle('Ход назад').click();  // 3... Nf6?? — пропускает мат
+    await page.getByTitle('Move back').click();  // 3... Nf6?? — misses the mate
     await expect(coach).toContainText('♞f6');
     await expect(coach).toContainText('♕xf7#');
     await expect(page.getByTestId('coach-arrow-threat')).toHaveCount(1);

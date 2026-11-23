@@ -1,5 +1,5 @@
-// Игры тренеров с человеком по сети (таск 19.8): ссылка для соперника, вход по ссылке, ход с версией комнаты, ход
-// соперника виден по опросу, сдача и «ещё раз» с переходом в новую комнату; кнопка на странице игры создаёт комнату.
+// Trainer games with a person over the network (task 19.8): a link for the opponent, joining by the link, a move with the room version, the
+// opponent's move seen by polling, resigning and "once more" with a move to a new room; the button on the game page creates a room.
 
 import {act, fireEvent, render, screen, waitFor} from '@testing-library/react';
 import {MemoryRouter, Route, Routes, useLocation} from 'react-router-dom';
@@ -39,25 +39,25 @@ afterEach(() => {
     setToken(null);
 });
 
-describe('игра тренера с другом по ссылке', () => {
-    it('создатель ждёт соперника и видит ссылку; гость садится играть', async () => {
+describe('a trainer game with a friend by a link', () => {
+    it('the creator waits for an opponent and sees the link; the guest sits down to play', async () => {
         let state = room({black: null, waiting: true});
         vi.stubGlobal('fetch', vi.fn(async (url: string) => {
             if (String(url).endsWith('/join')) state = room();
             return {ok: true, json: async () => state} as Response;
         }));
         page('/train/games/room/abc12345');
-        expect(await screen.findByTestId('mini-room-invite')).toHaveTextContent('Отправьте ссылку');
+        expect(await screen.findByTestId('mini-room-invite')).toHaveTextContent('Send the link');
         expect(screen.getByDisplayValue(/\/train\/games\/room\/abc12345$/)).toBeInTheDocument();
-        expect(screen.getByTestId('mini-room-status')).toHaveTextContent('Ждём соперника');
+        expect(screen.getByTestId('mini-room-status')).toHaveTextContent('Waiting for the opponent');
 
         state = room({black: null, waiting: true, you: null});
         await act(async () => vi.advanceTimersByTime(POLL_MS));
         await act(async () => fireEvent.click(await screen.findByTestId('mini-room-join')));
-        expect(screen.getByTestId('mini-room-status')).toHaveTextContent('Ваш ход');
+        expect(screen.getByTestId('mini-room-status')).toHaveTextContent('Your move');
     });
 
-    it('ход уходит с версией; ход соперника приходит опросом; сдача и «ещё раз»', async () => {
+    it('a move goes with the version; the opponent\'s move arrives by polling; resigning and "once more"', async () => {
         let state = room();
         const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
             const u = String(url);
@@ -70,25 +70,25 @@ describe('игра тренера с другом по ссылке', () => {
         });
         vi.stubGlobal('fetch', fetchMock);
         page('/train/games/room/abc12345');
-        expect(await screen.findByTestId('mini-room-status')).toHaveTextContent('Ваш ход');
+        expect(await screen.findByTestId('mini-room-status')).toHaveTextContent('Your move');
         click('e2');
         await act(async () => click('e4'));
         const sent = fetchMock.mock.calls.find(([u]) => String(u).endsWith('/move')) as unknown as [string, RequestInit];
         expect(JSON.parse(String(sent[1].body))).toEqual({move: 'e2e4', version: 0});
-        expect(screen.getByTestId('mini-room-status')).toHaveTextContent('Ход соперника');
+        expect(screen.getByTestId('mini-room-status')).toHaveTextContent('Opponent\'s move');
 
-        // Соперник ответил — страница узнаёт об этом при следующем опросе.
+        // The opponent replied — the page learns about it on the next poll.
         state = room({fen: '8/ppp1pppp/3p4/8/4P3/8/PPPP1PPP/8 w - - 0 2', moves: ['e2e4', 'd7d6'], version: 2});
         await act(async () => vi.advanceTimersByTime(POLL_MS));
-        expect(screen.getByTestId('mini-room-status')).toHaveTextContent('Ваш ход');
+        expect(screen.getByTestId('mini-room-status')).toHaveTextContent('Your move');
 
         await act(async () => fireEvent.click(screen.getByTestId('mini-room-resign')));
-        expect(screen.getByTestId('mini-room-status')).toHaveTextContent('Победа чёрных! (сдача)');
+        expect(screen.getByTestId('mini-room-status')).toHaveTextContent('Black wins! (resignation)');
         await act(async () => fireEvent.click(screen.getByTestId('mini-room-rematch')));
         await waitFor(() => expect(screen.getByTestId('where')).toHaveTextContent('/train/games/room/next0001'));
     });
 
-    it('кнопка «С другом по ссылке» на странице игры создаёт комнату и ведёт в неё', async () => {
+    it('the "With a friend by a link" button on the game page creates a room and leads into it', async () => {
         const fetchMock = vi.fn(async (url: string) => ({ok: true, json: async () => (String(url).includes('mini-game-rooms')
             ? room({code: 'made0001', black: null, waiting: true}) : {fen: START, result: null, bot_move: null})} as Response));
         vi.stubGlobal('fetch', fetchMock);

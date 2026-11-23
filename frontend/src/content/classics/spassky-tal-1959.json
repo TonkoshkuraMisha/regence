@@ -678,12 +678,10 @@
   }
  ],
  "intro": {
-  "ru": "Испанская партия, закрытый вариант. Больше 30 ходов идёт равная маневренная борьба.",
   "uk": "Іспанська партія, закритий варіант. Понад 30 ходів триває рівна маневрова боротьба.",
   "en": "A closed Ruy Lopez. For more than 30 moves there is a level manoeuvring struggle."
  },
  "summary": {
-  "ru": "Решающая атака белых — 37.Qh5, шахи 38.Qe8+ и 39.Qe7+, затем 40.f6: даже новый ферзь чёрных (40...dxe1=Q+) не спасает. Урок: в атаке на короля решают не только фигуры, но и время — у атакующего может быть меньше материала, но больше угроз.",
   "uk": "Вирішальна атака білих — 37.Qh5, шахи 38.Qe8+ і 39.Qe7+, потім 40.f6: навіть новий ферзь чорних (40...dxe1=Q+) не рятує. Урок: в атаці на короля вирішують не лише фігури, а й час — у того, хто атакує, може бути менше матеріалу, але більше загроз.",
   "en": "White's decisive attack — 37.Qh5, the checks 38.Qe8+ and 39.Qe7+, then 40.f6: even Black's new queen (40...dxe1=Q+) does not save the game. Lesson: in a king attack time matters as much as material — the attacker may have less material but more threats."
  }

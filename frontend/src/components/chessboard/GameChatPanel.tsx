@@ -1,9 +1,9 @@
 // --- FILE: frontend/src/components/chessboard/GameChatPanel.tsx ---
-// Чат партии: лента сообщений, быстрые реплики и поле ввода; виден в партии с человеком и при просмотре. Сообщения
-// идут через WebSocket (действие и событие chat_message, хук useGameSocket), частоту ограничивает сервер. Писать
-// могут только игроки партии: зритель чат читает, а сервер его сообщение отклонил бы (код chat_forbidden). Быстрая
-// реплика передаётся кодом и показывается каждому на его языке. На набранное сообщение другого игрока можно
-// пожаловаться — POST /moderation/reports (services/moderation.ts); в памяти хранятся последние 50 сообщений.
+// Game chat: message feed, quick replies and an input field; visible in a game against a human and when spectating. Messages
+// go over the WebSocket (the chat_message action and event, the useGameSocket hook), the server limits the rate. Only the
+// players of the game may write: a spectator reads the chat, and the server would reject their message (code chat_forbidden). A quick
+// reply is sent as a code and shown to everyone in their own language. A typed message from another player can be
+// reported: POST /moderation/reports (services/moderation.ts); the last 50 messages are kept in memory.
 
 import {useState} from 'react';
 import {Flag, MessageSquare, Send} from 'lucide-react';
@@ -19,20 +19,20 @@ export interface GameChatPanelProps {
     onChatInputChange: (value: string) => void;
     onSendMessage: () => void;
     onSendPreset: (preset: ChatPresetId) => void;
-    /** Кнопка «выйти из просмотра» видна только зрителю, не участникам партии. */
+    /** The "leave spectating" button is visible only to a spectator, not to the game's participants. */
     isSpectator: boolean;
     onLeaveSpectate: () => void;
-    /** Своё имя и партия — для жалобы на сообщение соперника (таск 17.4). */
+    /** Own name and the game: for reporting an opponent's message (task 17.4). */
     myName?: string;
     gameId?: number | null;
 }
 
-/** Чат партии: лента сообщений, быстрые реплики и поле ввода. Виден только в PvP/просмотре. */
+/** Game chat: message feed, quick replies and an input field. Visible only in PvP/spectating. */
 export function GameChatPanel({
     messages, chatInput, onChatInputChange, onSendMessage, onSendPreset, isSpectator, onLeaveSpectate, myName, gameId,
 }: GameChatPanelProps) {
     const {t} = useI18n();
-    // Номера сообщений, на которые жалоба уже отправлена: вместо флажка — отметка (и при сбое отправки тоже).
+    // Numbers of messages that have already been reported: a mark instead of the flag (also when sending failed).
     const [reported, setReported] = useState<Set<number>>(new Set());
     const report = (index: number, sender: string, text: string) => {
         moderationApi.report({target: sender, kind: 'message', reason: 'abuse', message_text: text, game_id: gameId ?? null})
@@ -80,7 +80,7 @@ export function GameChatPanel({
                 )}
             </div>
 
-            {/* Писать в чат партии могут только игроки (сервер отклоняет сообщения зрителей). */}
+            {/* Only the players may write in the game chat (the server rejects spectators' messages). */}
             {isSpectator && (
                 <div className="text-xs text-boxwood/60 italic">{t('chat.spectatorReadOnly')}</div>
             )}

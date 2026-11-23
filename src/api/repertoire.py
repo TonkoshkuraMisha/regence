@@ -1,8 +1,9 @@
 """
-Дебютный репертуар (таск 20.1): свои репертуары за белых и за чёрных, шесть стартовых наборов, добавление линий
-(из справочника дебютов, из просмотра партии — линией UCI; из текста PGN), комментарии к ходам и удаление хода
-вместе с ветками, которые после него стали недостижимы. Повторение и игра против репертуара (таск 20.2) — в конце
-файла: карточки по SM-2 и ответы соперника по популярности ходов у людей.
+Opening repertoire (task 20.1): one's own repertoires for White and for Black, six starter sets, adding lines
+(from the opening explorer, from the game viewer - as a UCI line; from PGN text), move comments and deleting a move
+together with the branches that became unreachable after it. Repetition and playing against the repertoire (task 20.2) are at
+the end of
+the file: SM-2 cards and the opponent's replies by the popularity of moves among people.
 """
 
 from typing import Literal
@@ -81,7 +82,7 @@ async def _full(db: AsyncSession, repertoire: Repertoire) -> dict:
 
 @router.get("/starters")
 async def starters():
-    """Стартовые репертуары: коды, сторона и уровень; названия и вводные тексты — на клиенте."""
+    """Starter repertoires: codes, side and level; names and intro texts are on the client."""
     return {"starters": [
         {"id": s.id, "color": s.color, "level": s.level, "style": s.style,
          "lines": [service.san_line_to_uci(line) for line in s.lines]}
@@ -102,7 +103,7 @@ async def list_repertoires(db: AsyncSession = Depends(get_db), user: User = Depe
 
 @router.post("")
 async def create(payload: CreateIn, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
-    """Новый репертуар: пустой или копия стартового (тогда сторона берётся из него)."""
+    """A new repertoire: empty or a copy of a starter one (then the side is taken from it)."""
     starter = None
     if payload.starter is not None:
         starter = BY_ID.get(payload.starter)
@@ -160,7 +161,7 @@ async def _add(db: AsyncSession, repertoire: Repertoire, lines: list[list[str]])
 @router.post("/{repertoire_id}/lines")
 async def add_line(payload: LineIn, repertoire_id: int = RepertoireId, db: AsyncSession = Depends(get_db),
                    user: User = Depends(get_current_user)):
-    """Линия UCI из начальной позиции — из справочника дебютов, из просмотра партии или с доски редактора."""
+    """A UCI line from the initial position - from the opening explorer, from the game viewer or from the editor board."""
     return await _add(db, await _own(db, repertoire_id, user), [payload.moves])
 
 
@@ -178,7 +179,7 @@ async def import_pgn(payload: PgnIn, repertoire_id: int = RepertoireId, db: Asyn
 @router.put("/{repertoire_id}/comment")
 async def set_comment(payload: CommentIn, repertoire_id: int = RepertoireId, db: AsyncSession = Depends(get_db),
                       user: User = Depends(get_current_user)):
-    """Свой комментарий к ходу репертуара."""
+    """One's own comment on a repertoire move."""
     repertoire = await _own(db, repertoire_id, user)
     row = await db.scalar(select(RepertoireMove).where(
         RepertoireMove.repertoire_id == repertoire.id, RepertoireMove.position == payload.position,
@@ -193,7 +194,7 @@ async def set_comment(payload: CommentIn, repertoire_id: int = RepertoireId, db:
 @router.post("/{repertoire_id}/remove")
 async def remove_move(payload: MoveRef, repertoire_id: int = RepertoireId, db: AsyncSession = Depends(get_db),
                       user: User = Depends(get_current_user)):
-    """Убрать ход и ветки за ним (кроме тех, куда можно прийти перестановкой ходов)."""
+    """Remove a move and the branches behind it (except those reachable by a transposition)."""
     repertoire = await _own(db, repertoire_id, user)
     try:
         removed = await service.remove_move(db, repertoire, payload.position, payload.uci)
@@ -204,7 +205,7 @@ async def remove_move(payload: MoveRef, repertoire_id: int = RepertoireId, db: A
 
 
 class OpponentIn(BaseModel):
-    moves: list[str] = Field(default_factory=list, max_length=service.MAX_LINE_PLIES)  # пусто — первый ход белых
+    moves: list[str] = Field(default_factory=list, max_length=service.MAX_LINE_PLIES)  # empty - White's first move
 
 
 class AnswerIn(BaseModel):
@@ -216,7 +217,7 @@ class AnswerIn(BaseModel):
 @router.get("/{repertoire_id}/drill")
 async def drill_session(repertoire_id: int = RepertoireId, mode: Literal["review", "learn"] = Query("review"),
                         db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
-    """Карточки сессии: review — по расписанию и новые в пределах дневной нормы, learn — новые линии."""
+    """Session cards: review - by schedule and new ones within the daily norm, learn - new lines."""
     result = await drill.session(db, await _own(db, repertoire_id, user), mode, drill.utcnow())
     await db.commit()
     return result
@@ -225,7 +226,7 @@ async def drill_session(repertoire_id: int = RepertoireId, mode: Literal["review
 @router.post("/{repertoire_id}/drill/answer")
 async def drill_answer(payload: AnswerIn, repertoire_id: int = RepertoireId, db: AsyncSession = Depends(get_db),
                        user: User = Depends(get_current_user)):
-    """Ответ на карточку; retry — повтор после ошибки в той же сессии, расписание не меняет."""
+    """The answer to a card; retry - a repeat after a mistake in the same session, it does not change the schedule."""
     repertoire = await _own(db, repertoire_id, user)
     try:
         result = await drill.answer(db, repertoire, payload.position, payload.uci, payload.retry, drill.utcnow())
@@ -238,7 +239,7 @@ async def drill_answer(payload: AnswerIn, repertoire_id: int = RepertoireId, db:
 @router.post("/{repertoire_id}/opponent", dependencies=[Depends(forbid_engine_help_during_game)])
 async def opponent(payload: OpponentIn, repertoire_id: int = RepertoireId, db: AsyncSession = Depends(get_db),
                    user: User = Depends(get_current_user)):
-    """«Игра против репертуара»: ответ соперника после линии игрока (статистика ходов — как у справочника)."""
+    """"Play against the repertoire": the opponent's reply after the player's line (move statistics - as in the explorer)."""
     repertoire = await _own(db, repertoire_id, user)
     try:
         return await drill.opponent_reply(db, repertoire, payload.moves)
@@ -253,7 +254,7 @@ class FocusIn(BaseModel):
 @router.post("/{repertoire_id}/drill/focus")
 async def drill_focus(payload: FocusIn, repertoire_id: int = RepertoireId, db: AsyncSession = Depends(get_db),
                       user: User = Depends(get_current_user)):
-    """Карточка позиции — в сегодняшнее повторение (кнопка «Потренировать» после партии, таск 20.3)."""
+    """A position card into today's repetition (the "Practise" button after a game, task 20.3)."""
     repertoire = await _own(db, repertoire_id, user)
     try:
         await drill.focus(db, repertoire, payload.position, drill.utcnow())
@@ -266,7 +267,7 @@ async def drill_focus(payload: FocusIn, repertoire_id: int = RepertoireId, db: A
 @router.get("/game/{game_id}/deviations")
 async def game_deviations(game_id: int = Path(..., ge=1), db: AsyncSession = Depends(get_db),
                           user: User = Depends(get_current_user)):
-    """Где сыгранная партия ушла из репертуаров игрока её цвета (таск 20.3). Только свои законченные партии."""
+    """Where a played game left the player's repertoires of its colour (task 20.3). Only one's own finished games."""
     game = await db.get(Game, game_id)
     player = game is not None and user.id in (game.white_player_id, game.black_player_id)
     if game is None or not player or game.status != GameStatus.COMPLETED:

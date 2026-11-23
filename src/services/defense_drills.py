@@ -1,28 +1,33 @@
 # --- FILE: src/services/defense_drills.py ---
 """
-Защитные упражнения (таск 13.6) — раздел I каталога тем: «Что грозит соперник?» (find_the_threat) и «Не зевни»
-(blunder_check). «Единственная защита» (defensive_move) — обычные задачи базы с тегом lichess, их выдаёт тренировка
-по приёмам (13.4).
+Defence exercises (task 13.6) -- section I of the theme catalogue: "What does the opponent threaten?" (find_the_threat) and
+"Don't blunder"
+(blunder_check). "Only defence" (defensive_move) consists of ordinary database puzzles tagged lichess, served by the
+motif training (13.4).
 
-Откуда позиции. Задача lichess — это ход-ошибка проигравшей стороны (moves[0]) и тактика победителя (moves[1]).
-Из неё получаются два упражнения «за обороняющегося»:
+Where positions come from. A lichess puzzle is the losing side's mistake (moves[0]) and the winner's tactic (moves[1]).
+It yields two exercises "for the defender":
 
-* «Что грозит соперник?» — позиция после ошибки, но очередь хода — у ошибившегося (пустой ход соперника): тактика
-  соперника становится угрозой. Сначала игрок показывает угрозу (фигуру, которая бьёт, или поле удара), затем
-  защищается. Верная защита — любой ход, который движок оценивает почти как лучшую (``GOOD_MARGIN``).
-* «Не зевни» — позиция до ошибки и три естественных хода: сыгранный человеком зевок, ещё один проигрывающий ход,
-  который «на глаз» выглядит хорошо (высокая оценка мелкого поиска), и единственный безопасный. У проигрывающих
-  ходов хранится опровержение — ответ соперника.
+* "What does the opponent threaten?" -- the position after the mistake, but with the move passed back to the side that erred
+  (a null move by the opponent): the opponent's
+  tactic becomes a threat. The player first shows the threat (the attacking piece or the target square), then
+  defends. A correct defence is any move the engine rates almost as the best (``GOOD_MARGIN``).
+* "Don't blunder" -- the position before the mistake and three natural moves: the blunder played by the human, another losing
+  move
+  that "looks good by eye" (a high shallow-search score), and the one safe move. For the losing
+  moves a refutation is stored -- the opponent's reply.
 
-Критерии решаемости (``threat_drill`` / ``blunder_drill``, затем независимо ``verify_drill``) проверяются движком
-при сборке выборки офлайн
-(scripts/dev/build_defense_drills.py → data/puzzles/defense_drills.csv.gz); сервер движок для упражнений не
-запускает. Прогресс — по темам find_the_threat / blunder_check, ступень упражнения — по рейтингу исходной задачи.
+The solvability criteria (``threat_drill`` / ``blunder_drill``, then independently ``verify_drill``) are checked by the engine
+when the sample is built offline
+(scripts/dev/build_defense_drills.py -> data/puzzles/defense_drills.csv.gz); the server does not run the engine for the
+exercises.
+Progress is by the themes find_the_threat / blunder_check, the exercise stage by the rating of the source puzzle.
 
-Где хранится: упражнения — таблица defense_drills (загружается из файла выборки, import_drills); прогресс —
-theme_progress; упражнение, которое игрок решает сейчас, — Redis defense:session:{user_id} (живёт SESSION_TTL_S),
-недавно выданные — список defense:recent:{user_id}. Верные ходы, угроза и опровержения клиенту до ответа не
-отправляются (public_view).
+Where it is stored: exercises -- the defense_drills table (loaded from the sample file, import_drills); progress --
+theme_progress; the exercise the player is solving now -- Redis defense:session:{user_id} (lives SESSION_TTL_S),
+recently served ones -- the list defense:recent:{user_id}. The correct moves, the threat and the refutations are not sent to
+the client before the
+answer (public_view).
 """
 
 import csv
@@ -43,48 +48,51 @@ from src.models.puzzle import DefenseDrill, ThemeProgress
 from src.models.user import User
 from src.services.puzzles import PuzzleError, reset_stage_counts, update_theme_progress
 
-# Файл выборки и его столбцы. Threat — ход-угроза соперника (UCI); Choices — три хода «Не зевни» через пробел;
-# Refutations — пары «ход:ответ соперника» для проигрывающих ходов; Good — верные ходы через пробел; Motifs — коды
-# мотивов через пробел. SourceId — идентификатор исходной задачи lichess.
+# The sample file and its columns. Threat -- the opponent's threat move (UCI); Choices -- the three "Don't blunder" moves
+# separated by spaces;
+# Refutations -- "move:opponent's reply" pairs for the losing moves; Good -- correct moves separated by spaces; Motifs -- motif
+# codes separated by spaces. SourceId -- the id of the source lichess puzzle.
 DRILLS_FILE = pathlib.Path(__file__).resolve().parents[2] / "data" / "puzzles" / "defense_drills.csv.gz"
 FIELDS = ("Kind", "SourceId", "FEN", "Threat", "Choices", "Refutations", "Good", "Rating", "Stage", "Motifs")
 SOURCE = "lichess"
 
-# Виды упражнений и тема каталога (src/services/themes.py), по которой идёт прогресс каждого вида.
+# Exercise kinds and the catalogue theme (src/services/themes.py) that tracks progress for each kind.
 KINDS = ("threat", "blunder")
 KIND_THEMES = {"threat": "find_the_threat", "blunder": "blunder_check"}
 THEME_KINDS = {theme: kind for kind, theme in KIND_THEMES.items()}
 
-# Критерии отбора (сантипешки с точки зрения обороняющегося).
-DEFENSIBLE = -150        # лучшая защита не проигрывает: позиция держится
-THREAT_GAIN = 300        # «ничего не делать» теряет хотя бы столько против лучшей защиты — угроза настоящая
-THREAT_BEST_MARGIN = 50  # тактика задачи — лучший ход соперника (или почти)
-GOOD_MARGIN = 80         # защита засчитывается, если она почти так же хороша, как лучшая
-MAX_GOOD = 4             # защит немного: случайный ход угрозу не отражает
-BLUNDER_LOSS = 300       # проигрывающий вариант в «Не зевни» теряет хотя бы столько против лучшего
-LOSING = -200            # …и действительно проигрывает: «хуже лучшего, но всё ещё +3» — не зевок
-NATURAL_GAP = 300        # «естественный» ход: на мелком поиске не хуже лучшего больше чем на столько
-NATURAL_CANDIDATES = 6   # сколько самых естественных ходов проверять глубоко как ловушку
-VERIFY_MARGIN = 200      # перепроверка: верный ход лучше неверных (и «ничего не делать») хотя бы на столько
-MATE = 10_000            # оценка мата в сантипешках — ею скрипт сборки заменяет «мат в N» от движка
+# Selection criteria (centipawns from the defender's point of view).
+DEFENSIBLE = -150        # the best defence does not lose: the position holds
+THREAT_GAIN = 300        # "doing nothing" loses at least this much against the best defence -- the threat is real
+THREAT_BEST_MARGIN = 50  # the puzzle's tactic is the opponent's best move (or nearly)
+GOOD_MARGIN = 80         # a defence counts if it is almost as good as the best one
+MAX_GOOD = 4             # few defences: a random move does not parry the threat
+BLUNDER_LOSS = 300       # the losing option in "Don't blunder" loses at least this much against the best
+LOSING = -200            # ...and really loses: "worse than the best but still +3" is not a blunder
+NATURAL_GAP = 300        # a "natural" move: in a shallow search no worse than the best by more than this
+NATURAL_CANDIDATES = 6   # how many of the most natural moves to check deeply as a trap
+VERIFY_MARGIN = 200      # re-check: the correct move is better than the wrong ones (and "doing nothing") by at least this
+MATE = 10_000            # mate score in centipawns -- the build script uses it to replace the engine's "mate in N"
 
-# Сколько живёт в Redis запись о решаемом упражнении: через два часа без ответа упражнение нужно взять заново.
+# How long the record of an exercise being solved lives in Redis: after two hours without an answer the exercise must be
+# taken again.
 SESSION_TTL_S = 2 * 60 * 60
-# Сколько последних выданных упражнений помнится, чтобы не повторять их, пока есть другие.
+# How many recently served exercises are remembered, so as not to repeat them while others are available.
 RECENT_KEPT = 200
 
-# Лучшие ходы позиции: uci → (оценка с точки зрения ходящего, ответ соперника из главного варианта).
+# Best moves of a position: uci -> (score from the mover's point of view, opponent's reply from the main line).
 MoveScores = dict[str, tuple[int, str | None]]
-# analyse(позиция, сколько лучших ходов, только среди этих ходов или все) — движок при сборке, таблица в тестах.
+# analyse(position, how many best moves, only among these moves or all) -- the engine when building, a table in tests.
 Analyse = Callable[[chess.Board, int, list[str] | None], MoveScores]
 
 
-# --- сборка упражнений из задачи -----------------------------------------------------------------------------
+# --- building exercises from a puzzle ------------------------------------------------------------------------
 
 def defender_position(fen: str, moves: list[str]) -> chess.Board | None:
     """
-    Позиция «Что грозит соперник?»: после ошибки moves[0] — снова ход ошибившегося (пустой ход соперника).
-    None, если так нельзя: ошибка дала шах или пустой ход оставляет короля под шахом.
+    The "What does the opponent threaten?" position: after the mistake moves[0] it is again the erring side's move (a null
+    move by the opponent).
+    None if that is impossible: the mistake gave check or the null move leaves the king in check.
     """
     board = chess.Board(fen)
     board.push_uci(moves[0])
@@ -93,15 +101,16 @@ def defender_position(fen: str, moves: list[str]) -> chess.Board | None:
     board.push(chess.Move.null())
     if board.is_check() or not board.is_valid() or board.legal_moves.count() < 2:
         return None
-    return chess.Board(board.fen())  # без истории: пустой ход не должен попадать в стек позиции
+    return chess.Board(board.fen())  # without history: the null move must not end up on the position's stack
 
 
 def threat_drill(fen: str, moves: list[str], analyse: Analyse) -> dict | None:
     """
-    Упражнение «Что грозит соперник?» или None, если позиция не проходит критерии решаемости: тактика задачи —
-    лучший ход соперника или почти (THREAT_BEST_MARGIN); лучшая защита держит позицию (DEFENSIBLE) и выигрывает у
-    «ничего не делать» не меньше THREAT_GAIN; хороших защит (в пределах GOOD_MARGIN от лучшей) — от одной до MAX_GOOD
-    и не больше трети всех легальных ходов. Возвращает позицию, ход-угрозу и список засчитываемых защит.
+    The "What does the opponent threaten?" exercise, or None if the position fails the solvability criteria: the puzzle's
+    tactic is
+    the opponent's best move or nearly so (THREAT_BEST_MARGIN); the best defence holds the position (DEFENSIBLE) and beats
+    "doing nothing" by at least THREAT_GAIN; good defences (within GOOD_MARGIN of the best) number from one to MAX_GOOD
+    and no more than a third of all legal moves. Returns the position, the threat move and the list of accepted defences.
     """
     defender = defender_position(fen, moves)
     if defender is None:
@@ -115,8 +124,8 @@ def threat_drill(fen: str, moves: list[str], analyse: Analyse) -> dict | None:
     threat_score = attack[threat][0] if threat in attack else analyse(attacker, 1, [threat]).get(threat, (None,))[0]
     if threat_score is None or threat_score < max(s for s, _ in attack.values()) - THREAT_BEST_MARGIN:
         return None
-    passing = -threat_score  # если обороняющийся «ничего не делает», соперник проводит тактику
-    # Лучших защит смотрим на одну больше допустимого: если и она «хорошая» — защит слишком много.
+    passing = -threat_score  # if the defender "does nothing", the opponent carries out the tactic
+    # We look at one more best defence than allowed: if it is "good" too, there are too many defences.
     defense = analyse(defender, MAX_GOOD + 1, None)
     if not defense:
         return None
@@ -131,9 +140,9 @@ def threat_drill(fen: str, moves: list[str], analyse: Analyse) -> dict | None:
 
 def blunder_drill(fen: str, moves: list[str], analyse: Analyse, shallow: Analyse, seed: str) -> dict | None:
     """
-    Упражнение «Не зевни»: зевок из партии, ещё один естественный проигрывающий ход и единственный безопасный.
-    None, если позиция не проходит критерии (уже проиграна, зевок не проигрывает, нет естественной ловушки).
-    Естественность — оценка мелкого поиска (``shallow``): ход, который «на глаз» не хуже лучшего.
+    The "Don't blunder" exercise: the blunder from the game, another natural losing move and the single safe one.
+    None if the position fails the criteria (already lost, the blunder does not lose, no natural trap).
+    Naturalness is the shallow-search score (``shallow``): a move that is "by eye" no worse than the best.
     """
     board = chess.Board(fen)
     blunder = moves[0]
@@ -159,7 +168,7 @@ def blunder_drill(fen: str, moves: list[str], analyse: Analyse, shallow: Analyse
     traps = [uci for uci in natural if uci in scores and scores[uci][0] <= min(best - BLUNDER_LOSS, LOSING)]
     if not traps:
         return None
-    trap = traps[0]  # самый естественный из проигрывающих
+    trap = traps[0]  # the most natural of the losing moves
     refutations = {uci: scores[uci][1] for uci in (blunder, trap)}
     if not all(refutations.values()):
         return None
@@ -171,11 +180,13 @@ def blunder_drill(fen: str, moves: list[str], analyse: Analyse, shallow: Analyse
 def verify_drill(row: dict, score_after: Callable[[str, str], int], *, margin: int = VERIFY_MARGIN,
                  losing: int = LOSING) -> bool:
     """
-    Независимая перепроверка упражнения (глубже и с чистой памятью движка, чем при отборе): в эндшпилях и позициях с
-    цугцвангом оценка мелкого поиска нестабильна, и «безопасный» ход может оказаться хуже «проигрывающего».
-    ``score_after(fen, uci)`` — оценка после хода с точки зрения стороны, которая ходит в fen. В «Не зевни» неверные
-    ходы должны проигрывать на самом деле (не выше ``losing``), а не только уступать безопасному. Тесты на другой
-    версии движка передают мягкие ``margin`` / ``losing``: пограничные оценки у версий расходятся.
+    Independent re-check of an exercise (deeper and with clean engine memory, unlike at selection): in endgames and positions
+    with
+    zugzwang the shallow-search score is unstable, and the "safe" move may turn out worse than the "losing" one.
+    ``score_after(fen, uci)`` -- the score after the move from the point of view of the side to move in fen. In "Don't
+    blunder" the wrong
+    moves must really lose (no higher than ``losing``), not merely be inferior to the safe one. Tests on another
+    engine version pass soft ``margin`` / ``losing``: borderline scores differ between versions.
     """
     good = row["Good"].split()
     if row["Kind"] == "blunder":
@@ -188,22 +199,22 @@ def verify_drill(row: dict, score_after: Callable[[str, str], int], *, margin: i
         return False
     passing = chess.Board(row["FEN"])
     passing.push(chess.Move.null())
-    threat = -score_after(passing.fen(), row["Threat"])  # оценка соперника → с точки зрения обороняющегося
+    threat = -score_after(passing.fen(), row["Threat"])  # the opponent's score -> the defender's point of view
     return threat <= min(defenses) - margin
 
 
-# --- выборка и загрузка в базу -------------------------------------------------------------------------------
+# --- sample and loading into the database -----------------------------------------------------------------------
 
 def read_drills(path: pathlib.Path = DRILLS_FILE) -> Iterator[dict]:
-    """Строки файла выборки как словари со столбцами FIELDS (все значения — строки)."""
+    """Rows of the sample file as dicts with the FIELDS columns (all values are strings)."""
     with gzip.open(path, "rt", encoding="utf-8", newline="") as source:
         yield from csv.DictReader(source)
 
 
 def write_drills(rows: Iterable[dict], path: pathlib.Path = DRILLS_FILE) -> int:
     """
-    Записывает защитные упражнения в сжатый CSV (по умолчанию data/puzzles/defense_drills.csv.gz) и возвращает число
-    строк. Вызывается скриптом сборки.
+    Writes the defence exercises to a compressed CSV (by default data/puzzles/defense_drills.csv.gz) and returns the number of
+    rows. Called by the build script.
     """
     count = 0
     with gzip.open(path, "wt", encoding="utf-8", newline="") as target:
@@ -216,7 +227,10 @@ def write_drills(rows: Iterable[dict], path: pathlib.Path = DRILLS_FILE) -> int:
 
 
 def validate_drill_row(row: dict) -> bool:
-    """Позиция корректна, ходы легальны, у «Не зевни» ровно один верный из трёх, у угрозы она легальна для соперника."""
+    """
+    The position is valid, the moves are legal, "Don't blunder" has exactly one correct of three, for a threat it is legal
+    for the opponent.
+    """
     try:
         board = chess.Board(row["FEN"])
         if not board.is_valid() or row["Kind"] not in KINDS:
@@ -238,7 +252,7 @@ def validate_drill_row(row: dict) -> bool:
 
 
 def _drill_fields(row: dict) -> dict:
-    """Строка выборки → значения столбцов таблицы defense_drills (кроме вида и идентификатора исходной задачи)."""
+    """Sample row -> the defense_drills table column values (except the kind and the source puzzle id)."""
     return {
         "fen": row["FEN"], "threat": row["Threat"] or None, "choices": row["Choices"],
         "refutations": row["Refutations"], "good_moves": row["Good"], "rating": int(row["Rating"]),
@@ -248,11 +262,11 @@ def _drill_fields(row: dict) -> dict:
 
 async def import_drills(db: AsyncSession, rows: Iterable[dict], *, prune: bool = True) -> dict[str, int]:
     """
-    Синхронизирует упражнения с выборкой: новые добавляются, изменившиеся (пересобранная выборка) обновляются, а те,
-    которых в выборке больше нет (отбракованы перепроверкой), удаляются — иначе забракованное упражнение осталось бы
-    на сервере навсегда. Некорректные строки пропускаются. ``prune=False`` — только добавить и обновить.
-    Упражнение узнаётся по паре (вид, идентификатор исходной задачи). Возвращает счётчики added / updated / removed /
-    invalid; после записи сбрасывается кэш числа задач по ступеням (puzzles.reset_stage_counts).
+    Synchronises exercises with the sample: new ones are added, changed ones (a rebuilt sample) are updated, and those
+    no longer in the sample (rejected by the re-check) are deleted -- otherwise a rejected exercise would remain
+    on the server forever. Invalid rows are skipped. ``prune=False`` -- only add and update.
+    An exercise is identified by the pair (kind, source puzzle id). Returns the counters added / updated / removed /
+    invalid; after writing, the cache of puzzle counts per stage is reset (puzzles.reset_stage_counts).
     """
     existing = {(d.kind, d.source_id): d for d in (await db.execute(select(DefenseDrill))).scalars()}
     seen: set[tuple[str, str]] = set()
@@ -285,20 +299,20 @@ async def import_drills(db: AsyncSession, rows: Iterable[dict], *, prune: bool =
 
 
 async def stage_counts(db: AsyncSession) -> dict[tuple[str, int], int]:
-    """Сколько упражнений у каждой темы раздела I на каждой ступени — для обзора тренировки."""
+    """How many exercises each section I theme has at each stage -- for the training overview."""
     rows = await db.execute(select(DefenseDrill.kind, DefenseDrill.stage, func.count())
                             .group_by(DefenseDrill.kind, DefenseDrill.stage))
     return {(KIND_THEMES[kind], stage): count for kind, stage, count in rows}
 
 
-# --- решение -------------------------------------------------------------------------------------------------
+# --- solving -------------------------------------------------------------------------------------------------
 
 @dataclass
 class DrillSession:
-    """Упражнение, которое игрок решает сейчас (одно на игрока; хранится в Redis, ключ defense:session:{user_id})."""
+    """The exercise the player is solving now (one per player; stored in Redis, key defense:session:{user_id})."""
     drill_id: int
-    phase: str             # threat — показать угрозу; move — защититься (или выбрать ход в «Не зевни»)
-    clean: bool = True     # без ошибки на первом этапе
+    phase: str             # threat -- show the threat; move -- defend (or choose a move in "Don't blunder")
+    clean: bool = True     # no mistake in the first phase
 
 
 def _session_key(user_id: int) -> str:
@@ -323,7 +337,10 @@ def defender_color(drill: DefenseDrill) -> str:
 
 
 def public_view(drill: DefenseDrill) -> dict:
-    """Что видит игрок: позиция, его цвет, ступень; у «Не зевни» — три хода. Ни угрозы, ни верных ответов."""
+    """
+    What the player sees: position, their colour, stage; for "Don't blunder" -- three moves. No threat and no correct
+    answers.
+    """
     return {
         "id": drill.id,
         "kind": drill.kind,
@@ -337,21 +354,24 @@ def public_view(drill: DefenseDrill) -> dict:
 
 
 async def _current_stage(db: AsyncSession, user_id: int, kind: str) -> int:
-    """Ступень игрока в теме этого вида упражнений (theme_progress), не выше 4; без прогресса — первая."""
+    """
+    The player's stage in the theme of this exercise kind (theme_progress), no higher than 4; without progress -- the first.
+    """
     progress = await db.get(ThemeProgress, (user_id, KIND_THEMES[kind]))
     return min(progress.stage, 4) if progress else 1
 
 
 async def pick(db: AsyncSession, user: User, kind: str) -> DefenseDrill:
     """
-    Упражнение вида kind на ступени игрока, без недавних; не хватает — повтор недавнего со своей ступени, затем любое
-    упражнение этого вида. Выбранное становится активным (прежнее активное забывается) и попадает в список недавних.
+    An exercise of the given kind at the player's stage, excluding recent ones; if there are not enough -- a repeat of a
+    recent one at their stage, then any
+    exercise of this kind. The chosen one becomes active (the previously active one is forgotten) and enters the recent list.
     """
     if kind not in KINDS:
         raise PuzzleError("unknown_drill_kind", 400, kind=kind)
     stage = await _current_stage(db, user.id, kind)
     recent = [int(x) for x in await redis_module.redis_client.lrange(_recent_key(user.id), 0, -1)]
-    attempts = ((True, True), (True, False), (False, False))  # (своя ступень, исключать недавние)
+    attempts = ((True, True), (True, False), (False, False))  # (own stage, exclude recent)
     for own_stage, exclude in attempts:
         query = select(DefenseDrill).where(DefenseDrill.kind == kind)
         if own_stage:
@@ -371,9 +391,10 @@ async def pick(db: AsyncSession, user: User, kind: str) -> DefenseDrill:
 
 async def _active(db: AsyncSession, user: User, drill_id: int, phase: str) -> tuple[DrillSession, DefenseDrill]:
     """
-    Активное упражнение игрока и его запись, если это именно drill_id и сейчас этап phase. Другое упражнение или
-    истёкшая запись — drill_not_active, другой этап — drill_wrong_step: ответить можно только на выданное упражнение
-    и только по порядку этапов.
+    The player's active exercise and its record, if it is exactly drill_id and the current phase is phase. Another exercise
+    or an
+    expired record -- drill_not_active, another phase -- drill_wrong_step: only the served exercise can be answered
+    and only in phase order.
     """
     session = await _load_session(user.id)
     if session is None or session.drill_id != drill_id:
@@ -395,7 +416,10 @@ def _square(name: str) -> str:
 
 
 async def show_threat(db: AsyncSession, user: User, drill_id: int, square: str) -> dict:
-    """Первый этап «Что грозит соперник?»: верно — фигура, которая бьёт, или поле удара. Угроза раскрывается всегда."""
+    """
+    First phase of "What does the opponent threaten?": correct -- the attacking piece or the target square. The threat is
+    always revealed.
+    """
     session, drill = await _active(db, user, drill_id, "threat")
     threat = drill.threat or ""
     correct = _square(square) in (threat[:2], threat[2:4])
@@ -406,8 +430,9 @@ async def show_threat(db: AsyncSession, user: User, drill_id: int, square: str) 
 
 async def answer(db: AsyncSession, user: User, drill_id: int, uci: str) -> dict:
     """
-    Ход защиты (или выбор в «Не зевни»): итог, верные ходы, опровержения и прогресс темы. В прогресс «чисто» идёт
-    только верный ход при верно показанной угрозе; после ответа упражнение перестаёт быть активным.
+    The defence move (or the choice in "Don't blunder"): the outcome, correct moves, refutations and topic progress. Only a
+    correct
+    move with a correctly shown threat counts "clean" towards progress.
     """
     session, drill = await _active(db, user, drill_id, "move")
     board = chess.Board(drill.fen)

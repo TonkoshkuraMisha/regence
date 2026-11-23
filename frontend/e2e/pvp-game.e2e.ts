@@ -1,7 +1,7 @@
-// Полный путь PvP-партии в двух настоящих браузерах: регистрация и вход, вызов по ссылке,
-// ходы перетаскиванием с синхронизацией у соперника, мат, итог у обоих, реванш со сменой цвета.
+// The full path of a PvP game in two real browsers: registration and login, a challenge by link,
+// drag moves synchronised to the opponent, a mate, the result for both, a rematch with swapped colours.
 //
-// Игроки регистрируются один раз на весь файл: регистрация ограничена 5 аккаунтами в час с IP.
+// The players register once for the whole file: registration is limited to 5 accounts per hour per IP.
 
 import {expect, test, type Browser, type Page} from '@playwright/test';
 import {openNewGame} from './helpers.ts';
@@ -9,7 +9,7 @@ import {openNewGame} from './helpers.ts';
 const PASSWORD = 'e2e-pass-12345';
 
 function uniqueName(prefix: string): string {
-    // 3–30 символов: латиница, цифры, _ (правила регистрации).
+    // 3–30 characters: Latin letters, digits, _ (the registration rules).
     return `${prefix}_${Date.now().toString(36)}${Math.floor(Math.random() * 1000)}`;
 }
 
@@ -18,23 +18,23 @@ async function newPlayer(browser: Browser, username: string): Promise<Page> {
     const page = await context.newPage();
     await page.goto('/');
 
-    await page.getByRole('button', {name: 'Войти'}).click();
-    await page.getByRole('button', {name: 'Нет аккаунта? Зарегистрируйтесь'}).click();
-    await page.getByPlaceholder('например, string1').fill(username);
+    await page.getByRole('button', {name: 'Log in'}).click();
+    await page.getByRole('button', {name: 'No account? Sign up'}).click();
+    await page.getByPlaceholder('e.g. string1').fill(username);
     await page.getByPlaceholder('••••••••').fill(PASSWORD);
-    await page.getByTestId('auth-terms').check();  // согласие с правилами и конфиденциальностью (таск 23.1)
-    await page.getByRole('button', {name: 'Зарегистрироваться'}).click();
+    await page.getByTestId('auth-terms').check();  // consent to the rules and privacy (task 23.1)
+    await page.getByRole('button', {name: 'Sign up'}).click();
 
-    // После регистрации игрок уже вошёл (таск 17.8): приветствие с предложением первой партии — «Позже».
-    const welcome = page.getByRole('dialog', {name: `Добро пожаловать, ${username}!`});
-    await welcome.getByRole('button', {name: 'Позже'}).click();
+    // After registration the player is already logged in (task 17.8): a welcome with an offer of the first game — "Later".
+    const welcome = page.getByRole('dialog', {name: `Welcome, ${username}!`});
+    await welcome.getByRole('button', {name: 'Later'}).click();
     await expect(welcome).toHaveCount(0);
     await expect(page.getByText(username).first()).toBeVisible();
     return page;
 }
 
 const square = (page: Page, id: string) => page.locator(`[data-square="${id}"]`);
-// Фигура — <img alt="wp"> с pointer-events: none: тащим за клетку, наличие проверяем по img.
+// The piece is <img alt="wp"> with pointer-events: none: we drag by the square, and check presence by the img.
 const pieceOn = (page: Page, id: string) => square(page, id).locator('img[alt]');
 
 async function move(mover: Page, opponent: Page, from: string, to: string) {
@@ -46,33 +46,33 @@ async function move(mover: Page, opponent: Page, from: string, to: string) {
 }
 
 async function resign(page: Page) {
-    // Сдача подтверждается системным диалогом; Playwright по умолчанию его отклоняет.
+    // Resignation is confirmed by a system dialog; Playwright dismisses it by default.
     page.once('dialog', (dialog) => {
-        expect(dialog.message()).toBe('Вы действительно хотите сдаться?');
+        expect(dialog.message()).toBe('Do you really want to resign?');
         void dialog.accept();
     });
-    await page.getByRole('button', {name: 'Сдаться'}).click();
+    await page.getByRole('button', {name: 'Resign'}).click();
 }
 
 async function startFriendGame(creator: Page, acceptor: Page, color: 'white' | 'black') {
     await creator.goto('/');
     await acceptor.goto('/');
     await openNewGame(creator, 'human');
-    await creator.getByRole('button', {name: 'С другом'}).click();
-    await creator.getByRole('button', {name: color === 'white' ? '♔ Белые' : '♚ Чёрные'}).click();
-    await creator.getByRole('button', {name: 'Сгенерировать и скопировать ссылку'}).click();
+    await creator.getByRole('button', {name: 'With a friend'}).click();
+    await creator.getByRole('button', {name: color === 'white' ? '♔ White' : '♚ Black'}).click();
+    await creator.getByRole('button', {name: 'Generate and copy the link'}).click();
     const link = await creator.locator('input[readonly][value*="/challenge/"]').inputValue();
     expect(link).toMatch(/\/challenge\/[A-Za-z0-9]+$/);
 
     await acceptor.goto(new URL(link).pathname);
     for (const page of [creator, acceptor]) {
-        await expect(page.getByText('Идёт рейтинговая партия')).toBeVisible();
+        await expect(page.getByText('Rated game in progress')).toBeVisible();
     }
-    await expect(creator.getByText(`Вы играете ${color === 'white' ? 'Белыми' : 'Чёрными'}`)).toBeVisible();
-    await expect(acceptor.getByText(`Вы играете ${color === 'white' ? 'Чёрными' : 'Белыми'}`)).toBeVisible();
+    await expect(creator.getByText(`You play ${color === 'white' ? 'White' : 'Black'}`)).toBeVisible();
+    await expect(acceptor.getByText(`You play ${color === 'white' ? 'Black' : 'White'}`)).toBeVisible();
 }
 
-test.describe.serial('PvP в двух браузерах', () => {
+test.describe.serial('PvP in two browsers', () => {
     let alice: Page;
     let bob: Page;
     let aliceName: string;
@@ -92,43 +92,43 @@ test.describe.serial('PvP в двух браузерах', () => {
         await carol?.context().close();
     });
 
-    test('вызов по ссылке, мат, итог у обоих и реванш со сменой цвета', async () => {
+    test('a challenge by link, a mate, the result for both and a rematch with a colour swap', async () => {
         await startFriendGame(alice, bob, 'white');
 
-        // «Дурацкий мат»: 1. f3 e5 2. g4 Qh4#
+        // "Fool's mate": 1. f3 e5 2. g4 Qh4#
         await move(alice, bob, 'f2', 'f3');
         await move(bob, alice, 'e7', 'e5');
         await move(alice, bob, 'g2', 'g4');
         await move(bob, alice, 'd8', 'h4');
 
         for (const page of [alice, bob]) {
-            await expect(page.getByText('Партия завершена (0-1)')).toBeVisible();
+            await expect(page.getByText('Game over (0-1)')).toBeVisible();
         }
 
-        // Реванш: цвета меняются, новая партия у обоих.
-        await alice.getByRole('button', {name: 'Реванш', exact: true}).click();
-        await expect(bob.getByText('Соперник предлагает реванш (со сменой цвета)!')).toBeVisible();
-        await bob.getByRole('button', {name: 'Принять реванш'}).click();
+        // Rematch: the colours swap, a new game for both.
+        await alice.getByRole('button', {name: 'Rematch', exact: true}).click();
+        await expect(bob.getByText('Your opponent offers a rematch (colors switched)!')).toBeVisible();
+        await bob.getByRole('button', {name: 'Accept rematch'}).click();
 
         for (const page of [alice, bob]) {
-            await expect(page.getByText('Идёт рейтинговая партия')).toBeVisible();
+            await expect(page.getByText('Rated game in progress')).toBeVisible();
         }
-        await expect(bob.getByText('Вы играете белыми')).toBeVisible();
+        await expect(bob.getByText('You play White')).toBeVisible();
         await move(bob, alice, 'e2', 'e4');
         await move(alice, bob, 'e7', 'e5');
 
-        // Доигрываем реванш сдачей (до 2-го полухода вместо неё — «Отменить игру»), чтобы
-        // следующий сценарий начался без активной партии.
+        // We finish the rematch by resigning (before the 2nd half-move "Abort the game" is shown instead), so that
+        // the next scenario starts without an active game.
         await resign(alice);
         for (const page of [alice, bob]) {
-            await expect(page.getByText('Партия завершена (1-0)')).toBeVisible();
+            await expect(page.getByText('Game over (1-0)')).toBeVisible();
         }
     });
 
-    test('нелегальный ход не проходит и не меняет позицию у соперника', async () => {
+    test('an illegal move is rejected and does not change the opponent\'s position', async () => {
         await startFriendGame(alice, bob, 'white');
 
-        // Ладья сквозь собственную пешку — доска не меняется ни у кого.
+        // A rook through its own pawn — the board does not change for anyone.
         await square(alice, 'a1').dragTo(square(alice, 'a4'));
         for (const page of [alice, bob]) {
             await expect(pieceOn(page, 'a1')).toHaveCount(1);
@@ -138,12 +138,12 @@ test.describe.serial('PvP в двух браузерах', () => {
         await move(alice, bob, 'e2', 'e4');
         await move(bob, alice, 'e7', 'e5');
         await resign(alice);
-        await expect(bob.getByText('Партия завершена (0-1)')).toBeVisible();
+        await expect(bob.getByText('Game over (0-1)')).toBeVisible();
     });
 
-    test('зритель видит партию из списка Live, не может вмешаться и получает её итог', async ({browser}) => {
-        // Третий игрок регистрируется только здесь (регистрация ограничена по числу аккаунтов с IP)
-        // и до начала партии: на первый ход у игроков 30 секунд, иначе партия отменяется.
+    test('a spectator sees the game from the Live list, cannot interfere and gets its result', async ({browser}) => {
+        // The third player registers only here (registration is limited by the number of accounts per IP)
+        // and before the game starts: the players have 30 seconds for the first move, otherwise the game is cancelled.
         carol = await newPlayer(browser, uniqueName('e2e_c'));
         const spectator = carol;
 
@@ -151,26 +151,26 @@ test.describe.serial('PvP в двух браузерах', () => {
         await move(alice, bob, 'e2', 'e4');
         await move(bob, alice, 'e7', 'e5');
 
-        await spectator.getByRole('button', {name: /Идут сейчас \(Live\)/}).click();
-        // Строка партии — самый внутренний блок, в котором есть и имена игроков, и кнопка.
-        const watchButton = spectator.getByRole('button', {name: 'Смотреть'});
+        await spectator.getByRole('button', {name: /Playing now \(Live\)/}).click();
+        // The game row is the innermost block that has both the player names and the button.
+        const watchButton = spectator.getByRole('button', {name: 'Watch'});
         const liveGame = spectator.locator('div')
             .filter({hasText: `${aliceName} vs ${bobName}`})
             .filter({has: watchButton})
             .last();
-        await liveGame.getByRole('button', {name: 'Смотреть'}).click();
+        await liveGame.getByRole('button', {name: 'Watch'}).click();
 
-        // Зритель получает позицию с уже сделанными ходами и видит следующие.
-        await expect(spectator.getByText(`Режим зрителя: ${aliceName} vs ${bobName}`)).toBeVisible();
+        // The spectator gets the position with the moves already made and sees the following ones.
+        await expect(spectator.getByText(`Spectator mode: ${aliceName} vs ${bobName}`)).toBeVisible();
         await expect(pieceOn(spectator, 'e4')).toHaveCount(1);
         await expect(pieceOn(spectator, 'e5')).toHaveCount(1);
         await move(alice, bob, 'g1', 'f3');
         await expect(pieceOn(spectator, 'f3')).toHaveCount(1);
         await expect(pieceOn(spectator, 'g1')).toHaveCount(0);
 
-        // Вмешаться нельзя: ни ходом, ни сообщением в чат.
-        await expect(spectator.getByText('Зрители могут только читать чат.')).toBeVisible();
-        await expect(spectator.getByPlaceholder('Написать сообщение…')).toHaveCount(0);
+        // Interfering is impossible: neither by a move nor by a chat message.
+        await expect(spectator.getByText('Spectators can only read the chat.')).toBeVisible();
+        await expect(spectator.getByPlaceholder('Write a message…')).toHaveCount(0);
         await square(spectator, 'd2').dragTo(square(spectator, 'd4'));
         for (const page of [spectator, alice, bob]) {
             await expect(pieceOn(page, 'd2')).toHaveCount(1);
@@ -178,9 +178,9 @@ test.describe.serial('PvP в двух браузерах', () => {
         }
 
         await resign(alice);
-        await expect(spectator.getByText('Партия окончена. Результат: 0-1 (сдача)')).toBeVisible();
+        await expect(spectator.getByText('Game over. Result: 0-1 (resignation)')).toBeVisible();
 
-        await spectator.getByRole('button', {name: 'Выйти из просмотра'}).click();
-        await expect(spectator.getByText('Свободная доска / Анализ')).toBeVisible();
+        await spectator.getByRole('button', {name: 'Stop watching'}).click();
+        await expect(spectator.getByText('Free board / Analysis')).toBeVisible();
     });
 });

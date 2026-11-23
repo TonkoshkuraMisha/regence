@@ -1,15 +1,17 @@
 # --- FILE: src/services/arena_awards.py ---
 """
-Награды арен (таск 33.5, задача 10 плана владельца 18.11). Когда итоги арены или швейцарки окончательные
-(arena.status == "finished": время вышло и доиграны все партии; у швейцарки — сыгран последний тур), тройка таблицы
-итогов (arena.ranked) получает призовые места — таблица arena_awards, уведомление «arena_podium» каждому призёру.
-Место получает только тот, кто сыграл хотя бы одну партию. Каждое деление арены — своя таблица и свои призёры.
+Arena awards (task 33.5, task 10 of the owner's plan of 18.11). When the results of an arena or Swiss are final
+(arena.status == "finished": time is up and all games are finished; for a Swiss, the last round has been played), the top three
+of the
+results table (arena.ranked) receive podium places — table arena_awards, notification "arena_podium" to each winner.
+A place goes only to a player who has played at least one game. Each arena division has its own table and its own winners.
 
-Из записей arena_awards считаются кубки в профиле (trophies: золото, серебро, бронза) и достижения «призёр арены» и
-«победитель арены» (src/services/achievements.py). Раздаёт награды плановая задача arena_awards
-(src/worker/tasks.py, расписание — beat_schedule в celery_app.py); арену проверяют, пока не прошло LOOKBACK после
-объявленного конца, и награждают один раз (у арены уже есть записи — пропускается). place_of — место игрока из
-этих же записей: по нему страница арены показывает праздник призёра.
+From the arena_awards records the profile trophies (gold, silver, bronze) and the "arena podium" and
+"arena winner" achievements are computed (src/services/achievements.py). Awards are handed out by the scheduled task
+arena_awards
+(src/worker/tasks.py, schedule — beat_schedule in celery_app.py); an arena is checked until LOOKBACK has passed after its
+announced end, and awarded once (an arena that already has records is skipped). place_of is the player's place from
+the same records: the arena page uses it to show the podium celebration.
 """
 
 from datetime import UTC, datetime, timedelta
@@ -22,21 +24,21 @@ from src.services import arena as arena_service
 from src.services import notifications
 from src.services.rating import classify_time_control
 
-# Сколько мест награждается.
+# How many places are awarded.
 PODIUM = 3
-# Сколько после объявленного конца арену ещё проверяют: недоигранная партия могла задержать итоги.
+# How long after the announced end an arena is still checked: an unfinished game could delay the results.
 LOOKBACK = timedelta(days=3)
-# Ключи кубков профиля по номеру места (arena_awards.place хранится строкой).
+# Profile trophy keys by place (arena_awards.place is stored as a string).
 MEDALS = {"1": "gold", "2": "silver", "3": "bronze"}
 
 
 async def award_finished(db: AsyncSession, now: datetime | None = None) -> int:
-    """Награждает все арены с окончательными итогами, ещё не награждённые; возвращает число новых наград (с commit)."""
+    """Awards all arenas with final results that have not been awarded yet; returns the number of new awards (with commit)."""
     now = now or datetime.now(UTC)
     candidates = (await db.execute(select(Arena).where(
         or_(Arena.ends_at <= now, Arena.finished_at.is_not(None)),
         Arena.ends_at > now - LOOKBACK,
-        Arena.format != "match",  # матч конференций — командный: кубки за личное место в нём не даются
+        Arena.format != "match",  # conference match is a team format: no trophies for an individual place in it
         ~exists().where(ArenaAward.arena_id == Arena.id),
     ).order_by(Arena.id))).scalars().all()
     added = 0
@@ -56,7 +58,7 @@ async def award_finished(db: AsyncSession, now: datetime | None = None) -> int:
 
 
 async def trophies(db: AsyncSession, user_id: int) -> dict[str, int]:
-    """Кубки игрока: {gold, silver, bronze} — число первых, вторых и третьих мест в аренах."""
+    """Player trophies: {gold, silver, bronze} — the number of first, second and third places in arenas."""
     rows = (await db.execute(select(ArenaAward.place, func.count()).where(ArenaAward.user_id == user_id)
                              .group_by(ArenaAward.place))).all()
     counts = {medal: 0 for medal in MEDALS.values()}
@@ -66,7 +68,7 @@ async def trophies(db: AsyncSession, user_id: int) -> dict[str, int]:
 
 
 async def place_of(db: AsyncSession, arena_id: int, user_id: int) -> int | None:
-    """Призовое место игрока в арене (1–3) из arena_awards; None — не призёр или итоги ещё не подведены."""
+    """The player's podium place in an arena (1-3) from arena_awards; None — not a winner or results not yet final."""
     place = await db.scalar(select(ArenaAward.place).where(ArenaAward.arena_id == arena_id,
                                                           ArenaAward.user_id == user_id))
     return int(place) if place is not None else None

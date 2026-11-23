@@ -1,9 +1,9 @@
 // --- FILE: frontend/src/components/chessboard/BlindfoldPanel.tsx ---
-// Игра вслепую (таск 19.5): до партии — выбор ступени (для партий без рейтинга); в партии — «Подсмотреть», счёт
-// подсмотров, ввод хода нотацией и скрытие списка ходов. Состояние (выбранная ступень, ступень партии, подсмотры)
-// — общий стор config/blindfold.ts; выбранная ступень запоминается в localStorage (regence_blindfold_level).
-// Какие фигуры скрыты, решает Chessboard (visibleSquares). Ступень и число подсмотров уходят в архив при сохранении
-// партии с ботом (/bots/save-game) или отметкой POST /profile/games/{id}/blindfold после товарищеской партии.
+// Blindfold play (task 19.5): before a game, a level choice (for unrated games); in a game, "Peek", the peek
+// count, move entry by notation and hiding the move list. State (chosen level, game level, peeks)
+// is the shared store config/blindfold.ts; the chosen level is remembered in localStorage (regence_blindfold_level).
+// Which pieces are hidden is decided by Chessboard (visibleSquares). The level and the number of peeks go to the archive when a
+// game against a bot is saved (/bots/save-game) or by the POST /profile/games/{id}/blindfold mark after a friendly game.
 
 import {useState} from 'react';
 import {EyeOff, Eye} from 'lucide-react';
@@ -11,13 +11,13 @@ import {useI18n} from '../../i18n';
 import {BLINDFOLD_LEVELS, armBlindfold, peek, setHideMoves, useBlindfold} from '../../config/blindfold';
 import type {BlindfoldLevel} from '../../config/blindfold';
 
-// Ступень → ключ подписи в каталоге (blindfold.levels.*).
+// Level -> label key in the catalog (blindfold.levels.*).
 const LEVEL_KEYS = {1: 'own', 2: 'fade', 3: 'pawns', 4: 'full'} as const;
 
 /**
- * Панель игры вслепую. inGame — идёт партия (с ботом или человеком); myTurn — сейчас ход игрока (иначе поле
- * ввода отключено); onMoveInput получает набранный ход и возвращает false, если такого хода в позиции нет.
- * Вне партии или в обычной партии показывает только выбор ступени для следующей партии.
+ * Blindfold panel. inGame means a game is in progress (against a bot or a human); myTurn means it is the player's turn (otherwise the
+ * input field is disabled); onMoveInput receives the typed move and returns false if there is no such move in the position.
+ * Outside a game or in a normal game it shows only the level choice for the next game.
  */
 export function BlindfoldPanel({inGame, myTurn, onMoveInput}: {
     inGame: boolean; myTurn: boolean; onMoveInput: (text: string) => boolean;

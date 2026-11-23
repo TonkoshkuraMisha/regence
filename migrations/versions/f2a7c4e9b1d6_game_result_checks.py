@@ -4,10 +4,10 @@ Revision ID: f2a7c4e9b1d6
 Revises: e6b1c9d4a7f2
 Create Date: 2026-11-18 16:00:00.000000
 
-Итог из заголовка Result чужого PGN раньше записывался как есть. Теперь импорт и загрузчик архива приводят его
-game_engine.normalize_result; здесь то же делается с уже записанными строками (известные варианты — к стандарту,
-прочее — «*»), после чего ставится CHECK: в колонке только 1-0, 0-1, 1/2-1/2, * (или NULL у незаконченной партии).
-Откат снимает CHECK; приведённые значения не возвращаются (их исходный вид не хранился).
+The result from the Result header of a foreign PGN used to be stored as is. Now the import and the archive loader normalise it with
+game_engine.normalize_result; here the same is done to the rows already stored (known variants go to the standard,
+anything else to "*"), after which a CHECK is added: the column holds only 1-0, 0-1, 1/2-1/2, * (or NULL for an unfinished game).
+The downgrade drops the CHECK; the normalised values are not restored (their original form was not stored).
 """
 from collections.abc import Sequence
 
@@ -20,7 +20,7 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 ALLOWED = "('1-0', '0-1', '1/2-1/2', '*')"
-# Варианты записи → стандарт (как game_engine._RESULT_ALIASES на момент миграции).
+# Spelling variants -> standard (as game_engine._RESULT_ALIASES at the time of the migration).
 ALIASES = {"½-½": "1/2-1/2", "1/2": "1/2-1/2", "0.5-0.5": "1/2-1/2", "=": "1/2-1/2", "1:0": "1-0", "0:1": "0-1",
            "1–0": "1-0", "0–1": "0-1"}
 TABLES = ('games', 'imported_games')

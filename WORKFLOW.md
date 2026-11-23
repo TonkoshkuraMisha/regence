@@ -1,86 +1,86 @@
 <!-- --- FILE: WORKFLOW.md --- -->
 
-# Регламент разработки и Git-процессов (Regence Workflow)
+# Development and Git Process Regulations (Regence Workflow)
 
-Пошаговая шпаргалка для работы над каждой новой задачей в проекте.
-
----
-
-## 1. Схема веток проекта
-
-1. `master` — **Релизная ветка (Production).**
-    * Здесь лежит только проверенный и полностью рабочий код.
-    * Напрямую в `master` код никогда не пишем. Обновляем его только слиянием из `dev`.
-
-2. `dev` — **Основная ветка разработки (Integration).**
-    * База, в которую сливаются все готовые фичи и исправления.
-    * Все новые ветки создаются от `dev` и после завершения вливаются обратно в `dev`.
-
-3. Рабочие ветки — **ветки под конкретную задачу**; имя задачи из `ToDo.md` записано рядом с ней.
-    * `feat/название` — новая функциональность или доработка интерфейса (например, `feat/arena-schedule`);
-    * `fix/название` — исправление ошибки (например, `fix/timer-sync`);
-    * `content/название` — шахматное содержание: уроки, турниры «Машины времени», тексты;
-    * `docs/название` — документация;
-    * `chore/название` — инфраструктура, тесты, CI;
-    * `perf/название` — производительность и запросы к базе.
-
-В `dev` задача попадает **запросом на слияние (PR)** после зелёного CI — шаг 5.
+A step-by-step cheat sheet for working on every new task in the project.
 
 ---
 
-## 2. Пошаговый алгоритм работы над новой фичей (От и До)
+## 1. Project branch layout
 
-### Шаг 1. Создание ветки перед началом работы
+1. `master` — **Release branch (Production).**
+    * Only verified, fully working code lives here.
+    * We never write code directly in `master`. It is updated only by merging from `dev`.
 
-Всегда начинай новую задачу в корневой папке проекта `regence` с переключения на `dev` и создания новой рабочей ветки:
+2. `dev` — **Main development branch (Integration).**
+    * The base into which all finished features and fixes are merged.
+    * All new branches are created from `dev` and merged back into `dev` when finished.
+
+3. Working branches — **branches for a specific task**; the task name from `ToDo.md` is recorded next to it.
+    * `feat/name` — new functionality or an interface improvement (for example, `feat/arena-schedule`);
+    * `fix/name` — a bug fix (for example, `fix/timer-sync`);
+    * `content/name` — chess content: lessons, "Time Machine" tournaments, texts;
+    * `docs/name` — documentation;
+    * `chore/name` — infrastructure, tests, CI;
+    * `perf/name` — performance and database queries.
+
+A task reaches `dev` through a **pull request (PR)** after a green CI — step 5.
+
+---
+
+## 2. Step-by-step procedure for working on a new feature (start to finish)
+
+### Step 1. Creating a branch before starting work
+
+Always start a new task in the project root folder `regence` by switching to `dev` and creating a new working branch:
 
     git checkout dev
     git pull origin dev
-    git checkout -b feat/название-задачи
+    git checkout -b feat/task-name
 
-*(Если ты забыл создать ветку и уже начал менять файлы прямо в `dev` — просто выполни
-`git checkout -b feat/название-задачи`, и все незакоммиченные изменения автоматически переедут в новую ветку).*
+*(If you forgot to create a branch and have already started changing files directly in `dev`, just run
+`git checkout -b feat/task-name`, and all uncommitted changes will move to the new branch automatically).*
 
 ---
 
-### Шаг 2. Написание кода и правило миграций БД (Alembic)
+### Step 2. Writing code and the DB migration rule (Alembic)
 
-ВАЖНОЕ ПРАВИЛО ПО БАЗЕ ДАННЫХ:
+IMPORTANT RULE ABOUT THE DATABASE:
 
-* Если ты менял **только фронтенд** (`frontend/...`), стили, WebSocket-логику или сервисы Python без изменения таблиц
-  БД — **миграции Alembic делать НЕ НУЖНО**.
-* Миграция создается **ТОЛЬКО** тогда, когда ты изменил или добавил колонки/таблицы в папке `src/models/`. В этом случае
-  выполни:
+* If you changed **only the frontend** (`frontend/...`), styles, WebSocket logic or Python services without changing
+  the DB tables — **Alembic migrations are NOT needed**.
+* A migration is created **ONLY** when you changed or added columns/tables in the `src/models/` folder. In that case
+  run:
 
-  alembic revision --autogenerate -m "описание_изменений_моделей"
+  alembic revision --autogenerate -m "description_of_model_changes"
   alembic upgrade head
 
-* Если под рукой нет запущенной базы, миграцию можно написать вручную по образцу соседних файлов
-  `migrations/versions/` (`down_revision` — текущая голова, её показывает `alembic heads`). Ошибку в такой миграции
-  поймает CI: он применяет все миграции на пустой базе, сверяет результат с моделями (`alembic check`), откатывает
-  до начала и применяет снова.
-* Голова миграций должна быть одна: `alembic heads` печатает ровно одну строку.
+* If no running database is at hand, a migration can be written by hand following the pattern of the neighboring files in
+  `migrations/versions/` (`down_revision` is the current head, shown by `alembic heads`). An error in such a migration
+  will be caught by CI: it applies all migrations on an empty database, compares the result with the models
+  (`alembic check`), rolls back to the start and applies them again.
+* There must be a single migration head: `alembic heads` prints exactly one line.
 
 ---
 
-### Шаг 3. Локальная проверка перед коммитом
+### Step 3. Local check before committing
 
-1. Если менялся Python-код (из корня проекта):
+1. If Python code changed (from the project root):
 
-   uv sync                               # окружение по uv.lock (ruff, mypy, pytest-cov внутри)
-   ruff check .                          # линтер (правила — pyproject.toml), любое замечание роняет CI
-   mypy                                  # проверка типов src/
-   python -m pytest --cov                # тесты и покрытие (порог — pyproject.toml)
+   uv sync                               # environment from uv.lock (ruff, mypy, pytest-cov inside)
+   ruff check .                          # linter (rules in pyproject.toml), any finding fails CI
+   mypy                                  # type check of src/
+   python -m pytest --cov                # tests and coverage (threshold in pyproject.toml)
 
-   Интеграционные тесты (`tests/integration`) запускаются только при заданных `TEST_DATABASE_URL` и
-   `TEST_REDIS_URL` и **удаляют все таблицы** в указанной базе — используйте отдельную базу, не рабочую:
+   Integration tests (`tests/integration`) run only when `TEST_DATABASE_URL` and
+   `TEST_REDIS_URL` are set and **drop all tables** in the given database — use a separate database, not the working one:
 
    docker compose exec db psql -U regence_user -d regence_db -c "CREATE DATABASE regence_test"
    $env:TEST_DATABASE_URL = "postgresql+asyncpg://regence_user:regence_password@localhost:15432/regence_test"
    $env:TEST_REDIS_URL = "redis://localhost:6379/15"
    python -m pytest tests/integration
 
-2. Если менялся React/TypeScript-код (фронтенд):
+2. If React/TypeScript code (the frontend) changed:
 
    cd frontend
    npm run lint
@@ -90,54 +90,54 @@
 
 ---
 
-### Шаг 4. Коммит изменений в рабочую ветку
+### Step 4. Committing changes to the working branch
 
-Убедись по `git status`, что в список не попали временные файлы, и зафиксируй изменения:
+Make sure with `git status` that no temporary files got into the list, and record the changes:
 
     git status
     git add .
-    git commit -m "feat: краткое описание сделанной задачи"
+    git commit -m "feat: short description of the completed task"
 
-Префиксы коммитов:
+Commit prefixes:
 
-* `feat:` — новая фича или улучшение интерфейса
-* `fix:` — исправление ошибки
-* `refactor:` — рефакторинг кода
-* `perf:` — ускорение работы и оптимизация запросов
-* `chore:` — инфраструктура, конфиги, зависимости
-* `docs:` — документация (`README.md`, `QUICKSTART.md`, `WORKFLOW.md`, `ToDo.md`, `docs/`)
-* `content:` — шахматное содержание (уроки, турниры, тексты каталогов)
-* `test:` — только тесты
+* `feat:` — a new feature or an interface improvement
+* `fix:` — a bug fix
+* `refactor:` — code refactoring
+* `perf:` — speed-ups and query optimization
+* `chore:` — infrastructure, configs, dependencies
+* `docs:` — documentation (`README.md`, `QUICKSTART.md`, `WORKFLOW.md`, `ToDo.md`, `docs/`)
+* `content:` — chess content (lessons, tournaments, catalog texts)
+* `test:` — tests only
 
-Раздел в скобках и номер таска в конце — как в истории: `feat(arenas): berserk and a lag quota (33.3)`.
-
----
-
-### Шаг 5. Запрос на слияние в `dev`
-
-Когда задача проверена и локальные проверки проходят:
-
-    git push -u origin feat/название-задачи
-    gh pr create --base dev --title "feat(раздел): что сделано (номер таска)" --body "..."
-    gh pr checks <номер> --watch
-
-На запрос запускается пайплайн `Regence CI` из трёх проверок: сервер (линтер, типы, тесты, миграции), клиент
-(линтер, тесты, сборка) и сборка продакшен-образов со сценариями в браузере (Playwright). Сливать — только когда
-зелёные все три:
-
-    gh pr merge <номер> --merge
-
-После слияния CI запускается ещё раз уже на `dev` — дождись и его: `gh run list --branch dev --limit 1`.
-Если `dev` за это время ушёл вперёд, перед слиянием подтяни его в ветку: `git merge origin/dev`.
-
-Перед завершением задачи: перезаписать блок «Сейчас» в начале `ToDo.md` (не больше 15 строк), отметить задачу
-выполненной и одной записью «Сделано» описать, что и где сделано.
+The scope in parentheses and the task number at the end follow the history: `feat(arenas): berserk and a lag quota (33.3)`.
 
 ---
 
-### Шаг 6. Выпуск стабильного релиза в `master`
+### Step 5. Pull request into `dev`
 
-Выполняется, когда в `dev` завершен логический этап (или спринт) и всё стабильно работает:
+When the task is verified and the local checks pass:
+
+    git push -u origin feat/task-name
+    gh pr create --base dev --title "feat(scope): what was done (task number)" --body "..."
+    gh pr checks <number> --watch
+
+The PR triggers the `Regence CI` pipeline of three checks: server (linter, types, tests, migrations), client
+(linter, tests, build) and a build of the production images with browser scenarios (Playwright). Merge only when
+all three are green:
+
+    gh pr merge <number> --merge
+
+After the merge, CI runs once more, now on `dev` — wait for it as well: `gh run list --branch dev --limit 1`.
+If `dev` has moved ahead in the meantime, pull it into your branch before merging: `git merge origin/dev`.
+
+Before finishing the task: rewrite the "Now" block at the top of `ToDo.md` (no more than 15 lines), mark the task as
+done and describe in one "Done" entry what was done and where.
+
+---
+
+### Step 6. Releasing a stable version to `master`
+
+Performed when a logical stage (or sprint) is complete in `dev` and everything works stably:
 
     git checkout master
     git pull origin master
@@ -145,42 +145,42 @@
     git push origin master
     git checkout dev
 
-*(Последняя команда `git checkout dev` обязательна, чтобы никогда не оставаться в ветке `master`).*
+*(The last command `git checkout dev` is mandatory, so that you never stay on the `master` branch).*
 
 ---
 
-## 3. Работа с нескольких хостов (игровой ноут, стационарный ПК, рабочий ноут)
+## 3. Working from several hosts (gaming laptop, desktop PC, work laptop)
 
-Код синхронизируется через GitHub, а всё, чего нет в git (venv, `node_modules`, Stockfish, PGN-архивы,
-схема dev-БД), восстанавливает скрипт `scripts/sync_host.ps1`. Правило одно: **пришёл — синхронизировал,
-уходишь — запушил**.
+Code is synchronized through GitHub, and everything that is not in git (venv, `node_modules`, Stockfish, PGN archives,
+the dev DB schema) is restored by the script `scripts/sync_host.ps1`. There is one rule: **arrive — sync,
+leave — push**.
 
-    .\scripts\sync_host.ps1            # пришёл: git pull, зависимости, Stockfish, Docker, миграции, PGN
-    .\scripts\sync_host.ps1 -Resume    # то же + продолжить незаконченную работу с другого хоста
-    .\scripts\sync_host.ps1 -GitOnly   # только git (быстро)
-    .\scripts\sync_host.ps1 -Leave     # уходишь: закоммитить и запушить всё незаконченное
-    .\scripts\sync_host.ps1 -Leave -Message "доделать таймер"
+    .\scripts\sync_host.ps1            # arrived: git pull, dependencies, Stockfish, Docker, migrations, PGN
+    .\scripts\sync_host.ps1 -Resume    # the same + continue unfinished work from another host
+    .\scripts\sync_host.ps1 -GitOnly   # git only (fast)
+    .\scripts\sync_host.ps1 -Leave     # leaving: commit and push everything unfinished
+    .\scripts\sync_host.ps1 -Leave -Message "finish the timer"
 
-Что делает скрипт:
+What the script does:
 
-* **Пришёл.** Ставит в репозитории `pull.rebase`, `fetch.prune`, `rebase.autoStash`; подтягивает текущую
-  ветку и локальные `dev`/`master`; сверяет `.env` с `.env.example` и проверяет, что настройки backend
-  загружаются; переустанавливает Python- и npm-зависимости, только если менялись `uv.lock` или
-  `package-lock.json` (`npm ci` — ровно по lock-файлу); скачивает Stockfish с официального GitHub, если его
-  нет; запускает Docker Desktop при необходимости, поднимает `db` и `redis`, применяет миграции; импортирует
-  партии чемпионов, если их нет. Повторный запуск ничего не переустанавливает.
-* **Ухожу.** Незакоммиченные изменения на `dev`/`master` уезжают в новую ветку `wip/<хост>-<дата-время>`,
-  на любой другой ветке — коммитом `wip(<хост>): ...` в неё же; ветка пушится. Скрипт предупреждает о
-  других незапушенных ветках и о stash — они остаются только на этом хосте.
-* **Продолжить.** `-Resume` переключается на самую свежую ветку `wip/*` с GitHub. Когда работа готова,
-  WIP-коммиты сворачиваются в один при слиянии:
+* **Arriving.** Sets `pull.rebase`, `fetch.prune`, `rebase.autoStash` in the repository; pulls the current
+  branch and the local `dev`/`master`; compares `.env` with `.env.example` and checks that the backend settings
+  load; reinstalls the Python and npm dependencies only if `uv.lock` or
+  `package-lock.json` changed (`npm ci` — exactly per the lock file); downloads Stockfish from the official GitHub if it
+  is missing; starts Docker Desktop if necessary, brings up `db` and `redis`, applies migrations; imports the
+  champions' games if they are missing. A repeated run reinstalls nothing.
+* **Leaving.** Uncommitted changes on `dev`/`master` go to a new branch `wip/<host>-<date-time>`,
+  on any other branch — as a `wip(<host>): ...` commit into that same branch; the branch is pushed. The script warns about
+  other unpushed branches and about stash — they stay only on this host.
+* **Continuing.** `-Resume` switches to the most recent `wip/*` branch from GitHub. When the work is ready,
+  the WIP commits are collapsed into one at merge time:
 
       git checkout dev
-      git merge --squash wip/<хост>-<дата-время>
+      git merge --squash wip/<host>-<date-time>
       git commit -m "feat(...): ..."
       git push origin dev
-      git push origin --delete wip/<хост>-<дата-время>
+      git push origin --delete wip/<host>-<date-time>
 
-Секреты из `.env` в git не попадают: храните `.env` в менеджере паролей и при добавлении нового ключа
-обновляйте и его, и `.env.example`. Имя и почта автора коммитов (`git config --global user.name/user.email`)
-должны быть одинаковыми на всех хостах.
+Secrets from `.env` do not get into git: keep `.env` in a password manager and when adding a new key
+update both it and `.env.example`. The commit author's name and email (`git config --global user.name/user.email`)
+must be the same on all hosts.

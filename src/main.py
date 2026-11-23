@@ -1,15 +1,16 @@
 # --- FILE: src/main.py ---
 """
-Точка входа API: собирает приложение FastAPI и подключает все маршруты.
+The API entry point: assembles the FastAPI application and connects all routes.
 
-* create_app — список маршрутов по разделам (`src/api/*.py`), CORS из настройки CORS_ORIGINS, сбор метрик HTTP,
-  единый формат ошибок проверки запроса (без эха присланных значений — в ответе оказался бы, например, пароль).
-  Описание API (/docs) публикуется только вне продакшена.
-* lifespan — при старте запускает цикл проверки часов партий (флаги, неявки, брошенные партии —
-  game_state.check_timeouts_loop; из нескольких процессов его ведёт один лидер), при остановке закрывает движки
-  Stockfish и соединение с Redis.
-* /health — отвечают ли PostgreSQL и Redis (503, если нет): по нему Docker и балансировщик решают, можно ли
-  нагружать экземпляр. /metrics — метрики Prometheus, наружу через nginx не публикуются.
+* create_app - the list of routes by section (`src/api/*.py`), CORS from the CORS_ORIGINS setting, HTTP metrics collection,
+  a single format of request validation errors (without echoing submitted values - a password, for example, would end up in the
+  response).
+  The API description (/docs) is published only outside production.
+* lifespan - at startup runs the game clock check loop (flags, no-shows, abandoned games -
+  game_state.check_timeouts_loop; of several processes one leader runs it), at shutdown closes the Stockfish engines
+  and the Redis connection.
+* /health - whether PostgreSQL and Redis respond (503 if not): Docker and the balancer use it to decide whether
+  the instance can be loaded. /metrics - Prometheus metrics, not published outside through nginx.
 """
 
 import asyncio
@@ -76,21 +77,21 @@ from src.services.connection_manager import manager
 from src.services.engine_pool import close_all_engine_pools
 from src.services.game_state import state_manager
 
-setup_logging("api")  # формат, файл и контекст записей — src/core/logging_setup.py
+setup_logging("api")  # the format, file and record context - src/core/logging_setup.py
 logger = logging.getLogger(__name__)
 
 init_sentry("api")
 
-# Сколько /health ждёт ответа PostgreSQL и Redis (каждого отдельно), прежде чем считать сервис недоступным.
+# How long /health waits for PostgreSQL and Redis (each separately) before considering the service unavailable.
 HEALTH_CHECK_TIMEOUT_S = 2.0
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
-    Старт и остановка процесса API. При старте запускается фоновый цикл часов партий (флаги, неявки, брошенные
-    партии — state_manager.check_timeouts_loop; цикл есть в каждом процессе uvicorn, но работу ведёт один лидер —
-    ключ Redis timeouts:leader). При остановке цикл отменяется, процессы Stockfish и соединение с Redis закрываются.
+    Start and stop of the API process. At start the background game clock loop runs (flags, no-shows, abandoned
+    games - state_manager.check_timeouts_loop; the loop exists in every uvicorn process, but the work is done by one leader -
+    the Redis key timeouts:leader). At stop the loop is cancelled, the Stockfish processes and the Redis connection are closed.
     """
     logger.info("Starting up %s (%s)...", settings.PROJECT_NAME, settings.ENVIRONMENT)
     timeout_task = asyncio.create_task(state_manager.check_timeouts_loop(manager))
@@ -110,10 +111,10 @@ async def lifespan(app: FastAPI):
 
 def create_app() -> FastAPI:
     """
-    Собирает приложение: CORS, метрики HTTP, единый формат ошибок проверки запроса и маршруты всех разделов.
-    Все маршруты живут под префиксом /api/v1 (settings.API_V1_STR); вне его — только /health и /metrics.
+    Assembles the application: CORS, HTTP metrics, a single format of request validation errors and the routes of all sections.
+    All routes live under the /api/v1 prefix (settings.API_V1_STR); outside it - only /health and /metrics.
     """
-    # Документация API в продакшене не публикуется: она раскрывает все эндпоинты и схемы.
+    # The API documentation is not published in production: it reveals all endpoints and schemas.
     docs_enabled = not settings.is_production
     app = FastAPI(
         title=settings.PROJECT_NAME,
@@ -130,17 +131,18 @@ def create_app() -> FastAPI:
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
-        # Номер запроса виден клиенту и из другого адреса (Vite :3000 → API :8000): он уходит в отчёт об ошибке.
+        # The request id is visible to the client from another origin too (Vite :3000 -> API :8000): it goes into the error
+        # report.
         expose_headers=[REQUEST_ID_HEADER],
     )
 
     app.middleware("http")(http_metrics_middleware)
-    app.middleware("http")(request_log_middleware)  # последним — он снаружи: номер запроса есть у всего, что ниже
+    app.middleware("http")(request_log_middleware)  # last - it is outermost: everything below has a request id
 
     @app.exception_handler(RequestValidationError)
     async def _validation_error(_request: Request, exc: RequestValidationError) -> JSONResponse:
-        # Без эха присланных значений (в ответе оказывался бы, например, пароль) и с параметрами
-        # проверки, из которых клиент соберёт текст на языке игрока.
+        # Without echoing submitted values (a password, for example, would end up in the response) and with the check
+        # parameters from which the client assembles the text in the player's language.
         return JSONResponse(status_code=422, content={"detail": validation_error_items(exc.errors())})
 
     app.include_router(auth_router, prefix=settings.API_V1_STR)
@@ -197,8 +199,8 @@ async def _check_redis() -> None:
 @app.get("/health")
 async def health_check():
     """
-    Готовность сервиса: отвечают ли PostgreSQL и Redis. 503, если хоть что-то недоступно, —
-    по этому коду Docker и балансировщик понимают, что экземпляр нельзя нагружать.
+    Service readiness: whether PostgreSQL and Redis respond. 503 if anything is unavailable -
+    by this code Docker and the balancer understand that the instance must not be loaded.
     """
     checks: dict[str, str] = {}
     for name, check in (("database", _check_database), ("redis", _check_redis)):
@@ -218,8 +220,8 @@ async def health_check():
 @app.get("/metrics", include_in_schema=False)
 async def metrics():
     """
-    Метрики Prometheus (src/core/observability.py). Наружу через nginx не публикуется — только внутри сети compose.
-    Перед отдачей обновляются число игроков за сегодня (счётчик в Redis) и длины очередей Celery.
+    Prometheus metrics (src/core/observability.py). Not published outside through nginx - only inside the compose network.
+    Before serving, the number of players today (a counter in Redis) and the Celery queue lengths are refreshed.
     """
     await refresh_active_players()
     await refresh_queue_lengths()

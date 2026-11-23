@@ -1,16 +1,16 @@
 // --- FILE: frontend/src/services/personalities.ts ---
 
 /**
- * Мастерская соперников: персоналии, собранные игроком (таск 10.2).
+ * Opponent workshop: personalities assembled by the player (task 10.2).
  *
- * Один источник правды за раз: у гостя — localStorage этого браузера, у вошедшего игрока —
- * сервер (/api/v1/bots/personalities). После входа гостевые персоналии предлагается перенести
- * в профиль; перенесённые удаляются из браузера, не поместившиеся (лимит, совпадение имени)
- * остаются в нём, и игрок видит причину.
+ * One source of truth at a time: for a guest — localStorage of this browser, for a logged-in player —
+ * the server (/api/v1/bots/personalities). After login the guest personalities are offered to be moved
+ * to the profile; the moved ones are deleted from the browser, those that did not fit (limit, name clash)
+ * stay in it, and the player sees the reason.
  *
- * Сервер: маршруты src/api/personalities.py (таблица bot_personalities), поиск дебютов — GET /api/v1/bots/openings
- * (src/api/bots.py). Формат характера и допустимые границы ползунков задаёт BotPersonalityConfig
- * (src/services/bots/personality.py); здесь его зеркало — PersonalityConfig.
+ * Server: routes src/api/personalities.py (table bot_personalities), opening search — GET /api/v1/bots/openings
+ * (src/api/bots.py). The character format and allowed slider bounds are defined by BotPersonalityConfig
+ * (src/services/bots/personality.py); here is its mirror — PersonalityConfig.
  */
 
 import {API_BASE_URL} from '../config/api';
@@ -18,7 +18,7 @@ import {UiError, readApiErrorOr} from './apiErrors';
 import {tp, uiMessage} from '../i18n';
 import type {MessageKey} from '../i18n';
 
-/** Как персоналия ценит фигуры (в пешках): влияет на выбор разменов, а не на оценку движка. */
+/** How a personality values pieces (in pawns): affects the choice of exchanges, not the engine evaluation. */
 export interface PieceValues {
     pawn: number;
     knight: number;
@@ -27,29 +27,29 @@ export interface PieceValues {
     queen: number;
 }
 
-/** Характер соперника — зеркало BotPersonalityConfig сервера (границы значений проверяет сервер). */
+/** Opponent character — a mirror of the server's BotPersonalityConfig (value bounds are checked by the server). */
 export interface PersonalityConfig {
-    /** −100…100: плюс — шахи, жертвы, игра против короля; минус — профилактика и тихие ходы. */
+    /** −100...100: plus — checks, sacrifices, play against the king; minus — prophylaxis and quiet moves. */
     aggression: number;
-    /** Веса признаков 0…200: 100 — обычный вес, 0 — признак не учитывается, 200 — удвоенный. */
+    /** Feature weights 0...200: 100 — normal weight, 0 — the feature is ignored, 200 — doubled. */
     center_control: number;
     mobility: number;
     king_safety: number;
     pawn_structure: number;
     piece_values: PieceValues;
     /**
-     * Ползунки силы: randomness (0…100) — случайный разброс между близкими кандидатами; blunder_guard_cp — окно
-     * от лучшего хода в сантипешках, внутри которого стиль выбирает ход; target_elo — целевой рейтинг.
+     * Strength sliders: randomness (0...100) — random spread between close candidates; blunder_guard_cp — the window
+     * from the best move in centipawns within which the style chooses the move; target_elo — target rating.
      */
     randomness: number;
     blunder_guard_cp: number;
     target_elo: number;
-    /** Любимые дебюты (таск 21.2): позиции (EPD) записей таблицы дебютов, до трёх за каждый цвет. */
+    /** Favourite openings (task 21.2): positions (EPD) of openings table entries, up to three per colour. */
     openings_white?: string[];
     openings_black?: string[];
     /**
-     * Таск 21.4: привычки новичков, дебютный характер, отношение к ничьей (−100 — никогда не соглашается, +100 —
-     * охотно) и вес проходных пешек (0…200, 100 — как у всех).
+     * Task 21.4: beginner habits, opening character, attitude to draws (−100 — never agrees, +100 —
+     * gladly) and the weight of passed pawns (0...200, 100 — like everyone).
      */
     habits?: Habit[];
     opening_style?: OpeningStyle;
@@ -57,26 +57,26 @@ export interface PersonalityConfig {
     passed_pawns?: number;
 }
 
-/** Коды привычек и дебютных характеров — те же, что на сервере; подписи — каталог workshop.habits / openingStyles. */
+/** Codes of habits and opening characters — the same as on the server; labels — catalog workshop.habits / openingStyles. */
 export const HABITS = ['hangs_pieces', 'early_queen', 'pawn_grabber', 'knight_lover', 'no_castling', 'trades_all'] as const;
 export type Habit = typeof HABITS[number];
 export const OPENING_STYLES = ['normal', 'trapper', 'trap_victim', 'gambit', 'early_queen', 'drawish', 'capture_lover', 'offbeat'] as const;
 export type OpeningStyle = typeof OPENING_STYLES[number];
-/** Пределы формы — такие же, как в проверке сервера (не больше трёх привычек и трёх дебютов за цвет). */
+/** Form limits — the same as in the server check (no more than three habits and three openings per colour). */
 export const MAX_HABITS = 3;
 
 export const MAX_FAVORITE_OPENINGS = 3;
 
-/** Запись открытой таблицы дебютов: позиция (EPD) — то, что хранится в openings_white / openings_black. */
+/** Entry of the open openings table: position (EPD) — what is stored in openings_white / openings_black. */
 export interface OpeningEntry {
     eco: string;
-    /** Английское имя собственное из открытой таблицы дебютов — не переводится. */
+    /** English proper noun from the open openings table — not translated. */
     name: string;
     epd: string;
     moves: string[];
 }
 
-/** Поиск дебютов по названию или коду ECO, либо записи по позициям (чтобы показать названия выбранных). */
+/** Opening search by name or ECO code, or entries by positions (to show the names of the selected ones). */
 export async function fetchOpenings(params: { q?: string; epds?: string[] }): Promise<OpeningEntry[]> {
     const query = new URLSearchParams();
     if (params.q) query.set('q', params.q);
@@ -86,33 +86,33 @@ export async function fetchOpenings(params: { q?: string; epds?: string[] }): Pr
     return ((await res.json()) as { openings: OpeningEntry[] }).openings;
 }
 
-/** То, что игрок собрал в форме: имя и характер. Имя попадает в PGN, поэтому сервер проверяет его как имя игрока. */
+/** What the player assembled in the form: name and character. The name goes into the PGN, so the server checks it as a player name. */
 export interface PersonalityDraft {
     name: string;
     config: PersonalityConfig;
 }
 
-/** Сохранённая персоналия — с сервера или из localStorage гостя. */
+/** Saved personality — from the server or from the guest's localStorage. */
 export interface Personality extends PersonalityDraft {
-    /** Число — id на сервере; строка — локальный id гостевой персоналии. */
+    /** A number — id on the server; a string — local id of a guest personality. */
     id: number | string;
     created_at: string;
     updated_at: string;
 }
 
-/** Итог переноса гостевых персоналий (POST /bots/personalities/import). */
+/** Result of moving guest personalities (POST /bots/personalities/import). */
 export interface ImportResult {
     created: Personality[];
-    /** reason — код ошибки сервера (serverErrors), params — его параметры. */
+    /** reason — server error code (serverErrors), params — its parameters. */
     skipped: { name: string; reason: string; params?: Record<string, string | number> }[];
 }
 
-/** Предел числа персоналий — тот же, что на сервере (MAX_PERSONALITIES_PER_USER); гостю он же в браузере. */
+/** Personality count limit — the same as on the server (MAX_PERSONALITIES_PER_USER); a guest has the same in the browser. */
 export const MAX_PERSONALITIES = 20;
-/** Ключ localStorage с персоналиями гостя (JSON-массив Personality). */
+/** localStorage key with the guest's personalities (JSON array of Personality). */
 export const GUEST_STORAGE_KEY = 'regence_guest_personalities';
 
-/** Характер новой персоналии — те же значения по умолчанию, что у BotPersonalityConfig на сервере. */
+/** Character of a new personality — the same defaults as BotPersonalityConfig on the server. */
 export const DEFAULT_CONFIG: PersonalityConfig = {
     aggression: 0,
     center_control: 100,
@@ -129,9 +129,9 @@ export const DEFAULT_CONFIG: PersonalityConfig = {
 
 const sameName = (a: string, b: string) => a.trim().toLocaleLowerCase() === b.trim().toLocaleLowerCase();
 
-// --- Гость: localStorage ----------------------------------------------------------------------
+// --- Guest: localStorage ----------------------------------------------------------------------
 
-/** Персоналии гостя из localStorage; испорченные записи и недоступное хранилище дают пустой список. */
+/** Guest personalities from localStorage; corrupted entries and unavailable storage give an empty list. */
 export function readGuestPersonalities(): Personality[] {
     try {
         const raw = localStorage.getItem(GUEST_STORAGE_KEY);
@@ -147,14 +147,14 @@ function writeGuestPersonalities(items: Personality[]): void {
         if (items.length) localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(items));
         else localStorage.removeItem(GUEST_STORAGE_KEY);
     } catch {
-        // Хранилище недоступно (приватный режим) — гостевые персоналии живут до перезагрузки.
+        // Storage is unavailable (private mode) — guest personalities live until reload.
     }
 }
 
 /**
- * Создать (без id) или изменить гостевую персоналию. Правила те же, что у сервера, и с теми же текстами ошибок:
- * имя не повторяется, персоналий не больше MAX_PERSONALITIES. Зарезервированные имена гостю не проверяются — их
- * проверит сервер при переносе в профиль.
+ * Create (without id) or change a guest personality. The rules are the same as the server's, with the same error texts:
+ * the name is not repeated, no more than MAX_PERSONALITIES personalities. Reserved names are not checked for a guest — the
+ * server checks them when moving to the profile.
  */
 export function saveGuestPersonality(draft: PersonalityDraft, id?: string): Personality {
     const items = readGuestPersonalities();
@@ -177,11 +177,11 @@ export function deleteGuestPersonality(id: string): void {
     writeGuestPersonalities(readGuestPersonalities().filter((p) => p.id !== id));
 }
 
-// --- Вошедший игрок: сервер ------------------------------------------------------------------
+// --- Logged-in player: server ------------------------------------------------------------------
 
 const BASE = `${API_BASE_URL}/api/v1/bots/personalities`;
 
-/** Запрос с токеном; отказ — UiError с текстом по коду сервера, а если кода нет — с запасным сообщением fallback. */
+/** Request with a token; a refusal — UiError with text by server code, and if there is no code — with the fallback message. */
 async function request<T>(token: string, url: string, init: RequestInit, fallback: MessageKey): Promise<T> {
     const res = await fetch(url, {
         ...init,
@@ -191,8 +191,8 @@ async function request<T>(token: string, url: string, init: RequestInit, fallbac
     return (res.status === 204 ? undefined : await res.json()) as T;
 }
 
-// Четыре запроса к /api/v1/bots/personalities: список (GET), создание (POST), правка (PUT /{id}), удаление
-// (DELETE /{id}). Сервер отдаёт и меняет только персоналии самого игрока.
+// Four requests to /api/v1/bots/personalities: list (GET), create (POST), edit (PUT /{id}), delete
+// (DELETE /{id}). The server returns and changes only the player's own personalities.
 export const listPersonalities = (token: string) =>
     request<Personality[]>(token, BASE, {method: 'GET'}, 'workshop.loadFailed');
 
@@ -205,7 +205,7 @@ export const updatePersonality = (token: string, id: number, draft: Partial<Pers
 export const deletePersonality = (token: string, id: number) =>
     request<void>(token, `${BASE}/${id}`, {method: 'DELETE'}, 'workshop.deleteFailed');
 
-/** Переносит гостевые персоналии в профиль; в браузере остаются только непоместившиеся. */
+/** Moves guest personalities to the profile; only those that did not fit remain in the browser. */
 export async function importGuestPersonalities(token: string): Promise<ImportResult> {
     const guests = readGuestPersonalities();
     if (!guests.length) return {created: [], skipped: []};
@@ -219,8 +219,8 @@ export async function importGuestPersonalities(token: string): Promise<ImportRes
 }
 
 /**
- * После входа: если в браузере есть гостевые персоналии — предлагает перенести их в профиль.
- * Возвращает итог переноса или null, если переносить нечего или игрок отказался.
+ * After login: if the browser has guest personalities — offers to move them to the profile.
+ * Returns the move result or null if there is nothing to move or the player declined.
  */
 export async function offerGuestPersonalityTransfer(
     token: string,

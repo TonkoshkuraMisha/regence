@@ -549,12 +549,10 @@
   }
  ],
  "intro": {
-  "ru": "Сицилианская защита. Таль, известный смелыми решениями, на 14-м ходу берёт пешку 14...Nxe4 — и этот ход оказывается ошибкой.",
   "uk": "Сицилійський захист. Таль, відомий сміливими рішеннями, на 14-му ході бере пішака 14...Nxe4 — і цей хід виявляється помилкою.",
   "en": "A Sicilian Defence. Tal, famous for his daring decisions, grabs a pawn with 14...Nxe4 — and the move turns out to be a mistake."
  },
  "summary": {
-  "ru": "Белые опровергли взятие точно: пешка «b» гонит фигуры чёрных (15.b4, 17.b5), и к 19.bxc6 белые выигрывают материал. Урок: прежде чем взять «бесплатную» пешку, проверьте, не попадут ли ваши фигуры под удар пешек.",
   "uk": "Білі спростували взяття точно: пішак «b» жене фігури чорних (15.b4, 17.b5), і до 19.bxc6 білі виграють матеріал. Урок: перш ніж узяти «безкоштовного» пішака, перевірте, чи не потраплять ваші фігури під удар пішаків.",
   "en": "White refuted the capture precisely: the b-pawn chases Black's pieces (15.b4, 17.b5), and by 19.bxc6 White wins material. Lesson: before taking a 'free' pawn, check whether your pieces will come under attack from pawns."
  }

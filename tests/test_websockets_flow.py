@@ -9,7 +9,7 @@ from starlette.websockets import WebSocketDisconnect
 
 @pytest.mark.parametrize("query", ["ticket=invalid_ticket", "token=some.jwt.token"])
 def test_websocket_unauthorized_access(client: TestClient, query: str):
-    """Без действующего одноразового тикета соединение закрывается с 1008 (JWT в адресе больше не принимается)."""
+    """Without a valid one-time ticket the connection is closed with 1008 (a JWT in the URL is no longer accepted)."""
     with (
         pytest.raises(WebSocketDisconnect) as exc_info,
         client.websocket_connect(f"/api/v1/ws/matchmaking?{query}") as websocket,
@@ -20,7 +20,7 @@ def test_websocket_unauthorized_access(client: TestClient, query: str):
 
 @pytest.mark.asyncio
 async def test_premove_telemetry_saved_and_bot_thinking_time():
-    """Проверяет сохранение флага is_premove=True в Redis-телеметрии и расчёт времени хода бота."""
+    """Checks that the is_premove=True flag is stored in Redis telemetry and the bot's move time is computed."""
     import chess
 
     from src.api.bots import calculate_authentic_thinking_time_ms
@@ -47,7 +47,7 @@ async def test_premove_telemetry_saved_and_bot_thinking_time():
     assert saved["is_premove"] is True
     assert saved["time_taken_ms"] == 0
 
-    # Проверка тайминга: Морфи из книги думает быстрее, чем Паульсен в расчёте
+    # Timing check: Morphy from the book thinks faster than Paulsen calculating
     board = chess.Board()
     morphy_book_ms = calculate_authentic_thinking_time_ms("morphy", board, "e2e4", "book")
     paulsen_engine_ms = calculate_authentic_thinking_time_ms("paulsen", board, "e2e4", "engine")
@@ -56,7 +56,7 @@ async def test_premove_telemetry_saved_and_bot_thinking_time():
 
 @pytest.mark.asyncio
 async def test_rematch_swaps_colors(db_session):
-    """Проверяет, что при принятии реванша создаётся новая партия со сменой цветов (white_id <-> black_id)."""
+    """Checks that accepting a rematch creates a new game with swapped colors (white_id <-> black_id)."""
     from src.api.websockets import create_rematch_game
     from src.models.user import User
     from src.services.game_state import state_manager
@@ -94,7 +94,7 @@ async def test_rematch_swaps_colors(db_session):
 
 @pytest.mark.asyncio
 async def test_spectator_receives_live_moves_and_chat():
-    """Проверяет подписку зрителей на партию и рассылку ходов и сообщений чата."""
+    """Checks spectator subscription to a game and the broadcast of moves and chat messages."""
     from src.api.websockets import broadcast_to_game_participants_and_spectators
     from src.services.connection_manager import manager
 
@@ -117,10 +117,10 @@ async def test_spectator_receives_live_moves_and_chat():
         assert received[black_id][0]["san"] == "e4"
         assert received[spectator_id][0]["san"] == "e4"
 
-        chat_event = {"event": "chat_message", "game_id": game_id, "sender": "Spectator", "text": "👏 Красивый ход!"}
+        chat_event = {"event": "chat_message", "game_id": game_id, "sender": "Spectator", "text": "👏 Nice move!"}
         await broadcast_to_game_participants_and_spectators(game_id, white_id, black_id, chat_event)
         assert received[spectator_id][1]["event"] == "chat_message"
-        assert received[white_id][1]["text"] == "👏 Красивый ход!"
+        assert received[white_id][1]["text"] == "👏 Nice move!"
 
         await manager.remove_spectator(game_id, spectator_id)
     finally:

@@ -1,31 +1,31 @@
 // --- FILE: frontend/src/services/transparency.ts ---
-// Прозрачность и открытые данные (таск 24.3): журналы калибровки ботов, сведения об открытом API и выгрузка своих
-// партий одним PGN-файлом.
-// Эндпоинты: GET /api/v1/bots/calibration/runs, /bots/calibration/runs/{имя} и /bots/tuning-log (src/api/bots.py),
-// GET /api/v1/bots/engine (сведения о движке для страницы «О проекте», GPL), GET /api/v1/public (src/api/public.py) — все открыты без входа, с лимитом открытого API; свои партии —
-// GET /api/v1/account/games.pgn (src/api/account.py), только с входом.
+// Transparency and open data (task 24.3): bot calibration logs, information about the open API and export of one's own
+// games as a single PGN file.
+// Endpoints: GET /api/v1/bots/calibration/runs, /bots/calibration/runs/{name} and /bots/tuning-log (src/api/bots.py),
+// GET /api/v1/bots/engine (engine info for the "About" page, GPL), GET /api/v1/public (src/api/public.py) - all open without sign-in, with the open-API rate limit; own games -
+// GET /api/v1/account/games.pgn (src/api/account.py), sign-in only.
 
 import {apiFetch, apiRequest, apiUrl} from './http';
 
-/** Движок этой установки (GET /bots/engine): версия и исходники именно её — требование GPL (таск 23.1). */
+/** Engine of this installation (GET /bots/engine): its exact version and source - a GPL requirement (task 23.1). */
 export interface EngineInfo {
     name: string | null;
     source_url: string;
 }
 
-/** Сведения о движке установки (src/api/bots.py); открыты без входа. */
+/** Installation engine info (src/api/bots.py); open without sign-in. */
 export const fetchEngineInfo = () => apiRequest<EngineInfo>('/bots/engine');
 
-/** Сведения о последней калибровке (раздел meta файла src/services/bots/calibration.json). */
+/** Info about the latest calibration (meta section of src/services/bots/calibration.json). */
 export interface CalibrationMeta {
     date: string;
     games: number;
-    /** Рейтинги эталонов Stockfish, с которыми играли боты, и время эталона на ход в секундах. */
+    /** Ratings of the Stockfish references the bots played against, and the reference time per move in seconds. */
     anchors?: number[];
     anchor_movetime_s?: number;
 }
 
-/** Журнал прогона калибровки: log — протокол матчей, pgn — сами партии; size — размер файла в байтах. */
+/** Calibration run log: log - match protocol, pgn - the games themselves; size - file size in bytes. */
 export interface CalibrationRun {
     name: string;
     date: string;
@@ -34,7 +34,7 @@ export interface CalibrationRun {
     size: number;
 }
 
-/** Описание открытого API (GET /api/v1/public): версия, список адресов и лимит запросов. */
+/** Open API description (GET /api/v1/public): version, list of addresses and request limit. */
 export interface PublicApiInfo {
     version: number;
     endpoints: string[];
@@ -42,8 +42,8 @@ export interface PublicApiInfo {
 }
 
 /**
- * Журнал подстройки характера самоигрой (таск 32.3, таблица bot_tuning_log): что измерено (measured) против
- * заявленной силы (target) и как сдвинуты ползунки силы — пары «было, стало».
+ * Log of personality tuning by self-play (task 32.3, table bot_tuning_log): what was measured (measured) against the
+ * declared strength (target) and how the strength sliders were shifted - "was, became" pairs.
  */
 export interface TuningEntry {
     key: string;
@@ -55,24 +55,24 @@ export interface TuningEntry {
     blunder_guard_cp: [number, number];
 }
 
-/** Журнал и правила подстройки: сколько партий в замере (games) и порог расхождения (drift). */
+/** Tuning log and rules: games per measurement (games) and divergence threshold (drift). */
 export interface TuningLog {
     entries: TuningEntry[];
     rules: { games: number; drift: number };
 }
 
-/** Прямая ссылка на файл журнала прогона — для скачивания. */
+/** Direct link to the run log file - for downloading. */
 export const runUrl = (name: string) => apiUrl(`/bots/calibration/runs/${encodeURIComponent(name)}`);
 
 export const transparencyApi = {
     runs: () => apiRequest<{ calibration: CalibrationMeta | null; runs: CalibrationRun[] }>('/bots/calibration/runs'),
-    /** Журнал прогона — текст, не JSON. */
+    /** Run log - text, not JSON. */
     runText: async (name: string) => (await apiFetch(`/bots/calibration/runs/${encodeURIComponent(name)}`)).text(),
     publicApi: () => apiRequest<PublicApiInfo>('/public'),
     tuningLog: () => apiRequest<TuningLog>('/bots/tuning-log'),
 };
 
-/** Сохранить текст файлом (ссылка-однодневка: CSP разрешает blob:). */
+/** Save text as a file (one-day link: CSP allows blob:). */
 export function saveTextFile(text: string, filename: string, type: string): void {
     const url = URL.createObjectURL(new Blob([text], {type}));
     const link = document.createElement('a');
@@ -83,8 +83,8 @@ export function saveTextFile(text: string, filename: string, type: string): void
 }
 
 /**
- * Все свои завершённые партии одним PGN; возвращает число партий (0 — выгружать нечего, файл не создаётся).
- * Число сервер сообщает заголовком X-Total-Count; если заголовка нет — считается по тегам [Event в тексте.
+ * All own finished games as one PGN; returns the number of games (0 - nothing to export, no file is created).
+ * The server reports the number in the X-Total-Count header; if the header is missing it is counted by [Event tags in the text.
  */
 export async function downloadMyGamesPgn(username: string | null): Promise<number> {
     const res = await apiFetch('/account/games.pgn', {}, 'settings.exportFailed');

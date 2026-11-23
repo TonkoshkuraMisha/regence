@@ -1,22 +1,22 @@
 # --- FILE: src/services/task_dispatch.py ---
 """
-Постановка фоновых задач Celery из async-кода.
+Queueing Celery background tasks from async code.
 
-apply_async/delay — синхронный сетевой вызов к брокеру. Сделанный прямо в event loop, он при
-медленном или недоступном брокере подвешивал весь воркер: ходы, часы и все WebSocket стояли,
-пока kombu пытался подключиться (около 4 с на каждую завершённую партию).
+apply_async/delay is a synchronous network call to the broker. Made directly in the event loop, with a
+slow or unavailable broker it hung the whole worker: moves, clocks and all WebSockets stood still
+while kombu tried to connect (about 4 s for every finished game).
 
-Здесь публикация:
-* идёт в потоке (asyncio.to_thread) и не ждётся вызывающим — итог партии рассылается сразу;
-* без повторов публикации и с коротким таймаутом соединения (см. celery_app), чтобы поток
-  не висел долго;
-* после сбоя брокера на CELERY_BROKER_COOLDOWN_S пропускается: иначе каждая завершённая
-  партия порождала бы ещё один зависший поток. Анализ партии необязателен — его всё равно
-  можно посчитать по запросу на странице партии.
+Here the publishing:
+* goes in a thread (asyncio.to_thread) and is not awaited by the caller - the game result is broadcast at once;
+* has no publish retries and uses a short connection timeout (see celery_app) so that the thread
+  does not hang for long;
+* after a broker failure is skipped for CELERY_BROKER_COOLDOWN_S: otherwise every finished
+  game would spawn another hung thread. The game analysis is optional - it can still
+  be computed on request on the game page.
 
-Вызывают: src/services/game_state.py и src/api/bots.py (анализ партии), src/api/bots.py и src/api/tournaments.py
-(партии ботов турнира), src/api/game_import.py (разбор импортированных партий). Сами задачи — src/worker/tasks.py.
-Настройки: CELERY_PUBLISH_TIMEOUT_S, CELERY_BROKER_COOLDOWN_S (src/core/config.py).
+Called by: src/services/game_state.py and src/api/bots.py (game analysis), src/api/bots.py and src/api/tournaments.py
+(tournament bot games), src/api/game_import.py (review of imported games). The tasks themselves are in src/worker/tasks.py.
+Settings: CELERY_PUBLISH_TIMEOUT_S, CELERY_BROKER_COOLDOWN_S (src/core/config.py).
 """
 
 import asyncio
@@ -28,19 +28,19 @@ from src.worker.tasks import analyze_game_task, analyze_imported_game_task, simu
 
 logger = logging.getLogger(__name__)
 
-# Момент (time.monotonic), до которого публикации пропускаются после сбоя брокера; общий для всех видов задач.
+# Moment (time.monotonic) until which publishing is skipped after a broker failure; shared by all kinds of tasks.
 _broker_down_until = 0.0
-# Сильные ссылки на фоновые задачи: без них event loop может собрать задачу до завершения.
+# Strong references to background tasks: without them the event loop may collect a task before it finishes.
 _background_tasks: set[asyncio.Task] = set()
 
 
 def _publish_analysis(game_id: int) -> None:
-    """Синхронная публикация задачи анализа партии; вызывается в потоке, без повторов."""
+    """Synchronous publishing of a game analysis task; called in a thread, without retries."""
     analyze_game_task.apply_async(args=(game_id,), retry=False)
 
 
 async def schedule_game_analysis(game_id: int) -> bool:
-    """Ставит фоновый анализ партии в очередь. Возвращает True, если задача опубликована."""
+    """Queues a game's background analysis. Returns True if the task was published."""
     global _broker_down_until
 
     if time.monotonic() < _broker_down_until:
@@ -53,7 +53,7 @@ async def schedule_game_analysis(game_id: int) -> bool:
             timeout=settings.CELERY_PUBLISH_TIMEOUT_S,
         )
         return True
-    except Exception as exc:  # включая asyncio.TimeoutError
+    except Exception as exc:  # including asyncio.TimeoutError
         _broker_down_until = time.monotonic() + settings.CELERY_BROKER_COOLDOWN_S
         logger.error(
             "Could not schedule analysis task for game %s (%s); skipping publishes for %s s",
@@ -63,7 +63,7 @@ async def schedule_game_analysis(game_id: int) -> bool:
 
 
 def schedule_game_analysis_in_background(game_id: int) -> asyncio.Task:
-    """Запускает постановку задачи, не дожидаясь её. Ссылка на задачу хранится до завершения."""
+    """Starts queueing a task without waiting for it. The reference to the task is kept until it finishes."""
     task = asyncio.create_task(schedule_game_analysis(game_id))
     _background_tasks.add(task)
     task.add_done_callback(_background_tasks.discard)
@@ -71,20 +71,20 @@ def schedule_game_analysis_in_background(game_id: int) -> asyncio.Task:
 
 
 def reset_broker_cooldown() -> None:
-    """Снимает паузу после сбоя брокера (нужно тестам, чтобы сбой одного теста не глушил остальные)."""
+    """Lifts the pause after a broker failure (needed by tests so that one test's failure does not silence the others)."""
     global _broker_down_until
     _broker_down_until = 0.0
 
 
 def _publish_simulation(tournament_game_id: int) -> None:
-    """Синхронная публикация задачи симуляции партии турнира; вызывается в потоке, без повторов."""
+    """Synchronous publishing of a tournament game simulation task; called in a thread, without retries."""
     simulate_tournament_game_task.apply_async(args=(tournament_game_id,), retry=False)
 
 
 async def schedule_tournament_simulations(tournament_game_ids: list[int]) -> int:
     """
-    Ставит партии ботов между собой в очередь (таск 15.2). Возвращает число опубликованных. При недоступном брокере
-    партии не теряются: они остаются без результата, и следующий запрос состояния турнира поставит их снова.
+    Queues bot-vs-bot games (task 15.2). Returns the number published. With an unavailable broker
+    the games are not lost: they stay without a result, and the next tournament state request will queue them again.
     """
     global _broker_down_until
 
@@ -104,7 +104,7 @@ async def schedule_tournament_simulations(tournament_game_ids: list[int]) -> int
 
 
 def schedule_tournament_simulations_in_background(tournament_game_ids: list[int]) -> asyncio.Task | None:
-    """Запускает постановку симуляций, не дожидаясь её; None — ставить нечего."""
+    """Starts queueing simulations without waiting for it; None - nothing to queue."""
     if not tournament_game_ids:
         return None
     task = asyncio.create_task(schedule_tournament_simulations(tournament_game_ids))
@@ -114,14 +114,14 @@ def schedule_tournament_simulations_in_background(tournament_game_ids: list[int]
 
 
 def _publish_imported_analysis(imported_id: int) -> None:
-    """Синхронная публикация задачи разбора импортированной партии; вызывается в потоке, без повторов."""
+    """Synchronous publishing of an imported game review task; called in a thread, without retries."""
     analyze_imported_game_task.apply_async(args=(imported_id,), retry=False)
 
 
 async def schedule_imported_analyses(imported_ids: list[int]) -> int:
     """
-    Разбор партий с других сайтов (таск 24.1). Возвращает число опубликованных. При недоступном брокере партии не
-    теряются: разбор можно запустить со страницы партии, а список импорта покажет «не разобрана».
+    Review of games from other sites (task 24.1). Returns the number published. With an unavailable broker games are not
+    lost: the review can be started from the game page, and the import list will show "not reviewed".
     """
     global _broker_down_until
 
@@ -141,7 +141,7 @@ async def schedule_imported_analyses(imported_ids: list[int]) -> int:
 
 
 def schedule_imported_analyses_in_background(imported_ids: list[int]) -> asyncio.Task | None:
-    """Запускает постановку разборов импорта, не дожидаясь её; None — ставить нечего."""
+    """Starts queueing import reviews without waiting for it; None - nothing to queue."""
     if not imported_ids:
         return None
     task = asyncio.create_task(schedule_imported_analyses(imported_ids))

@@ -1,6 +1,6 @@
 // --- FILE: frontend/src/components/__tests__/ChessboardPvp.test.tsx ---
-// PvP и просмотр партий через события WebSocket: чужие события не должны менять доску,
-// потерянный game_over восстанавливается по HTTP, вызов возвращается в лобби после обрыва связи.
+// PvP and spectating games through WebSocket events: foreign events must not change the board,
+// a lost game_over is restored over HTTP, a challenge returns to the lobby after a connection drop.
 
 import {act, fireEvent, render, screen, waitFor} from '@testing-library/react';
 import {MemoryRouter, Route, Routes} from 'react-router-dom';
@@ -55,7 +55,7 @@ const MATCH = {
     state_version: 0,
 };
 
-/** Последний зарегистрированный обработчик события (эффект мог переподписаться). */
+/** The last registered handler of the event (the effect could have resubscribed). */
 function emit(event: string, data: any) {
     const calls = onMock.mock.calls.filter(([name]: [string]) => name === event);
     if (calls.length === 0) {
@@ -100,8 +100,8 @@ afterEach(() => {
     localStorage.clear();
 });
 
-describe('события чужой партии', () => {
-    it('ход и итог другой партии не меняют доску и не завершают текущую', async () => {
+describe('events of another game', () => {
+    it('a move and the result of another game do not change the board and do not finish the current one', async () => {
         renderBoard({'/profile/games/my-active': () => ({...MATCH, active: true})});
         await emitAct('match_found', MATCH);
 
@@ -109,43 +109,43 @@ describe('события чужой партии', () => {
         expect(screen.queryByText('d4')).not.toBeInTheDocument();
 
         await emitAct('game_over', {game_id: 7, result: '0-1', reason: 'resignation'});
-        expect(screen.queryByText(/Партия окончена/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/Game over/)).not.toBeInTheDocument();
 
         await emitAct('move_made', {game_id: 5, state_version: 1, pgn: '1. e4', san: 'e4', game_over: false});
         expect(screen.getByText('e4')).toBeInTheDocument();
     });
 
-    it('итог своей партии показывается вместе с причиной', async () => {
+    it('the result of one\'s own game is shown together with the reason', async () => {
         renderBoard({'/profile/games/my-active': () => ({...MATCH, active: true})});
         await emitAct('match_found', MATCH);
         await emitAct('game_over', {game_id: 5, result: '1-0', reason: 'resignation', white_delta: 8, black_delta: -8});
 
-        expect(screen.getByText('Партия окончена. Результат: 1-0 (сдача)')).toBeInTheDocument();
+        expect(screen.getByText('Game over. Result: 1-0 (resignation)')).toBeInTheDocument();
     });
 });
 
-describe('предложение ничьей', () => {
-    it('восстанавливается из снимка партии и снимается ответным ходом', async () => {
+describe('draw offer', () => {
+    it('is restored from the game snapshot and cleared by a reply move', async () => {
         const snapshot = {...MATCH, pgn: '1. e4 e5', state_version: 2, draw_offer_from: 2};
         renderBoard({'/profile/games/my-active': () => ({...snapshot, active: true})});
         await emitAct('match_found', snapshot);
 
-        expect(screen.getByText('Соперник предлагает ничью.')).toBeInTheDocument();
-        expect(screen.getByRole('button', {name: 'Принять'})).toBeInTheDocument();
+        expect(screen.getByText('Your opponent offers a draw.')).toBeInTheDocument();
+        expect(screen.getByRole('button', {name: 'Accept'})).toBeInTheDocument();
 
-        // Игрок (белые) отвечает ходом — предложение отклонено, кнопки исчезают.
+        // The player (White) replies with a move — the offer is declined, the buttons disappear.
         await emitAct('move_made', {game_id: 5, state_version: 3, pgn: '1. e4 e5 2. Nf3', san: 'Nf3', game_over: false});
-        expect(screen.queryByText('Соперник предлагает ничью.')).not.toBeInTheDocument();
+        expect(screen.queryByText('Your opponent offers a draw.')).not.toBeInTheDocument();
     });
 });
 
-describe('берсерк в партии арены (33.3)', () => {
+describe('berserk in an arena game (33.3)', () => {
     const ARENA_MATCH = {...MATCH, increment_ms: 2000, arena_id: 3, berserk_allowed: true, white_berserk: false,
         black_berserk: false};
     const BERSERK = {game_id: 5, color: 'white', white_time_ms: 90000, black_time_ms: 180000, berserk_allowed: true,
         white_berserk: true, black_berserk: false};
 
-    it('кнопка до первого хода шлёт действие; событие ставит отметку игроку и убирает кнопку', async () => {
+    it('the button before the first move sends the action; the event marks the player and removes the button', async () => {
         renderBoard({'/profile/games/my-active': () => ({...ARENA_MATCH, active: true})});
         await emitAct('match_found', ARENA_MATCH);
         expect(screen.queryByTestId('berserk-mark')).toBeNull();
@@ -156,10 +156,10 @@ describe('берсерк в партии арены (33.3)', () => {
         await emitAct('berserk', BERSERK);
         expect(screen.queryByTestId('berserk-button')).toBeNull();
         expect(screen.getAllByTestId('berserk-mark')).toHaveLength(1);
-        expect(screen.getByRole('img', {name: 'Берсерк: половина времени, без добавки'})).toBeInTheDocument();
+        expect(screen.getByRole('img', {name: 'Berserk: half the time, no increment'})).toBeInTheDocument();
     });
 
-    it('берсерк соперника виден, а своя кнопка остаётся; после своего первого хода её нет', async () => {
+    it('the opponent\'s berserk is visible and one\'s own button stays; after one\'s own first move it is gone', async () => {
         renderBoard({'/profile/games/my-active': () => ({...ARENA_MATCH, active: true})});
         await emitAct('match_found', ARENA_MATCH);
         await emitAct('berserk', {...BERSERK, color: 'black', white_time_ms: 180000, black_time_ms: 90000,
@@ -172,7 +172,7 @@ describe('берсерк в партии арены (33.3)', () => {
         expect(screen.getAllByTestId('berserk-mark')).toHaveLength(1);
     });
 
-    it('чёрные могут сыграть берсерк после первого хода белых; в обычной партии кнопки нет', async () => {
+    it('Black can play berserk after White\'s first move; in an ordinary game there is no button', async () => {
         const asBlack = {...ARENA_MATCH, color: 'black', opponent_id: 1, white_username: 'Rival',
             black_username: 'TestPlayer', pgn: '1. e4', state_version: 1};
         const view = renderBoard({'/profile/games/my-active': () => ({...asBlack, active: true})});
@@ -185,14 +185,14 @@ describe('берсерк в партии арены (33.3)', () => {
         expect(screen.queryByTestId('berserk-button')).toBeNull();
     });
 
-    it('чужое событие берсерка и снимок той же партии без полей берсерка ничего не меняют', async () => {
+    it('a foreign berserk event and a snapshot of the same game without berserk fields change nothing', async () => {
         renderBoard({'/profile/games/my-active': () => ({...MATCH, active: true})});
         await emitAct('match_found', ARENA_MATCH);
         await emitAct('berserk', {...BERSERK, game_id: 7});
         expect(screen.queryByTestId('berserk-mark')).toBeNull();
 
         await emitAct('berserk', BERSERK);
-        // Опрос my-active отдаёт снимок без полей берсерка — отметка остаётся.
+        // The my-active poll returns a snapshot without berserk fields — the mark stays.
         await act(async () => {
             await vi.advanceTimersByTimeAsync(3500);
         });
@@ -200,8 +200,8 @@ describe('берсерк в партии арены (33.3)', () => {
     });
 });
 
-describe('потерянный game_over', () => {
-    it('партия, которой на сервере уже нет, завершается по итогу из HTTP', async () => {
+describe('a lost game_over', () => {
+    it('a game that is no longer on the server finishes by the HTTP result', async () => {
         renderBoard({
             '/profile/games/5/summary': () => ({
                 game_id: 5, status: 'COMPLETED', result: '0-1', termination: 'timeout',
@@ -210,17 +210,17 @@ describe('потерянный game_over', () => {
         });
         await emitAct('match_found', MATCH);
 
-        // Опрос my-active раз в 1.5 с отвечает «активной партии нет» два раза подряд.
+        // The my-active poll every 1.5 s answers "no active game" twice in a row.
         await act(async () => {
             await vi.advanceTimersByTimeAsync(5000);
         });
 
         await waitFor(() => {
-            expect(screen.getByText('Партия окончена. Результат: 0-1 (истекло время)')).toBeInTheDocument();
+            expect(screen.getByText('Game over. Result: 0-1 (time ran out)')).toBeInTheDocument();
         });
     });
 
-    it('пока итог не записан на сервере, партия на экране продолжается', async () => {
+    it('until the result is recorded on the server, the game on the screen goes on', async () => {
         renderBoard({
             '/profile/games/5/summary': () => ({game_id: 5, status: 'IN_PROGRESS', result: null, termination: null}),
         });
@@ -229,17 +229,17 @@ describe('потерянный game_over', () => {
             await vi.advanceTimersByTimeAsync(5000);
         });
 
-        expect(screen.queryByText(/Партия окончена/)).not.toBeInTheDocument();
-        expect(screen.getByText('Идёт рейтинговая партия')).toBeInTheDocument();
+        expect(screen.queryByText(/Game over/)).not.toBeInTheDocument();
+        expect(screen.getByText('Rated game in progress')).toBeInTheDocument();
     });
 });
 
-describe('поиск соперника', () => {
-    it('после переподключения WebSocket вызов возвращается в лобби', async () => {
+describe('opponent search', () => {
+    it('after the WebSocket reconnects the challenge returns to the lobby', async () => {
         renderBoard();
         await openHuman();
         await act(async () => {
-            fireEvent.click(await screen.findByRole('button', {name: /Найти соперника/}));
+            fireEvent.click(await screen.findByRole('button', {name: /Find an opponent/}));
         });
         const joinsBefore = sendMock.mock.calls.filter(([action]) => action === 'join_queue').length;
         expect(joinsBefore).toBe(1);
@@ -251,34 +251,34 @@ describe('поиск соперника', () => {
         expect(joins[1][1]).toEqual(joins[0][1]);
     });
 
-    it('connected без активного поиска ничего не отправляет', async () => {
+    it('connected without an active search sends nothing', async () => {
         renderBoard();
         await emitAct('connected', {event: 'connected'});
         expect(sendMock.mock.calls.filter(([action]) => action === 'join_queue')).toHaveLength(0);
     });
 
-    it('«вы уже играете» при уже начавшейся партии не показывается как ошибка', async () => {
+    it('"you are already playing" when the game has already started is not shown as an error', async () => {
         renderBoard({'/profile/games/my-active': () => ({...MATCH, active: true})});
         await emitAct('match_found', MATCH);
-        await emitAct('error', {event: 'error', code: 'self_in_game', message: 'Вы уже играете партию'});
+        await emitAct('error', {event: 'error', code: 'self_in_game', message: 'You are already playing a game'});
 
-        expect(screen.queryByText('Вы уже играете партию')).not.toBeInTheDocument();
+        expect(screen.queryByText('You are already playing a game')).not.toBeInTheDocument();
     });
 
-    it('отказ сервера с кодом показывается из каталога на языке игрока и переводится при смене языка', async () => {
+    it('a server refusal with a code is shown from the catalogue in the player\'s language and is translated when the language changes', async () => {
         renderBoard();
         await emitAct('error', {
             event: 'error', code: 'rating_out_of_range',
             params: {rating: 1500, min: 1600, max: 1800}, message: 'Your rating 1500 is outside the challenge range (1600–1800)',
         });
-        expect(screen.getByText('Ваш рейтинг 1500 вне диапазона вызова (1600–1800)')).toBeInTheDocument();
+        expect(screen.getByText('Your rating 1500 is outside the challenge range (1600–1800)')).toBeInTheDocument();
 
         act(() => setLanguage('uk', {persist: false}));
         expect(screen.getByText('Ваш рейтинг 1500 поза діапазоном виклику (1600–1800)')).toBeInTheDocument();
     });
 });
 
-describe('зритель', () => {
+describe('spectator', () => {
     const SPECTATE = {
         event: 'spectate_started', game_id: 9,
         white_username: 'Alpha', white_rating: 1600, black_username: 'Beta', black_rating: 1610,
@@ -286,34 +286,34 @@ describe('зритель', () => {
         fen: '', pgn: '1. e4 e5', state_version: 2,
     };
 
-    it('не может писать в чат, двигать фигуры и не видит кнопок песочницы', async () => {
+    it('cannot write in the chat, move pieces and does not see the sandbox buttons', async () => {
         renderBoard();
         await emitAct('spectate_started', SPECTATE);
 
-        expect(screen.getByText('Зрители могут только читать чат.')).toBeInTheDocument();
-        expect(screen.queryByPlaceholderText('Написать сообщение...')).not.toBeInTheDocument();
-        expect(screen.queryByRole('button', {name: /Сбросить доску/})).not.toBeInTheDocument();
+        expect(screen.getByText('Spectators can only read the chat.')).toBeInTheDocument();
+        expect(screen.queryByPlaceholderText('Write a message…')).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', {name: /Reset board/})).not.toBeInTheDocument();
 
         const whitePawn = document.querySelector('[data-square="d2"] > div.relative') as HTMLElement;
         fireEvent.pointerDown(whitePawn, {button: 0, pointerType: 'mouse', clientX: 10, clientY: 10});
         fireEvent.pointerUp(window, {clientX: 10, clientY: 10});
-        expect(screen.queryByText(/Предход:/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/Premove:/)).not.toBeInTheDocument();
     });
 
-    it('начало своей партии завершает просмотр на сервере', async () => {
+    it('the start of one\'s own game ends spectating on the server', async () => {
         renderBoard();
         await emitAct('spectate_started', SPECTATE);
         await emitAct('match_found', MATCH);
 
         expect(sendMock).toHaveBeenCalledWith('leave_spectate', {game_id: 9});
-        // Ходы просмотренной партии больше не попадают на доску.
+        // The moves of the watched game no longer reach the board.
         await emitAct('move_made', {game_id: 9, state_version: 3, pgn: '1. e4 e5 2. Nf3', san: 'Nf3', game_over: false});
         expect(screen.queryByText('Nf3')).not.toBeInTheDocument();
     });
 });
 
-describe('итог партии с человеком', () => {
-    it('после конца партии — разбор этой партии и ключевые ходы; во время партии разбор не запрашивается', async () => {
+describe('result of a game with a person', () => {
+    it('after the game ends — the review of this game and the key moves; during the game the review is not requested', async () => {
         renderBoard({
             '/profile/games/my-active': () => ({...MATCH, active: true}),
             '/analysis/game/5': () => ({
@@ -326,42 +326,42 @@ describe('итог партии с человеком', () => {
         });
         await emitAct('match_found', MATCH);
         const analysisCalls = () => (vi.mocked(fetch).mock.calls as unknown as [string][]).filter(([url]) => String(url).includes('/analysis/game/'));
-        expect(analysisCalls()).toHaveLength(0);  // честная игра: во время партии — ни одного запроса разбора
+        expect(analysisCalls()).toHaveLength(0);  // fair play: during the game — not a single review request
 
         await emitAct('game_over', {game_id: 5, result: '1-0', reason: 'resignation'});
         const summary = await screen.findByTestId('game-summary');
-        await waitFor(() => expect(summary.textContent).toContain('Решила одна ошибка'));
+        await waitFor(() => expect(summary.textContent).toContain('Decided by one mistake'));
         expect(String(analysisCalls()[0][0])).toContain('/analysis/game/5');
-        expect(screen.queryByTestId('summary-recommendation')).toBeNull();  // соперника-бота не рекомендуем
+        expect(screen.queryByTestId('summary-recommendation')).toBeNull();  // we do not recommend a bot opponent
     });
 });
 
-describe('реванш', () => {
-    it('уход с завершённой партии снимает своё предложение реванша', async () => {
+describe('rematch', () => {
+    it('leaving a finished game withdraws one\'s own rematch offer', async () => {
         renderBoard({'/profile/games/my-active': () => ({...MATCH, active: true})});
         await emitAct('match_found', MATCH);
         await emitAct('game_over', {game_id: 5, result: '1-0', reason: 'resignation'});
 
         await act(async () => {
-            fireEvent.click(screen.getByRole('button', {name: /^Реванш$/}));
+            fireEvent.click(screen.getByRole('button', {name: /^Rematch$/}));
         });
         await act(async () => {
-            fireEvent.click(screen.getByRole('button', {name: /В лобби/}));
+            fireEvent.click(screen.getByRole('button', {name: /To the lobby/}));
         });
 
         expect(sendMock).toHaveBeenCalledWith('decline_rematch', {game_id: 5});
     });
 });
 
-describe('товарищеские партии', () => {
-    it('выбранный тип уходит на сервер по WebSocket и HTTP и возвращается после переподключения', async () => {
+describe('casual games', () => {
+    it('the chosen type goes to the server over WebSocket and HTTP and returns after a reconnect', async () => {
         renderBoard();
         await openHuman();
         await act(async () => {
-            fireEvent.click(await screen.findByRole('radio', {name: 'Товарищеская'}));
+            fireEvent.click(await screen.findByRole('radio', {name: 'Casual'}));
         });
         await act(async () => {
-            fireEvent.click(screen.getByRole('button', {name: /Найти соперника/}));
+            fireEvent.click(screen.getByRole('button', {name: /Find an opponent/}));
         });
 
         const joins = () => sendMock.mock.calls.filter(([action]) => action === 'join_queue');
@@ -369,53 +369,53 @@ describe('товарищеские партии', () => {
         const fetchMock = fetch as unknown as Mock;
         const httpJoin = fetchMock.mock.calls.find(([url]) => String(url).includes('/matchmaking/join'));
         expect(JSON.parse(httpJoin![1].body)).toMatchObject({rated: false});
-        expect(screen.getByText(/товарищеский вызов/)).toBeInTheDocument();
-        // Пока идёт поиск, тип поменять нельзя — вызов уже опубликован.
-        expect(screen.getByRole('radio', {name: 'Рейтинговая'})).toBeDisabled();
+        expect(screen.getByText(/casual challenge/)).toBeInTheDocument();
+        // While the search is on the type cannot be changed — the challenge is already published.
+        expect(screen.getByRole('radio', {name: 'Rated'})).toBeDisabled();
 
         await emitAct('connected', {event: 'connected'});
         expect(joins()[1][1]).toMatchObject({rated: false});
     });
 
-    it('приглашение по ссылке создаётся выбранного типа', async () => {
+    it('an invitation by link is created of the chosen type', async () => {
         renderBoard();
         await openHuman();
         await act(async () => {
-            fireEvent.click(await screen.findByRole('radio', {name: 'Товарищеская'}));
-            fireEvent.click(screen.getByRole('button', {name: /С другом/}));
+            fireEvent.click(await screen.findByRole('radio', {name: 'Casual'}));
+            fireEvent.click(screen.getByRole('button', {name: /With a friend/}));
         });
         await act(async () => {
-            fireEvent.click(screen.getByRole('button', {name: /Сгенерировать и скопировать ссылку/}));
+            fireEvent.click(screen.getByRole('button', {name: /Generate and copy the link/}));
         });
 
         expect(sendMock).toHaveBeenCalledWith('create_invite', expect.objectContaining({rated: false}));
     });
 
-    it('приглашение с форой (21.1): вид форы и кто даёт уходят серверу', async () => {
+    it('an invitation with odds (21.1): the kind of odds and who gives go to the server', async () => {
         renderBoard();
         await openHuman();
         await act(async () => {
-            fireEvent.click(screen.getByRole('button', {name: /С другом/}));
+            fireEvent.click(screen.getByRole('button', {name: /With a friend/}));
         });
         fireEvent.change(screen.getByTestId('invite-odds-kind'), {target: {value: 'knight'}});
-        expect(screen.getByTestId('invite-odds')).toHaveTextContent('не меняет рейтинг');
+        expect(screen.getByTestId('invite-odds')).toHaveTextContent('does not change ratings');
         fireEvent.change(screen.getByTestId('invite-odds-giver'), {target: {value: 'opponent'}});
         await act(async () => {
-            fireEvent.click(screen.getByRole('button', {name: /Сгенерировать и скопировать ссылку/}));
+            fireEvent.click(screen.getByRole('button', {name: /Generate and copy the link/}));
         });
         expect(sendMock).toHaveBeenCalledWith('create_invite', expect.objectContaining({odds_kind: 'knight', odds_giver: 'acceptor'}));
     });
 
-    it('«песочные часы» (21.1): без выбора «кто даёт», вид уходит серверу; часы ждущего растут', async () => {
+    it('"hourglass" (21.1): without choosing "who gives", the kind goes to the server; the waiting player\'s clock grows', async () => {
         renderBoard();
         await openHuman();
         await act(async () => {
-            fireEvent.click(screen.getByRole('button', {name: /С другом/}));
+            fireEvent.click(screen.getByRole('button', {name: /With a friend/}));
         });
         fireEvent.change(screen.getByTestId('invite-odds-kind'), {target: {value: 'hourglass'}});
         expect(screen.queryByTestId('invite-odds-giver')).toBeNull();
         await act(async () => {
-            fireEvent.click(screen.getByRole('button', {name: /Сгенерировать и скопировать ссылку/}));
+            fireEvent.click(screen.getByRole('button', {name: /Generate and copy the link/}));
         });
         expect(sendMock).toHaveBeenCalledWith('create_invite', expect.objectContaining({odds_kind: 'hourglass'}));
 
@@ -423,12 +423,12 @@ describe('товарищеские партии', () => {
         await act(async () => {
             await vi.advanceTimersByTimeAsync(5000);
         });
-        // Белые думают 5 секунд: у них 02:55, у чёрных — 03:05.
+        // White thinks for 5 seconds: they have 02:55, Black has 03:05.
         expect(screen.getAllByText('02:55').length).toBeGreaterThan(0);
         expect(screen.getAllByText('03:05').length).toBeGreaterThan(0);
     });
 
-    it('партия Фишера (21.3): вариант уходит серверу, фора скрыта; match_found 960 уводит на свою страницу', async () => {
+    it('a Fischer game (21.3): the variant goes to the server, the odds are hidden; match_found 960 leads to its own page', async () => {
         vi.stubGlobal('fetch', mockFetchRouter({
             '/profile/me': () => ({id: 1, username: 'TestPlayer', blitz_rating: 1500}),
             '/profile/matchmaking/queue': () => [], '/profile/games/live': () => [],
@@ -444,12 +444,12 @@ describe('товарищеские партии', () => {
         );
         await openHuman();
         await act(async () => {
-            fireEvent.click(screen.getByRole('button', {name: /С другом/}));
+            fireEvent.click(screen.getByRole('button', {name: /With a friend/}));
         });
         fireEvent.change(screen.getByTestId('invite-variant-select'), {target: {value: 'chess960'}});
         expect(screen.queryByTestId('invite-odds')).toBeNull();
         await act(async () => {
-            fireEvent.click(screen.getByRole('button', {name: /Сгенерировать и скопировать ссылку/}));
+            fireEvent.click(screen.getByRole('button', {name: /Generate and copy the link/}));
         });
         expect(sendMock).toHaveBeenCalledWith('create_invite', expect.objectContaining({variant: 'chess960'}));
         expect(sendMock).not.toHaveBeenCalledWith('create_invite', expect.objectContaining({odds_kind: expect.anything()}));
@@ -457,43 +457,43 @@ describe('товарищеские партии', () => {
         expect(screen.getByTestId('live-960-route')).toBeInTheDocument();
     });
 
-    it('тип идущей партии берётся из снимка сервера, изменение рейтинга не показывается', async () => {
+    it('the type of a game in progress is taken from the server snapshot, the rating change is not shown', async () => {
         const casual = {...MATCH, is_rated: false};
         renderBoard({'/profile/games/my-active': () => ({...casual, active: true})});
         await emitAct('match_found', casual);
 
-        expect(screen.getByText('Идёт товарищеская партия')).toBeInTheDocument();
+        expect(screen.getByText('Casual game in progress')).toBeInTheDocument();
 
         await emitAct('game_over', {game_id: 5, result: '1-0', reason: 'resignation', white_delta: 0, black_delta: 0});
         expect(screen.queryByText('(+0)')).not.toBeInTheDocument();
     });
 
-    it('рейтинговая партия показывает изменение рейтинга', async () => {
+    it('a rated game shows the rating change', async () => {
         renderBoard({'/profile/games/my-active': () => ({...MATCH, active: true})});
         await emitAct('match_found', MATCH);
-        expect(screen.getByText('Идёт рейтинговая партия')).toBeInTheDocument();
+        expect(screen.getByText('Rated game in progress')).toBeInTheDocument();
 
         await emitAct('game_over', {game_id: 5, result: '1-0', reason: 'resignation', white_delta: 8, black_delta: -8});
         expect(screen.getByText('(+8)')).toBeInTheDocument();
     });
 
-    it('товарищеский вызов помечен в лобби', async () => {
+    it('a casual challenge is marked in the lobby', async () => {
         renderBoard({
             '/profile/matchmaking/queue': () => [
                 {user_id: 7, username: 'Friendly', rating: 1500, base_time_ms: 180000, increment_ms: 0, rated: false},
                 {user_id: 8, username: 'Serious', rating: 1500, base_time_ms: 180000, increment_ms: 0, rated: true},
             ],
         });
-        // Лобби всегда в левой колонке игрового зала (вкладки «Боты / Лобби» больше нет: боты — в окне «Новая партия»).
+        // The lobby is always in the left column of the game hall (the "Bots / Lobby" tabs are gone: bots are in the "New game" window).
         const friendly = (await screen.findByText('Friendly')).closest('div')!.parentElement!;
-        expect(friendly.textContent).toContain('товарищеская');
+        expect(friendly.textContent).toContain('casual');
         const serious = screen.getByText('Serious').closest('div')!.parentElement!;
-        expect(serious.textContent).not.toContain('товарищеская');
+        expect(serious.textContent).not.toContain('casual');
     });
 });
 
-describe('режим зрителя со страницы «Просмотр» (16.3)', () => {
-    it('доска сама просит сервер показать партию из location.state', async () => {
+describe('spectator mode from the "View" page (16.3)', () => {
+    it('the board itself asks the server to show the game from location.state', async () => {
         vi.stubGlobal('fetch', mockFetchRouter({
             '/profile/me': () => ({id: 1, username: 'TestPlayer', blitz_rating: 1500}),
             '/profile/matchmaking/queue': () => [],
@@ -510,8 +510,8 @@ describe('режим зрителя со страницы «Просмотр» (
     });
 });
 
-describe('прямой вызов из профиля (17.1)', () => {
-    it('доска создаёт приглашение и отправляет его сопернику уведомлением', async () => {
+describe('a direct challenge from the profile (17.1)', () => {
+    it('the board creates an invitation and sends it to the opponent by a notification', async () => {
         const fetchMock = mockFetchRouter({
             '/profile/me': () => ({id: 1, username: 'TestPlayer', blitz_rating: 1500}),
             '/profile/matchmaking/queue': () => [],

@@ -1,10 +1,10 @@
 // --- FILE: frontend/src/components/tournaments/MastersPage.tsx ---
-// Каталог мастеров прошлого (таск 28.5): /masters — все участники турниров «Машины времени». С любым можно сыграть
-// отдельную партию: мастер играет тем же характером, что и в историческом турнире, а партия уходит в архив под
-// его именем. Имена, строки о мастерах и названия турниров — из каталогов по ключам. /masters?master=<id> — карточка
-// одного мастера (переход «к сопернику» из турнира).
-// Данные: services/masters.ts — getMasters (список) и getMasterConfig (настройка бота для партии); партия
-// запускается переходом на «/» с состоянием маршрута guestGame (разбирает главная доска). Роут — App.tsx.
+// Catalogue of masters of the past (task 28.5): /masters - all participants of the "Time Machine" tournaments. Any of them can be played in
+// a single game: the master plays with the same character as in the historic tournament, and the game goes to the archive under
+// their name. Names, master blurbs and tournament names come from the catalogues by key. /masters?master=<id> - the card of
+// one master (the "to the opponent" jump from a tournament).
+// Data: services/masters.ts - getMasters (the list) and getMasterConfig (bot setup for the game); the game is
+// started by navigating to "/" with the guestGame route state (parsed by the main board). Route - App.tsx.
 
 import {useEffect, useMemo, useState} from 'react';
 import {Link, useNavigate, useSearchParams} from 'react-router-dom';
@@ -17,13 +17,13 @@ import {getMasterConfig, getMasters, matchesQuery, sortMasters} from '../../serv
 import type {Master, MasterColor, MasterGameStart, MasterOrder} from '../../services/masters';
 import {eventTitle, guestAbout, guestName} from '../../services/timeMachine';
 
-// Общий вид секции-карточки страницы.
+// Shared look of a page section card.
 const sectionClass = 'bg-acacia p-4 rounded-lg border-2 border-acacia-dark';
-// Порядки сортировки списка (значения MasterOrder) и выбор цвета для партии; подписи — masters.orders.* и masters.colors.*.
+// List sort orders (MasterOrder values) and colour choice for the game; labels - masters.orders.* and masters.colors.*.
 const ORDERS: MasterOrder[] = ['strength', 'years', 'name'];
 const COLORS: MasterColor[] = ['white', 'black', 'random'];
 
-/** Карточка мастера: эпоха, рейтинг, дебюты, турниры и кнопки начала партии за выбранный цвет. */
+/** Master card: era, rating, openings, tournaments and buttons to start a game as the chosen colour. */
 function MasterCard({master, busy, onPlay}: { master: Master; busy: boolean; onPlay: (master: Master, color: MasterColor) => void }) {
     const {t} = useI18n();
     const about = guestAbout(master.id, t);
@@ -59,7 +59,7 @@ function MasterCard({master, busy, onPlay}: { master: Master; busy: boolean; onP
     );
 }
 
-/** Страница каталога: поиск, порядок, фильтр «только с дебютами»; при ?master=<id> показывает одного мастера. */
+/** Catalogue page: search, order, the "only with openings" filter; with ?master=<id> it shows a single master. */
 export function MastersPage() {
     const {t, tp, language} = useI18n();
     const navigate = useNavigate();
@@ -91,7 +91,7 @@ export function MastersPage() {
     }, [masters, query, order, onlyOpening, t, language, focus]);
 
     const play = (master: Master, color: MasterColor) => {
-        // Партия с ботом сохраняется в архив игрока: гостю сначала нужно войти.
+        // A game with a bot is saved to the player's archive: a guest must sign in first.
         if (!getToken()) {
             setError(uiMessage('masters.loginToPlay'));
             return;

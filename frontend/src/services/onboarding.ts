@@ -1,28 +1,28 @@
 // --- FILE: frontend/src/services/onboarding.ts ---
-// Первый вход (таск 17.8): ответы при регистрации и выбор соперника для первой партии. Запросов здесь нет: ответы
-// уходят на сервер вместе с регистрацией (форма входа), стартовый рейтинг по ним считает сервер
-// (src/services/onboarding.py), а соперник выбирается из каталога ботов (services/botCatalog.ts).
+// First login (task 17.8): answers at registration and the choice of an opponent for the first game. No requests here: the answers
+// go to the server together with registration (login form), the starting rating is computed by the server from them
+// (src/services/onboarding.py), and the opponent is chosen from the bot catalog (services/botCatalog.ts).
 
 import type {CatalogArchetype} from './botCatalog';
 
-/** Ответы анкеты при регистрации: опыт игры и самооценка силы. Коды те же, что принимает сервер. */
+/** Questionnaire answers at registration: playing experience and self-assessed strength. Codes are the same as the server accepts. */
 export type Experience = 'new' | 'casual' | 'regular';
 export type StrengthBand = 'under_1000' | '1000_1400' | '1400_1800' | 'over_1800';
 
 export const EXPERIENCES: Experience[] = ['new', 'casual', 'regular'];
 export const STRENGTH_BANDS: StrengthBand[] = ['under_1000', '1000_1400', '1400_1800', 'over_1800'];
 
-/** Партий в категории, пока рейтинг временный (PROVISIONAL_GAMES сервера, src/services/rating.py). */
+/** Games per category while the rating is provisional (the server's PROVISIONAL_GAMES, src/services/rating.py). */
 export const PROVISIONAL_GAMES = 30;
 
-/** Состояние перехода на главную доску: начать первую партию по стартовому рейтингу. */
+/** Transition state to the main board: start the first game by the starting rating. */
 export interface FirstGameStart {
     rating: number;
 }
 
 /**
- * Соперник первой партии: самый сильный архетип не сильнее игрока (по измеренной силе — первая партия должна быть
- * посильной), а если все сильнее — самый слабый.
+ * First game opponent: the strongest archetype not stronger than the player (by measured strength — the first game must be
+ * manageable), and if all are stronger — the weakest one.
  */
 export function pickFirstOpponent(archetypes: CatalogArchetype[], rating: number): CatalogArchetype | null {
     if (archetypes.length === 0) return null;

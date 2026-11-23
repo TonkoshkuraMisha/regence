@@ -1,5 +1,5 @@
 # --- FILE: tests/test_tournament_swiss.py ---
-"""Швейцарская система (таск 15.4): пары первого тура, пары по очкам без повторов, цвета, Бухгольц, ход турнира."""
+"""Swiss system (task 15.4): first-round pairs, score-based pairs without repeats, colors, Buchholz, tournament progress."""
 
 import itertools
 
@@ -24,9 +24,9 @@ def test_no_rematches_and_balanced_colors_over_all_rounds():
     for _ in range(rules.SWISS_ROUNDS[8]):
         pairs = rules.swiss_pairings(seats, games)
         assert sorted(itertools.chain(*pairs)) == seats
-        games += _record(pairs, lambda w, b: "1-0" if w < b else "0-1")  # выигрывает сеяный выше
+        games += _record(pairs, lambda w, b: "1-0" if w < b else "0-1")  # the higher seed wins
     meetings = [frozenset((g.white, g.black)) for g in games]
-    assert len(meetings) == len(set(meetings))  # 5 туров по 4 пары — без повторов
+    assert len(meetings) == len(set(meetings))  # 5 rounds of 4 pairs - no repeats
     for seat in seats:
         whites = sum(g.white == seat for g in games)
         assert whites in (2, 3)
@@ -47,7 +47,7 @@ def test_buchholz_breaks_ties():
              rules.GameRecord(2, 4, "1-0")]
     table = {s.seat: s for s in rules.swiss_standings([1, 2, 3, 4], games)}
     assert table[1].points == table[3].points == 1.5
-    assert table[1].buchholz == 2.5 and table[3].buchholz == 1.5  # соперники 1-го набрали больше
+    assert table[1].buchholz == 2.5 and table[3].buchholz == 1.5  # the opponents of 1 scored more
     assert table[1].place < table[3].place
 
 

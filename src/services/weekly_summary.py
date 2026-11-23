@@ -1,9 +1,9 @@
 # --- FILE: src/services/weekly_summary.py ---
 """
-«Моя неделя» (идея развития удержания): итоги игрока за последние 7 суток (UTC) — партии, рейтинг, задачи, дни
-активности и серия разминки — и один совет кодом. Данные берутся из таблиц games (завершённые партии не-симуляций),
-puzzle_attempts и trainer_results; серия — workout.streak_status. Новых таблиц нет. Совет — чистая функция advice_code:
-сервер отдаёт код (weekly.advice.*), текст собирает клиент.
+"My Week" (a retention development idea): the player's results for the last 7 days (UTC) - games, rating, puzzles, days
+of activity and the warm-up streak - and one piece of advice as a code. The data is taken from the tables games (finished
+non-simulation games), puzzle_attempts and trainer_results; the streak is workout.streak_status. There are no new tables.
+The advice is the pure function advice_code: the server gives a code (weekly.advice.*), the client assembles the text.
 """
 
 from datetime import UTC, datetime, timedelta
@@ -17,17 +17,17 @@ from src.models.trainer import TrainerResult
 from src.models.user import User
 from src.services import workout
 
-# Длина окна итогов в днях.
+# Length of the results window in days.
 WEEK_DAYS = 7
-# Совет «разберите поражения»: поражений больше побед во столько раз и не меньше LOSS_MIN партий.
+# The advice "review your losses": losses exceed wins by this factor and are no fewer than LOSS_MIN games.
 LOSS_RATIO = 2
 LOSS_MIN = 4
 
 
 def advice_code(games: int, wins: int, losses: int, puzzles: int, days_active: int) -> str:
     """
-    Код совета по итогам недели (первое подходящее правило): comeback — активности не было; try_puzzles — играл, но не
-    решал задач; play_games — решал задачи, но не играл; review_losses — поражений намного больше побед; keep_going.
+    Advice code by the week's results (the first matching rule): comeback - there was no activity; try_puzzles - played but
+    did not solve puzzles; play_games - solved puzzles but did not play; review_losses - far more losses than wins; keep_going.
     """
     if days_active == 0:
         return "comeback"
@@ -41,7 +41,7 @@ def advice_code(games: int, wins: int, losses: int, puzzles: int, days_active: i
 
 
 async def build(db: AsyncSession, user: User, now: datetime | None = None) -> dict:
-    """Итоги недели игрока (поля — в ответе GET /workout/week): партии, задачи, дни активности, серия и совет кодом."""
+    """The player's week results (see GET /workout/week): games, puzzles, active days, streak, advice code."""
     now = now or datetime.now(UTC)
     since = now - timedelta(days=WEEK_DAYS)
 

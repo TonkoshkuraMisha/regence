@@ -1,6 +1,6 @@
 """puzzle timed scores
 
-Недельные счета забегов на время (таблица лидеров, таск 26.1): лучший счёт игрока за неделю по длине забега.
+Weekly scores of timed runs (leaderboard, task 26.1): a player's best score for the week by run length.
 
 Revision ID: a7c3e9b1d5f2
 Revises: e4b9c2d7a1f3

@@ -1,8 +1,8 @@
 # --- FILE: tests/test_personality_bot.py ---
 """
-Параметрическая модель соперника (src/services/bots/personality.py): ползунки переставляют
-кандидатов движка внутри окна blunder_guard_cp, сила задаётся target_elo, ниже 1320 — управляемые
-ошибки. Вывод движка подменён: кандидаты и их оценки задаёт тест.
+Parametric opponent model (src/services/bots/personality.py): sliders reorder
+the engine candidates inside the blunder_guard_cp window, strength is set by target_elo, below 1320 there are controlled
+mistakes. The engine output is stubbed: the test defines the candidates and their evaluations.
 """
 
 import chess
@@ -20,14 +20,14 @@ from src.services.bots.personality import (
 )
 
 API = "/api/v1"
-# Признаки, кроме агрессии, выключены — выбор определяет только проверяемый ползунок.
+# Features other than aggression are switched off: the choice is determined only by the slider under test.
 ONLY_AGGRESSION = {"center_control": 0, "mobility": 0, "king_safety": 0, "pawn_structure": 0, "randomness": 0}
 
-# Чёрная пешка d6 бьёт коня e5 (угроза dxe5). Кандидаты:
-#   Nf3 — тихий ход, снимающий угрозу (профилактика);
-#   Rh8+ — шах;
-#   Kd2 — нейтральный тихий ход, угроза остаётся;
-#   Nd7 — конь встаёт под бой короля без защиты (жертва) рядом с королём.
+# The black pawn on d6 attacks the knight on e5 (threat dxe5). Candidates:
+#   Nf3 - a quiet move that removes the threat (prophylaxis);
+#   Rh8+ - a check;
+#   Kd2 - a neutral quiet move, the threat remains;
+#   Nd7 - the knight steps next to the king under attack without protection (a sacrifice).
 THREAT_FEN = "4k3/8/3p4/4N3/8/8/8/4K2R w K - 0 1"
 
 
@@ -37,7 +37,7 @@ def _move(board: chess.Board, san: str) -> chess.Move:
 
 @pytest.fixture
 def engine_lines(monkeypatch):
-    """Подменяет MultiPV движка: {san: оценка в сп} для позиции из теста."""
+    """Stubs the engine MultiPV: {san: evaluation in cp} for the position under test."""
 
     def install(fen: str, lines: dict[str, float]):
         board = chess.Board(fen)
@@ -54,7 +54,7 @@ def _choose(config: BotPersonalityConfig, fen: str) -> str:
     return board.san(chess.Move.from_uci(result["uci"]))
 
 
-# --- Схема ---------------------------------------------------------------------------------------
+# --- Schema --------------------------------------------------------------------------------------
 
 def test_default_config_is_balanced():
     config = BotPersonalityConfig()
@@ -85,22 +85,22 @@ def test_piece_value_bounds(piece_name, value):
 
 
 def test_unknown_fields_are_rejected():
-    # Глубину и время поиска клиент не задаёт — их выбирает сервер.
+    # The client does not set search depth and time: the server chooses them.
     with pytest.raises(ValidationError):
         BotPersonalityConfig(depth=30)
 
 
-# --- Сила ----------------------------------------------------------------------------------------
+# --- Strength ------------------------------------------------------------------------------------
 
 def test_strength_limits_search_and_starts_errors_below_stockfish_minimum():
     weakest, strongest = strength_for(600), strength_for(2800)
     assert weakest.uci_elo == 1320 and weakest.error_rate == pytest.approx(0.43)
     assert strength_for(1320).error_rate == pytest.approx(0.086) and strength_for(1320).uci_elo == 1320
-    # Кривая по калибровке: прямая, к 1500 ошибки сходят на нет.
+    # The curve follows the calibration: a straight line, mistakes fade out towards 1500.
     assert strength_for(1000).error_rate == pytest.approx(0.2389, abs=1e-4)
     assert strength_for(1450).error_rate == pytest.approx(0.0239, abs=1e-4) and strength_for(1500).error_rate == 0
     rates = [strength_for(elo).error_rate for elo in range(600, 1501, 25)]
-    assert rates == sorted(rates, reverse=True)  # чем сильнее цель, тем меньше ошибок
+    assert rates == sorted(rates, reverse=True)  # the stronger the target, the fewer mistakes
     assert strongest.uci_elo == 2800 and strongest.error_rate == 0
     assert strongest.depth == 8 and strongest.time_limit <= 0.5
     assert weakest.depth < strongest.depth
@@ -121,7 +121,7 @@ def test_bot_uses_server_side_strength():
     assert bot.multipv == 8
 
 
-# --- Выбор хода на подменённом движке ----------------------------------------------------------
+# --- Move choice on a stubbed engine -----------------------------------------------------------
 
 def test_aggressive_personality_prefers_check_among_equal_lines(engine_lines):
     engine_lines(THREAT_FEN, {"Nf3": 0, "Rh8+": 0, "Kd2": 0})
@@ -152,20 +152,20 @@ def test_wide_window_lets_style_override_a_slightly_better_line(engine_lines):
 
 def test_weak_target_elo_makes_controlled_errors(engine_lines, monkeypatch):
     engine_lines(THREAT_FEN, {"Nf3": 300, "Rh8+": 0, "Kd2": -50})
-    monkeypatch.setattr(personality.random, "random", lambda: 0.0)  # ошибка выпадает всегда
-    # Ошибка — ход из худшей половины линий. Случайный зевок (BLUNDER_SHARE) здесь выключен: случайный легальный
-    # ход изредка совпадает с лучшим, и проверка «не лучший» от этого мигала.
+    monkeypatch.setattr(personality.random, "random", lambda: 0.0)  # the mistake always triggers
+    # A mistake is a move from the worse half of the lines. The random blunder (BLUNDER_SHARE) is switched off here: a random
+    # legal move occasionally coincides with the best one, and the "not the best" check flickered because of it.
     monkeypatch.setattr(personality, "BLUNDER_SHARE", 0.0)
     weak = BotPersonalityConfig(target_elo=600, blunder_guard_cp=0, **ONLY_AGGRESSION)
     assert {_choose(weak, THREAT_FEN) for _ in range(20)} <= {"Rh8+", "Kd2"}
 
-    # С 1320 и выше ошибок нет: с нулевым окном играется лучшая линия.
+    # From 1320 and up there are no mistakes: with a zero window the best line is played.
     strong = BotPersonalityConfig(target_elo=1500, blunder_guard_cp=0, **ONLY_AGGRESSION)
     assert _choose(strong, THREAT_FEN) == "Nf3"
 
 
 def test_piece_values_shift_exchange_preference():
-    # Белые могут взять коня (Rxe5) или слона (Rxb5) — для стандартной шкалы это равноценно.
+    # White can take the knight (Rxe5) or the bishop (Rxb5): equivalent for the standard scale.
     fen = "4k3/8/8/1b2n3/8/8/8/1R2R1K1 w - - 0 1"
     board = chess.Board(fen)
     knights_lover = build_style(BotPersonalityConfig(
@@ -230,14 +230,14 @@ def test_custom_move_shares_the_bot_move_rate_limit(client, monkeypatch, freeze_
 
 def test_weak_error_without_blunder_takes_the_worse_half_of_the_lines(engine_lines, monkeypatch):
     engine_lines(THREAT_FEN, {"Nf3": 300, "Nc6": 250, "Rh8+": 0, "Kd2": -50})
-    rolls = iter([0.0, 0.9])  # ошибка выпала; не зевок — ход из худшей половины линий
+    rolls = iter([0.0, 0.9])  # the mistake triggered; not a blunder: a move from the worse half of the lines
     monkeypatch.setattr(personality.random, "random", lambda: next(rolls))
     weak = BotPersonalityConfig(target_elo=600, blunder_guard_cp=0, **ONLY_AGGRESSION)
     assert _choose(weak, THREAT_FEN) in {"Rh8+", "Kd2"}
 
 
 def test_frontend_error_curve_matches_the_server():
-    """Мастерская показывает долю ошибок по копии кривой (frontend/src/config/archetypes.ts) — числа те же."""
+    """The workshop shows the mistake rate from a copy of the curve (frontend/src/config/archetypes.ts): same numbers."""
     import pathlib
     import re
 

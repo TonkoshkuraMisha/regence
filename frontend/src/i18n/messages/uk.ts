@@ -1,5 +1,5 @@
 // --- FILE: frontend/src/i18n/messages/uk.ts ---
-// Український каталог. Структура задана англійським (тип Messages): ключі мають збігатися повністю.
+// The Ukrainian catalog. The structure is set by the English one (the Messages type): the keys must match exactly.
 
 import {plural} from '../core';
 import type {Messages} from './en';
@@ -475,7 +475,7 @@ export const uk: Messages = {
         noConnection: 'Немає зв’язку із сервером — бот зробить хід, щойно зв’язок відновиться…',
         moveFailed: 'Бот не зміг зробити хід: {detail}',
         moveFailedStatus: 'помилка {status}',
-        // Мастера прошлого — участники знаменитых турниров («Машина времени», src/services/bots/guests.py).
+        // Masters of the past - participants of famous tournaments ("Time Machine", src/services/bots/guests.py).
         guests: {
             kieseritzky: {name: 'Ліонель Кізерицький', shortName: 'Кізерицький', about: 'Гамбітний гравець із кафе «Режанс»'},
             szen: {name: 'Йожеф Сен', shortName: 'Сен', about: 'Угорський майстер пішакових закінчень'},
@@ -1224,7 +1224,7 @@ export const uk: Messages = {
         older: 'Старіші →',
         page: 'Сторінка {page} з {pages} · усього {total}',
     },
-    // Ошибки сервера по коду (src/core/errors.py; состав сверяет tests/test_error_codes.py).
+    // Server errors by code (src/core/errors.py; the set is checked by tests/test_error_codes.py).
     serverErrors: {
         internal_error: 'Помилка сервера. Спробуйте ще раз.',
         not_authenticated: 'Сеанс завершився — увійдіть знову',
@@ -1432,7 +1432,7 @@ export const uk: Messages = {
         no_draw_offer: 'Немає пропозиції нічиєї, яку можна прийняти',
         no_rematch_offer: 'Немає пропозиції реваншу, яку можна прийняти',
     },
-    // Стандартные проверки полей (ответ 422): тип проверки pydantic → текст.
+    // Standard field validations (422 response): pydantic check type -> text.
     validation: {
         withField: '{field}: {message}',
         invalid_value: 'некоректне значення',
@@ -1447,7 +1447,7 @@ export const uk: Messages = {
         too_long: 'не більше {max_length} елементів',
         extra_forbidden: 'невідоме поле',
     },
-    // Названия полей в сообщениях проверки.
+    // Field names in validation messages.
     fields: {
         invite_code: 'Код-запрошення',
         username: 'Ім’я користувача',
@@ -1460,7 +1460,7 @@ export const uk: Messages = {
         moves: 'Ходи',
         config: 'Налаштування суперника',
     },
-    // Реплики ботов к ходам: ключи присылает сервер (src/services/bots/*.py, tests/test_bot_content_keys.py).
+    // Bot remarks on moves: the keys are sent by the server (src/services/bots/*.py, tests/test_bot_content_keys.py).
     botComments: {
         common: {
             positional: 'Класичний позиційний хід.',
@@ -1594,7 +1594,7 @@ export const uk: Messages = {
             drawDeclined: 'Ні, граймо далі.',
             drawTooEarly: 'Нічия? Партія щойно почалася — граймо.',
         },
-        // Ход из дебютной книги бота: в скобках — сколько партий архива с этим ходом.
+        // A move from the bot's opening book: in brackets - how many archive games have this move.
         book: {
             philidor: 'Історичний вибір Філідора (партій в архіві: {games}).',
             labourdonnais: 'Улюблений хід Лабурдонне в атаці (партій в архіві: {games}).',
@@ -1620,7 +1620,7 @@ export const uk: Messages = {
             petrosian: 'Надійний дебют Петросяна ({games} партій в архіві).',
         },
     },
-    // Архетипы мастерской: id присылает сервер (src/services/bots/archetypes.py).
+    // Workshop archetypes: the id is sent by the server (src/services/bots/archetypes.py).
     archetypes: {
         blunderer: {
             name: 'Роззява',
@@ -1711,8 +1711,8 @@ export const uk: Messages = {
             bio: 'Бачить удари на кілька ходів уперед і майже не помиляється в розрахунку.',
         },
     },
-    // Наставник (src/services/coach.py): фигуры и поля приходят фигурной нотацией («♘f7»), поэтому
-    // фразы не склоняют названия фигур. У каждого шаблона две формулировки (v1, v2).
+    // Mentor (src/services/coach.py): pieces and squares arrive in figurine notation ("♘f7"), so
+    // the phrases do not decline piece names. Every template has two wordings (v1, v2).
     puzzles: {
         candidates: {
             toggle: 'Спершу кандидати',

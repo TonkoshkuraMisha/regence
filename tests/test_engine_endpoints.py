@@ -1,7 +1,7 @@
 # --- FILE: tests/test_engine_endpoints.py ---
 """
-Защита эндпоинтов, нагружающих Stockfish: запрет анализа идущих партий, лимиты частоты,
-503 при занятом пуле и сам пул долгоживущих движков.
+Protection of endpoints that load Stockfish: ban on analysing games in progress, rate limits,
+503 when the pool is busy and the pool of long-lived engines itself.
 """
 
 import json
@@ -53,7 +53,7 @@ async def _make_game(db_session, status: GameStatus, pgn: str = FOUR_PLY_PGN, an
     return game
 
 
-# --- Анализ идущих партий ---------------------------------------------------------------
+# --- Analysis of games in progress ------------------------------------------------------
 
 async def test_analysis_of_in_progress_game_is_forbidden(client, db_session):
     game = await _make_game(db_session, GameStatus.IN_PROGRESS)
@@ -63,7 +63,7 @@ async def test_analysis_of_in_progress_game_is_forbidden(client, db_session):
 
     assert post.status_code == 409
     assert get.status_code == 409
-    assert not analysis_api._ANALYSIS_LOCKS  # лок по партии освобождён и удалён
+    assert not analysis_api._ANALYSIS_LOCKS  # the per-game lock is released and removed
 
 
 async def test_cached_analysis_of_finished_game_is_available(client, db_session):
@@ -73,7 +73,7 @@ async def test_cached_analysis_of_finished_game_is_available(client, db_session)
 
 @needs_stockfish
 async def test_stale_cache_is_recomputed(client, db_session):
-    """Кэш, посчитанный по неполной партии (например, во время игры), не отдаётся как итоговый."""
+    """A cache computed from an incomplete game (e.g. during play) is not served as final."""
     stale = {"engine": "x", "white": {}, "black": {}, "moves": [{"ply": 1}, {"ply": 2}]}
     game = await _make_game(db_session, GameStatus.COMPLETED, analysis_json=json.dumps(stale))
 
@@ -82,7 +82,7 @@ async def test_stale_cache_is_recomputed(client, db_session):
     assert len(res.json()["moves"]) == 4
 
 
-# --- Лимиты частоты ---------------------------------------------------------------------
+# --- Rate limits ------------------------------------------------------------------------
 
 def test_rate_limit_returns_429_with_retry_after(client, monkeypatch, freeze_rate_limit_window):
     monkeypatch.setattr(settings, "RATE_LIMIT_POSITION_ANALYSIS", 2)
@@ -101,7 +101,7 @@ def test_rate_limit_is_per_user_when_token_present(client, monkeypatch, token_us
     monkeypatch.setattr(settings, "RATE_LIMIT_POSITION_ANALYSIS_GUEST", 1)
     url = "/api/v1/analysis/position"
 
-    assert client.post(url, json={"moves": []}).status_code == 200  # гость (IP)
+    assert client.post(url, json={"moves": []}).status_code == 200  # guest (IP)
     assert client.post(url, json={"moves": []}).status_code == 429
     for token in (token_user_1, token_user_2):
         res = client.post(url, json={"moves": []}, headers={"Authorization": f"Bearer {token}"})
@@ -123,7 +123,7 @@ def test_bot_list_does_not_leak_engine_path(client):
     assert "stockfish_path" not in body
 
 
-# --- Пул движков ------------------------------------------------------------------------
+# --- Engine pool ------------------------------------------------------------------------
 
 class _FakeEngine:
     def __init__(self):
@@ -143,7 +143,7 @@ def test_pool_resets_and_clamps_options():
     EnginePool._configure(engine, {"Skill Level": 3, "UCI_LimitStrength": True, "UCI_Elo": 900, "Unknown": 1})
     assert engine.configured == {"Skill Level": 3, "UCI_LimitStrength": True, "UCI_Elo": 1320}
 
-    # Следующий вызов без опций возвращает полную силу — настройки бота не «протекают».
+    # The next call without options returns full strength - bot settings do not "leak".
     EnginePool._configure(engine, {})
     assert engine.configured == {"Skill Level": 20, "UCI_LimitStrength": False}
 
@@ -167,7 +167,7 @@ def test_lease_keeps_one_engine_and_drops_a_broken_one(monkeypatch):
         with lease.use({}) as first:
             pass
         with lease.use({"UCI_LimitStrength": True, "UCI_Elo": 900}) as second:
-            # Тот же движок, опции сменились на месте и приведены к диапазону.
+            # The same engine, options changed in place and clamped to the range.
             assert second is first and second.configured["UCI_Elo"] == 1320
         with pytest.raises(chess.engine.EngineError), lease.use({}):
             raise chess.engine.EngineError("engine died")
@@ -189,7 +189,7 @@ def test_pool_reuses_process_and_limits_concurrency():
         with pool.acquire() as first:
             pass
         with pool.acquire() as second:
-            assert second is first  # процесс переиспользован, а не запущен заново
+            assert second is first  # the process is reused, not started anew
 
             errors = []
 
@@ -213,7 +213,7 @@ def test_pool_replaces_dead_engine():
     pool = EnginePool(SF_PATH, size=1, acquire_timeout_s=1.0)
     try:
         with pool.acquire() as engine:
-            engine.quit()  # процесс завершился, а вызывающий код ошибку «проглотил»
+            engine.quit()  # the process has exited, and the calling code "swallowed" the error
         with pool.acquire() as fresh:
             assert fresh is not engine
             info = fresh.analyse(chess.Board(), chess.engine.Limit(depth=1))

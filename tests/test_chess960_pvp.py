@@ -1,4 +1,4 @@
-"""Шахматы Фишера с человеком (21.3 / 21.1, сеть): приглашение, позиция 960, рокировка по правилам 960, PGN."""
+"""Fischer random chess against a human (21.3 / 21.1, network): invite, 960 position, castling by 960 rules, PGN."""
 
 import io
 
@@ -13,7 +13,7 @@ from src.services.matchmaker import chess960_start, matchmaker
 from src.services.odds import pgn_header
 from tests.test_casual_games import TC, _users
 
-STANDARD_960 = fen_of(chess.Board.from_chess960_pos(518))  # обычная расстановка по правилам 960
+STANDARD_960 = fen_of(chess.Board.from_chess960_pos(518))  # the standard setup under 960 rules
 
 
 def test_chess960_fen_is_recognisable():
@@ -33,12 +33,12 @@ def test_engine_castles_king_takes_rook_and_keeps_960_rules():
         assert ok, uci
         fen, pgn = data["new_fen"], data["new_pgn"]
     ok, data = engine.process_move(fen, "e1g1", pgn)
-    assert not ok  # в 960 рокировка — «король берёт свою ладью»
+    assert not ok  # in 960 castling is "the king takes its own rook"
     ok, data = engine.process_move(fen, "e1h1", pgn)
     assert ok and data["san"] == "O-O"
     board = restore_board(data["new_fen"], data["new_pgn"])
     assert board.chess960 and board.piece_at(chess.G1) == chess.Piece(chess.KING, chess.WHITE)
-    assert is_chess960_fen(data["new_fen"])  # права чёрных на рокировку — снова буквами вертикалей
+    assert is_chess960_fen(data["new_fen"])  # Black's castling rights are file letters again
 
 
 async def test_chess960_invite_game(db_session):
@@ -103,7 +103,7 @@ async def test_rematch_of_a_chess960_game_is_chess960_with_the_same_position(db_
     rematch = await create_rematch_game(db_session, prev_state)
 
     game = await db_session.get(Game, rematch["game_id"])
-    # Та же расстановка 960, цвета поменялись, без рейтинга — как первая партия.
+    # The same 960 setup, colours swapped, unrated, like the first game.
     assert game.initial_fen == first_game.initial_fen and is_chess960_fen(game.initial_fen)
     assert (game.white_player_id, game.black_player_id) == (first_game.black_player_id, first_game.white_player_id)
     assert game.is_rated is False

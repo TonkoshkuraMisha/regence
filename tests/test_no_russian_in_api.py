@@ -1,15 +1,15 @@
 # --- FILE: tests/test_no_russian_in_api.py ---
 """
-Сервер не отдаёт пользователю русский текст (таск 11.0c): тексты на трёх языках собирает клиент из каталогов,
-сервер шлёт коды, ключи и параметры.
+The server does not send Russian text to the user (task 11.0c): the client builds texts in three languages from catalogues,
+the server sends codes, keys and parameters.
 
-* Исходники src: ни одной строки с кириллицей вне docstring, описаний полей для OpenAPI (description=),
-  логов и print — это тексты для разработчиков, они пишутся по-русски. Исключение — регулярные выражения
-  правил имени, которые кириллицу как раз разрешают.
-* Исключение — тексты писем (src/services/mailer.py, таск 17.5): письмо читают в почтовом клиенте, каталогов
-  фронтенда там нет, поэтому оно собирается на сервере на языке игрока; там же — все три языка.
-* Данные, которые сервер отдаёт как есть (дебютные книги ботов), — без кириллицы.
-* Ответы ключевых эндпоинтов ботов и лестницы — без кириллицы.
+* src sources: no string literal with Cyrillic outside docstrings, OpenAPI field descriptions (description=),
+  logs and print - those are developer texts, written in English. An exception is the regular expressions of
+  the name rules, which do allow Cyrillic.
+* Exception - mail texts (src/services/mailer.py, task 17.5): the mail is read in a mail client, there are no frontend
+  catalogues there, so it is built on the server in the player's language; all three languages live there.
+* Data that the server returns as is (bot opening books) - without Cyrillic.
+* Responses of the key bot and ladder endpoints - without Cyrillic.
 """
 
 import ast
@@ -22,7 +22,7 @@ import pytest
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 CYRILLIC = re.compile(r"[Ѐ-ӿ]")
 LOG_METHODS = {"debug", "info", "warning", "error", "exception", "critical"}
-# Имена игроков могут быть кириллическими — правило имени перечисляет буквы алфавита.
+# Player names may be Cyrillic: the name rule lists the letters of the alphabet.
 ALLOWED = {
     ("src/schemas/user.py", "[A-Za-z0-9А-Яа-яЁё_-]+"),
     ("src/schemas/user.py", "[А-Яа-яЁё]"),
@@ -59,7 +59,7 @@ def _user_facing_cyrillic(path: pathlib.Path) -> list[str]:
     return found
 
 
-# Файлы, где тексты для людей на трёх языках живут на сервере по необходимости (см. описание модуля).
+# Files where human-facing texts in three languages live on the server out of necessity (see the module description).
 ALLOWED_FILES = {"src/services/mailer.py"}
 
 
@@ -73,16 +73,16 @@ def test_server_source_has_no_user_facing_russian():
 def test_guard_sees_strings_but_not_developer_text(tmp_path):
     probe = tmp_path / "probe.py"
     probe.write_text(
-        '"""Модуль."""\n'
+        '"""\u041c\u043e\u0434\u0443\u043b\u044c."""\n'
         'import logging\n'
         'logger = logging.getLogger(__name__)\n'
         'def f(x=None):\n'
-        '    """Функция."""\n'
-        '    logger.warning("Лог %s", x)\n'
-        '    return {"comment": "Реплика"}\n',
+        '    """\u0424\u0443\u043d\u043a\u0446\u0438\u044f."""\n'
+        '    logger.warning("\u041b\u043e\u0433 %s", x)\n'
+        '    return {"comment": "\u0420\u0435\u043f\u043b\u0438\u043a\u0430"}\n',
         encoding="utf-8",
     )
-    assert [line.split(": ", 1)[1] for line in _user_facing_cyrillic(probe)] == ["Реплика"]
+    assert [line.split(": ", 1)[1] for line in _user_facing_cyrillic(probe)] == ["\u0420\u0435\u043f\u043b\u0438\u043a\u0430"]
 
 
 def test_opening_books_have_no_russian():
@@ -108,8 +108,8 @@ def test_bot_moves_answer_with_comment_keys(client, monkeypatch, bot_id):
 
     monkeypatch.setattr(bots_base, "analyse_with_stockfish", lambda **kwargs: {})
     for fen in (
-        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",  # ход из книги
-        "r1bq1rk1/pp3ppp/2n2n2/2bpp3/8/2NP1NP1/PPP1PPBP/R1BQ1RK1 w - - 0 9",  # ход по стилю
+        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",  # book move
+        "r1bq1rk1/pp3ppp/2n2n2/2bpp3/8/2NP1NP1/PPP1PPBP/R1BQ1RK1 w - - 0 9",  # style move
     ):
         response = client.post("/api/v1/bots/move", json={"bot_id": bot_id, "fen": fen})
         assert response.status_code == 200, response.text

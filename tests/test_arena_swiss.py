@@ -1,5 +1,5 @@
 # --- FILE: tests/test_arena_swiss.py ---
-"""Швейцарка между людьми (таск 17.2): первый тур со свободным, переход тура по завершению партий, конец турнира."""
+"""Swiss between humans (task 17.2): first round with a bye, round advancement on game completion, tournament end."""
 
 from datetime import UTC, datetime, timedelta
 
@@ -48,14 +48,14 @@ async def test_rounds_with_bye_and_finish(client, db_session, swiss):
                if p.user_id not in paired)
     assert (bye.byes, bye.score, bye.games) == (1, 2, 1)
 
-    # Партия тура закончилась обычным путём — составлен второй тур, свободный достаётся другому игроку.
+    # The round's game finished the normal way — the second round is built, the bye goes to another player.
     await state_manager.finish_game(db_session, first[0].game_id, "1-0", termination="resignation")
     await db_session.refresh(item)
     assert item.current_round == 2
     second = await _games(db_session, item.id, 2)
     assert len(second) == 1 and bye.user_id in {second[0].white_id, second[0].black_id}
 
-    # Партия второго тура — настоящая (а не ничья без игры): игроки первого тура уже освободились.
+    # The second round's game is real (not a draw without play): the first round players are already free.
     second_game = await db_session.get(Game, second[0].game_id)
     assert second_game.status == GameStatus.IN_PROGRESS
     await state_manager.finish_game(db_session, second[0].game_id, "1/2-1/2", termination="agreement")
@@ -63,7 +63,7 @@ async def test_rounds_with_bye_and_finish(client, db_session, swiss):
     assert item.finished_at is not None
     final = client.get(f"{API}/{item.id}").json()
     assert final["status"] == "finished"
-    assert sum(s["score"] for s in final["standings"]) == 2 + 2 + 2 + 2   # победа, ничья (1+1), два свободных тура
+    assert sum(s["score"] for s in final["standings"]) == 2 + 2 + 2 + 2   # a win, a draw (1+1), two bye rounds
 
 
 async def test_play_button_is_only_for_arenas(client, swiss, token_user_1):
@@ -87,5 +87,5 @@ async def test_lonely_swiss_ends_without_games(db_session, test_user_1):
 async def test_schedule_has_a_swiss_slot(db_session):
     await arena.ensure_schedule(db_session, datetime(2026, 11, 15, 11, 0, tzinfo=UTC))
     swiss = (await db_session.execute(select(Arena).where(Arena.format == "swiss"))).scalars().all()
-    # Воскресенье: ежедневная швейцарка 10+5 и еженедельная 15+10, обе по 5 туров.
+    # Sunday: the daily Swiss 10+5 and the weekly 15+10, both of 5 rounds.
     assert {(s.rounds, s.base_time_ms, s.increment_ms) for s in swiss} == {(5, 600_000, 5_000), (5, 900_000, 10_000)}

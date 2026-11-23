@@ -1,5 +1,5 @@
 # --- FILE: tests/test_moderation_edges.py ---
-"""Модерация: отказы служебных функций — неверные вид и причина жалобы, предложения перевода, повторная апелляция, решения."""
+"""Moderation: internal-function rejections: bad complaint kind/reason, translation suggestions, repeat appeal, decisions."""
 
 import pytest
 
@@ -57,4 +57,4 @@ async def test_parse_subject_rejects_bad_links(subject):
 async def test_missing_text_is_not_found_and_decision_is_harmless(db_session):
     assert await _code(moderation.load_text(db_session, "post:999999")) == "report_not_found"
     assert await _code(moderation.load_text(db_session, "comment:999999")) == "report_not_found"
-    await moderation._apply_to_text(db_session, "post:999999", "hide")  # текст удалён автором — ничего не падает
+    await moderation._apply_to_text(db_session, "post:999999", "hide")  # the text was deleted by its author; nothing fails

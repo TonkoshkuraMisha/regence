@@ -1,12 +1,12 @@
 # --- FILE: scripts/chessgames_downloader.py ---
 """
-Загрузка партий исторических мастеров с chessgames.com в data/pgns/<игрок>/ — разовый инструмент наполнения
-архива (игроки и число страниц — PLAYERS_CONFIG).
+Downloads games of historical masters from chessgames.com into data/pgns/<player>/ - a one-off tool for filling the
+archive (players and the number of pages - PLAYERS_CONFIG).
 
-Условия использования сайта-источника не проверялись: это записано в ATTRIBUTION.md, раздел «Открытые вопросы»,
-и перед публичным запуском источник партий нужно подтвердить или заменить. В работе сайта скрипт не участвует.
+The terms of use of the source site have not been checked: this is recorded in ATTRIBUTION.md, section "Open questions",
+and before the public launch the game source must be confirmed or replaced. The script plays no part in running the site.
 
-Запуск: `python scripts/chessgames_downloader.py`.
+Run: `python scripts/chessgames_downloader.py`.
 """
 
 import argparse
@@ -47,7 +47,7 @@ PAGINATION_INFO_REGEX = re.compile(
 async def fetch_gids_from_page(
         client: httpx.AsyncClient, pid: int, page: int
 ) -> tuple[list[str], int | None, int | None]:
-    """Извлекает список GID партий и число страниц из HTML-таблицы игрока."""
+    """Extracts the list of game GIDs and the number of pages from the player's HTML table."""
     url = (
         f"{BASE_URL}/perl/chessplayer?pid={pid}"
         if page == 1
@@ -59,7 +59,7 @@ async def fetch_gids_from_page(
             response = await client.get(url)
             if response.status_code in (429, 403, 503):
                 wait_sec = 10 * attempt
-                print(f"[!] Лимит ({response.status_code}) на стр. {page}, пауза {wait_sec} сек...")
+                print(f"[!] Rate limit ({response.status_code}) on page {page}, pausing {wait_sec} s...")
                 await asyncio.sleep(wait_sec)
                 continue
 
@@ -73,14 +73,14 @@ async def fetch_gids_from_page(
 
             if not gids:
                 wait_sec = 8 * attempt
-                print(f"[!] Стр. {page} вернула 0 партий (попытка {attempt}/6), пауза {wait_sec} сек...")
+                print(f"[!] Page {page} returned 0 games (attempt {attempt}/6), pausing {wait_sec} s...")
                 await asyncio.sleep(wait_sec)
                 continue
 
             return gids, detected_pages, detected_total
         except httpx.HTTPError as exc:
             wait_sec = 4 * attempt
-            print(f"[!] Ошибка сети на стр. {page} (попытка {attempt}): {exc}")
+            print(f"[!] Network error on page {page} (attempt {attempt}): {exc}")
             await asyncio.sleep(wait_sec)
 
     return [], None, None
@@ -95,7 +95,7 @@ async def download_pgn(
         index: int,
         total: int,
 ) -> tuple[int, str, str]:
-    """Скачивает и кэширует PGN одной партии по её GID с защитой от лимитов."""
+    """Downloads and caches the PGN of one game by its GID, with rate-limit protection."""
     file_path = player_dir / f"{index:03d}_{player_key}_{gid}.pgn"
     if file_path.exists():
         cached = file_path.read_text(encoding="utf-8", errors="ignore").strip()
@@ -111,7 +111,7 @@ async def download_pgn(
                 if resp.status_code == 200 and "[Event " in text:
                     file_path.write_text(text + "\n", encoding="utf-8")
                     if index % 25 == 0 or index == total:
-                        print(f"[{index:03d}/{total}] Скачано (gid={gid})...")
+                        print(f"[{index:03d}/{total}] Downloaded (gid={gid})...")
                     await asyncio.sleep(0.35)
                     return index, gid, text
                 await asyncio.sleep(15 * attempt)
@@ -122,7 +122,7 @@ async def download_pgn(
 
 
 async def download_player_games(player_key: str) -> None:
-    """Скачивает все партии выбранного мастера и обновляет его дебютную книгу."""
+    """Downloads all games of the selected master and updates his opening book."""
     cfg = PLAYERS_CONFIG[player_key]
     pid = cfg["pid"]
     total_pages = cfg["pages"]
@@ -137,7 +137,7 @@ async def download_player_games(player_key: str) -> None:
     semaphore = asyncio.Semaphore(3)
 
     async with httpx.AsyncClient(headers=headers, timeout=25.0, follow_redirects=True) as client:
-        print(f"=== Скачивание базы: {cfg['name']} (pid={pid}) ===")
+        print(f"=== Downloading the database: {cfg['name']} (pid={pid}) ===")
         all_gids: list[str] = []
         page = 1
         while page <= total_pages:
@@ -149,12 +149,12 @@ async def download_player_games(player_key: str) -> None:
                     all_gids.append(gid)
             total_info = f"/{det_total}" if det_total else ""
             print(
-                f"[Страница {page:02d}/{total_pages:02d}] Найдено: {len(gids)} | Всего ID: {len(all_gids)}{total_info}")
+                f"[Page {page:02d}/{total_pages:02d}] Found: {len(gids)} | Total IDs: {len(all_gids)}{total_info}")
             page += 1
             await asyncio.sleep(0.35)
 
         if not all_gids:
-            print(f"[-] Партии для {player_key} не найдены.")
+            print(f"[-] No games found for {player_key}.")
             return
 
         tasks = [
@@ -166,22 +166,22 @@ async def download_player_games(player_key: str) -> None:
         valid_pgns = [pgn for _, _, pgn in results if pgn]
 
         combined_file.write_text("\n\n".join(valid_pgns) + "\n", encoding="utf-8")
-        print(f"[+] Сохранено {len(valid_pgns)} партий в {combined_file}")
+        print(f"[+] Saved {len(valid_pgns)} games to {combined_file}")
 
     build_book_for_bot(player_key)
 
 
 async def main() -> None:
-    """Разбирает аргументы CLI и запускает скачивание партий мастеров."""
-    parser = argparse.ArgumentParser(description="Единый загрузчик PGN исторических чемпионов с Chessgames.")
+    """Parses CLI arguments and starts downloading the masters' games."""
+    parser = argparse.ArgumentParser(description="Unified PGN downloader for historical champions from Chessgames.")
     parser.add_argument(
         "player",
         nargs="?",
         default="zukertort",
         choices=list(PLAYERS_CONFIG.keys()),
-        help="Ключ шахматиста (по умолчанию: zukertort)",
+        help="Player key (default: zukertort)",
     )
-    parser.add_argument("--all", action="store_true", help="Скачать партии всех шахматистов")
+    parser.add_argument("--all", action="store_true", help="Download the games of all players")
     args = parser.parse_args()
 
     if args.all:

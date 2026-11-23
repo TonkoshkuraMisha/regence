@@ -1,4 +1,4 @@
-"""Дебютный репертуар (таск 20.1): стартовые наборы, линии из UCI и PGN, перестановки, комментарии, удаление веток."""
+"""Opening repertoire (task 20.1): starter sets, lines from UCI and PGN, transpositions, comments, branch deletion."""
 
 import chess
 
@@ -20,7 +20,7 @@ def create(client, token, **body) -> dict:
 
 
 def test_starters_are_consistent():
-    """Восемь наборов: белыми и чёрными, три уровня; ходы легальны, свой ход в позиции один, у линии есть дебют."""
+    """Eight sets: White and Black, three levels; moves are legal, one own move per position, each line has an opening."""
     assert len(STARTERS) == 8
     assert {(s.color, s.level) for s in STARTERS} == {
         (c, lvl) for c in ("white", "black") for lvl in ("beginner", "intermediate", "advanced")}
@@ -65,7 +65,7 @@ def test_add_line_transposition_and_comment(client, token_user_1):
     again = client.post(f"{API}/{rep['id']}/lines", headers=auth(token_user_1),
                         json={"moves": ["g1f3", "b8c6", "e2e4", "e7e5"]}).json()
     assert again["added"] == 4
-    # Обе линии сходятся в одну позицию: из неё рёбер нет, а позиция-ребёнок у двух ходов одна.
+    # Both lines converge to one position: it has no edges, and the child position is the same for both moves.
     board = chess.Board()
     for uci in E4_E5:
         board.push_uci(uci)
@@ -102,7 +102,7 @@ def test_remove_prunes_unreachable_but_keeps_transpositions(client, token_user_1
     client.post(f"{url}/lines", headers=auth(token_user_1), json={"moves": ["d2d4", "d7d5"]})
     removed = client.post(f"{url}/remove", headers=auth(token_user_1),
                           json={"position": repertoire.ROOT, "uci": "e2e4"}).json()
-    # Ушли 1.e4 e5 2.Nf3 Nc6 из начала; Bc4 остался — к нему ведёт перестановка через 1.Nf3.
+    # 1.e4 e5 2.Nf3 Nc6 was removed from the start; Bc4 remained - a transposition via 1.Nf3 leads to it.
     assert removed["removed"] == 4
     assert sorted(m["san"] for m in removed["moves"]) == ["Bc4", "Nc6", "Nf3", "d4", "d5", "e4", "e5"]
     removed = client.post(f"{url}/remove", headers=auth(token_user_1),

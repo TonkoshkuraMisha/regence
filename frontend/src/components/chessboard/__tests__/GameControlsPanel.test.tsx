@@ -1,6 +1,6 @@
-// Кнопки управления партией (GameControlsPanel): три режима. PvP — отмена или сдача, ничья, берсерк, реванш (предложить,
-// принять, отклонить, ожидание, отказ), «Разбор» и PGN после партии; бот — возврат хода, сдача, реванш, ничья, разбор
-// сохранённой партии; свободная доска — позиция из FEN (успех и ошибка), возврат хода и сброс.
+// Game control buttons (GameControlsPanel): three modes. PvP — abort or resign, draw, berserk, rematch (offer,
+// accept, decline, waiting, refusal), "Review" and PGN after the game; bot — take back, resign, rematch, draw, review of
+// the saved game; free board — a position from FEN (success and error), take back and reset.
 
 import {fireEvent, render, screen} from '@testing-library/react';
 import {describe, expect, it, vi} from 'vitest';
@@ -8,12 +8,12 @@ import {GameControlsPanel} from '../GameControlsPanel';
 import type {GameControlsPanelProps} from '../GameControlsPanel';
 import {makeI18n} from '../../../i18n';
 
-const {t} = makeI18n('ru');
+const {t} = makeI18n('en');
 
 function setup(over: Partial<GameControlsPanelProps> = {}) {
     const props: GameControlsPanelProps = {
         mode: 'pvp', gameId: 7, savedBotGameId: null, historyLength: 4, gameOverResult: null, rematchStatus: 'none',
-        isBotThinking: false, whitePlayer: {username: 'Аня', rating: '1500'}, blackPlayer: {username: 'Боб', rating: ''},
+        isBotThinking: false, whitePlayer: {username: 'Anya', rating: '1500'}, blackPlayer: {username: 'Bob', rating: ''},
         navigate: vi.fn(), onAbortGame: vi.fn(), onResign: vi.fn(), onOfferDraw: vi.fn(), onAcceptRematch: vi.fn(),
         onDeclineRematch: vi.fn(), onOfferRematch: vi.fn(), onResetSandbox: vi.fn(), onUndoSandboxMove: vi.fn(), ...over,
     };
@@ -23,8 +23,8 @@ function setup(over: Partial<GameControlsPanelProps> = {}) {
 
 const button = (name: string) => screen.getByRole('button', {name: new RegExp(name)});
 
-describe('GameControlsPanel: партия с человеком', () => {
-    it('в начале партии вместо «Сдаться» — «Отменить», а ничья недоступна', () => {
+describe('GameControlsPanel: a game with a person', () => {
+    it('at the start of the game "Abort" replaces "Resign", and a draw is unavailable', () => {
         const props = setup({historyLength: 1});
         fireEvent.click(button(t('controls.abort')));
         expect(props.onAbortGame).toHaveBeenCalled();
@@ -32,7 +32,7 @@ describe('GameControlsPanel: партия с человеком', () => {
         expect(button(t('controls.offerDraw'))).toBeDisabled();
     });
 
-    it('в ходе партии: сдача, ничья и берсерк', () => {
+    it('during the game: resign, draw and berserk', () => {
         const onBerserk = vi.fn();
         const props = setup({onBerserk});
         fireEvent.click(button(t('controls.resign')));
@@ -43,14 +43,14 @@ describe('GameControlsPanel: партия с человеком', () => {
         expect(onBerserk).toHaveBeenCalled();
     });
 
-    it('после окончания берсерка нет, кнопки сдачи и ничьи недоступны', () => {
+    it('after the end there is no berserk, and the resign and draw buttons are unavailable', () => {
         setup({onBerserk: vi.fn(), gameOverResult: '1-0'});
         expect(screen.queryByTestId('berserk-button')).toBeNull();
         expect(button(t('controls.resign'))).toBeDisabled();
         expect(button(t('controls.offerDraw'))).toBeDisabled();
     });
 
-    it('после партии: реванш, «В лобби», разбор со state маршрута и ссылка на PGN', () => {
+    it('after the game: rematch, "To the lobby", review with the route state and a PGN link', () => {
         const props = setup({gameOverResult: '1-0'});
         fireEvent.click(button(t('controls.rematch')));
         fireEvent.click(button(t('controls.toLobby')));
@@ -58,12 +58,12 @@ describe('GameControlsPanel: партия с человеком', () => {
         expect(props.onResetSandbox).toHaveBeenCalled();
         fireEvent.click(button(t('common.gameReview')));
         expect(props.navigate).toHaveBeenCalledWith('/game/7', {state: {game: expect.objectContaining({
-            game_id: 7, white_username: 'Аня', white_rating: 1500, black_rating: 1200, result: '1-0',
+            game_id: 7, white_username: 'Anya', white_rating: 1500, black_rating: 1200, result: '1-0',
         })}});
         expect(screen.getByRole('link')).toHaveAttribute('href', expect.stringMatching(/\/profile\/games\/7\/pgn$/));
     });
 
-    it('соперник предложил реванш: принять и отклонить', () => {
+    it('the opponent offered a rematch: accept and decline', () => {
         const props = setup({gameOverResult: '0-1', rematchStatus: 'offered_by_opponent'});
         fireEvent.click(button(t('controls.acceptRematch')));
         fireEvent.click(button(t('common.decline')));
@@ -71,31 +71,31 @@ describe('GameControlsPanel: партия с человеком', () => {
         expect(props.onDeclineRematch).toHaveBeenCalled();
     });
 
-    it('ждём ответа и отказ блокируют повторное предложение', () => {
+    it('waiting for an answer and a refusal block a repeated offer', () => {
         setup({gameOverResult: '1/2-1/2', rematchStatus: 'offered_by_me'});
         expect(button(t('controls.waitingAnswer'))).toBeDisabled();
     });
 
-    it('отказ от реванша показан на кнопке', () => {
+    it('the refusal of a rematch is shown on the button', () => {
         setup({gameOverResult: '1/2-1/2', rematchStatus: 'declined'});
         expect(button(t('controls.rematchDeclined'))).toBeDisabled();
     });
 
-    it('у отменённой партии разбора и PGN нет', () => {
+    it('a cancelled game has no review and no PGN', () => {
         setup({gameOverResult: '*'});
         expect(screen.queryByRole('button', {name: new RegExp(t('common.gameReview'))})).toBeNull();
         expect(screen.queryByRole('link')).toBeNull();
     });
 
-    it('разбор без номера партии никуда не ведёт', () => {
+    it('a review without a game number leads nowhere', () => {
         const props = setup({gameOverResult: '1-0', gameId: null});
         fireEvent.click(button(t('common.gameReview')));
         expect(props.navigate).not.toHaveBeenCalled();
     });
 });
 
-describe('GameControlsPanel: партия с ботом', () => {
-    it('возврат хода, сдача и ничья', () => {
+describe('GameControlsPanel: a game with a bot', () => {
+    it('take back, resign and draw', () => {
         const props = setup({mode: 'bot'});
         fireEvent.click(button(t('controls.undoMove')));
         fireEvent.click(button(t('controls.resign')));
@@ -105,13 +105,13 @@ describe('GameControlsPanel: партия с ботом', () => {
         expect(props.onOfferDraw).toHaveBeenCalled();
     });
 
-    it('партия лестницы: возврат хода закрыт; бот думает — возврат и ничья недоступны', () => {
+    it('a ladder game: take back is closed; the bot is thinking — take back and draw are unavailable', () => {
         setup({mode: 'bot', undoLocked: true, isBotThinking: true});
         expect(button(t('controls.undoMove'))).toBeDisabled();
         expect(screen.getByTestId('bot-offer-draw')).toBeDisabled();
     });
 
-    it('после партии: реванш и разбор сохранённой партии с запасным рейтингом чёрных', () => {
+    it('after the game: rematch and review of the saved game with a fallback Black rating', () => {
         const props = setup({mode: 'bot', gameOverResult: '0-1', savedBotGameId: 12});
         expect(screen.queryByTestId('bot-offer-draw')).toBeNull();
         fireEvent.click(button(t('controls.rematch')));
@@ -123,21 +123,21 @@ describe('GameControlsPanel: партия с ботом', () => {
         expect(screen.getByRole('link')).toHaveAttribute('href', expect.stringMatching(/\/games\/12\/pgn$/));
     });
 
-    it('партия турнира (hideRematch): после окончания ряд кнопок скрыт', () => {
+    it('a tournament game (hideRematch): after the end the row of buttons is hidden', () => {
         setup({mode: 'bot', gameOverResult: '1-0', hideRematch: true});
         expect(screen.queryByRole('button', {name: new RegExp(t('controls.rematch'))})).toBeNull();
         expect(screen.queryByRole('button', {name: new RegExp(t('controls.undoMove'))})).toBeNull();
     });
 });
 
-describe('GameControlsPanel: свободная доска', () => {
-    it('без ходов возврат и сброс недоступны, со своей позицией сброс доступен', () => {
+describe('GameControlsPanel: free board', () => {
+    it('without moves take back and reset are unavailable, with a custom position reset is available', () => {
         setup({mode: 'sandbox', historyLength: 0, hasCustomPosition: true});
         expect(button(t('controls.undoSandbox'))).toBeDisabled();
         expect(button(t('controls.resetBoard'))).toBeEnabled();
     });
 
-    it('возврат хода и сброс вызывают обработчики', () => {
+    it('take back and reset call the handlers', () => {
         const props = setup({mode: 'sandbox'});
         fireEvent.click(button(t('controls.undoSandbox')));
         fireEvent.click(button(t('controls.resetBoard')));
@@ -145,9 +145,9 @@ describe('GameControlsPanel: свободная доска', () => {
         expect(props.onResetSandbox).toHaveBeenCalled();
     });
 
-    it('позиция из FEN: ошибка показывается, успех очищает поле, пустой ввод игнорируется', () => {
+    it('a position from FEN: the error is shown, success clears the field, empty input is ignored', () => {
         const onLoadFen = vi.fn()
-            .mockReturnValueOnce('Неверная позиция')
+            .mockReturnValueOnce('Invalid position')
             .mockReturnValueOnce(null);
         setup({mode: 'sandbox', onLoadFen});
         const input = screen.getByLabelText(t('controls.fenLabel'));
@@ -158,7 +158,7 @@ describe('GameControlsPanel: свободная доска', () => {
 
         fireEvent.change(input, {target: {value: 'bad fen'}});
         fireEvent.submit(form);
-        expect(screen.getByRole('alert')).toHaveTextContent('Неверная позиция');
+        expect(screen.getByRole('alert')).toHaveTextContent('Invalid position');
         fireEvent.change(input, {target: {value: '8/8/8/8/8/8/8/K6k w - - 0 1'}});
         expect(screen.queryByRole('alert')).toBeNull();
         fireEvent.submit(form);

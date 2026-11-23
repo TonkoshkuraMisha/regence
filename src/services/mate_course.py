@@ -1,15 +1,19 @@
 # --- FILE: src/services/mate_course.py ---
 """
-Курс матовых конструкций (таск 14.6): 20 конструкций раздела F каталога в учебном порядке. У каждой — объяснение и два
-показа (тексты каталога и /puzzles/demo) и TASKS задач темы нарастающей сложности: задачи темы по рейтингу, взятые
-равномерно от самой лёгкой до самой трудной — набор постоянен, пока не меняется база. Итог курса — смешанная проверка:
-EXAM_SIZE задач разных конструкций из трудной половины их наборов.
+The mating pattern course (task 14.6): 20 patterns of catalogue section F in teaching order. Each has an explanation and two
+demonstrations (catalogue texts and /puzzles/demo) and TASKS theme puzzles of increasing difficulty: theme puzzles by rating,
+taken
+evenly from the easiest to the hardest -- the set is constant while the database does not change. The course result is a
+mixed check:
+EXAM_SIZE puzzles of different patterns from the harder half of their sets.
 
-Задачи курса решаются обычным /puzzles/{id}/move, но рейтинг решателя не меняют: их можно проходить повторно.
-Попытка при этом записывается в историю (puzzle_attempts), как у обычной задачи.
+The course puzzles are solved by the ordinary /puzzles/{id}/move but do not change the solver's rating: they can be taken
+repeatedly.
+The attempt is recorded in the history (puzzle_attempts) as for an ordinary puzzle.
 
-Данные: таблицы puzzles и puzzle_themes (задачи открытой базы lichess, загружает scripts/import_puzzles.py); своих
-таблиц у курса нет. Маршруты — src/api/puzzles.py.
+Data: the puzzles and puzzle_themes tables (puzzles of the open lichess database, loaded by scripts/import_puzzles.py); the
+course has no
+tables of its own. Routes are in src/api/puzzles.py.
 """
 
 import random
@@ -22,23 +26,23 @@ from src.models.user import User
 from src.services import puzzles as puzzles_service
 from src.services.themes import THEMES_BY_CODE
 
-# Коды тем раздела F реестра src/services/themes.py в порядке изучения: от простых матов к именным.
+# Codes of section F themes of the registry src/services/themes.py in study order: from simple mates to named ones.
 COURSE: tuple[str, ...] = (
     "back_rank_mate", "corridor_mate", "smothered_mate", "arabian_mate", "anastasia_mate", "hook_mate",
     "epaulette_mate", "dovetail_mate", "queen_kiss_mate", "opera_mate", "boden_mate", "double_bishop_mate",
     "legal_mate", "greco_mate", "damiano_mate", "lolli_mate", "pillsbury_mate", "morphy_mate", "blackburne_mate",
     "vukovic_mate",
 )
-TASKS = 10  # задач в наборе одной конструкции (меньше — если в базе у темы столько нет)
-EXAM_SIZE = 10  # задач в итоговой проверке: по одной от конструкции, не больше числа конструкций с задачами
-EXAM_MINUTES = 10  # время на проверку; сервер только сообщает его клиенту, отсчёт ведёт клиент
+TASKS = 10  # puzzles in the set of one pattern (fewer if the database does not have that many for the theme)
+EXAM_SIZE = 10  # puzzles in the final check: one per pattern, no more than the number of patterns with puzzles
+EXAM_MINUTES = 10  # time for the check; the server only reports it to the client, the countdown is kept by the client
 
-# Защита от опечатки и от переноса темы в другой раздел реестра: модуль не загрузится.
+# Protection against a typo and against moving a theme to another registry section: the module will not load.
 assert all(THEMES_BY_CODE[code].section == "F" for code in COURSE)
 
 
 async def task_ids(db: AsyncSession, theme: str) -> list[int]:
-    """Задачи конструкции от лёгкой к трудной: TASKS штук, равномерно по рейтингу темы."""
+    """Pattern puzzles from easy to hard: TASKS of them, evenly by theme rating."""
     rows = (await db.execute(
         select(Puzzle.id).join(PuzzleTheme).where(PuzzleTheme.theme == theme).order_by(Puzzle.rating, Puzzle.id)
     )).scalars().all()
@@ -48,7 +52,7 @@ async def task_ids(db: AsyncSession, theme: str) -> list[int]:
 
 
 async def overview(db: AsyncSession) -> dict:
-    """Конструкции курса по порядку и сколько задач у каждой (0 — конструкция пока без задач)."""
+    """The course patterns in order and how many puzzles each has (0 -- the pattern has no puzzles yet)."""
     return {
         "tasks": TASKS, "exam_size": EXAM_SIZE, "exam_minutes": EXAM_MINUTES,
         "constructions": [{"code": code, "available": len(await task_ids(db, code))} for code in COURSE],
@@ -57,8 +61,8 @@ async def overview(db: AsyncSession) -> dict:
 
 async def start_task(db: AsyncSession, user: User, theme: str, index: int) -> Puzzle:
     """
-    Открывает задачу курса матовых конструкций по её номеру в наборе темы. Решается обычным ходом задачи
-    (/puzzles/{id}/move), но рейтинг решателя не меняет.
+    Opens a mating pattern course puzzle by its number in the theme set. It is solved by an ordinary puzzle move
+    (/puzzles/{id}/move) but does not change the solver's rating.
     """
     if theme not in COURSE:
         raise puzzles_service.PuzzleError("unknown_theme", 400, theme=theme)
@@ -73,9 +77,9 @@ async def start_task(db: AsyncSession, user: User, theme: str, index: int) -> Pu
 
 async def exam_plan(db: AsyncSession, rng: random.Random | None = None) -> list[dict]:
     """
-    Смешанная проверка: задачи разных конструкций (по одной), из трудной половины набора каждой. Конструкции
-    выбираются случайно; если задач нет у части из них, проверка короче EXAM_SIZE. Возвращает пары «тема, номер
-    задачи в наборе» — саму задачу клиент открывает через ``start_task``.
+    A mixed check: puzzles of different patterns (one each), from the harder half of each set. Patterns
+    are chosen at random; if some of them have no puzzles, the check is shorter than EXAM_SIZE. Returns pairs "theme, puzzle
+    number in the set" -- the client opens the puzzle itself via ``start_task``.
     """
     rng = rng or random.Random()
     pool = []

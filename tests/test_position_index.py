@@ -1,5 +1,5 @@
 # --- FILE: tests/test_position_index.py ---
-"""Индекс позиций и таблица дебютов (таск 16.1)."""
+"""Position index and opening table (task 16.1)."""
 
 import re
 
@@ -28,7 +28,7 @@ def make_game(db_session, test_user_1, test_user_2):
     return make
 
 
-# --- дебюты ----------------------------------------------------------------------------------------
+# --- openings --------------------------------------------------------------------------------------
 
 def test_openings_table_is_complete_and_well_formed():
     table = openings._table()
@@ -46,10 +46,10 @@ def test_opening_by_position_recognises_transpositions():
 def test_unknown_or_broken_moves_fall_back():
     assert openings.classify([]) is None
     assert openings.eco_code([]) == "A00"
-    assert openings.classify(["e2e4", "zzzz"]).eco == "B00"   # «King's Pawn Game» до сломанного хода
+    assert openings.classify(["e2e4", "zzzz"]).eco == "B00"   # "King's Pawn Game" up to the broken move
 
 
-# --- индекс позиций ----------------------------------------------------------------------------------
+# --- position index ----------------------------------------------------------------------------------
 
 async def test_moves_and_results_are_counted(db_session, make_game):
     for result in ("1-0", "1-0", "1/2-1/2", "0-1"):
@@ -57,7 +57,7 @@ async def test_moves_and_results_are_counted(db_session, make_game):
     await position_index.index_game(db_session, await make_game("1. d4 d5", "0-1"))
     await db_session.commit()
     stats = {s.move_uci: s for s in await position_index.moves_from(db_session, chess.Board())}
-    assert [m for m in stats] == ["e2e4", "d2d4"]           # от частого к редкому
+    assert [m for m in stats] == ["e2e4", "d2d4"]           # from most to least frequent
     e4 = stats["e2e4"]
     assert (e4.white_wins, e4.draws, e4.black_wins, e4.games) == (2, 1, 1, 4)
     board = chess.Board()
@@ -86,8 +86,8 @@ async def test_skipped_games(db_session, make_game):
 
 
 async def test_depth_and_repetitions(db_session, make_game):
-    # Конями туда-обратно: стартовая позиция повторяется, но партия в ней считается один раз; дальше 30 полуходов
-    # индекс не идёт.
+    # Knights back and forth: the starting position repeats, but the game counts once in it; the index goes no further
+    # than 30 plies.
     shuffle = " ".join(f"{2 * i + 1}. Nf3 Nf6 {2 * i + 2}. Ng1 Ng8" for i in range(10))
     game = await make_game(shuffle, "1/2-1/2")
     await position_index.index_game(db_session, game)

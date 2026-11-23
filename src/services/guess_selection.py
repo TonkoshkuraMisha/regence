@@ -1,27 +1,37 @@
 # --- FILE: src/services/guess_selection.py ---
 """
-Отбор позиций для «Угадай ход мастера» (таск 14.3). Требование владельца: позиции объективно решаемые — игрок находит
-ход расчётом и пониманием, а не угадывает, что пришло в голову мастеру. Правила (на выводе движка, MultiPV ≥ 2):
+Selection of positions for "Guess the master's move" (task 14.3). The owner's requirement: positions are objectively solvable
+-- the player finds
+the move by calculation and understanding rather than guessing what the master had in mind. The rules (on the engine output,
+MultiPV >= 2):
 
-* ход мастера — лучший ход движка и опережает второй не меньше GAP_CP; или только он сохраняет результат: у остальных
-  ходов «выигрыш → равенство» или «равенство → проигрыш»;
-* ход не очевиден: не единственный легальный, не взятие в ответ на взятие на том же поле, не взятие висящей фигуры
-  дороже пешки, которое видно без расчёта;
-* позиция вне книжного дебюта — после последней позиции партии из таблицы дебютов 16.1 (src/services/openings.py) и
-  не раньше OPENING_FLOOR_PLY-го полухода (побочные начала, которых нет в таблице, — всё равно развитие);
-* не технический эндшпиль: при TECHNICAL_PIECES фигурах и меньше ответ знают эндшпильные таблицы — это техника,
-  а не понимание (для неё — эндшпильный тренажёр 14.4);
-* позиция ещё не решена: лучший ход не хуже -DECIDED_CP, а второй — не лучше +DECIDED_CP (иначе выигрывает что
-  угодно).
+* the master's move is the engine's best move and leads the second by at least GAP_CP; or only it keeps the result: for the
+  other
+  moves it is "win -> equality" or "equality -> loss";
+* the move is not obvious: not the only legal one, not a capture in reply to a capture on the same square, not the capture of
+  a hanging piece
+  worth more than a pawn that is visible without calculation;
+* the position is outside the book opening -- after the last game position from the openings table 16.1
+  (src/services/openings.py) and
+  no earlier than ply OPENING_FLOOR_PLY (side openings that are not in the table are development all the same);
+* not a technical endgame: with TECHNICAL_PIECES pieces or fewer the answer is known to the endgame tablebases -- that is
+  technique,
+  not understanding (for it there is the endgame trainer 14.4);
+* the position is not yet decided: the best move is no worse than -DECIDED_CP, and the second is no better than +DECIDED_CP
+  (otherwise anything
+  wins).
 
-Темы позиции — те же, что у задач (src/services/puzzle_import.themes_for_row): ход мастера и продолжение движка
-как решение, предыдущий ход партии — как ход соперника.
+The position's themes are the same as for puzzles (src/services/puzzle_import.themes_for_row): the master's move and the
+engine continuation
+as the solution, the previous move of the game as the opponent's move.
 
-Серии: 2–6 ходов игрока подряд, каждый проходит отбор, ходы соперника между ними — ходы партии; если соперник ошибся
-больше OPPONENT_ERROR_CP, серия на этом обрывается.
+Series: 2-6 consecutive player moves, each passes the selection, the opponent's moves between them are the game's moves; if
+the opponent erred
+by more than OPPONENT_ERROR_CP the series breaks there.
 
-Модуль чистый: правила отбора без движка и без базы. Движок запускает скрипт scripts/build_guess_positions.py — он
-передаёт сюда его строки и записывает прошедшие позиции в таблицу guess_positions; выдача — src/services/guess.py.
+The module is pure: selection rules without an engine and without a database. The engine is run by the script
+scripts/build_guess_positions.py -- it
+passes the engine lines here and writes the passing positions to the guess_positions table; serving is src/services/guess.py.
 """
 
 from dataclasses import dataclass
@@ -30,30 +40,30 @@ import chess
 
 from src.services import openings
 
-# Пороги — в сантипешках с точки зрения стороны, которая ходит.
-GAP_CP = 150              # лучший ход опережает второй не меньше чем на столько
-WIN_CP = 150              # «выигрыш»: оценка не ниже этой (для правила «только этот ход сохраняет результат»)
-EQUAL_CP = 50             # «равенство»: оценка по модулю не больше этой
-DECIDED_CP = 700          # позиция уже решена: лучший ход хуже −DECIDED_CP или второй лучше +DECIDED_CP
-OPENING_FLOOR_PLY = 10    # до этого полухода позиция считается дебютной, даже если её нет в таблице дебютов
-TECHNICAL_PIECES = 7      # столько фигур на доске (с королями и пешками) и меньше — технический эндшпиль
-THEME_LINE_PLIES = 4  # ход мастера и ещё три полухода линии движка
-MAX_MATE_IN = 5           # мат длиннее не помечается темой «мат в n»
-OPPONENT_ERROR_CP = 100   # ошибка соперника больше этой между ходами серии обрывает серию
-SERIES_MIN, SERIES_MAX = 2, 6  # число ходов игрока в серии
+# Thresholds are in centipawns from the point of view of the side to move.
+GAP_CP = 150              # the best move leads the second by at least this much
+WIN_CP = 150              # "win": the evaluation is at least this (for the rule "only this move keeps the result")
+EQUAL_CP = 50             # "equality": the evaluation modulus is at most this
+DECIDED_CP = 700          # decided position: best move below -DECIDED_CP or second above +DECIDED_CP
+OPENING_FLOOR_PLY = 10    # before this ply the position counts as opening even if it is not in the openings table
+TECHNICAL_PIECES = 7      # this many pieces on the board (with kings and pawns) or fewer -- a technical endgame
+THEME_LINE_PLIES = 4  # the master's move and three more plies of the engine line
+MAX_MATE_IN = 5           # a longer mate is not tagged with the "mate in n" theme
+OPPONENT_ERROR_CP = 100   # an opponent error larger than this between the moves of a series breaks the series
+SERIES_MIN, SERIES_MAX = 2, 6  # the number of player moves in a series
 
-# Ценность фигур для правила «висит фигура дороже пешки».
+# Piece values for the rule "a piece worth more than a pawn hangs".
 VALUES = {chess.PAWN: 1, chess.KNIGHT: 3, chess.BISHOP: 3, chess.ROOK: 5, chess.QUEEN: 9, chess.KING: 0}
 
-# Строка движка: ход и оценка в сантипешках с точки зрения стороны, которая ходит (мат — ±100000).
+# An engine line: the move and the evaluation in centipawns from the point of view of the side to move (mate -- +-100000).
 Line = tuple[chess.Move, int]
 
 
 @dataclass(frozen=True)
 class Verdict:
     """
-    Почему ход прошёл отбор: gap — большой отрыв от второго хода, only_move — только он сохраняет результат; лучшая
-    оценка и отрыв от второго хода в сантипешках.
+    Why the move passed the selection: gap -- a big lead over the second move, only_move -- only it keeps the result; the best
+    evaluation and the lead over the second move in centipawns.
     """
     reason: str  # "gap" | "only_move"
     best_cp: int
@@ -61,21 +71,21 @@ class Verdict:
 
 
 def is_obvious(board: chess.Board, move: chess.Move) -> bool:
-    """Ход, который делается без расчёта: единственный, размен-отыгрыш или взятие висящей фигуры."""
+    """A move made without calculation: the only one, a recapture or the capture of a hanging piece."""
     if board.legal_moves.count() <= 1:
         return True
     if board.is_capture(move) and board.move_stack:
         before = board.copy()
         previous = before.pop()
         if before.is_capture(previous) and previous.to_square == move.to_square:
-            return True  # взятие в ответ на взятие на том же поле — восстановление материала
-    # Фигура дороже пешки просто висит — взять её можно без расчёта.
+            return True  # a capture in reply to a capture on the same square -- restoring material
+    # A piece worth more than a pawn simply hangs -- it can be taken without calculation.
     captured = board.piece_type_at(move.to_square)
     return captured is not None and VALUES[captured] >= 3 and not board.attackers(not board.turn, move.to_square)
 
 
 def book_plies(moves: list[chess.Move]) -> int:
-    """Сколько полуходов партия шла по таблице дебютов: номер последней позиции из таблицы (0 — ни одной)."""
+    """How many plies the game followed the openings table: the number of the last position from the table (0 -- none)."""
     table = openings.lines()
     board = chess.Board()
     last = 0
@@ -89,20 +99,25 @@ def book_plies(moves: list[chess.Move]) -> int:
 
 
 def in_opening(board: chess.Board, book_ply: int) -> bool:
-    """Ход из этой позиции ещё дебютный: ведёт в позицию таблицы или сделан до OPENING_FLOOR_PLY-го полухода."""
+    """The move from this position is still opening: it leads to a table position or was made before ply OPENING_FLOOR_PLY."""
     return board.ply() < max(book_ply, OPENING_FLOOR_PLY)
 
 
 def is_technical_endgame(board: chess.Board) -> bool:
-    """На доске не больше TECHNICAL_PIECES фигур, считая королей и пешки: ответ знают эндшпильные таблицы."""
+    """
+    The board has no more than TECHNICAL_PIECES pieces, counting kings and pawns: the answer is known to the endgame
+    tablebases.
+    """
     return len(board.piece_map()) <= TECHNICAL_PIECES
 
 
 def qualifies(board: chess.Board, move: chess.Move, lines: list[Line], book_ply: int = 0) -> Verdict | None:
     """
-    Проходит ли ход мастера отбор. board — позиция до хода (со стеком ходов партии или с верным номером хода в FEN),
-    lines — MultiPV движка, book_ply — результат book_plies для партии. None — не проходит: дебют, технический
-    эндшпиль, меньше двух строк движка, ход мастера — не лучший, позиция уже решена, ход очевиден или отрыв мал.
+    Whether the master's move passes the selection. board -- the position before the move (with the game's move stack or with
+    the right move number in the FEN),
+    lines -- the engine MultiPV, book_ply -- the result of book_plies for the game. None -- does not pass: opening, technical
+    endgame, fewer than two engine lines, the master's move is not the best, the position is already decided, the move is
+    obvious or the gap is small.
     """
     if in_opening(board, book_ply) or is_technical_endgame(board) or len(lines) < 2:
         return None
@@ -121,8 +136,9 @@ def qualifies(board: chess.Board, move: chess.Move, lines: list[Line], book_ply:
 
 def build_series(passing_plies: list[int], opponent_errors: set[int]) -> list[list[int]]:
     """
-    Серии из полуходов одной стороны, прошедших отбор: подряд (через ход соперника), без ошибки соперника между ними,
-    длиной SERIES_MIN–SERIES_MAX (длинные режутся на части).
+    Series of plies of one side that passed the selection: consecutive (through the opponent's move), without an opponent
+    error between them,
+    of length SERIES_MIN-SERIES_MAX (long ones are cut into parts).
     """
     series: list[list[int]] = []
     current: list[int] = []
@@ -144,9 +160,10 @@ def build_series(passing_plies: list[int], opponent_errors: set[int]) -> list[li
 
 def difficulty(board: chess.Board, move: chess.Move, verdict: Verdict) -> int:
     """
-    Сложность как рейтинг задачи: тихий ход и «единственный ход» труднее, большой отрыв — легче. Начальное значение
-    1500; ход без взятия и шаха +200, «единственный ход» +100, отрыв от 400 сантипешек −200. Дальше рейтинг позиции
-    уточняют ответы игроков (guess.rating_after).
+    Difficulty as a puzzle rating: a quiet move and an "only move" are harder, a big gap is easier. The initial value is
+    1500; a move without capture and check +200, an "only move" +100, a gap of 400 centipawns or more -200. After that the
+    position's rating is
+    refined by players' answers (guess.rating_after).
     """
     value = 1500
     if not board.is_capture(move) and not board.gives_check(move):
@@ -159,7 +176,7 @@ def difficulty(board: chess.Board, move: chess.Move, verdict: Verdict) -> int:
 
 
 def _mate_length(board: chess.Board, line: list[chess.Move]) -> int | None:
-    """Ходов стороны мастера до мата, если линия заканчивается её матом (не длиннее MAX_MATE_IN)."""
+    """The number of the master side's moves to mate if the line ends with its mate (no longer than MAX_MATE_IN)."""
     current = board.copy(stack=False)
     for index, move in enumerate(line[:2 * MAX_MATE_IN - 1]):
         if move not in current.legal_moves:
@@ -172,9 +189,11 @@ def _mate_length(board: chess.Board, line: list[chess.Move]) -> int | None:
 
 def position_themes(board: chess.Board, move: chess.Move, pv: list[chess.Move]) -> list[str]:
     """
-    Коды тем реестра 13.0 для позиции: как у задачи — предыдущий ход партии за «ход соперника», ход мастера и
-    продолжение движка (до THEME_LINE_PLIES полуходов, а при форсированном мате — до мата) за решение; мат в n ходов
-    помечается так же, как в базе задач (mateIn<n>). Без предыдущего хода — пусто.
+    Theme codes of registry 13.0 for a position: as for a puzzle -- the game's previous move as the "opponent's move", the
+    master's move and
+    the engine continuation (up to THEME_LINE_PLIES plies, and with a forced mate -- up to the mate) as the solution; mate in
+    n moves
+    is tagged the same way as in the puzzle database (mateIn<n>). Without a previous move -- empty.
     """
     from src.services.puzzle_import import themes_for_row
 

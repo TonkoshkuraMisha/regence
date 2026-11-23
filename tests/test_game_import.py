@@ -1,7 +1,7 @@
 # --- FILE: tests/test_game_import.py ---
 """
-Импорт партий с lichess, chess.com и из PGN (таск 24.1). Сторонние сайты подменены httpx.MockTransport — в сеть
-тесты не ходят; движок не вызывается (разбор подставлен готовым JSON).
+Importing games from lichess, chess.com and PGN (task 24.1). Third-party sites are replaced by httpx.MockTransport; the
+tests never touch the network; the engine is not called (the analysis is a ready-made JSON).
 """
 
 import datetime as dt
@@ -24,7 +24,7 @@ from src.services import personal_puzzles as puzzles_service
 from src.services.engine_pool import EngineBusyError
 
 API = "/api/v1/imports"
-# 1. e4 e5 2. Bc4 Nc6 3. Qh5 Nf6?? 4. Qxf7# — чёрные зевают мат на 6-м полуходе.
+# 1. e4 e5 2. Bc4 Nc6 3. Qh5 Nf6?? 4. Qxf7# - Black blunders into mate on ply 6.
 UCI = ["e2e4", "e7e5", "f1c4", "b8c6", "d1h5", "g8f6", "h5f7"]
 
 
@@ -52,7 +52,7 @@ def _auth(token: str) -> dict:
 
 @pytest.fixture
 def sites(monkeypatch):
-    """Подменённые lichess и chess.com: ответы по пути запроса; requests — что запрашивали."""
+    """Stubbed lichess and chess.com: responses by request path; requests records what was requested."""
     state: dict = {"requests": [], "lichess": "", "status": 200, "archives": {}}
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -88,7 +88,7 @@ async def test_lichess_games_are_imported_once(client, sites, token_user_1, db_s
     request = sites["requests"][0]
     assert request.url.path == "/api/games/user/player1"
     assert request.headers["user-agent"] == game_import.USER_AGENT and "authorization" not in request.headers
-    # PGN хранится без часов и комментариев.
+    # PGN is stored without clocks and comments.
     stored = await db_session.scalar(select(ImportedGame).where(ImportedGame.external_id == "abcd1234"))
     assert "%clk" not in stored.pgn and "Qxf7#" in stored.pgn
 
@@ -208,13 +208,13 @@ async def test_blunder_in_imported_game_becomes_a_personal_puzzle(client, db_ses
     game = client.get(f"{API}/games/{imported.id}", headers=_auth(token_user_1)).json()
     assert game["puzzle_plies"] == [6]
 
-    # Удаление партии убирает и задачи из неё.
+    # Deleting a game also removes the puzzles derived from it.
     assert client.delete(f"{API}/games/{imported.id}", headers=_auth(token_user_1)).status_code == 204
     assert await db_session.scalar(select(func.count()).select_from(PersonalPuzzle)) == 0
 
 
 async def test_white_mistakes_in_imported_game_are_not_the_players(db_session, client, token_user_1, monkeypatch):
-    """Партия, где игрок — белые: зевок чёрных (соперника) задачей не становится."""
+    """A game where the player is White: Black's (the opponent's) blunder does not become a puzzle."""
     monkeypatch.setattr(puzzles_service, "top_two", lambda board: [("g7g6", 0), ("d8e7", -350)])
     added = client.post(f"{API}/pgn", json={"pgn": _pgn("player1", "rival")}, headers=_auth(token_user_1)).json()["added"]
     imported = await db_session.get(ImportedGame, added[0]["id"])
@@ -232,7 +232,7 @@ def test_speed_from_time_control():
     assert game_import.speed_from_time_control("?") is None
 
 
-# --- Дополнительное покрытие: разбор заголовков, сайты, сохранение и разбор по запросу ---------------------------
+# --- Additional coverage: header parsing, sites, saving and on-demand analysis ---------------------------
 
 
 
@@ -256,7 +256,7 @@ def test_read_games_skips_variants_empty_and_broken_games():
             + _pgn("c", "d") + "\n\n" + _pgn("e", "f"))
     games = game_import.read_games(text, 5)
     assert [g.headers["White"] for g in games] == ["c", "e"]
-    assert len(game_import.read_games(text, 1)) == 1  # предел числа партий
+    assert len(game_import.read_games(text, 1)) == 1  # game count limit
     assert game_import._color_of(games[0], "  ") is None and game_import._color_of(games[0], "D") == "black"
     assert game_import._color_of(games[0], "nobody") is None
 
@@ -273,13 +273,13 @@ async def test_fetch_validates_source_and_username():
 async def test_cooldown_survives_unavailable_redis(monkeypatch):
     class Broken:
         async def get(self, *a, **k):
-            raise ConnectionError("нет связи")
+            raise ConnectionError("no connection")
 
         async def set(self, *a, **k):
-            raise ConnectionError("нет связи")
+            raise ConnectionError("no connection")
 
     monkeypatch.setattr(redis_module, "redis_client", Broken())
-    await game_import._ensure_source_available("lichess")  # не падает, пауза просто не действует
+    await game_import._ensure_source_available("lichess")  # does not fail, the pause simply has no effect
     await game_import._pause_source("lichess")
 
 
@@ -290,7 +290,7 @@ async def test_lichess_speed_comes_from_event_name(client, sites, token_user_1):
     assert response.status_code == 200, response.text
     listing = client.get(f"{API}/games", headers=_auth(token_user_1)).json()["games"]
     speeds = {g["id"]: g["speed"] for g in listing}
-    assert sorted(speeds.values(), key=str) == ["blitz", "daily"]  # без скорости в названии — из TimeControl
+    assert sorted(speeds.values(), key=str) == ["blitz", "daily"]  # no speed in the name: taken from TimeControl
 
 
 async def test_chesscom_bad_archives_and_odd_items(client, sites, token_user_1, monkeypatch):
@@ -323,7 +323,7 @@ async def test_chesscom_non_json_answers_are_site_errors(client, token_user_1, m
 async def test_save_stops_at_room_and_counts_duplicates(client, token_user_1, monkeypatch):
     monkeypatch.setattr(settings, "GAME_IMPORT_MAX_STORED", 2)
     pgn = _pgn("player1", "a", site="https://lichess.org/a1") + _pgn("player1", "b", site="https://lichess.org/b2")
-    pgn = pgn.replace("Nf6", "Nh6", 1)  # вторая партия отличается ходами: иной хэш для вставленного PGN
+    pgn = pgn.replace("Nf6", "Nh6", 1)  # the second game differs in moves: a different hash for the pasted PGN
     body = client.post(f"{API}/pgn", json={"pgn": _pgn("player1", "a") + _pgn("player1", "a") + pgn},
                        headers=_auth(token_user_1)).json()
     assert len(body["added"]) <= 2 and body["duplicates"] >= 1
@@ -359,7 +359,7 @@ async def test_analysis_engine_busy_and_domain_errors(client, token_user_1, monk
     game_id = added[0]["id"]
 
     async def busy(*a, **k):
-        raise EngineBusyError("занят")
+        raise EngineBusyError("busy")
 
     monkeypatch.setattr(game_import, "analyze", busy)
     assert client.post(f"{API}/games/{game_id}/analysis", headers=_auth(token_user_1)).status_code == 503
@@ -376,7 +376,7 @@ async def test_puzzle_extraction_busy_does_not_spoil_analysis(client, token_user
     added = client.post(f"{API}/pgn", json={"pgn": _pgn("player1", "a")}, headers=_auth(token_user_1)).json()["added"]
 
     async def busy(*a, **k):
-        raise EngineBusyError("занят")
+        raise EngineBusyError("busy")
 
     monkeypatch.setattr(puzzles_service, "extract_for_imported", busy)
     response = client.post(f"{API}/games/{added[0]['id']}/analysis", headers=_auth(token_user_1))
@@ -385,7 +385,7 @@ async def test_puzzle_extraction_busy_does_not_spoil_analysis(client, token_user
 
 async def test_cached_analysis_ignores_broken_json(db_session, test_user_1):
     record = game_import._record(test_user_1, "pgn", "x", next(iter(game_import.read_games(_pgn("a", "b"), 1))), "white")
-    record.analysis_json = "{не json"
+    record.analysis_json = "{not json"
     assert game_import.cached_analysis(record) is None
     record.analysis_json = None
     assert game_import.cached_analysis(record) is None

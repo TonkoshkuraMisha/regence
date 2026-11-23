@@ -1,5 +1,5 @@
 # --- FILE: tests/test_engine_info.py ---
-"""Движок этой установки для «О проекте» (таск 23.1): исходники именно работающей версии — требование GPL."""
+"""The engine of this installation for "About" (task 23.1): the source of exactly the running version - a GPL requirement."""
 
 import pytest
 

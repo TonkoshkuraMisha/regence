@@ -1,8 +1,8 @@
 // --- FILE: frontend/src/components/social/Achievements.tsx ---
-// Достижения и звание клуба в профиле (таск 17.6): открытые — с датой, остальные — с прогрессом.
-// Данные: GET /api/v1/profile/{имя}/achievements (список, прогресс, звание клуба; считает сервер) напрямую через fetch,
-// без токена; признак «это я» — socialApi.relation (services/social.ts). Названия и подсказки — каталоги achievements.*.
-// У своих открытых достижений есть кнопка «поделиться»: переход в /feed с готовой карточкой (FeedPage.tsx). Рисуется в Profile.tsx.
+// Achievements and the club title in the profile (task 17.6): unlocked ones with a date, the rest with progress.
+// Data: GET /api/v1/profile/{name}/achievements (the list, progress, the club title; computed by the server) directly through fetch,
+// without a token; the "this is me" flag is socialApi.relation (services/social.ts). Names and hints are the achievements.* catalogs.
+// One's own unlocked achievements have a "share" button: a jump to /feed with a ready card (FeedPage.tsx). Rendered in Profile.tsx.
 
 import {useEffect, useState} from 'react';
 import {useNavigate} from 'react-router-dom';
@@ -13,12 +13,12 @@ import type {AchievementsData} from '../../services/social';
 import {useI18n} from '../../i18n';
 import type {MessageKey} from '../../i18n';
 
-/** Блок достижений профиля: сначала открытые, затем закрытые с прогрессом; для чужого профиля без кнопки «поделиться». */
+/** Profile achievements block: unlocked first, then locked with progress; for someone else's profile without the "share" button. */
 export function Achievements({username}: { username: string }) {
     const {t} = useI18n();
     const navigate = useNavigate();
     const [data, setData] = useState<AchievementsData | null>(null);
-    // Своими открытыми достижениями можно поделиться в ленте (таск 30.2).
+    // One's own unlocked achievements can be shared in the feed (task 30.2).
     const [own, setOwn] = useState(false);
 
     useEffect(() => {

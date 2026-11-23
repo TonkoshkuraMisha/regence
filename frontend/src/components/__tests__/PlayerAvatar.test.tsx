@@ -1,11 +1,11 @@
-// Собственные аватары (таск 18.4): по имени, пока не выбран; выбор фигуры и фона; никаких внешних адресов.
+// Own avatars (task 18.4): by name until chosen; a choice of piece and background; no external addresses.
 
 import {fireEvent, render, screen} from '@testing-library/react';
 import {describe, expect, it, vi} from 'vitest';
 import {AvatarPicker, PlayerAvatar, avatarCode} from '../PlayerAvatar';
 
-describe('аватары', () => {
-    it('по имени — устойчиво и без внешних адресов; выбранный — как выбран; мусор — по имени', () => {
+describe('avatars', () => {
+    it('by name — stable and without external addresses; the chosen one — as chosen; junk — by name', () => {
         expect(avatarCode('magnus')).toBe(avatarCode('Magnus'));
         expect(avatarCode('magnus')).toMatch(/^[wb][KQRBNP]-[0-7]$/);
         expect(avatarCode('magnus', 'bN-3')).toBe('bN-3');
@@ -15,7 +15,7 @@ describe('аватары', () => {
         expect(img.getAttribute('src')).toBe('/assets/pieces/lewis/wQ.svg');
     });
 
-    it('выбор: фигура сохраняет фон, фон сохраняет фигуру', () => {
+    it('choice: a piece keeps the background, a background keeps the piece', () => {
         const onChange = vi.fn();
         render(<AvatarPicker username="magnus" value="wQ-2" onChange={onChange}/>);
         expect(screen.getByTestId('avatar-piece-wQ')).toHaveAttribute('aria-pressed', 'true');

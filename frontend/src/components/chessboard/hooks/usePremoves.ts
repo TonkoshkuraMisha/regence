@@ -1,8 +1,8 @@
 // --- FILE: frontend/src/components/chessboard/hooks/usePremoves.ts ---
-// Предходы: очередь ходов, заданных во время хода соперника (не больше MAX_PREMOVES). Доска показывает позицию «как
-// если бы предходы сыграны»; первый предход исполняется, как только соперник сходил, и если он стал нелегальным —
-// очередь снимается. Очередь живёт только в браузере: сервер о предходах не знает, пока очередной из них не
-// отправлен обычным ходом (make_move с признаком is_premove). Работает в партии с человеком и с ботом.
+// Premoves: a queue of moves set during the opponent's turn (no more than MAX_PREMOVES). The board shows the position "as
+// if the premoves were played"; the first premove is executed as soon as the opponent has moved, and if it became illegal,
+// the queue is cleared. The queue lives only in the browser: the server knows nothing about premoves until the next one is
+// sent as an ordinary move (make_move with the is_premove flag). Works in games against a human and a bot.
 
 import {useCallback, useEffect, useMemo, useState} from 'react';
 import {Chess} from 'chess.js';
@@ -19,26 +19,26 @@ export interface UsePremovesOptions {
     game: Chess;
     myColor: 'white' | 'black';
     gameOverResult: string | null;
-    /** -1 — живая позиция; любое другое значение — просмотр истории, премувы не исполняются. */
+    /** -1 is the live position; any other value is history viewing, premoves are not executed. */
     viewIndex: number;
-    /** Премувы имеют смысл только в PvP и партиях с ботом — не в свободном анализе. */
+    /** Premoves make sense only in PvP and bot games, not in free analysis. */
     isOpponentControlled: boolean;
-    /** Обычный ход доски (Chessboard.executeMove); возвращает false, если ход невозможен. */
+    /** Ordinary board move (Chessboard.executeMove); returns false if the move is impossible. */
     executeMove: (from: string, to: string, explicitPromotion?: PromotionPiece, isPremoveMove?: boolean) => boolean;
     playAudio: (type: SoundEventType) => void;
-    /** Снимает выделение клетки и обрывает текущее перетаскивание — премув начинается «с чистого». */
+    /** Clears the square selection and aborts the current drag so that a premove starts "clean". */
     clearSelection: () => void;
-    /** Открывает диалог выбора фигуры для премува-превращения (с пометкой isPremove: true — выбор вернётся сюда). */
+    /** Opens the piece choice dialog for a promotion premove (with isPremove: true, the choice comes back here). */
     openPromotionDialog: (p: { from: string; to: string; color: 'w' | 'b'; isPremove: true }) => void;
 }
 
-/** Сколько предходов можно поставить подряд. */
+/** How many premoves can be set in a row. */
 export const MAX_PREMOVES = 8;
 
 /**
- * Позиция «как если бы предходы уже сыграны»: фигуры просто переставлены (без проверки правил — она при исполнении),
- * рокировка переносит и ладью, превращение ставит выбранную фигуру. По ней выбираются фигуры для следующих предходов
- * и рисуется доска, пока очередь не пуста.
+ * Position "as if the premoves were already played": pieces are simply rearranged (without rules checking, which happens on execution),
+ * castling moves the rook too, a promotion places the chosen piece. It is used to pick pieces for the next premoves
+ * and to draw the board while the queue is non-empty.
  */
 export function applyPremoves(game: Chess, premoves: Premove[]): Chess {
     const view = new Chess(game.fen());
@@ -62,24 +62,24 @@ export function applyPremoves(game: Chess, premoves: Premove[]): Chess {
 }
 
 export interface UsePremovesResult {
-    /** Первый предход очереди (его исполнят следующим). */
+    /** First premove of the queue (it will be executed next). */
     premove: Premove | null;
-    /** Вся очередь предходов. */
+    /** The whole premove queue. */
     premoves: Premove[];
-    /** Позиция после предходов очереди (см. applyPremoves). */
+    /** Position after the queue's premoves (see applyPremoves). */
     premoveView: Chess;
-    /** null — снять всю очередь; предход — заменить очередь им одним. */
+    /** null clears the whole queue; a premove replaces the queue with itself alone. */
     setPremove: (value: Premove | null) => void;
-    /** Ставит ход в премув (или открывает диалог превращения) — вызывается на чужом ходу. */
+    /** Puts a move into a premove (or opens the promotion dialog); called on the opponent's turn. */
     scheduleOrPromotePremove: (from: string, to: string, explicitPromotion?: PromotionPiece) => void;
 }
 
 /**
- * Предход: пока ходит соперник, игрок может заранее указать свои следующие ходы (до MAX_PREMOVES). Как только
- * позиция подтверждает, что очередь перешла к игроку, первый премув автоматически исполняется через
- * executeMove с isPremoveMove=true: клиент сообщает нулевое время обдумывания и признак is_premove. Часы при этом
- * всё равно ведёт сервер по своему времени; признак нужен античиту (такой ход не учитывается в ритме ходов, и
- * сервер верит признаку, только если сам видит почти мгновенный ход).
+ * Premove: while the opponent is to move, the player can specify their next moves in advance (up to MAX_PREMOVES). As soon as
+ * the position confirms that it is the player's turn, the first premove is executed automatically through
+ * executeMove with isPremoveMove=true: the client reports zero think time and the is_premove flag. The clock is
+ * still run by the server by its own time; the flag is needed by anti-cheat (such a move is not counted in the move rhythm, and
+ * the server trusts the flag only if it itself sees an almost instant move).
  */
 export function usePremoves({
     game, myColor, gameOverResult, viewIndex, isOpponentControlled, executeMove, playAudio,
@@ -91,7 +91,7 @@ export function usePremoves({
 
     const scheduleOrPromotePremove = useCallback((from: string, to: string, explicitPromotion?: PromotionPiece) => {
         if (from === to) return;
-        // Фигура — с поля, где она окажется после уже поставленных предходов (цепочка: Кf3, затем Кg5).
+        // The piece comes from the square where it will be after the already placed premoves (a chain: Nf3, then Ng5).
         const piece = premoveView.get(from as never);
         const myColorChar = myColor === 'white' ? 'w' : 'b';
         if (!piece || piece.color !== myColorChar) {
@@ -111,21 +111,21 @@ export function usePremoves({
         }
 
         const next = {from, to, promotion: isPawnPromotion ? (explicitPromotion || 'q') : undefined};
-        // Сверх MAX_PREMOVES предход в очередь не попадает (звук при этом всё равно играет).
+        // Beyond MAX_PREMOVES a premove does not enter the queue (the sound still plays).
         setPremoves((queue) => (queue.length >= MAX_PREMOVES ? queue : [...queue, next]));
         playAudio('premove');
         clearSelection();
     }, [premoveView, myColor, playAudio, clearSelection, openPromotionDialog]);
 
-    // Исполнение: срабатывает на каждую новую позицию; ждёт, пока ход перейдёт к игроку и на доске живая позиция.
+    // Execution: fires on every new position; waits until the turn passes to the player and the board shows the live position.
     useEffect(() => {
         if (premoves.length === 0 || gameOverResult || viewIndex !== -1 || !isOpponentControlled) return;
 
         const currentTurnColor = game.turn() === 'w' ? 'white' : 'black';
         if (currentTurnColor !== myColor) return;
 
-        // Первый предход исполняется; если он стал невозможен (соперник ответил иначе) — снимается вся очередь:
-        // остальные строились на нём.
+        // The first premove is executed; if it became impossible (the opponent replied differently), the whole queue is cleared:
+        // the rest were built on it.
         const [first, ...rest] = premoves;
         const played = executeMove(first.from, first.to, first.promotion || 'q', true);
         setPremoves(played ? rest : []);

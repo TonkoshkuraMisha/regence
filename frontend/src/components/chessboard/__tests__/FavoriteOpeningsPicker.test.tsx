@@ -1,4 +1,4 @@
-// Любимые дебюты соперника (таск 21.2): поиск по таблице, добавление до трёх, удаление, названия выбранных по позициям.
+// The opponent's favourite openings (task 21.2): a table search, adding up to three, removal, names of the chosen ones by positions.
 
 import {act, fireEvent, render, screen} from '@testing-library/react';
 import {useState} from 'react';
@@ -44,8 +44,8 @@ afterEach(() => {
     vi.useRealTimers();
 });
 
-describe('любимые дебюты', () => {
-    it('выбранные показываются по названиям; поиск добавляет, до трёх; удаление', async () => {
+describe('favourite openings', () => {
+    it('the chosen ones are shown by names; the search adds, up to three; removal', async () => {
         vi.useFakeTimers();
         stub();
         await act(async () => render(<Harness/>));
@@ -59,18 +59,18 @@ describe('любимые дебюты', () => {
 
         await search('white', 'all');
         const options = screen.getAllByTestId('opening-option-white');
-        expect(options[0]).toBeDisabled();  // уже выбран
+        expect(options[0]).toBeDisabled();  // already chosen
         await act(async () => fireEvent.click(options[1]));
         await search('white', 'all');
         await act(async () => fireEvent.click(screen.getAllByTestId('opening-option-white')[3]));
-        expect(screen.queryByTestId('openings-search-white')).toBeNull();  // три — больше нельзя
+        expect(screen.queryByTestId('openings-search-white')).toBeNull();  // three — no more allowed
 
-        await act(async () => fireEvent.click(screen.getByLabelText('Убрать Ruy Lopez')));
+        await act(async () => fireEvent.click(screen.getByLabelText('Remove Ruy Lopez')));
         expect(screen.getByTestId('openings-white')).not.toHaveTextContent('Ruy Lopez');
         expect(screen.getByTestId('openings-search-white')).toBeInTheDocument();
     });
 
-    it('короткий запрос не ищет; без дебютов строки карточки нет', async () => {
+    it('a short query does not search; without openings there is no card line', async () => {
         vi.useFakeTimers();
         const mock = stub();
         const {container} = await act(async () => render(<OpeningsLine/>));

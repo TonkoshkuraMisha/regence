@@ -1,5 +1,5 @@
-// Профиль игрока: рейтинги по категориям, статистика партий, таблица истории с результатами
-// с точки зрения владельца профиля, переходы и ошибки загрузки.
+// A player profile: ratings by category, game statistics, a history table with results
+// from the profile owner's point of view, navigation and loading errors.
 
 import {fireEvent, render, screen, waitFor, within} from '@testing-library/react';
 import {MemoryRouter, Route, Routes, useLocation, useParams} from 'react-router-dom';
@@ -7,8 +7,8 @@ import {afterEach, beforeAll, describe, expect, it, vi} from 'vitest';
 import {cloneElement, type ReactElement} from 'react';
 import Profile, {RatingDot, RatingTooltip, formatRatingDelta, toRatingChartPoint} from '../Profile';
 
-// В jsdom у контейнера нулевой размер, и recharts не рисует график. Отдаём графику фиксированный
-// размер — тогда точки появляются в DOM и по ним можно кликнуть.
+// In jsdom the container has zero size and recharts does not draw the chart. We give the chart a fixed
+// size — then the points appear in the DOM and can be clicked.
 vi.mock('recharts', async (importOriginal) => {
     const actual = await importOriginal<typeof import('recharts')>();
     return {
@@ -94,7 +94,7 @@ function stubFetch(routes: {
 function GameStub() {
     const {id} = useParams();
     const location = useLocation();
-    return <div>Партия {id} ({(location.state as any)?.game?.result})</div>;
+    return <div>Game {id} ({(location.state as any)?.game?.result})</div>;
 }
 
 function renderProfile(path = '/profile/Alice') {
@@ -109,7 +109,7 @@ function renderProfile(path = '/profile/Alice') {
 }
 
 beforeAll(() => {
-    // recharts измеряет контейнер через ResizeObserver, которого нет в jsdom.
+    // recharts measures the container through ResizeObserver, which jsdom does not have.
     vi.stubGlobal('ResizeObserver', class {
         observe() {
         }
@@ -137,7 +137,7 @@ afterEach(() => {
 });
 
 describe('Profile', () => {
-    it('показывает четыре рейтинга и дату регистрации', async () => {
+    it('shows four ratings and the registration date', async () => {
         stubFetch({profile: {ok: true, body: PROFILE}});
         renderProfile();
 
@@ -145,25 +145,25 @@ describe('Profile', () => {
         for (const rating of ['1401', '1502', '1603', '1704']) {
             expect(screen.getByText(rating)).toBeInTheDocument();
         }
-        expect(screen.getByText(/На сайте с 15 марта 2026/)).toBeInTheDocument();
-        expect(screen.getByText('Партий пока нет.')).toBeInTheDocument();
-        expect(screen.getByText(/Недостаточно рейтинговых партий в этой категории/)).toBeInTheDocument();
+        expect(screen.getByText(/Member since March 15th, 2026/)).toBeInTheDocument();
+        expect(screen.getByText('No games yet.')).toBeInTheDocument();
+        expect(screen.getByText(/Not enough rated games in this category/)).toBeInTheDocument();
     });
 
-    it('клубная лестница видна, когда в ней сыграны партии', async () => {
+    it('the club ladder is visible when games have been played in it', async () => {
         stubFetch({profile: {ok: true, body: {...PROFILE, ladder: {rating: 1088, games: 4, step: 3, total: 17}}}});
         renderProfile();
         const card = await screen.findByTestId('profile-ladder');
-        expect(card).toHaveTextContent('Клубная лестница');
+        expect(card).toHaveTextContent('Club ladder');
         expect(card).toHaveTextContent('3/17');
         expect(card).toHaveTextContent('1088');
     });
 
-    it('кубки арен (33.5) — по местам; без наград строки нет', async () => {
+    it('arena trophies (33.5) — by places; without awards there is no row', async () => {
         stubFetch({profile: {ok: true, body: {...PROFILE, arena_trophies: {gold: 2, silver: 0, bronze: 1}}}});
         const {unmount} = renderProfile();
         const row = await screen.findByTestId('profile-arena-trophies');
-        expect(row).toHaveTextContent('Кубки арен');
+        expect(row).toHaveTextContent('Arena trophies');
         expect(screen.getByTestId('profile-trophy-gold')).toHaveTextContent('2');
         expect(screen.getByTestId('profile-trophy-bronze')).toHaveTextContent('1');
         unmount();
@@ -173,14 +173,14 @@ describe('Profile', () => {
         expect(screen.queryByTestId('profile-arena-trophies')).toBeNull();
     });
 
-    it('без партий лестницы карточки нет', async () => {
+    it('without ladder games there is no card', async () => {
         stubFetch({profile: {ok: true, body: {...PROFILE, ladder: {rating: 1000, games: 0, step: 0, total: 17}}}});
         renderProfile();
         await screen.findByText('Alice');
         expect(screen.queryByTestId('profile-ladder')).toBeNull();
     });
 
-    it('считает победы, ничьи и поражения с точки зрения владельца профиля', async () => {
+    it('counts wins, draws and losses from the profile owner\'s point of view', async () => {
         stubFetch({
             profile: {ok: true, body: PROFILE},
             games: {ok: true, body: {items: GAMES, total: 4}},
@@ -188,52 +188,52 @@ describe('Profile', () => {
         });
         renderProfile();
 
-        const rows = await screen.findAllByTitle('Нажмите, чтобы просмотреть партию');
+        const rows = await screen.findAllByTitle('Click to view the game');
         expect(rows).toHaveLength(4);
-        expect(within(rows[0]).getByText(/Победа/)).toBeInTheDocument();     // белыми, 1-0
-        expect(within(rows[1]).getByText(/Поражение/)).toBeInTheDocument();  // чёрными, 1-0
-        expect(within(rows[2]).getByText(/Ничья/)).toBeInTheDocument();
-        expect(within(rows[3]).getByText(/Победа/)).toBeInTheDocument();     // чёрными, 0-1
+        expect(within(rows[0]).getByText(/Win/)).toBeInTheDocument();     // as White, 1-0
+        expect(within(rows[1]).getByText(/Loss/)).toBeInTheDocument();  // as Black, 1-0
+        expect(within(rows[2]).getByText(/Draw/)).toBeInTheDocument();
+        expect(within(rows[3]).getByText(/Win/)).toBeInTheDocument();     // as Black, 0-1
 
-        // 2 победы из 4 партий.
+        // 2 wins out of 4 games.
         expect(screen.getByText('50%')).toBeInTheDocument();
         expect(within(rows[0]).getByText('C20')).toBeInTheDocument();
         expect(within(rows[0]).getByText('2026.10.05')).toBeInTheDocument();
-        // Неизвестная дата PGN — берётся дата завершения партии.
-        expect(within(rows[3]).getByText('1 нояб. 2026')).toBeInTheDocument();
+        // An unknown PGN date — the game finish date is taken.
+        expect(within(rows[3]).getByText('1 Nov 2026')).toBeInTheDocument();
     });
 
-    it('имя соперника открывает его профиль', async () => {
+    it('the opponent\'s name opens their profile', async () => {
         const fetchMock = stubFetch({profile: {ok: true, body: PROFILE}, games: {ok: true, body: {items: GAMES}}});
         renderProfile();
 
-        const rows = await screen.findAllByTitle('Нажмите, чтобы просмотреть партию');
+        const rows = await screen.findAllByTitle('Click to view the game');
         fireEvent.click(within(rows[1]).getByText('Bob'));
 
         await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledWith(expect.stringMatching(/\/api\/v1\/profile\/Bob$/), expect.anything()));
-        // Клик по ссылке не должен всплыть до строки и открыть просмотр партии.
-        expect(screen.queryByText(/^Партия 2/)).not.toBeInTheDocument();
+        // A click on the link must not bubble up to the row and open the game viewer.
+        expect(screen.queryByText(/^Game 2/)).not.toBeInTheDocument();
     });
 
-    it('клик по партии передаёт её в просмотр', async () => {
+    it('a click on a game passes it to the viewer', async () => {
         stubFetch({profile: {ok: true, body: PROFILE}, games: {ok: true, body: {items: GAMES}}});
         renderProfile();
 
-        const rows = await screen.findAllByTitle('Нажмите, чтобы просмотреть партию');
+        const rows = await screen.findAllByTitle('Click to view the game');
         fireEvent.click(rows[2]);
 
-        expect(await screen.findByText('Партия 3 (1/2-1/2)')).toBeInTheDocument();
+        expect(await screen.findByText('Game 3 (1/2-1/2)')).toBeInTheDocument();
     });
 
-    it('PGN скачивается по ссылке на API', async () => {
+    it('the PGN is downloaded by an API link', async () => {
         stubFetch({profile: {ok: true, body: PROFILE}, games: {ok: true, body: {items: GAMES}}});
         renderProfile();
 
-        const links = await screen.findAllByTitle('Скачать PGN');
+        const links = await screen.findAllByTitle('Download PGN');
         expect(links[0].getAttribute('href')).toMatch(/\/api\/v1\/profile\/games\/1\/pgn$/);
     });
 
-    it('имя с пробелом экранируется в запросах к API', async () => {
+    it('a name with a space is escaped in API requests', async () => {
         const fetchMock = stubFetch({profile: {ok: true, body: {...PROFILE, username: 'Alice B'}}});
         renderProfile('/profile/Alice%20B');
 
@@ -245,25 +245,25 @@ describe('Profile', () => {
         expect(urls.every((url) => !url.includes('Alice B'))).toBe(true);
     });
 
-    it('несуществующий игрок — сообщение об ошибке', async () => {
-        // Ответ сервера на неизвестное имя (src/api/profile.py): код user_not_found с именем.
+    it('a non-existent player — an error message', async () => {
+        // The server answer for an unknown name (src/api/profile.py): the code user_not_found with the name.
         stubFetch({profile: {ok: false, body: {detail: {code: 'user_not_found', params: {username: 'Alice'}, message: 'User not found'}}}});
         renderProfile();
 
-        expect(await screen.findByText('Пользователь Alice не найден')).toBeInTheDocument();
+        expect(await screen.findByText('User Alice not found')).toBeInTheDocument();
     });
 
-    it('сбой загрузки партий не ломает профиль', async () => {
+    it('a failure to load games does not break the profile', async () => {
         stubFetch({profile: {ok: true, body: PROFILE}, games: {ok: false}});
         renderProfile();
 
         expect(await screen.findByText('Alice')).toBeInTheDocument();
-        expect(screen.getByText('Партий пока нет.')).toBeInTheDocument();
+        expect(screen.getByText('No games yet.')).toBeInTheDocument();
     });
 });
 
-describe('Profile: итоги и история рейтинга', () => {
-    it('итоги берутся с сервера по всем партиям, а не по загруженной странице', async () => {
+describe('Profile: totals and rating history', () => {
+    it('totals come from the server for all games, not from the loaded page', async () => {
         stubFetch({
             profile: {ok: true, body: PROFILE},
             games: {ok: true, body: {items: GAMES, total: 120}},
@@ -271,14 +271,14 @@ describe('Profile: итоги и история рейтинга', () => {
         });
         renderProfile();
 
-        await screen.findAllByTitle('Нажмите, чтобы просмотреть партию');
+        await screen.findAllByTitle('Click to view the game');
         expect(screen.getByText('120')).toBeInTheDocument();
         expect(screen.getByText('75%')).toBeInTheDocument();
         expect(screen.getByText('90')).toBeInTheDocument();
         expect(screen.getByText('20')).toBeInTheDocument();
     });
 
-    it('первым показывается график категории, в которой сыграно больше всего', async () => {
+    it('the chart of the category with the most games played is shown first', async () => {
         const fetchMock = stubFetch({
             profile: {ok: true, body: PROFILE},
             stats: {ok: true, body: stats({rated_games: {bullet: 3, blitz: 5, rapid: 40, classical: 0}})},
@@ -286,33 +286,33 @@ describe('Profile: итоги и история рейтинга', () => {
         });
         renderProfile();
 
-        expect(await screen.findByText('Динамика рейтинга — рапид')).toBeInTheDocument();
-        expect(screen.getByRole('button', {name: 'Рапид'})).toHaveAttribute('aria-pressed', 'true');
+        expect(await screen.findByText('Rating trend — rapid')).toBeInTheDocument();
+        expect(screen.getByRole('button', {name: 'Rapid'})).toHaveAttribute('aria-pressed', 'true');
         await waitFor(() => {
             const urls = fetchMock.mock.calls.map(([url]) => url.toString());
             expect(urls.some((url) => url.endsWith('/rating-history?category=rapid'))).toBe(true);
         });
-        expect(screen.queryByText(/Недостаточно рейтинговых партий/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/Not enough rated games/)).not.toBeInTheDocument();
     });
 
-    it('переключение категории запрашивает её историю', async () => {
+    it('switching the category requests its history', async () => {
         const fetchMock = stubFetch({
             profile: {ok: true, body: PROFILE},
             stats: {ok: true, body: stats()},
         });
         renderProfile();
-        await screen.findByText('Динамика рейтинга — блиц');
+        await screen.findByText('Rating trend — blitz');
 
-        fireEvent.click(screen.getByRole('button', {name: 'Пуля'}));
+        fireEvent.click(screen.getByRole('button', {name: 'Bullet'}));
 
-        expect(await screen.findByText('Динамика рейтинга — пуля')).toBeInTheDocument();
+        expect(await screen.findByText('Rating trend — bullet')).toBeInTheDocument();
         await waitFor(() => {
             const urls = fetchMock.mock.calls.map(([url]) => url.toString());
             expect(urls.some((url) => url.endsWith('/rating-history?category=bullet'))).toBe(true);
         });
     });
 
-    it('история партий листается по страницам', async () => {
+    it('the game history is paged', async () => {
         const fetchMock = stubFetch({
             profile: {ok: true, body: PROFILE},
             stats: {ok: true, body: stats({total: 65})},
@@ -323,63 +323,63 @@ describe('Profile: итоги и история рейтинга', () => {
         });
         renderProfile();
 
-        expect(await screen.findByText(/Стр\. 1 из 3 · всего 65/)).toBeInTheDocument();
-        expect(screen.getByRole('button', {name: /Новее/})).toBeDisabled();
+        expect(await screen.findByText(/Page 1 of 3 · 65 in total/)).toBeInTheDocument();
+        expect(screen.getByRole('button', {name: /Newer/})).toBeDisabled();
 
-        fireEvent.click(screen.getByRole('button', {name: /Старее/}));
+        fireEvent.click(screen.getByRole('button', {name: /Older/}));
 
-        expect(await screen.findByText(/Стр\. 2 из 3/)).toBeInTheDocument();
+        expect(await screen.findByText(/Page 2 of 3/)).toBeInTheDocument();
         const urls = fetchMock.mock.calls.map(([url]) => url.toString());
         expect(urls.some((url) => url.endsWith('/games?limit=30&offset=30'))).toBe(true);
     });
 
-    it('без итогов с сервера страница остаётся рабочей', async () => {
+    it('without totals from the server the page stays working', async () => {
         stubFetch({profile: {ok: true, body: PROFILE}, games: {ok: true, body: {items: GAMES, total: 4}}});
         renderProfile();
 
-        await screen.findAllByTitle('Нажмите, чтобы просмотреть партию');
-        expect(screen.getByText('Динамика рейтинга — блиц')).toBeInTheDocument();
-        expect(screen.queryByText(/Стр\./)).not.toBeInTheDocument();
+        await screen.findAllByTitle('Click to view the game');
+        expect(screen.getByText('Rating trend — blitz')).toBeInTheDocument();
+        expect(screen.queryByText(/Page \d/)).not.toBeInTheDocument();
     });
 });
 
-describe('Profile: график рейтинга', () => {
-    it('точка графика хранит партию, дату и время и изменение рейтинга', () => {
+describe('Profile: rating chart', () => {
+    it('a chart point holds the game, the date and time and the rating change', () => {
         const point = toRatingChartPoint({
             game_id: 12, finished_at: '2026-11-01T12:30:00Z', rating: 1512, delta: 12,
         });
 
-        expect(point).toMatchObject({game_id: 12, rating: 1512, delta: 12, date: '1 нояб.'});
-        expect(point.fullDate).toMatch(/^1 ноября 2026 г\., \d{2}:\d{2}$/);
+        expect(point).toMatchObject({game_id: 12, rating: 1512, delta: 12, date: '1 Nov'});
+        expect(point.fullDate).toMatch(/^November 1st, 2026, \d{2}:\d{2}$/);
     });
 
-    it.each([[12, '+12'], [-10, '-10'], [0, '0']])('изменение %d показывается как %s', (delta, text) => {
+    it.each([[12, '+12'], [-10, '-10'], [0, '0']])('a change of %d is shown as %s', (delta, text) => {
         expect(formatRatingDelta(delta)).toBe(text);
     });
 
-    it('подсказка показывает дату, рейтинг и изменение за партию', () => {
-        const point = {game_id: 3, rating: 1490, delta: -10, date: '2 нояб.', fullDate: '2 ноября 2026, 18:05'};
+    it('the tooltip shows the date, the rating and the change per game', () => {
+        const point = {game_id: 3, rating: 1490, delta: -10, date: '2 Nov', fullDate: '2 November 2026, 18:05'};
         render(<RatingTooltip active payload={[{payload: point}]}/>);
 
-        expect(screen.getByText('2 ноября 2026, 18:05')).toBeInTheDocument();
+        expect(screen.getByText('2 November 2026, 18:05')).toBeInTheDocument();
         expect(screen.getByText(/1490/).textContent).toBe('1490 (-10)');
     });
 
-    it('без активной точки подсказки нет', () => {
+    it('without an active point there is no tooltip', () => {
         const {container} = render(<RatingTooltip active={false} payload={[]}/>);
         expect(container).toBeEmptyDOMElement();
     });
 
-    it('клик по точке сообщает id партии', () => {
+    it('a click on a point reports the game id', () => {
         const onSelect = vi.fn();
-        const point = {game_id: 42, rating: 1500, delta: 8, date: '1 нояб.', fullDate: '1 ноября 2026, 12:00'};
+        const point = {game_id: 42, rating: 1500, delta: 8, date: '1 Nov', fullDate: '1 November 2026, 12:00'};
         render(<svg><RatingDot cx={10} cy={20} payload={point} onSelect={onSelect}/></svg>);
 
-        fireEvent.click(screen.getByRole('link', {name: /рейтинг 1500/}));
+        fireEvent.click(screen.getByRole('link', {name: /rating 1500/}));
         expect(onSelect).toHaveBeenCalledWith(42);
     });
 
-    it('клик по точке на странице профиля открывает разбор этой партии', async () => {
+    it('a click on a point on the profile page opens the review of that game', async () => {
         stubFetch({
             profile: {ok: true, body: PROFILE},
             stats: {ok: true, body: stats({rated_games: {bullet: 0, blitz: 2, rapid: 0, classical: 0}})},
@@ -387,13 +387,13 @@ describe('Profile: график рейтинга', () => {
         });
         renderProfile();
 
-        const dots = await screen.findAllByRole('link', {name: /^Партия от /});
+        const dots = await screen.findAllByRole('link', {name: /^Game of /});
         expect(dots).toHaveLength(2);
-        expect(dots[1]).toHaveAccessibleName(/рейтинг 1502/);
+        expect(dots[1]).toHaveAccessibleName(/rating 1502/);
 
         fireEvent.click(dots[1]);
 
-        expect(await screen.findByText(/^Партия 2/)).toBeInTheDocument();
+        expect(await screen.findByText(/^Game 2/)).toBeInTheDocument();
     });
 });
 

@@ -1,7 +1,7 @@
 // --- FILE: frontend/src/config/themePresets.ts ---
-// Темы-комплекты (таск 18.3): доска (с рамкой) + фигуры + фон зала + набор звуков «в один клик». Вошедший игрок хранит
-// выбор в профиле (переходит между устройствами), гость — в браузере. Применение — запись тех же ключей, что
-// выставляют отдельные настройки, поэтому любую часть комплекта можно потом поменять вручную.
+// Theme bundles (task 18.3): board (with frame) + pieces + hall background + sound set "in one click". A signed-in player stores
+// the choice in the profile (it travels between devices), a guest - in the browser. Applying writes the same keys that
+// the individual settings set, so any part of the bundle can be changed manually afterwards.
 
 import {BOARD_THEMES, PIECE_SETS} from './boardAppearance';
 import {applyPageBackground} from './pageBackground';
@@ -28,7 +28,7 @@ export const THEME_PRESETS: ThemePreset[] = [
     {id: 'tournament', board: 'vinyl', pieces: 'cburnett', pattern: 'none', palette: 'room', sound: 'soft'},
     {id: 'night', board: 'ebony', pieces: 'spatial', pattern: 'celtic', palette: 'teal', sound: 'soft'},
     {id: 'kids', board: 'tournament', pieces: 'totoy', pattern: 'bauhaus', palette: 'room', sound: 'bright'},
-    // Таск 31.1 (идея владельца): осень в шахматном парке, клубный зал пятидесятых, школьный кружок.
+    // Task 31.1 (owner's idea): autumn in a chess park, a fifties club hall, a school club.
     {id: 'autumn_park', board: 'autumn', pieces: 'cburnett', pattern: 'leaves', palette: 'autumn', sound: 'wood'},
     {id: 'club_1950s', board: 'club50', pieces: 'merida', pattern: 'parquet', palette: 'bottle', sound: 'wood'},
     {id: 'chess_school', board: 'chalkboard', pieces: 'merida', pattern: 'notebook', palette: 'ink', sound: 'soft'},
@@ -48,20 +48,20 @@ export function getSavedPresetId(): string | null {
     }
 }
 
-/** Применить комплект: доска, фигуры, фон страницы, звуки; запомнить в браузере. */
+/** Apply a bundle: board, pieces, page background, sounds; remember in the browser. */
 export function applyPreset(preset: ThemePreset): void {
     try {
         localStorage.setItem('regence_board_theme', preset.board);
         localStorage.setItem('regence_piece_set', preset.pieces);
         localStorage.setItem(PRESET_STORAGE_KEY, preset.id);
     } catch {
-        // Хранилище недоступно — фон и звук всё равно поменяются до перезагрузки.
+        // Storage unavailable - background and sound still change until reload.
     }
     applyPageBackground(preset.pattern, preset.palette, true);
     soundEngine.setSoundSet(preset.sound);
 }
 
-/** Все части комплекта существуют (проверяет тест). */
+/** All parts of the bundle exist (checked by a test). */
 export function presetIsValid(preset: ThemePreset): boolean {
     return Boolean(BOARD_THEMES[preset.board] && PIECE_SETS[preset.pieces]);
 }

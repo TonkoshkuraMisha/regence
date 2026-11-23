@@ -1,10 +1,10 @@
 // --- FILE: frontend/src/components/puzzles/PuzzleModePicker.tsx ---
-// Выбор режима на странице задач (план владельца 18.11): три группы вкладок с подписью группы («Решать»,
-// «Тренироваться», «Свои партии») и одной строкой пояснения к выбранному режиму. Состав групп и иконки —
-// puzzleModes.ts; тексты — puzzles.modeGroups.*, puzzles.modes.*, puzzles.modeInfo.* в трёх каталогах.
-// Кнопки режимов — data-testid «puzzle-mode-<режим>»; тот же id у карточек режимов до старта (PuzzlesPage): на экране
-// всегда только одно из двух, а тесты идут путём игрока, не зная, что сейчас показано.
-// Состояния не держит: выбранный режим и обработчик приходят из PuzzlesPage.
+// Mode choice on the puzzle page (owner's plan 18.11): three groups of tabs with a group label ("Solve",
+// "Train", "Your games") and a one-line explanation of the selected mode. The composition of the groups and icons are in
+// puzzleModes.ts; the texts are puzzles.modeGroups.*, puzzles.modes.*, puzzles.modeInfo.* in all language catalogs.
+// Mode buttons have data-testid "puzzle-mode-<mode>"; the mode cards before the start (PuzzlesPage) have the same id: only one of the two
+// is always on screen, and tests follow the player's path without knowing what is currently shown.
+// It holds no state: the selected mode and the handler come from PuzzlesPage.
 
 import {useI18n} from '../../i18n';
 import {SegmentedControl} from '../ui';
@@ -16,7 +16,7 @@ interface Props {
     onChange: (mode: Mode) => void;
 }
 
-/** Вкладки режимов по группам плюс строка пояснения к текущему режиму (data-testid «puzzle-mode-info»). */
+/** Mode tabs by group plus an explanation line for the current mode (data-testid "puzzle-mode-info"). */
 export function PuzzleModePicker({mode, onChange}: Props) {
     const {t} = useI18n();
     return (

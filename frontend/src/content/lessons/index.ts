@@ -1,5 +1,5 @@
 // --- FILE: frontend/src/content/lessons/index.ts ---
-// Реестр курсов и уроков школы: каждый JSON-файл этой папки (кроме courses.json) — урок в формате format.ts.
+// Registry of school courses and lessons: every JSON file in this folder (except courses.json) is a lesson in the format.ts format.
 
 import type {Language} from '../../i18n';
 import coursesData from './courses.json';
@@ -22,7 +22,7 @@ export function lessonsOfCourse(courseId: string): Lesson[] {
     return LESSONS.filter((lesson) => lesson.course === courseId);
 }
 
-/** Следующий урок того же курса — для кнопки «Следующий урок». */
+/** Next lesson of the same course - for the "Next lesson" button. */
 export function nextLesson(lesson: Lesson): Lesson | undefined {
     const list = lessonsOfCourse(lesson.course);
     return list[list.findIndex((l) => l.id === lesson.id) + 1];

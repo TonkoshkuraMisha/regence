@@ -1,6 +1,6 @@
-// Звуковой движок (soundEngine.ts): чтение настроек из localStorage при создании, выбор набора звуков, отключение
-// звука, синтез каждого события и фанфар на поддельном AudioContext (проверяется, что звук строится, а при выключенном
-// звуке и без Web Audio — тишина без ошибок), resolveMoveSound для пустой записи.
+// The sound engine (soundEngine.ts): reading settings from localStorage on creation, choosing a sound set, turning the
+// sound off, synthesizing each event and fanfares on a fake AudioContext (checking that the sound is built, and that with the sound off
+// and without Web Audio there is silence without errors), resolveMoveSound for an empty record.
 
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import type {SoundEventType} from '../soundEngine';
@@ -63,15 +63,15 @@ afterEach(() => {
     vi.restoreAllMocks();
 });
 
-describe('настройки звука', () => {
-    it('читает выключенный звук и сохранённый набор из localStorage, неизвестный набор игнорирует', async () => {
+describe('sound settings', () => {
+    it('reads the sound off and the saved set from localStorage, ignores an unknown set', async () => {
         localStorage.setItem('regence_sound_muted', 'true');
         localStorage.setItem('regence_sound_set', 'marble');
         const {soundEngine} = await freshEngine();
         expect(soundEngine.isMuted()).toBe(true);
         expect(soundEngine.getSoundSet()).toBe('marble');
 
-        localStorage.setItem('regence_sound_set', 'устарел');
+        localStorage.setItem('regence_sound_set', 'stale');
         const again = await freshEngine();
         expect(again.soundEngine.getSoundSet()).toBe('wood');
         expect(again.isSoundSetId('soft')).toBe(true);
@@ -79,7 +79,7 @@ describe('настройки звука', () => {
         expect(again.isSoundSetId(5)).toBe(false);
     });
 
-    it('смена набора и выключение пишутся в localStorage; сбой хранилища не ломает смену набора', async () => {
+    it('changing the set and turning off are written to localStorage; a storage failure does not break changing the set', async () => {
         const {soundEngine} = await freshEngine();
         soundEngine.setSoundSet('bright');
         expect(localStorage.getItem('regence_sound_set')).toBe('bright');
@@ -92,7 +92,7 @@ describe('настройки звука', () => {
         expect(soundEngine.getSoundSet()).toBe('soft');
     });
 
-    it('шах включается и выключается флагом', async () => {
+    it('check is turned on and off by a flag', async () => {
         const {checkSoundsEnabled, setCheckSounds, resolveMoveSound} = await freshEngine();
         expect(checkSoundsEnabled()).toBe(false);
         setCheckSounds(true);
@@ -102,8 +102,8 @@ describe('настройки звука', () => {
     });
 });
 
-describe('синтез звуков', () => {
-    it.each(['wood', 'marble', 'soft', 'bright'] as const)('набор %s: каждое событие строит звук', async (set) => {
+describe('sound synthesis', () => {
+    it.each(['wood', 'marble', 'soft', 'bright'] as const)('set %s: every event builds a sound', async (set) => {
         const {soundEngine} = await freshEngine();
         soundEngine.setSoundSet(set);
         for (const event of EVENTS) soundEngine.play(event);
@@ -112,7 +112,7 @@ describe('синтез звуков', () => {
         expect(FakeAudioContext.resume).toHaveBeenCalled();
     });
 
-    it('фанфары: у победителя, серебра и бронзы разные мелодии', async () => {
+    it('fanfares: the winner, silver and bronze have different melodies', async () => {
         const {soundEngine} = await freshEngine();
         const counts: number[] = [];
         for (const place of [1, 2, 3]) {
@@ -125,7 +125,7 @@ describe('синтез звуков', () => {
         expect(counts[2]).toBeGreaterThan(0);
     });
 
-    it('при выключенном звуке ничего не строится', async () => {
+    it('with the sound off nothing is built', async () => {
         const {soundEngine} = await freshEngine();
         soundEngine.setMuted(true);
         soundEngine.play('move');
@@ -133,7 +133,7 @@ describe('синтез звуков', () => {
         expect(created.oscillators + created.sources).toBe(0);
     });
 
-    it('без Web Audio звук молчит без ошибок', async () => {
+    it('without Web Audio the sound is silent without errors', async () => {
         (window as unknown as {AudioContext: unknown}).AudioContext = undefined;
         vi.stubGlobal('AudioContext', undefined);
         const {soundEngine} = await freshEngine();
@@ -143,7 +143,7 @@ describe('синтез звуков', () => {
         }).not.toThrow();
     });
 
-    it('контекст создаётся один раз и используется повторно', async () => {
+    it('the context is created once', async () => {
         const ctor = vi.fn(function (this: unknown) {
             return new FakeAudioContext();
         });

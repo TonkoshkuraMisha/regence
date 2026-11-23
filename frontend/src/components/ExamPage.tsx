@@ -1,10 +1,10 @@
-// Диагностический экзамен (таск 22.0): /exam — 10 тестов по разделам каталога тем (по 10 позиций от лёгкой к
-// трудной) и эндшпильный экзамен на 30 позиций. Решение доигрывается до конца (до мата или последнего хода
-// комбинации): верный ход проверяет сервер (/move), соперник отвечает ходом из решения, за каждый верный ход — очко;
-// ошибка или «Не знаю» заканчивают позицию, набранные на ней очки остаются. Подсказок нет; в конце — оценка силы,
-// уровень по разрядам и разбор. Игровой рейтинг не меняется; итоги — стартовые данные карты навыков.
-// Экзамены уровней Большого курса (27.12, /exam?test=level<n>) — на время: срок time_limit_s присылает сервер вместе с
-// вопросами, часы идут на странице, по истечении тест сдаётся сам (недошедшие позиции — пустыми, без очков).
+// Diagnostic exam (task 22.0): /exam has 10 tests by section of the theme catalog (10 positions each, from easy to
+// hard) and an endgame exam of 30 positions. The solution is played to the end (to mate or the last move of the
+// combination): the server checks the correct move (/move), the opponent replies with a move from the solution, a point per correct move;
+// a mistake or "I don't know" ends the position, the points earned on it stay. There are no hints; at the end a strength estimate,
+// a level by rank and a review. The game rating does not change; the results are starting data for the skill map.
+// Great Course level exams (27.12, /exam?test=level<n>) are timed: the time_limit_s deadline is sent by the server along with
+// the questions, the clock runs on the page, and on expiry the test is submitted by itself (positions not reached are empty, without points).
 
 import {useEffect, useRef, useState} from 'react';
 import {Chess} from 'chess.js';
@@ -17,13 +17,13 @@ import {errorMessage} from '../services/apiErrors';
 import {examCall} from '../services/exam';
 import {PuzzleBoard} from './puzzles/PuzzleBoard';
 
-/** Уровни по разрядам, которые сервер присваивает оценке силы (src/services/exam.py, LEVELS). */
+/** Levels by rank that the server assigns to a strength estimate (src/services/exam.py, LEVELS). */
 export type ExamLevel = 'novice' | 'fourth' | 'third' | 'second' | 'first' | 'candidate' | 'master';
 
-/** Ответ GET /exam: последние результаты по разделам, общая оценка и уровень. */
+/** Response of GET /exam: the latest results by section, the overall estimate and the level. */
 export interface ExamSummary {
     tests: string[];
-    /** Экзамены уровней Большого курса (27.12): level0 … level5. */
+    /** Great Course level exams (27.12): level0 ... level5. */
     level_tests?: string[];
     results: Record<string, { correct: number; total: number; estimate: number; level: ExamLevel; at: string | null }>;
     overall: number | null;
@@ -32,7 +32,7 @@ export interface ExamSummary {
     of: number;
 }
 
-/** Позиция теста: id задачи, позиция после хода соперника, чья очередь и этот ход (для подсветки). */
+/** Test position: the task id, the position after the opponent's move, whose turn it is and this move (for highlighting). */
 interface Question {
     id: number;
     fen: string;
@@ -41,7 +41,7 @@ interface Question {
     branch?: string;
 }
 
-/** Итог сданного теста и разбор по позициям. */
+/** Result of a submitted test and a per-position review. */
 interface Graded {
     correct: number;
     total: number;
@@ -51,14 +51,14 @@ interface Graded {
         id: number; answer: string; correct: boolean; solution: string; solution_san: string; rating: number;
         points?: number; max_points?: number;
     }[];
-    /** Очки: верные ходы по всем позициям из возможных. */
+    /** Points: correct moves across all positions out of the possible ones. */
     points?: number;
     max_points?: number;
-    /** Экзамен уровня: верно / всего по ветвям курса. */
+    /** Level exam: correct / total by course branch. */
     branches?: Record<string, { correct: number; total: number }> | null;
 }
 
-/** Ответ сервера на ход во время теста. */
+/** Server response to a move during a test. */
 interface MoveResult {
     correct: boolean;
     reply: string | null;
@@ -68,16 +68,16 @@ interface MoveResult {
     max_points: number;
 }
 
-/** Пауза перед ответом соперника и перед следующей позицией: успеть увидеть свой ход и финал комбинации. */
+/** Pause before the opponent's reply and before the next position: time to see one's own move and the end of the combination. */
 export const EXAM_REPLY_MS = 450;
 export const EXAM_NEXT_MS = 1100;
-/** Шаг обновления часов экзамена на время (мс). */
+/** Clock refresh step of the timed exam (ms). */
 const CLOCK_TICK_MS = 500;
 
-// Клетки хода из записи UCI.
+// Move squares from a UCI record.
 const squares = (uci: string) => ({from: uci.slice(0, 2), to: uci.slice(2, 4)});
 
-/** Позиция после хода (UCI); при сбое разбора — прежняя. */
+/** Position after a move (UCI); if parsing fails, the previous one. */
 function afterMove(fen: string, uci: string): string {
     try {
         const game = new Chess(fen);
@@ -88,10 +88,10 @@ function afterMove(fen: string, uci: string): string {
     }
 }
 
-// Код теста уровня курса: level0 … level5.
+// Course level test code: level0 ... level5.
 const LEVEL_TEST = /^level(\d)$/;
 
-/** Название теста: раздел диагностики, эндшпильный экзамен или экзамен уровня курса. */
+/** Test name: a diagnostic section, the endgame exam or a course level exam. */
 export function examTitle(t: (key: string, params?: Record<string, string | number>) => string, section: string): string {
     const level = LEVEL_TEST.exec(section);
     if (level) return t('exam.levelTest', {n: Number(level[1])});
@@ -100,16 +100,16 @@ export function examTitle(t: (key: string, params?: Record<string, string | numb
 
 const call = examCall;
 
-/** Последние результаты по разделам — для отметки «уровень пройден» в Большом курсе (27.12). */
+/** Latest results by section, for the "level passed" mark in the Great Course (27.12). */
 export const fetchExamSummary = () => call<ExamSummary>('');
 
-// То же, что examTitle, но для типизированной функции перевода.
+// The same as examTitle, but for the typed translation function.
 const sectionLabel = (t: (key: MessageKey, params?: Record<string, string | number>) => string, section: string) =>
     examTitle(t as unknown as (key: string, params?: Record<string, string | number>) => string, section);
 
 /**
- * Экзамен: выбор теста, прохождение позиций и разбор. Ходы идут на сервер по одному (/move); таймеры
- * хранятся в timers и снимаются при уходе со страницы.
+ * Exam: test choice, going through positions and a review. Moves go to the server one at a time (/move); timers
+ * are kept in timers and cleared when leaving the page.
  */
 export function ExamPage() {
     const {t} = useI18n();
@@ -117,7 +117,7 @@ export function ExamPage() {
     const [summary, setSummary] = useState<ExamSummary | null>(null);
     const [section, setSection] = useState<string | null>(null);
     const [questions, setQuestions] = useState<Question[]>([]);
-    // Ходы игрока по каждой пройденной позиции; текущая позиция — played и board (позиция после сыгранных ходов).
+    // The player's moves for each completed position; the current position is played and board (the position after the played moves).
     const [answers, setAnswers] = useState<string[][]>([]);
     const [played, setPlayed] = useState<string[]>([]);
     const [board, setBoard] = useState<{ fen: string; last: string; mark?: boolean } | null>(null);
@@ -140,12 +140,12 @@ export function ExamPage() {
         setWaiting(false);
     };
     const [graded, setGraded] = useState<Graded | null>(null);
-    // Экзамен уровня — на время (time_limit_s с сервера): срок от начала теста; по истечении тест сдаётся сам,
-    // позиции, до которых игрок не дошёл, идут пустыми (без очков). timedOut — показать это в итоге.
+    // A level exam is timed (time_limit_s from the server): the deadline from the start of the test; on expiry the test is submitted by itself,
+    // positions the player did not reach go empty (without points). timedOut shows this in the result.
     const [deadline, setDeadline] = useState<number | null>(null);
     const [now, setNow] = useState(() => Date.now());
     const [timedOut, setTimedOut] = useState(false);
-    // Тест сдаётся один раз: и по последней позиции, и по времени — что случится раньше.
+    // The test is submitted once: by the last position or by time, whichever happens first.
     const submitted = useRef(false);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState<UiMessage | null>(null);
@@ -156,7 +156,7 @@ export function ExamPage() {
     };
     useEffect(loadSummary, [logged]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // Переход из курса или программы: /exam?test=level3 — сразу начать этот тест.
+    // Entry from a course or programme: /exam?test=level3 starts this test at once.
     const [search] = useSearchParams();
     const requested = search.get('test');
 
@@ -188,7 +188,7 @@ export function ExamPage() {
         if (logged && requested && !section) void start(requested);
     }, [logged, requested]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    /** Сдать тест: ходы по пройденным позициям, остальные — пустыми (время вышло раньше). */
+    /** Submit the test: moves for the completed positions, the rest empty (time ran out earlier). */
     const submit = async (done: string[][]) => {
         if (!section || submitted.current) return;
         submitted.current = true;
@@ -204,7 +204,7 @@ export function ExamPage() {
         }
     };
 
-    /** Позиция закончена (решена, ошибка или «Не знаю»): записать ходы и перейти дальше или сдать тест. */
+    /** The position is finished (solved, a mistake or "I don't know"): record the moves and go on or submit the test. */
     const finish = async (moves: string[]) => {
         const next = [...answers, moves];
         setAnswers(next);
@@ -219,7 +219,7 @@ export function ExamPage() {
         const id = window.setInterval(() => setNow(Date.now()), CLOCK_TICK_MS);
         return () => window.clearInterval(id);
     }, [deadline, graded]);
-    // Время вышло: сдать то, что есть, вместе с ходами текущей позиции.
+    // Time is up: submit what there is, together with the moves of the current position.
     useEffect(() => {
         if (secondsLeft !== 0 || !section || graded || submitted.current) return;
         clearTimers();
@@ -239,14 +239,14 @@ export function ExamPage() {
         try {
             result = await call<MoveResult>(`/${section}/move`, {id: current.id, moves});
         } catch (err) {
-            // Ход не засчитан и не потерян: позиция прежняя, можно повторить.
+            // The move is neither counted nor lost: the position is the same, one can repeat.
             setError(errorMessage(err, 'common.networkError'));
             setWaiting(false);
             return;
         }
         const mine = afterMove(position.fen, uci);
         setBoard({fen: mine, last: uci, mark: result.correct});
-        // Другой мат засчитывается как всё решение — очки сразу за все оставшиеся ходы.
+        // A different mate counts as the whole solution: points at once for all the remaining moves.
         const gain = result.correct ? Math.max(1, result.points - played.length) : 0;
         if (gain) setPoints((value) => value + gain);
         setFlash({kind: !result.correct ? 'wrong' : result.done ? 'solved' : 'right', gain});

@@ -1,6 +1,6 @@
 """
-События продуктовых метрик (таблица product_events). Пишет src/services/product_metrics.py, отчёт владельцу
-считает scripts/product_metrics.py.
+Product metric events (the product_events table). Written by src/services/product_metrics.py, the report to the owner
+is computed by scripts/product_metrics.py.
 """
 
 from datetime import date, datetime
@@ -14,9 +14,9 @@ from src.models.base import Base
 
 class ProductEvent(Base):
     """
-    Продуктовое событие (таск 23.5): своя аналитика без сторонних трекеров. Только вид события, игрок и время —
-    ни IP, ни имени, ни содержимого партий. Каждый вид — не чаще раза в сутки UTC на игрока: этого хватает для
-    воронки (первая партия, первая задача) и удержания (активные дни), а таблица растёт предсказуемо.
+    A product event (task 23.5): our own analytics without third-party trackers. Only the event kind, the player and the time -
+    no IP, no name, no game contents. Each kind - at most once per UTC day per player: this is enough for
+    the funnel (first game, first puzzle) and retention (active days), and the table grows predictably.
     """
 
     __tablename__ = "product_events"

@@ -1,14 +1,14 @@
 """
-«Узнай структуру» (таск 27.9, тренажёр 19.1): позиция → название пешечной структуры из четырёх вариантов.
+"Name the Structure" (task 27.9, trainer 19.1): a position -> the name of a pawn structure from four options.
 
-Позиции — из публичных партий библиотеки с разметкой 27.5: берётся полуход, где детектор видит ту же структуру, что
-и у партии в целом. Если размеченных партий мало (пустая база, тесты) — добираются учебные «скелеты»: только короли и
-пешки структуры. Движок не нужен.
+Positions come from public library games with the 27.5 tagging: a ply is taken where the detector sees the same structure as
+for the game as a whole. If there are few tagged games (an empty database, tests), teaching "skeletons" are added: only the
+kings and the pawns of the structure. No engine is needed.
 
-Данные: library_games (ходы и код структуры library_games.structure, который ставит
-src/services/pawn_structures.py при импорте). Партии отбирает маршрут GET /library/structure-quiz
-(src/api/library.py), здесь из них собираются вопросы. Верный ответ уходит клиенту вместе с вопросом: тренажёр без
-рейтинга, проверка на клиенте.
+Data: library_games (moves and the structure code library_games.structure, which is set by
+src/services/pawn_structures.py on import). The games are selected by the route GET /library/structure-quiz
+(src/api/library.py), the questions are assembled here from them. The correct answer goes to the client with the question:
+the trainer has no rating, the check is on the client.
 """
 
 import random
@@ -20,7 +20,7 @@ from src.services import pawn_structures as ps
 
 OPTIONS = 4
 
-# Учебные скелеты: пешки белых и чёрных (как в тестах детектора), короли на g1 / g8.
+# Teaching skeletons: White and Black pawns (as in the detector's tests), kings on g1 / g8.
 SKELETONS: dict[str, tuple[str, str]] = {
     "hedgehog": ("a2 b2 c4 e4 f2 g2 h2", "a6 b6 d6 e6 f7 g7 h7"),
     "maroczy": ("a2 b2 c4 e4 f2 g2 h2", "a7 b7 d6 e7 f7 g6 h7"),
@@ -59,7 +59,7 @@ def skeleton_fen(structure: str) -> str:
 
 
 def position_with(moves: list[str], structure: str, rng: random.Random) -> tuple[str, int] | None:
-    """Случайный полуход партии (в окне 27.5), где видна именно эта структура: FEN и номер полухода."""
+    """A random ply of a game (in the 27.5 window) where exactly this structure is visible: the FEN and the ply number."""
     board = chess.Board()
     found: list[tuple[str, int]] = []
     for ply, uci in enumerate(moves, start=1):
@@ -82,7 +82,7 @@ def options_for(answer: str, rng: random.Random) -> list[str]:
 
 
 def build(games: list[tuple[int, str, str]], count: int, rng: random.Random) -> list[Question]:
-    """games — (id, structure, moves) из библиотеки; разные структуры подряд, недостающее — скелетами."""
+    """games - (id, structure, moves) from the library; different structures in a row, the missing ones as skeletons."""
     questions: list[Question] = []
     used: set[str] = set()
     for game_id, structure, moves in games:

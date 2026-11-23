@@ -1,14 +1,18 @@
 """
-Экзамены уровней Большого курса (таск 27.12): «тест на разряд». На каждый уровень 0–5 — фиксированный набор позиций по
-ветвям курса (тактика T, мат и атака M, эндшпиль E, стратегия S, расчёт C) из src/services/data/level_exams.json
-(собирает scripts/build_level_exams.py: задачи базы CC0 около порога разряда, ответ проверен движком — единственный).
-Тест идёт через тот же протокол, что диагностика 22.0 (/exam/level<n>/questions, /move и /submit): вопрос — id по
-порядку в наборе, решение (поле moves, если оно длиннее одного хода) доигрывается до конца, любой мат засчитывается.
-Итог — оценка силы по формуле Эло (src/services/exam.estimate), уровень пройден, когда она не ниже порога
-(клиент, supercourse.levelExamPassed), плюс профиль по ветвям.
+Big Course level exams (task 27.12): a "rank test". For each level 0-5 -- a fixed set of positions by the
+course branches (tactics T, mate and attack M, endgame E, strategy S, calculation C) from src/services/data/level_exams.json
+(built by scripts/build_level_exams.py: CC0 database puzzles near the rank threshold, the answer verified by the engine --
+the only one).
+The test runs through the same protocol as diagnostic 22.0 (/exam/level<n>/questions, /move and /submit): a question is an id
+by
+order in the set, the solution (the moves field, if it is longer than one move) is played out to the end, any mate counts.
+The result is a strength estimate by the Elo formula (src/services/exam.estimate), the level is passed when it is not below
+the threshold
+(client, supercourse.levelExamPassed), plus a profile by branch.
 
-Экзамен — на время (time_limit_s): срок сообщает сервер вместе с вопросами, отсчёт ведёт клиент и по истечении сам
-сдаёт тест; позиции, до которых игрок не дошёл, идут без очков. Как в итоговой проверке курса матов.
+The exam is timed (time_limit_s): the deadline is reported by the server together with the questions, the countdown is kept
+by the client, which submits the test itself
+on expiry; positions the player did not reach score no points. As in the final check of the mate course.
 """
 
 import json
@@ -18,17 +22,17 @@ from pathlib import Path
 import chess
 
 DATA = Path(__file__).resolve().parent / "data" / "level_exams.json"
-# Начало кода раздела экзамена уровня: level0 … level5.
+# The beginning of a level exam section code: level0 ... level5.
 PREFIX = "level"
-# Ветви курса, по которым размечены вопросы: тактика, мат и атака, эндшпиль, стратегия, расчёт.
+# Course branches by which questions are labelled: tactics, mate and attack, endgame, strategy, calculation.
 BRANCHES = ("T", "M", "E", "S", "C")
-# Время экзамена уровня: секунд на позицию (решение по умолчанию 20.11 — как в проверке курса матов, минута на задачу).
+# Level exam time: seconds per position (the default decision 20.11 -- as in the mate course check, a minute per puzzle).
 SECONDS_PER_POSITION = 60
 
 
 @lru_cache(maxsize=1)
 def levels() -> dict[str, dict]:
-    """Наборы вопросов из файла данных: код раздела («level3») → запись уровня. Файл читается один раз на процесс."""
+    """Question sets from the data file: section code ("level3") -> level record. The file is read once per process."""
     with DATA.open(encoding="utf-8") as handle:
         return {f"{PREFIX}{item['level']}": item for item in json.load(handle)}
 
@@ -42,27 +46,32 @@ def is_level_section(section: str) -> bool:
 
 
 def questions(section: str) -> list[dict]:
-    """Вопросы уровня для клиента — без ответов; id вопроса — его порядковый номер в наборе, начиная с 1."""
+    """
+    The level's questions for the client -- without answers; a question id is its ordinal number in the set, starting from 1.
+    """
     return [{"id": index, "fen": q["fen"], "color": "white" if chess.Board(q["fen"]).turn else "black",
              "previous_move": q["previous_move"], "branch": q["branch"]}
             for index, q in enumerate(levels()[section]["questions"], 1)]
 
 
 def time_limit_s(section: str) -> int | None:
-    """Время на экзамен уровня в секундах (SECONDS_PER_POSITION на позицию); у остальных тестов времени нет — None."""
+    """The level exam time in seconds (SECONDS_PER_POSITION per position); other tests have no time -- None."""
     if not is_level_section(section):
         return None
     return SECONDS_PER_POSITION * len(levels()[section]["questions"])
 
 
 def question(section: str, question_id: int) -> dict | None:
-    """Полная запись вопроса (с ответом) по номеру в наборе; номера вне набора — None."""
+    """The full question record (with the answer) by number in the set; numbers outside the set -- None."""
     items = levels()[section]["questions"]
     return items[question_id - 1] if 1 <= question_id <= len(items) else None
 
 
 def progress(item: dict, played: list[str]):
-    """Сверка ходов игрока с решением вопроса (src/services/exam.play); без поля moves решение — один ход."""
+    """
+    Checking the player's moves against the question solution (src/services/exam.play); without the moves field the solution
+    is one move.
+    """
     from src.services.exam import play
 
     return play(chess.Board(item["fen"]), item.get("moves") or [item["answer"]], played)
@@ -73,7 +82,7 @@ def is_correct(item: dict, uci: str) -> bool:
 
 
 def branch_profile(review: list[dict]) -> dict[str, dict]:
-    """Верно / всего по ветвям — для итога и карты навыков."""
+    """Correct / total by branch -- for the result and the skills map."""
     profile: dict[str, dict] = {}
     for row in review:
         entry = profile.setdefault(row["branch"], {"correct": 0, "total": 0})

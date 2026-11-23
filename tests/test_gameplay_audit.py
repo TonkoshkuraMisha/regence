@@ -1,7 +1,7 @@
 # --- FILE: tests/test_gameplay_audit.py ---
 """
-Сценарии, на которых доска клиента расходилась с сервером: отклонённый ход без позиции в ответе,
-сбой БД после уже принятого хода, потерянный game_over, просмотр чужой партии во время своей.
+Scenarios where the client board diverged from the server: a rejected move with no position in the reply,
+a DB failure after an already accepted move, a lost game_over, viewing someone else's game during one's own.
 """
 
 import pytest
@@ -36,12 +36,12 @@ async def _players(db, *names: str) -> list[User]:
     return users
 
 
-# --- отклонённый ход возвращает позицию --------------------------------------------------
+# --- a rejected move returns the position --------------------------------------------------
 
 
 @pytest.mark.parametrize(("user_id", "move"), [(912, "e7e5"), (911, "e2e5")])
 async def test_rejected_move_returns_current_position(game, user_id, move):
-    """Чужая очередь хода и нелегальный ход: клиент уже нарисовал ход и должен получить позицию назад."""
+    """Move out of turn and an illegal move: the client has already drawn the move and must get the position back."""
     await _run(_user(911), [{"action": "make_move", "game_id": game, "move": "e2e4", "state_version": 0}])
     if user_id == 912:
         await _run(_user(912), [{"action": "make_move", "game_id": game, "move": "e7e5", "state_version": 1}])
@@ -49,11 +49,11 @@ async def test_rejected_move_returns_current_position(game, user_id, move):
     else:
         await _run(_user(912), [{"action": "make_move", "game_id": game, "move": "d7d5", "state_version": 1}])
         mover, version = 911, 2
-        move = "e4e6"  # нелегальный ход пешкой
+        move = "e4e6"  # illegal pawn move
 
     socket = await _run(_user(mover), [{"action": "make_move", "game_id": game, "move": move}])
     if mover == 912:
-        # 912 только что сходил — сейчас очередь белых.
+        # 912 has just moved; it is White's turn now.
         assert socket.events("error")[0]["message"] == "not_your_turn"
     else:
         assert socket.events("error")[0]["message"] == "illegal_move"
@@ -69,7 +69,7 @@ async def test_outsider_does_not_get_position_in_rejection(game):
     assert error["fen"] is None and error["pgn"] is None
 
 
-# --- сбой после принятого хода не срывает рассылку -----------------------------------------
+# --- a failure after an accepted move does not break the broadcast -----------------------------------------
 
 
 async def test_move_is_broadcast_even_if_db_sync_fails(game, monkeypatch):
@@ -103,7 +103,7 @@ async def test_garbage_state_version_is_treated_as_missing(game):
     assert len(socket.events("move_made")) == 1
 
 
-# --- предложение ничьей -------------------------------------------------------------------
+# --- draw offer -------------------------------------------------------------------
 
 
 async def test_draw_offer_survives_reconnect_snapshot(game):
@@ -113,7 +113,7 @@ async def test_draw_offer_survives_reconnect_snapshot(game):
     ])
     assert pending_draw_offer(await state_manager.get_game_state(game)) == 911
 
-    # Соперник переподключается: снимок партии сообщает о действующем предложении.
+    # The opponent reconnects: the game snapshot reports the pending offer.
     socket = await _run(_user(912), [])
     snapshot = socket.events("match_found")[0]
     assert snapshot["draw_offer_from"] == 911
@@ -125,7 +125,7 @@ async def test_draw_offer_after_game_end_does_not_recreate_state(game):
     await state_manager.clear_game_state(game)
 
     await _run(_user(911), [{"action": "offer_draw", "game_id": game}])
-    # Либо состояния нет, либо оно целиком восстановлено из БД — но не «огрызок» из одного поля.
+    # Either there is no state, or it is fully restored from the DB, but not a "stub" with a single field.
     state = await state_manager.redis.hgetall(f"game:{game}:state")
     assert not state.get("draw_offer")
     assert state == {} or "white_id" in state
@@ -134,13 +134,13 @@ async def test_draw_offer_after_game_end_does_not_recreate_state(game):
 async def test_decline_without_offer_is_ignored(game):
     socket = await _run(_user(912), [{"action": "decline_draw", "game_id": game}])
     assert not socket.sent or not socket.events("draw_declined")
-    # Свой собственный оффер «отклонить» тоже нельзя.
+    # Declining one's own offer is not allowed either.
     await _run(_user(911), [{"action": "offer_draw", "game_id": game}])
     await _run(_user(911), [{"action": "decline_draw", "game_id": game}])
     assert pending_draw_offer(await state_manager.get_game_state(game)) == 911
 
 
-# --- зрители ------------------------------------------------------------------------------
+# --- spectators ------------------------------------------------------------------------------
 
 
 async def test_starting_a_game_stops_spectating(db_session, game):
@@ -159,11 +159,11 @@ async def test_spectate_of_finished_game_has_error_code():
 
 
 def test_flood_close_code_differs_from_session_revoked():
-    """1008 клиент понимает как отозванную сессию и разлогинивает — флуд так закрывать нельзя."""
+    """The client treats 1008 as a revoked session and logs out, so flooding must not be closed this way."""
     assert ws_module.WS_CLOSE_FLOOD != ws_module.WS_CLOSE_POLICY_VIOLATION
 
 
-# --- итог партии по HTTP ------------------------------------------------------------------
+# --- game result over HTTP ------------------------------------------------------------------
 
 
 async def test_game_summary_reports_result(client, db_session):
@@ -185,12 +185,12 @@ async def test_game_summary_reports_result(client, db_session):
     assert client.get(f"{API}/profile/games/999999/summary").status_code == 404
 
 
-# --- боты ---------------------------------------------------------------------------------
+# --- bots ---------------------------------------------------------------------------------
 
 
 @pytest.mark.parametrize("fen", [
-    "8/8/8/8/8/8/8/8 w - - 0 1",        # нет королей
-    "kK6/8/8/8/8/8/8/8 w - - 0 1",      # короли рядом
+    "8/8/8/8/8/8/8/8 w - - 0 1",        # no kings
+    "kK6/8/8/8/8/8/8/8 w - - 0 1",      # kings adjacent
 ])
 def test_bot_move_rejects_impossible_position(client, fen):
     response = client.post(f"{API}/bots/move", json={"bot_id": "philidor", "fen": fen})

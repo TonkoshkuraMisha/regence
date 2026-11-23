@@ -1,5 +1,5 @@
-// Дымовая проверка: каждый маршрут приложения открывается без падения — гостем и с входом, когда сервер отвечает
-// ошибкой и когда сети нет. Список маршрутов берётся из App.tsx, параметры подставляются образцами.
+// Smoke check: every app route opens without crashing — as a guest and logged in, when the server answers with
+// an error and when there is no network. The route list is taken from App.tsx, parameters are filled in with samples.
 
 import {act, render} from '@testing-library/react';
 import {MemoryRouter} from 'react-router-dom';
@@ -51,8 +51,8 @@ async function open(path: string, fetchMode: 'error' | 'offline', logged: boolea
     return errors;
 }
 
-describe('все маршруты открываются', () => {
-    it('маршруты найдены, страница действительно рисуется', async () => {
+describe('all routes open', () => {
+    it('routes are found, the page is really rendered', async () => {
         expect(ROUTES.length).toBeGreaterThan(40);
         vi.stubGlobal('fetch', vi.fn(async () => ({ok: false, status: 404, json: async () => ({})}) as Response));
         const view = await act(async () => render(<MemoryRouter initialEntries={['/learn/course']}><App/></MemoryRouter>));
@@ -61,7 +61,7 @@ describe('все маршруты открываются', () => {
     });
 
     for (const [mode, logged] of [['error', false], ['error', true], ['offline', true]] as const) {
-        it(`сервер: ${mode}, ${logged ? 'с входом' : 'гость'}`, async () => {
+        it(`server: ${mode}, ${logged ? 'logged in' : 'guest'}`, async () => {
             const failures: string[] = [];
             for (const path of ROUTES) failures.push(...(await open(path, mode, logged)));
             expect(failures, `\n${failures.join('\n')}`).toEqual([]);

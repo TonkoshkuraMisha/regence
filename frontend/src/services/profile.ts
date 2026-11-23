@@ -1,15 +1,15 @@
 // --- FILE: frontend/src/services/profile.ts ---
-// Профиль игрока и таблица лидеров: GET /api/v1/profile/<имя> (профиль, лестница, кубки арен), /stats (итоги по всем
-// партиям), /games (страницами; у чемпионов-мастеров — их архив из PGN), /rating-history (значения рейтинга, сохранённые
-// сервером при завершении партий), /profile/leaderboard. Маршруты — src/api/profile.py; всё открыто без входа.
-// Используют Profile.tsx, ChampionGames.tsx и Leaderboard.tsx. Запрос и ошибки — общий apiRequest (http.ts).
+// Player profile and leaderboard: GET /api/v1/profile/<name> (profile, ladder, arena trophies), /stats (totals over all
+// games), /games (paged; for master champions — their PGN archive), /rating-history (rating values saved by the
+// server when games finish), /profile/leaderboard. Routes — src/api/profile.py; everything is open without login.
+// Used by Profile.tsx, ChampionGames.tsx and Leaderboard.tsx. Request and errors — the common apiRequest (http.ts).
 
 import {apiRequest} from './http';
 
-/** Категория рейтинга по контролю времени; те же коды у сервера. */
+/** Rating category by time control; the same codes on the server. */
 export type RatingCategory = 'bullet' | 'blitz' | 'rapid' | 'classical';
 
-/** Профиль игрока, как его отдаёт GET /profile/<имя>. */
+/** Player profile as served by GET /profile/<name>. */
 export interface UserProfile {
     id: number;
     username: string;
@@ -19,13 +19,13 @@ export interface UserProfile {
     rapid_rating: number;
     classical_rating: number;
     created_at: string;
-    /** Клубная лестница: отдельный рейтинг партий с ботами без подсказок и возвратов хода. */
+    /** Club ladder: a separate rating of games against bots without hints and takebacks. */
     ladder?: { rating: number; games: number; step: number; total: number };
-    /** Кубки арен (таск 33.5): первые, вторые и третьи места — src/services/arena_awards.py. */
+    /** Arena trophies (task 33.5): first, second and third places — src/services/arena_awards.py. */
     arena_trophies?: { gold: number; silver: number; bronze: number };
 }
 
-/** Итоги игрока по всем партиям (GET /stats): считает сервер, а не клиент по загруженной странице. */
+/** Player totals over all games (GET /stats): computed by the server, not by the client from a loaded page. */
 export interface PlayerStats {
     total: number;
     wins: number;
@@ -34,7 +34,7 @@ export interface PlayerStats {
     rated_games: Record<RatingCategory, number>;
 }
 
-/** Партия в истории игрока или в архиве чемпиона. */
+/** Game in a player's history or in a champion's archive. */
 export interface ProfileGame {
     game_id: number;
     white_username: string;
@@ -43,9 +43,9 @@ export interface ProfileGame {
     black_rating: number;
     status: string;
     is_rated: boolean;
-    /** Игрок пользовался наставником (таск 11.3). */
+    /** The player used the mentor (task 11.3). */
     assisted?: boolean;
-    /** Игра вслепую (таск 19.5): ступень и подсмотры. */
+    /** Blindfold play (task 19.5): level and peeks. */
     blindfold?: number | null;
     peeks?: number | null;
     result: string;
@@ -55,13 +55,13 @@ export interface ProfileGame {
     finished_at: string | null;
 }
 
-/** Страница партий: элементы и общее число. */
+/** Page of games: items and total count. */
 export interface ProfileGamesPage {
     items: ProfileGame[];
     total: number;
 }
 
-/** Рейтинг после партии и его изменение за неё (GET /rating-history). */
+/** Rating after a game and its change from that game (GET /rating-history). */
 export interface RatingPoint {
     game_id: number;
     finished_at: string;
@@ -69,7 +69,7 @@ export interface RatingPoint {
     delta: number;
 }
 
-/** Строка таблицы лидеров. */
+/** Leaderboard row. */
 export interface LeaderboardEntry {
     rank: number;
     avatar?: string | null;
@@ -77,14 +77,14 @@ export interface LeaderboardEntry {
     rating: number;
 }
 
-/** Путь профиля игрока: имя кодируется (в именах мастеров бывают пробелы и запятые). */
+/** Player profile path: the name is encoded (master names may contain spaces and commas). */
 const playerPath = (username: string) => `/profile/${encodeURIComponent(username)}`;
 
 export const profileApi = {
-    /** Профиль; нет игрока — UiError с текстом user_not_found, другой отказ — profile.loadFailed. */
+    /** Profile; no player — UiError with text user_not_found, any other refusal — profile.loadFailed. */
     get: (username: string) => apiRequest<UserProfile>(playerPath(username), {}, 'profile.loadFailed'),
     stats: (username: string) => apiRequest<PlayerStats>(`${playerPath(username)}/stats`),
-    /** Партии страницей; sort='asc' — от первых к последним (архив чемпиона). */
+    /** Games by page; sort='asc' — from first to last (champion archive). */
     games: (username: string, limit: number, offset: number, sort?: 'asc') => {
         const params = new URLSearchParams({limit: String(limit), offset: String(offset)});
         if (sort) params.set('sort', sort);
@@ -93,12 +93,12 @@ export const profileApi = {
     ratingHistory: (username: string, category: RatingCategory) =>
         apiRequest<{ points: RatingPoint[] }>(`${playerPath(username)}/rating-history?category=${category}`),
     /**
-     * Отметить игру вслепую (таск 19.5) в законченной партии без рейтинга: ступень и число подсмотров. Сервер примет
-     * отметку только от участника такой партии; сбой не важен для игрока — вызывающий его глотает.
+     * Mark blindfold play (task 19.5) in a finished unrated game: level and number of peeks. The server accepts
+     * the mark only from a participant of such a game; a failure does not matter to the player — the caller swallows it.
      */
     markBlindfold: (gameId: number | string, level: number, peeks: number) =>
         apiRequest<unknown>(`/profile/games/${gameId}/blindfold`, {method: 'POST', body: JSON.stringify({level, peeks})}),
-    /** Таблица лидеров категории: первые limit игроков. */
+    /** Leaderboard of a category: the first `limit` players. */
     leaderboard: (category: RatingCategory, limit: number) =>
         apiRequest<LeaderboardEntry[]>(`/profile/leaderboard?limit=${limit}&category=${category}`, {}, 'leaderboard.loadFailed'),
 };

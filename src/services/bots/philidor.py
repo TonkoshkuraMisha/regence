@@ -1,17 +1,18 @@
 # --- FILE: src/services/bots/philidor.py ---
 """
-Исторический бот «Франсуа-Андре Филидор»: дебютная книга и правила стиля.
+Historical bot "Francois-Andre Philidor": opening book and style rules.
 
-Дебют — книга из партий прототипа (books/philidor.json, собирает scripts/build_opening_books.py) и несколько
-«фирменных» начал, заданных здесь (DEFAULT_PHILIDOR_BOOK).
+Opening — a book from the prototype's games (books/philidor.json, built by scripts/build_opening_books.py) and several
+"signature" openings set here (DEFAULT_PHILIDOR_BOOK).
 
-Стиль (PHILIDOR_STYLE) — бонусы в сантипешках кандидатам движка: ходы пешками в центр и за пространством («пешки —
-душа шахмат»), конь не встаёт перед своей пешкой «c» или «f», пока она не пошла, сохранение пешечной структуры.
-Бонусы только выбирают среди ходов, близких по оценке к лучшему (окно — blunder_guard_cp); оценку позиции они не
-меняют.
+Style (PHILIDOR_STYLE) — bonuses in centipawns for engine candidates: pawn moves into the centre and for space ("pawns are the
+soul of chess"), a knight does not stand in front of its own "c" or "f" pawn until it has moved, preserving the pawn structure.
+The bonuses only choose among moves close in evaluation to the best one (the window is blunder_guard_cp); they do not
+change the position evaluation.
 
-Сила: заявленный рейтинг и ограничение движка UCI_Elo — 1850; измеренная матчами — calibration.json. Порядок выбора
-хода — base.HistoricalBot; реплики бота — ключи каталога botComments.philidor.* на клиенте.
+Strength: the declared rating and the engine's UCI_Elo limit — 1850; the match-measured one — calibration.json. The move
+selection
+order is base.HistoricalBot; the bot's remarks are the botComments.philidor.* catalog keys on the client.
 """
 
 import chess
@@ -42,13 +43,16 @@ from src.services.bots.style import (
     to,
 )
 
-# Ширина окна выбора хода, сп (base.HistoricalBot._window): с опорным ходом силы бот может уступить ему не больше
-# половины этого значения, без движка — лучшему ходу не больше всего значения. Чем шире, тем больше простора стилю.
+# Width of the move selection window, cp (base.HistoricalBot._window): with a strength reference move the bot may fall short of
+# it by at most
+# half of this value, without an engine — short of the best move by at most the whole value. The wider, the more room for
+# style.
 PHILIDOR_BLUNDER_GUARD_CP = 120.0
 
-# Фирменные линии: позиция (FEN без счётчиков ходов) → [(UCI, вес, ключ реплики botComments.*)]. Поверх книги из
-# books/*.json (load_bot_opening_book): ход из файла заменяет совпадающий, а фирменные ходы, которых в файле нет,
-# добавляются.
+# Signature lines: position (FEN without move counters) → [(UCI, weight, remark key botComments.*)]. On top of the book from
+# books/*.json (load_bot_opening_book): a move from the file replaces the matching one, and signature moves absent from the
+# file
+# are added.
 DEFAULT_PHILIDOR_BOOK: dict[str, list[BookEntry]] = {
     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -": [
         ("e2e4", 92, "philidor.bookE4"),
@@ -72,14 +76,14 @@ DEFAULT_PHILIDOR_BOOK: dict[str, list[BookEntry]] = {
 }
 
 PHILIDOR_OPENING_BOOK = load_bot_opening_book("philidor", DEFAULT_PHILIDOR_BOOK)
-# Принудительно: на 1.e4 e5 2.Nf3 бот всегда отвечает d6 (защита его имени), даже если в книге из партий архива
-# есть другие ответы.
+# Forced: against 1.e4 e5 2.Nf3 the bot always answers d6 (the defence of its name), even if the book from the archive games
+# has other replies.
 PHILIDOR_OPENING_BOOK["rnbqkbnr/pppp1ppp/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq -"] = [
     ("d7d6", 100, "philidor.bookDefense"),
 ]
 
 
-# Пешки для условия piece_on в правилах «конь не перед пешкой c/f» (поля c2/f2 и c7/f7).
+# Pawns for the piece_on condition in the "knight not in front of the c/f pawn" rules (squares c2/f2 and c7/f7).
 WHITE_PAWN = chess.Piece(chess.PAWN, chess.WHITE)
 BLACK_PAWN = chess.Piece(chess.PAWN, chess.BLACK)
 
@@ -97,7 +101,7 @@ PHILIDOR_STYLE = Style(
             ),
         ),
     ),
-    # «Конь не должен становиться впереди пешки c»: штраф за Nc3/Nf3 (Nc6/Nf6), пока пешка не пошла.
+    # "A knight should not stand in front of the c pawn": a penalty for Nc3/Nf3 (Nc6/Nf6) while the pawn has not moved.
     Group(
         piece(chess.KNIGHT) & by_move(10) & side(chess.WHITE),
         Rule(to({chess.C3}) & piece_on(chess.C2, WHITE_PAWN), -55.0),
@@ -110,12 +114,12 @@ PHILIDOR_STYLE = Style(
     ),
     Rule(ALWAYS, pawn_structure_delta),
 )
-# Функция оценки стиля как самостоятельное имя (её импортируют тесты бота).
+# The style evaluation function as a standalone name (bot tests import it).
 evaluate_philidor_style_bonus = PHILIDOR_STYLE.evaluate
 
 
 class PhilidorBot(HistoricalBot):
-    """Франсуа-Андре Филидор: UCI_Elo 1850, глубина 6, уровень 7 (значения базового класса); разброс ±8 сп, MultiPV 6."""
+    """Francois-Andre Philidor: UCI_Elo 1850, depth 6, level 7 (base class values); spread +-8 cp, MultiPV 6."""
 
     bot_id = "philidor"
     engine_source_name = "philidor_style_engine_deep"
@@ -129,7 +133,7 @@ class PhilidorBot(HistoricalBot):
 
 philidor_bot = PhilidorBot()
 
-# Реэкспорт общих функций base: старые импорты тестов и src/api/bots.py идут через этот модуль.
+# Re-export of common base functions: the old imports of tests and src/api/bots.py go through this module.
 __all__ = [
     "CENTER_SQUARES",
     "EXTENDED_CENTER",

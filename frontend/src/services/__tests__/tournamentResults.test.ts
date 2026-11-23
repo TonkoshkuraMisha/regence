@@ -1,4 +1,4 @@
-// Итоги турнира для экрана окончания: строки таблицы (по очкам и на выбывание), сводка игрока, строки арены.
+// Tournament results for the end screen: table rows (by points and knockout), the player's summary, arena rows.
 
 import {describe, expect, it} from 'vitest';
 import type {ArenaStanding} from '../arenas';
@@ -8,7 +8,7 @@ import type {Tournament} from '../tournaments';
 const tr = ((key: string) => key) as never;
 
 const player = (seat: number, kind: 'user' | 'bot', place: number | null, rating: number, eliminated: number | null = null) => ({
-    seat, kind, user_id: kind === 'user' ? 1 : null, bot_key: kind === 'bot' ? `morphy` : null, personality_name: `Бот ${seat}`,
+    seat, kind, user_id: kind === 'user' ? 1 : null, bot_key: kind === 'bot' ? `morphy` : null, personality_name: `Bot ${seat}`,
     rating, place, eliminated_round: eliminated, config: null,
 }) as Tournament['players'][number];
 
@@ -21,13 +21,13 @@ const base = {
     created_at: '', finished_at: '', my_seat: 2, withdrawn: false,
 } as const;
 
-describe('итоги турнира', () => {
-    it('очки пишутся с запятой', () => {
+describe('tournament results', () => {
+    it('points are written with a comma', () => {
         expect(formatPoints(3)).toBe('3');
         expect(formatPoints(2.5)).toBe('2,5');
     });
 
-    it('таблица по местам, свою строку отмечает my_seat', () => {
+    it('a table by places, the own row is marked by my_seat', () => {
         const t = {
             ...base,
             players: [player(1, 'bot', 2, 1700), player(2, 'user', 1, 1500), player(3, 'bot', 3, 1600)],
@@ -43,7 +43,7 @@ describe('итоги турнира', () => {
         ]);
     });
 
-    it('на выбывание: таблицы очков нет — места участников, выбывшие с крестиком', () => {
+    it('knockout: there is no points table — the participants\' places, the eliminated with a cross', () => {
         const t = {
             ...base, format: 'knockout', size: 2,
             players: [player(1, 'bot', 1, 1700), player(2, 'user', 2, 1500, 1)], games: [], standings: [],
@@ -52,7 +52,7 @@ describe('итоги турнира', () => {
         expect(rows.map((r) => [r.place, r.score, r.mine])).toEqual([[1, '', false], [2, '×', true]]);
     });
 
-    it('сводка: победы, ничьи, поражения считаются по цвету игрока', () => {
+    it('summary: wins, draws, losses are counted by the player\'s colour', () => {
         const t = {
             ...base,
             players: [player(1, 'bot', 2, 1700), player(2, 'user', 1, 1500), player(3, 'bot', 3, 1600)],
@@ -63,7 +63,7 @@ describe('итоги турнира', () => {
         expect(tournamentStats({...t, my_seat: null})).toBeNull();
     });
 
-    it('подпись под именем и сводка турнира: победы/ничьи/поражения, доли ничьих и побед белых', () => {
+    it('a label under the name and the tournament summary: wins/draws/losses, the shares of draws and of White wins', () => {
         const t = {
             ...base,
             players: [player(1, 'bot', 2, 1700), player(2, 'user', 1, 1500), player(3, 'bot', 3, 1600)],
@@ -75,7 +75,7 @@ describe('итоги турнира', () => {
         expect(tournamentSummary({...t, games: [game(4, 1, 3, null)]})).toBeNull();
     });
 
-    it('CSV: заголовок, кавычки в именах удваиваются, пустой рейтинг — пустое поле', () => {
+    it('CSV: a header, quotes in names are doubled, an empty rating — an empty field', () => {
         const csv = resultsCsv([
             {key: 1, place: 1, name: 'a"b', rating: 1800, score: '2,5', mine: false},
             {key: 2, place: 2, name: 'b', rating: null, score: '1', mine: true},
@@ -83,7 +83,7 @@ describe('итоги турнира', () => {
         expect(csv).toBe('place,name,rating,score\r\n"1","a""b","1800","2,5"\r\n"2","b","","1"');
     });
 
-    it('арена: только сыгравшие, своя строка — по имени', () => {
+    it('arena: only those who played, the own row — by name', () => {
         const standing = (place: number, username: string, games: number): ArenaStanding => ({
             place, username, score: 4, games, wins: 2, fire: false, rating: 1800,
         });

@@ -1,4 +1,4 @@
-// «Просмотр» (таск 16.3): партия дня, идущие партии и переход в режим зрителя, архив с фильтрами, подборки.
+// "Watch" (task 16.3): the game of the day, running games and moving to spectator mode, an archive with filters, collections.
 
 import {act, fireEvent, render, screen} from '@testing-library/react';
 import {MemoryRouter, Route, Routes, useLocation} from 'react-router-dom';
@@ -39,23 +39,23 @@ function renderPage() {
 
 afterEach(() => vi.unstubAllGlobals());
 
-describe('Просмотр', () => {
-    it('партия дня и пустой список идущих партий', async () => {
+describe('Watch', () => {
+    it('the game of the day and an empty list of running games', async () => {
         stub();
         renderPage();
         expect(await screen.findByTestId('watch-daily')).toHaveAttribute('href', '/game/5');
         expect(await screen.findByTestId('watch-live-empty')).toBeInTheDocument();
     });
 
-    it('«Смотреть» открывает партию в режиме зрителя на главной доске', async () => {
+    it('"Watch" opens the game in spectator mode on the main board', async () => {
         stub([{game_id: 9, white_username: 'a', white_rating: 1500, black_username: 'b', black_rating: 1490,
             base_time_ms: 180000, increment_ms: 2000, spectators_count: 3}]);
         renderPage();
-        fireEvent.click(await screen.findByRole('button', {name: 'Смотреть'}));
+        fireEvent.click(await screen.findByRole('button', {name: 'Watch'}));
         expect(screen.getByTestId('probe')).toHaveTextContent('{"spectate":9}');
     });
 
-    it('архив: фильтры уходят в запрос, листание страниц', async () => {
+    it('the archive: filters go into the request, paging', async () => {
         const fetchMock = stub();
         renderPage();
         fireEvent.click(screen.getByTestId('watch-tab-archive'));
@@ -72,11 +72,11 @@ describe('Просмотр', () => {
         expect(last()).toMatch(/offset=20/);
     });
 
-    it('подборки: показываются только непустые', async () => {
+    it('collections: only non-empty ones are shown', async () => {
         stub();
         renderPage();
         fireEvent.click(screen.getByTestId('watch-tab-collections'));
-        expect(await screen.findByTestId('collection-shortest')).toHaveTextContent('11 пх');
+        expect(await screen.findByTestId('collection-shortest')).toHaveTextContent('11 plies');
         expect(screen.queryByTestId('collection-checks')).toBeNull();
     });
 });

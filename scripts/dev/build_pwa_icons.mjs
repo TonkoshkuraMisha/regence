@@ -1,12 +1,12 @@
 // --- FILE: scripts/dev/build_pwa_icons.mjs ---
-// Иконки приложения (таск 24.2): конь из набора rhosgfx (CC0-1.0, ATTRIBUTION.md) на тёмном фоне «шахматной
-// комнаты» в рамке цвета самшита — как favicon.svg, но рисунком, а не буквой шрифта (шрифт с ♞ есть не везде).
-// Пишет frontend/public/icons/icon.svg и PNG нужных размеров; растеризует Chromium из Playwright фронтенда.
+// App icons (task 24.2): the knight from the rhosgfx set (CC0-1.0, ATTRIBUTION.md) on the dark background of the "chess
+// room" in a boxwood-coloured frame - like favicon.svg, but a drawing and not a font glyph (a font with ♞ is not everywhere).
+// Writes frontend/public/icons/icon.svg and PNGs of the needed sizes; rasterised by the Chromium from the frontend's Playwright.
 //
 //   cd frontend && node ../scripts/dev/build_pwa_icons.mjs
 //
-// maskable — без скруглений и рамки, конь в «безопасной зоне» (80 % по центру): Android сам обрезает иконку кругом
-// или каплей.
+// maskable - no rounded corners and no frame, the knight inside the "safe zone" (80 % in the centre): Android crops the icon to a circle itself
+// or a teardrop.
 
 import {mkdirSync, readFileSync, writeFileSync} from 'node:fs';
 import {dirname, join} from 'node:path';
@@ -26,7 +26,7 @@ const knightSvg = readFileSync(join(PUBLIC, 'assets', 'pieces', 'rhosgfx', 'wN.s
 const knightBody = knightSvg.replace(/^[\s\S]*?<svg[^>]*>/, '').replace(/<\/svg>\s*$/, '');
 const knightBox = /viewBox="([^"]+)"/.exec(knightSvg)?.[1] ?? '0 0 72 72';
 
-/** Иконка 512×512: plain — со скруглением и рамкой, maskable — фон до краёв, конь мельче. */
+/** 512x512 icon: plain - with rounded corners and a frame, maskable - background to the edges, a smaller knight. */
 function icon(kind) {
     const maskable = kind === 'maskable';
     const size = maskable ? 300 : 360;
@@ -46,7 +46,7 @@ const TARGETS = [
     {file: 'icon-192.png', kind: 'plain', size: 192},
     {file: 'icon-512.png', kind: 'plain', size: 512},
     {file: 'icon-maskable-512.png', kind: 'maskable', size: 512},
-    // iOS сам скругляет углы и не любит прозрачность — фон до краёв, как у maskable.
+    // iOS rounds the corners itself and dislikes transparency - background to the edges, as with maskable.
     {file: 'apple-touch-icon.png', kind: 'maskable', size: 180},
 ];
 

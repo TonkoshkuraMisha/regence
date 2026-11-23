@@ -1,10 +1,10 @@
 # --- FILE: src/models/beta.py ---
 """
-Программа беты (таск 24.4): коды-приглашения для закрытой регистрации и сообщения «Сообщить о проблеме».
+The beta programme (task 24.4): invite codes for closed registration and "Report a problem" messages.
 
-Приглашения создаёт и отзывает модератор; uses — сколько человек зарегистрировалось по коду (и основа лимита).
-Сообщение о проблеме может прийти и от гостя (user_id пуст); к тексту игрока сервер и клиент прикладывают
-контекст: страницу, версию приложения, язык и размер экрана.
+Invites are created and revoked by a moderator; uses is how many people registered with the code (and the basis of the limit).
+A problem report can also come from a guest (user_id is empty); to the player's text the server and the client attach
+context: the page, the app version, the language and the screen size.
 """
 
 from datetime import datetime
@@ -14,22 +14,22 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from src.models.base import Base, one_of
 
-# Статусы отзыва игрока (src/services/beta.py, FEEDBACK_STATUSES).
+# Statuses of a player's feedback (src/services/beta.py, FEEDBACK_STATUSES).
 FEEDBACK_STATUSES = ("new", "in_progress", "done", "rejected")
 
 
 class Invite(Base):
     """
-    Код-приглашение для закрытой регистрации: лимит использований, срок действия, отзыв; uses — сколько человек уже
-    зарегистрировалось по коду.
+    An invite code for closed registration: usage limit, expiry, revocation; uses is how many people have already
+    registered with the code.
     """
     __tablename__ = "invites"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     code: Mapped[str] = mapped_column(String(32), unique=True, index=True)
-    # Пометка модератора для себя: кому выдан код (ввод человека, не строка интерфейса).
+    # The moderator's own note: to whom the code was given (human input, not an interface string).
     note: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    # Пусто — без лимита.
+    # Empty - no limit.
     max_uses: Mapped[int | None] = mapped_column(Integer, nullable=True)
     uses: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -40,8 +40,9 @@ class Invite(Base):
 
 class Feedback(Base):
     """
-    Сообщение «Сообщить о проблеме»: текст игрока или гостя, контекст (страница, версия, язык, размер экрана) и статус
-    разбора модератором.
+    A "Report a problem" message: the text of a player or a guest, context (page, version, language, screen size) and the
+    status
+    of moderator review.
     """
     __tablename__ = "feedback"
     __table_args__ = (one_of("feedback", "status", FEEDBACK_STATUSES),)
@@ -49,7 +50,7 @@ class Feedback(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     message: Mapped[str] = mapped_column(String(2000))
-    # Контекст: путь страницы, версия приложения, язык интерфейса, размер экрана («1280x720»).
+    # Context: the page path, the app version, the interface language, the screen size ("1280x720").
     page: Mapped[str | None] = mapped_column(String(200), nullable=True)
     app_version: Mapped[str | None] = mapped_column(String(20), nullable=True)
     language: Mapped[str | None] = mapped_column(String(8), nullable=True)

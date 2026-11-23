@@ -1,5 +1,5 @@
 # --- FILE: tests/test_tournament_rules.py ---
-"""Правила турниров (таск 15.1): таблицы Бергера, места кругового турнира, матчи и сетка на выбывание."""
+"""Tournament rules (task 15.1): Berger tables, round-robin placings, matches and the knockout bracket."""
 
 from itertools import combinations
 
@@ -17,7 +17,7 @@ from src.services.tournament_rules import (
     shortened_control,
 )
 
-# Опубликованные таблицы Бергера ФИДЕ.
+# Published FIDE Berger tables.
 FIDE_BERGER_4 = [[(1, 4), (2, 3)], [(4, 3), (1, 2)], [(2, 4), (3, 1)]]
 FIDE_BERGER_6 = [
     [(1, 6), (2, 5), (3, 4)],
@@ -40,7 +40,7 @@ def test_round_robin_everyone_meets_once_and_colors_balance(n):
     pairs = [tuple(sorted(p)) for rnd in rounds for p in rnd]
     assert sorted(pairs) == sorted(combinations(range(1, n + 1), 2))
     for rnd in rounds:
-        assert sorted(s for p in rnd for s in p) == list(range(1, n + 1))  # каждый играет в каждом туре
+        assert sorted(s for p in rnd for s in p) == list(range(1, n + 1))  # everyone plays everyone in every round
     whites = {s: sum(1 for rnd in rounds for w, _ in rnd if w == s) for s in range(1, n + 1)}
     assert max(whites.values()) - min(whites.values()) <= 1
 
@@ -52,8 +52,9 @@ def test_round_robin_sizes(n):
 
 
 def test_standings_points_then_head_to_head_then_sonneborn_berger():
-    # 1 и 2 набрали по 2 очка, 2 выиграл личную встречу → 2 выше; 3 и 4 по 1 очку, личная встреча — ничья,
-    # Зоннеборн–Бергер: 3 сделал ничью с лидером (2 очка → 1), 4 — с 1 (2 очка → 1)... разводим примером ниже.
+    # 1 and 2 scored 2 points each and 2 won the head-to-head, so 2 is higher; 3 and 4 scored 1 point each,
+    # the head-to-head is a draw,
+    # Sonneborn-Berger: 3 drew with the leader (2 points -> 1), 4 with 1 (2 points -> 1)... separated by the example below.
     games = [
         GameRecord(2, 1, "1-0"),
         GameRecord(1, 3, "1-0"),
@@ -68,7 +69,7 @@ def test_standings_points_then_head_to_head_then_sonneborn_berger():
 
 
 def test_sonneborn_berger_breaks_tie_when_head_to_head_is_equal():
-    # 3 и 4 по 1,5 очка, между собой ничья. 3 обыграл сильнейшего (1, 2 очка), 4 — слабейшего.
+    # 3 and 4 scored 1.5 points each and drew between themselves. 3 beat the strongest (1, 2 points), 4 the weakest.
     games = [
         GameRecord(1, 2, "1-0"),
         GameRecord(1, 4, "1-0"),
@@ -114,7 +115,7 @@ def test_draw_leads_to_rematch_with_swapped_colors_then_armageddon():
     armageddon = match_state(1, 8, two_draws).next_game
     assert armageddon is not None and (armageddon.stage, armageddon.white, armageddon.black) == ("armageddon", 8, 1)
 
-    # В решающей партии ничья — победа чёрных (сеяного выше).
+    # In the deciding game a draw is a win for Black (the higher seed).
     decided = match_state(1, 8, [*two_draws, ("armageddon", GameRecord(8, 1, "1/2-1/2"))])
     assert decided.winner == 1 and decided.next_game is None
     assert match_state(1, 8, [*two_draws, ("armageddon", GameRecord(8, 1, "1-0"))]).winner == 8
@@ -126,7 +127,7 @@ def test_shortened_control_is_half_but_at_least_a_minute():
 
 
 def test_knockout_places():
-    # Восемь: 1 — чемпион, 2 — финалист, 4 и 3 вылетели в полуфинале, остальные в четвертьфинале.
+    # Eight players: 1 is the champion, 2 the finalist, 4 and 3 went out in the semifinal, the rest in the quarterfinal.
     places = knockout_places(8, {8: 1, 5: 1, 7: 1, 6: 1, 4: 2, 3: 2, 2: 3}, champion=1)
     assert places == {1: 1, 2: 2, 3: 3, 4: 3, 5: 5, 6: 5, 7: 5, 8: 5}
     assert knockout_places(4, {4: 1, 3: 1, 2: 2}, champion=1) == {1: 1, 2: 2, 3: 3, 4: 3}

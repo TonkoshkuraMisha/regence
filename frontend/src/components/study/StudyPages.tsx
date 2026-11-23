@@ -1,12 +1,12 @@
 // --- FILE: frontend/src/components/study/StudyPages.tsx ---
-// Совместный разбор и занятие с тренером (таск 17.3). /study — создать комнату, войти по коду, свои материалы;
-// /study/:code — комната: ведущий ведёт доску (ходы, стрелки четырёх цветов, светлая и тёмная подсветка, «призрак»,
-// позиция по FEN), задаёт вопрос (ход на своей доске или выбор варианта, с таймером) и копит шаги занятия в урок формата
-// школы (14.1): скачать JSON или сохранить как материал клуба. Ученики видят доску (опрос раз в POLL_MS), отвечают, чат.
-// Данные — services/study.ts (/api/v1/study, только с входом; комната живёт в Redis, src/services/study_room.py).
-// Маршруты /study и /study/:code (App.tsx). Уроки проверяет content/lessons/validate.ts до скачивания и сохранения.
-// StudyLobby — вход (создать комнату, ввести код, свои материалы); StudyRoomPage — комната ведущего и ученика;
-// lessonProblems — ошибки формата урока (пусто — урок можно скачать или сохранить).
+// Joint review and a coach session (task 17.3). /study - create a room, join by code, own materials;
+// /study/:code - the room: the host drives the board (moves, arrows of four colours, light and dark highlights, "ghost",
+// position by FEN), asks a question (a move on their own board or a choice of variants, with a timer) and accumulates session steps into a lesson of the
+// school format (14.1): download JSON or save as a club material. Students see the board (polling every POLL_MS), answer, chat.
+// Data - services/study.ts (/api/v1/study, signed-in only; the room lives in Redis, src/services/study_room.py).
+// Routes /study and /study/:code (App.tsx). Lessons are validated by content/lessons/validate.ts before download and saving.
+// StudyLobby - entry (create a room, enter a code, own materials); StudyRoomPage - the host's and student's room;
+// lessonProblems - lesson format errors (empty - the lesson can be downloaded or saved).
 
 import {useCallback, useEffect, useRef, useState} from 'react';
 import {Link, useNavigate, useParams} from 'react-router-dom';
@@ -23,24 +23,24 @@ import {PuzzleBoard} from '../puzzles/PuzzleBoard';
 import {validateLesson} from '../../content/lessons/validate';
 import type {CourseInfo, Lesson} from '../../content/lessons/format';
 
-/** Период опроса состояния комнаты, мс: рассылки по WebSocket у комнаты нет. */
+/** Room state polling period, ms: the room has no WebSocket broadcast. */
 export const POLL_MS = 1000;
-/** Цвета стрелок ведущего; порядок — порядок кнопок выбора цвета. */
+/** Host arrow colours; order is the order of the colour picker buttons. */
 const COLORS: ArrowColor[] = ['green', 'red', 'blue', 'yellow'];
-/** Инструмент ведущего: ход фигурой, стрелка или светлая/тёмная подсветка поля. */
+/** Host tool: moving a piece, an arrow, or a light/dark square highlight. */
 type Tool = 'move' | 'arrow' | 'light' | 'dark';
-/** Служебный курс «club», под которым проверяется урок занятия (в каталоге курсов его нет). */
-const CLUB_COURSE: CourseInfo = {id: 'club', order: 1, title: {en: 'Club', uk: 'Club', ru: 'Club'}, summary: {en: '', uk: '', ru: ''}};
-/** Сколько последних вопросов занятия идёт в экзамен урока. */
+/** Service course "club" under which the session lesson is validated (it is not in the course catalogue). */
+const CLUB_COURSE: CourseInfo = {id: 'club', order: 1, title: {en: 'Club', uk: 'Club'}, summary: {en: '', uk: ''}};
+/** How many of the last session questions go into the lesson exam. */
 const MAX_EXAM = 5;
 
-/** Урок из шагов занятия (формат 14.1): все шаги — по порядку, вопросы занятия (до MAX_EXAM последних) — экзамен. */
+/** Lesson from the session steps (format 14.1): all steps in order, session questions (up to MAX_EXAM last) form the exam. */
 export function sessionLesson(code: string, title: string, steps: Record<string, unknown>[]): Lesson {
     const name = title || code;
     const questions = steps.filter((s) => s.type === 'choice' || s.type === 'find_move');
     return {
-        id: `club-${code}`.toLowerCase(), course: 'club', order: 1, title: {en: name, uk: name, ru: name},
-        summary: {en: name, uk: name, ru: name}, steps, exam: questions.slice(-MAX_EXAM),
+        id: `club-${code}`.toLowerCase(), course: 'club', order: 1, title: {en: name, uk: name},
+        summary: {en: name, uk: name}, steps, exam: questions.slice(-MAX_EXAM),
     } as unknown as Lesson;
 }
 
@@ -48,9 +48,9 @@ export function lessonProblems(lesson: Lesson): string[] {
     return validateLesson(lesson, [CLUB_COURSE]);
 }
 
-/** Шаг урока из доски (формат 14.1): текст ведущего на всех трёх языках одинаковый — это его собственный текст. */
+/** Lesson step from the board (format 14.1): the host's text is the same in all three languages - it is their own text. */
 export function lessonStep(board: StudyBoard, note: string) {
-    const text = {en: note, uk: note, ru: note};
+    const text = {en: note, uk: note};
     return {
         type: 'text', fen: board.fen, text,
         ...(board.arrows.length ? {arrows: board.arrows.map((a) => ({from: a.from, to: a.to, color: a.color}))} : {}),
@@ -196,10 +196,10 @@ export function StudyRoomPage() {
             });
         }
         void run(studyApi.ask(code, {kind: question.kind, prompt: question.prompt, options, correct, seconds: question.seconds}));
-        // Вопрос — и шаг урока: выбор варианта или поиск хода (формат 14.1).
-        const text = {en: question.prompt, uk: question.prompt, ru: question.prompt};
+        // A question is also a lesson step: a choice of variant or finding a move (format 14.1).
+        const text = {en: question.prompt, uk: question.prompt};
         setSteps((list) => [...list, question.kind === 'choice'
-            ? {type: 'choice', fen: board.fen, text, options: (options ?? []).map((o, i) => ({text: {en: o, uk: o, ru: o}, correct: i === correct}))}
+            ? {type: 'choice', fen: board.fen, text, options: (options ?? []).map((o, i) => ({text: {en: o, uk: o}, correct: i === correct}))}
             : {type: 'find_move', fen: game.fen(), text, line: [{answers: correct}]}]);
     };
 

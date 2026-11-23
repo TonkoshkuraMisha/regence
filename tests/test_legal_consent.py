@@ -1,4 +1,4 @@
-"""Согласие с условиями при регистрации (таск 23.1): путь клиента — POST /auth/register — и чистые правила legal.py."""
+"""Consent to the terms at registration (task 23.1): the client path (POST /auth/register) and the pure rules in legal.py."""
 
 from datetime import UTC, datetime
 
@@ -34,7 +34,7 @@ async def test_registration_with_consent_records_version_and_time(client, db_ses
 
 
 def test_consent_check_can_be_switched_off(client):
-    """Тестовый стенд (REQUIRE_TERMS_CONSENT=false): регистрация без отметки проходит."""
+    """Test environment (REQUIRE_TERMS_CONSENT=false): registration without the consent box succeeds."""
     assert client.post(REGISTER, json={"username": "Relaxed", "password": "secret123"}).status_code == 201
 
 

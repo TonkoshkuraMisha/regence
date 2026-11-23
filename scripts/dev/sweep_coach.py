@@ -1,10 +1,10 @@
 # --- FILE: scripts/dev/sweep_coach.py ---
 """
-Проверка наставника на партиях архива (таск 11.2): полный разбор со Stockfish и комментарии к ходам —
-напечатанные по-русски, чтобы их можно было прочитать глазами, и сводка: сколько ходов прокомментировано,
-сколько ошибок объяснено конкретной причиной, а сколько только общей фразой.
+Check of the mentor on archive games (task 11.2): a full Stockfish analysis and move comments -
+printed from the ru catalog so that they can be read by eye, and a summary: how many moves were commented,
+how many mistakes were explained by a specific reason and how many only by a general phrase.
 
-Нужен Stockfish (bin/stockfish.exe или STOCKFISH_PATH). В CI не запускается.
+Needs Stockfish (bin/stockfish.exe or STOCKFISH_PATH). Not run in CI.
 
     python -m scripts.dev.sweep_coach data/pgns/morphy_all_games.pgn --games 10 --depth 12
 """
@@ -24,7 +24,7 @@ CATALOG = pathlib.Path(__file__).resolve().parents[2] / "frontend" / "src" / "i1
 
 
 def load_coach_texts() -> dict[str, str]:
-    """Тексты coach.* из русского каталога: «coach.verdict.blunder.v1» → шаблон."""
+    """coach.* texts from the ru catalog: "coach.verdict.blunder.v1" -> template."""
     text = CATALOG.read_text(encoding="utf-8")
     block = text[text.index("    coach: {"):]
     texts: dict[str, str] = {}
@@ -42,17 +42,17 @@ def load_coach_texts() -> dict[str, str]:
 
 
 def render(sentences: list[dict], texts: dict[str, str]) -> str:
-    """Подставляет параметры в русские шаблоны фраз наставника для печати."""
+    """Substitutes parameters into the mentor phrase templates for printing."""
     return " ".join(texts[s["key"]].format(**s["params"]) for s in sentences)
 
 
 def main() -> None:
-    """Разбирает партии из PGN и выводит комментарии наставника со сводкой."""
+    """Parses games from PGN and prints the mentor comments with a summary."""
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("pgn", type=pathlib.Path)
     parser.add_argument("--games", type=int, default=5)
     parser.add_argument("--depth", type=int, default=12)
-    parser.add_argument("--quiet", action="store_true", help="только сводка")
+    parser.add_argument("--quiet", action="store_true", help="summary only")
     args = parser.parse_args()
 
     texts = load_coach_texts()
@@ -83,7 +83,7 @@ def main() -> None:
                     if not args.quiet:
                         print(f"{move['move_number']}{'.' if move['color'] == 'white' else '...'} {move['san']}"
                               f" [{move['classification']}, {move['cp_loss']}]: {render(coach['comment'], texts)}")
-    print("\n--- сводка")
+    print("\n--- summary")
     for key, value in sorted(stats.items(), key=lambda kv: (-kv[1], kv[0])):
         print(f"{key:28s} {value}")
 

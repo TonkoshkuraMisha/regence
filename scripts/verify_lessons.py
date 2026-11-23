@@ -1,13 +1,13 @@
 """
-Сверка уроков школы с движком (таск 14.1). Не для CI: нужен Stockfish и время.
+Check of school lessons against the engine (task 14.1). Not for CI: needs Stockfish and time.
 
-Легальность ходов и наличие верных ответов проверяет тест клиента (validateLesson в CI). Этот скрипт проверяет
-шахматную правоту: в каждом вопросе «найдите ход»
-* каждый верный ответ не хуже лучшего хода движка больше чем на --tolerance сп (мат — только если движок тоже
-  видит мат не дольше);
-* у лучшего ответа нет соперника рядом: второй по силе ход, которого нет среди ответов, уступает ему не меньше
-  --margin сп — иначе вопрос «угадывается», а не решается, и надо добавить этот ход в ответы;
-* каждый ход с отдельным «неверным» откликом действительно хуже лучшего не меньше --margin сп.
+The legality of moves and the presence of correct answers are checked by the client test (validateLesson in CI). This script
+chess correctness: in every "find the move" question
+* every correct answer is no worse than the engine's best move by more than --tolerance cp (a mate - only if the engine also
+  sees a mate no longer);
+* the best answer has no rival nearby: the second-best move that is not among the answers is inferior to it by at least
+  --margin cp - otherwise the question is "guessed", not solved, and that move must be added to the answers;
+* every move with a separate "wrong" response is really worse than the best by at least --margin cp.
 
     python scripts/verify_lessons.py
     python scripts/verify_lessons.py --time 1.0 --only tactics-double-attack
@@ -28,21 +28,21 @@ MATE = 100_000
 
 
 def score(info: dict, turn: chess.Color) -> int:
-    """Извлекает оценку позиции в сантипешках со стороны ходящего игрока."""
+    """Extracts the position evaluation in centipawns from the point of view of the player to move."""
     return info["score"].pov(turn).score(mate_score=MATE)
 
 
 def evaluate(engine: chess.engine.SimpleEngine, board: chess.Board, move: chess.Move, limit) -> int:
-    """Оценивает конкретный ход в позиции через root_moves движка Stockfish."""
+    """Evaluates a specific move in a position via the Stockfish engine's root_moves."""
     info = engine.analyse(board, limit, root_moves=[move])
     return score(info, board.turn)
 
 
-DECISIVE = 1500  # сп: дальше — выигрыш, сравнивать «насколько» бессмысленно
+DECISIVE = 1500  # cp: beyond this it is a win, comparing "by how much" is meaningless
 
 
 def check_position(engine, board: chess.Board, task: dict, limit, tolerance: int, margin: int) -> list[str]:
-    """Проверяет движком единственность ответа и ложные ходы в шаге урока."""
+    """Uses the engine to check that the answer is unique and the false moves in a lesson step."""
     problems = []
     infos = engine.analyse(board, limit, multipv=min(5, board.legal_moves.count()))
     lines = [(info["pv"][0], score(info, board.turn)) for info in infos if info.get("pv")]
@@ -52,43 +52,43 @@ def check_position(engine, board: chess.Board, task: dict, limit, tolerance: int
     answer_scores = {}
     multipv = dict(lines)
     for move in answers:
-        # Ход из MultiPV — его оценка из той же линии (отдельный поиск после хода бывает мельче и «теряет» мат).
+        # A MultiPV move - its evaluation is from the same line (a separate search after the move is shallower, loses a mate).
         value = multipv[move] if move in multipv else evaluate(engine, board, move, limit)
         answer_scores[move] = value
-        # Обе оценки решающие (выигрыш при любом из ходов) — результат тот же, ход урока не хуже по сути.
+        # Both evaluations are decisive (a win with either move) - same result, the lesson move is no worse in essence.
         if value < best - tolerance and not (value >= DECISIVE and best >= DECISIVE):
-            problems.append(f"ответ {move.uci()} хуже лучшего {best_move.uci()} ({value} против {best} сп)")
+            problems.append(f"answer {move.uci()} is worse than the best {best_move.uci()} ({value} vs {best} cp)")
 
     top_answer = max(answer_scores.values())
     rivals = [(m, v) for m, v in lines if m not in answers]
     if rivals and rivals[0][1] > top_answer - margin and top_answer < MATE // 2:
         m, v = rivals[0]
-        problems.append(f"ход {m.uci()} почти не хуже ответа ({v} против {top_answer} сп) — вопрос угадывается")
+        problems.append(f"move {m.uci()} is almost no worse than the answer ({v} vs {top_answer} cp) - question is guessable")
 
     for uci in task.get("wrong", {}):
         move = chess.Move.from_uci(uci)
         if move not in board.legal_moves:
-            # Движок оценил бы и невозможный ход (searchmoves его не проверяет) — сказать прямо.
-            problems.append(f"«неверный» ход {uci} невозможен в этой позиции — отклик никто не увидит")
+            # The engine would evaluate even an impossible move (searchmoves does not check it) - say so plainly.
+            problems.append(f"\"wrong\" move {uci} is impossible in this position - nobody will see the response")
             continue
         value = evaluate(engine, board, move, limit)
         if value > best - margin:
-            problems.append(f"«неверный» ход {uci} на самом деле неплох ({value} против {best} сп)")
+            problems.append(f"\"wrong\" move {uci} is actually not bad ({value} vs {best} cp)")
     return problems
 
 
 def check_lesson(path: Path, engine, limit, tolerance: int, margin: int) -> list[str]:
-    """Проверяет все интерактивные шаги и экзамен одного файла урока."""
+    """Checks all interactive steps and the exam of one lesson file."""
     lesson = json.loads(path.read_text(encoding="utf-8"))
     problems = []
-    questions = [("шаг", i, s) for i, s in enumerate(lesson["steps"], 1)]
-    questions += [("экзамен", i, s) for i, s in enumerate(lesson["exam"], 1)]
+    questions = [("step", i, s) for i, s in enumerate(lesson["steps"], 1)]
+    questions += [("exam", i, s) for i, s in enumerate(lesson["exam"], 1)]
     for kind, number, step in questions:
         if step["type"] != "find_move":
             continue
         board = chess.Board(step["fen"])
         for move_number, task in enumerate(step["line"], 1):
-            where = f"{lesson['id']}, {kind} {number}, ход {move_number}"
+            where = f"{lesson['id']}, {kind} {number}, move {move_number}"
             problems += [f"{where}: {p}" for p in check_position(engine, board, task, limit, tolerance, margin)]
             board.push_uci(task["answers"][0])
             if task.get("reply"):
@@ -97,19 +97,19 @@ def check_lesson(path: Path, engine, limit, tolerance: int, margin: int) -> list
 
 
 def main() -> None:
-    """Запускает сверку уроков школы с движком Stockfish."""
+    """Runs the check of school lessons against the Stockfish engine."""
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--time", type=float, default=0.5, help="Секунд на позицию")
-    parser.add_argument("--tolerance", type=int, default=30, help="Насколько верный ответ может уступать лучшему")
-    parser.add_argument("--margin", type=int, default=100, help="Отрыв ответа от других ходов")
-    parser.add_argument("--only", nargs="*", help="id уроков")
+    parser.add_argument("--time", type=float, default=0.5, help="Seconds per position")
+    parser.add_argument("--tolerance", type=int, default=30, help="By how much a correct answer may be inferior to the best")
+    parser.add_argument("--margin", type=int, default=100, help="Lead of the answer over other moves")
+    parser.add_argument("--only", nargs="*", help="lesson ids")
     args = parser.parse_args()
 
     from src.services.bots.base import resolve_stockfish_path
 
     path = resolve_stockfish_path()
     if not path:
-        raise SystemExit("Stockfish не найден: python scripts/setup_stockfish.py")
+        raise SystemExit("Stockfish not found: python scripts/setup_stockfish.py")
     files = sorted(p for p in LESSONS_DIR.glob("*.json") if p.name != "courses.json")
     if args.only:
         files = [p for p in files if p.stem in args.only]
@@ -118,7 +118,7 @@ def main() -> None:
     with chess.engine.SimpleEngine.popen_uci(path) as engine:
         for file in files:
             found = check_lesson(file, engine, chess.engine.Limit(time=args.time), args.tolerance, args.margin)
-            print(f"{file.stem}: {'OK' if not found else f'{len(found)} замечаний'}", flush=True)
+            print(f"{file.stem}: {'OK' if not found else f'{len(found)} findings'}", flush=True)
             problems += found
     for problem in problems:
         print(f"  - {problem}")

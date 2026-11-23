@@ -1,23 +1,24 @@
 # --- FILE: src/services/puzzle_import.py ---
 """
-Загрузка задач в базу (таск 13.1): строки выборки data/puzzles/lichess_subset.csv.gz → таблицы puzzles и
-puzzle_themes. Темы задачи — коды реестра: по тегам базы (``themes_for_lichess_tags``) и по мотивам, которые первый
-ход решения создаёт на доске (``themes_for_motif``: вид вилки по фигуре, батарея, перекрытие и т. п.). Задачи, уже
-загруженные из того же источника, пропускаются — повторный запуск безопасен. Именные матовые конструкции, для
-которых в базе нет тегов, распознаются по финальной позиции решения (src/services/mate_patterns.py).
+Loading puzzles into the database (task 13.1): rows of the data/puzzles/lichess_subset.csv.gz sample -> the puzzles and
+puzzle_themes tables. A puzzle's themes are registry codes: from the database tags (``themes_for_lichess_tags``) and from
+the motifs that the first solution move creates on the board (``themes_for_motif``: the kind of fork by piece, battery,
+interference, etc.). Puzzles already loaded from the same source are skipped - a repeated run is safe. Named mating
+patterns, for which the database has no tags, are recognised from the final position of the solution
+(src/services/mate_patterns.py).
 
-Разметка версионируется (TAG_VERSION): когда меняются реестр, детектор или классификатор матов, версия растёт, и
-импорт переразмечает уже загруженные задачи (``retag_outdated``) — без повторной загрузки.
+The tagging is versioned (TAG_VERSION): when the registry, the detector or the mate classifier changes, the version grows and
+the import re-tags the already loaded puzzles (``retag_outdated``) - without a repeated load.
 
-Запускает загрузку scripts/import_puzzles.py (при развёртывании — сервис migrate): основная выборка SUBSET, затем,
-если файл есть, дополнение EXTRA для тем без тегов базы и свои задачи ENDGAME, затем переразметка. Колонки строки —
-как в выгрузке lichess: PuzzleId, FEN, Moves, Rating, RatingDeviation, Popularity, NbPlays, Themes. Исходные теги
-базы сохраняются в puzzles.source_tags (первые 300 знаков) — по ним и идёт переразметка.
+The load is run by scripts/import_puzzles.py (on deployment - the migrate service): the main sample SUBSET, then,
+if the file exists, the EXTRA supplement for themes without database tags and the own ENDGAME puzzles, then re-tagging. The
+row columns are as in the lichess export: PuzzleId, FEN, Moves, Rating, RatingDeviation, Popularity, NbPlays, Themes. The
+original database tags are kept in puzzles.source_tags (first 300 characters) - re-tagging works from them.
 
-Свои задачи (источник GENERATED_SOURCE) — эндшпильная техника из эндшпильных таблиц
-(scripts/dev/build_endgame_puzzles.py, data/puzzles/endgame_generated.csv.gz): в открытой базе её почти нет. Тема у
-них задана тегом «regence:<код реестра>» (own_themes). До 19.11.2026 источник и теги назывались «michess» — их
-переименовала миграция d3a8f1c6e2b7.
+Own puzzles (source GENERATED_SOURCE) - endgame technique from endgame tablebases
+(scripts/dev/build_endgame_puzzles.py, data/puzzles/endgame_generated.csv.gz): the open database has almost none. Their
+theme is given by the tag "regence:<registry code>" (own_themes). Until 19.11.2026 the source and tags were called
+"michess" - the migration d3a8f1c6e2b7 renamed them.
 """
 
 import csv
@@ -35,31 +36,31 @@ from src.services.mate_patterns import patterns_for_solution
 from src.services.mentor_service import analyze_move
 from src.services.themes import THEMES_BY_CODE, themes_for_lichess_tags, themes_for_motif
 
-SOURCE = "lichess"  # значение puzzles.source; вместе с puzzles.source_id (PuzzleId) отличает уже загруженные задачи
-GENERATED_SOURCE = "regence"  # puzzles.source своих задач (до 19.11.2026 — «michess», см. миграцию d3a8f1c6e2b7)
-OWN_TAG = "regence:"  # префикс тега темы своей задачи «regence:<код>» — так записан в data/puzzles/endgame_generated.csv.gz
-TAG_VERSION = 3  # 2: ступень — по уточнённой формуле; 3: темы без тегов базы (src/services/theme_detectors.py)
+SOURCE = "lichess"  # puzzles.source value; with puzzles.source_id (PuzzleId) it identifies already loaded puzzles
+GENERATED_SOURCE = "regence"  # puzzles.source of own puzzles (was "michess" until 19.11.2026, see d3a8f1c6e2b7)
+OWN_TAG = "regence:"  # prefix of the theme tag of an own puzzle "regence:<code>", as in endgame_generated.csv.gz
+TAG_VERSION = 3  # 2: stage by the refined formula; 3: themes without database tags (theme_detectors.py)
 SUBSET = pathlib.Path(__file__).resolve().parents[2] / "data" / "puzzles" / "lichess_subset.csv.gz"
-EXTRA = SUBSET.with_name("lichess_themes_extra.csv.gz")  # собирает scripts/dev/build_theme_extra.py
-ENDGAME = SUBSET.with_name("endgame_generated.csv.gz")  # собирает scripts/dev/build_endgame_puzzles.py
-BATCH = 500  # задач в одной транзакции при загрузке и переразметке
+EXTRA = SUBSET.with_name("lichess_themes_extra.csv.gz")  # built by scripts/dev/build_theme_extra.py
+ENDGAME = SUBSET.with_name("endgame_generated.csv.gz")  # built by scripts/dev/build_endgame_puzzles.py
+BATCH = 500  # puzzles per transaction during loading and re-tagging
 
 
 def read_subset(path: pathlib.Path = SUBSET) -> Iterator[dict]:
-    """Строки сжатого CSV выборки как словари (ключи — заголовки колонок); читает построчно, не держа файл в памяти."""
+    """Rows of the compressed sample CSV as dicts (keys are column headers); reads line by line, not in memory."""
     with gzip.open(path, "rt", encoding="utf-8", newline="") as source:
         yield from csv.DictReader(source)
 
 
 def stage_for(rating: int, moves: list[str]) -> int:
     """
-    Ступень задачи (таск 13.4): 1 — знакомство (приём в чистом виде), 2 — закрепление, 3 — в сочетании, 4 — мастер.
-    По рейтингу и длине решения. Приём «в чистом виде» — это ход и его естественное продолжение (вилка и взятие
-    фигуры), то есть до двух ходов решающего; длина поднимает ступень с трёх ходов. ``moves`` — как в базе: первый
-    ход соперника, дальше чередование. Та же формула — в миграции c5e7a9b1d3f6.
+    Puzzle stage (task 13.4): 1 - introduction (the technique in pure form), 2 - consolidation, 3 - in combination, 4 - master.
+    By rating and solution length. The technique "in pure form" is a move and its natural continuation (a fork and the
+    capture of a piece), i.e. up to two moves by the solver; length raises the stage from three moves. ``moves`` - as in
+    the database: the first move is the opponent's, then alternation. The same formula is in migration c5e7a9b1d3f6.
 
-    Пороги (достаточно одного условия): ступень 4 — рейтинг от 2000 или от 10 полуходов (5 ходов решающего);
-    3 — от 1600 или от 8 полуходов (4 хода); 2 — от 1200 или от 6 полуходов (3 хода); иначе 1.
+    Thresholds (one condition is enough): stage 4 - rating from 2000 or from 10 plies (5 solver moves);
+    3 - from 1600 or from 8 plies (4 moves); 2 - from 1200 or from 6 plies (3 moves); otherwise 1.
     """
     plies = len(moves)
     if rating >= 2000 or plies >= 10:
@@ -72,14 +73,14 @@ def stage_for(rating: int, moves: list[str]) -> int:
 
 
 def solver_position(fen: str, moves: list[str]) -> chess.Board:
-    """Позиция, которую видит решающий: после хода соперника moves[0]."""
+    """The position the solver sees: after the opponent's move moves[0]."""
     board = chess.Board(fen)
     board.push_uci(moves[0])
     return board
 
 
 def detected_themes(fen: str, moves: list[str]) -> list[str]:
-    """Темы, которые детектор видит в первом ходе решения (созданные этим ходом мотивы в пользу решающего)."""
+    """Themes that the detector sees in the first solution move (motifs created by this move in favour of the solver)."""
     board = solver_position(fen, moves)
     move = chess.Move.from_uci(moves[1])
     facts = analyze_move(board, move)
@@ -95,15 +96,15 @@ def detected_themes(fen: str, moves: list[str]) -> list[str]:
 
 
 def own_themes(tags: list[str]) -> list[str]:
-    """Темы своих задач: теги «regence:<код>» с кодом из реестра (неизвестные пропускаются)."""
+    """Themes of own puzzles: tags "regence:<code>" with a code from the registry (unknown ones are skipped)."""
     return [code for tag in tags if tag.startswith(OWN_TAG) and (code := tag[len(OWN_TAG):]) in THEMES_BY_CODE]
 
 
 def themes_for_row(row: dict) -> list[str]:
     """
-    Все темы задачи без повторов, из четырёх источников по порядку: теги базы (``themes_for_lichess_tags``), мотивы
-    первого хода решения (``detected_themes``), матовая конструкция финальной позиции (``patterns_for_solution``) и
-    детекторы тем без тегов (``theme_detectors.detect``).
+    All themes of a puzzle without repeats, from four sources in order: database tags (``themes_for_lichess_tags``), motifs
+    of the first solution move (``detected_themes``), the mating pattern of the final position (``patterns_for_solution``) and
+    detectors of themes without tags (``theme_detectors.detect``).
     """
     moves = row["Moves"].split()
     codes = own_themes(row["Themes"].split())
@@ -118,7 +119,7 @@ def themes_for_row(row: dict) -> list[str]:
 
 
 def validate_row(row: dict) -> bool:
-    """Ходы легальны от позиции, решение есть (ход соперника + хотя бы один ход решающего)."""
+    """Moves are legal from the position, a solution exists (an opponent move + at least one solver move)."""
     moves = row["Moves"].split()
     if len(moves) < 2:
         return False
@@ -136,9 +137,9 @@ def validate_row(row: dict) -> bool:
 
 async def retag_outdated(db: AsyncSession) -> int:
     """
-    Переразметить задачи с версией разметки ниже TAG_VERSION (темы и ступень). Возвращает число задач. Идёт пачками
-    по BATCH с commit после каждой: прерванный запуск продолжится с оставшихся. В конце сбрасывается кэш числа
-    задач по ступеням (puzzles.reset_stage_counts).
+    Re-tag puzzles whose tagging version is below TAG_VERSION (themes and stage). Returns the number of puzzles. Goes in
+    batches of BATCH with a commit after each: an interrupted run continues from the remaining ones. At the end the cache
+    of puzzle counts by stage is reset (puzzles.reset_stage_counts).
     """
     from sqlalchemy import delete
 
@@ -167,9 +168,9 @@ async def retag_outdated(db: AsyncSession) -> int:
 
 async def import_rows(db: AsyncSession, rows: Iterable[dict], source: str = SOURCE) -> tuple[int, int]:
     """
-    Загружает строки; возвращает (добавлено, пропущено — уже есть или некорректны). «Уже есть» — по паре
-    puzzles.source (source: SOURCE или GENERATED_SOURCE) и puzzles.source_id; повтор PuzzleId внутри одного запуска
-    тоже пропускается. Commit — каждые BATCH задач.
+    Loads rows; returns (added, skipped - already present or invalid). "Already present" is by the pair
+    puzzles.source (source: SOURCE or GENERATED_SOURCE) and puzzles.source_id; a repeated PuzzleId within one run
+    is also skipped. Commit - every BATCH puzzles.
     """
     existing = set((await db.execute(select(Puzzle.source_id).where(Puzzle.source == source))).scalars())
     added = skipped = 0

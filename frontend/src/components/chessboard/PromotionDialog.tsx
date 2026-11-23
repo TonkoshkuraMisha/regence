@@ -1,7 +1,7 @@
 // --- FILE: frontend/src/components/chessboard/PromotionDialog.tsx ---
-// Выбор фигуры при превращении пешки: окно поверх доски, по горизонтали — у вертикали поля превращения, по
-// вертикали — у того края доски, где это поле. Щелчок мимо окна или Esc (обрабатывает Chessboard) отменяет ход.
-// Используется главной доской (в том числе для предхода-превращения) и вспомогательной доской.
+// Piece choice on pawn promotion: a window over the board, horizontally at the promotion square's file, and
+// vertically at the board edge where that square is. A click outside the window or Esc (handled by Chessboard) cancels the move.
+// Used by the main board (including for a promotion premove) and by the auxiliary board.
 
 import {X} from 'lucide-react';
 import {PROMOTION_OPTIONS} from './boardUtils';
@@ -11,7 +11,7 @@ import {useI18n} from '../../i18n';
 
 export interface PromotionDialogProps {
     pendingPromotion: PendingPromotion;
-    /** Файлы/ранги в порядке отображения доски (с учётом переворота) — чтобы встать рядом с полем. */
+    /** Files/ranks in board display order (taking flipping into account) so as to stand next to the square. */
     displayedFiles: readonly string[];
     displayedRanks: readonly string[];
     renderPieceSvg: (piece: { type: string; color: string }) => React.ReactNode;
@@ -19,7 +19,7 @@ export interface PromotionDialogProps {
     onCancel: () => void;
 }
 
-/** Всплывающий выбор фигуры при превращении пешки — встаёт рядом с полем назначения хода. */
+/** Pop-up piece choice on pawn promotion: it stands next to the move's destination square. */
 export function PromotionDialog({
     pendingPromotion, displayedFiles, displayedRanks, renderPieceSvg, onSelect, onCancel,
 }: PromotionDialogProps) {

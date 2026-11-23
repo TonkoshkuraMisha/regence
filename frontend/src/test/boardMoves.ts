@@ -1,18 +1,18 @@
 // --- FILE: frontend/src/test/boardMoves.ts ---
-// Ход на доске в тестах страниц: два щелчка — по своей фигуре и по полю. Не перетаскивание: доски подписываются на
-// отпускание фигуры из эффекта, и под нагрузкой CI отпускание иногда приходило раньше подписки — ход терялся, тест
-// падал случайно. Само перетаскивание проверяют тесты PuzzleBoard (puzzleMoves.test.tsx) и главной доски.
+// A move on the board in page tests: two clicks — on your own piece and on the square. Not dragging: the boards subscribe to
+// the piece release from an effect, and under CI load the release sometimes came before the subscription — the move was lost, the test
+// failed randomly. Dragging itself is checked by the PuzzleBoard tests (puzzleMoves.test.tsx) and the main board.
 
 import {act, fireEvent} from '@testing-library/react';
 
-/** Клетка доски по имени поля (data-square). */
+/** A board square by the square name (data-square). */
 export function boardCell(square: string): HTMLElement {
     const element = document.querySelector(`[data-square="${square}"]`);
     if (!(element instanceof HTMLElement)) throw new Error(`no square ${square}`);
     return element;
 }
 
-/** Сделать ход from → to двумя щелчками (каждый — в act, чтобы React успел отрисовать выбор). */
+/** Make a move from → to with two clicks (each in an act, so that React has time to render the selection). */
 export async function playMove(from: string, to: string): Promise<void> {
     await act(async () => {
         fireEvent.click(boardCell(from));

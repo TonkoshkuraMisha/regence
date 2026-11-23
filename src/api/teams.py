@@ -1,8 +1,8 @@
 # --- FILE: src/api/teams.py ---
 """
-Команды и сезонная лига (таск 17.2): таблица лиги за сезон (календарный месяц), страница команды, создание
-команды, вступление и выход. Игрок состоит не больше чем в одной команде. Правила очков и состав таблицы —
-src/services/league.py; очки считаются по сыгранным партиям при запросе, отдельной таблицы результатов нет.
+Teams and the season league (task 17.2): the league table for a season (a calendar month), the team page, creating a
+team, joining and leaving. A player belongs to at most one team. The points rules and the table composition -
+src/services/league.py; points are counted from played games on request, there is no separate results table.
 """
 
 from fastapi import APIRouter, Depends, Query, status

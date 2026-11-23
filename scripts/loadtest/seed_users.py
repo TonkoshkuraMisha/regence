@@ -1,18 +1,18 @@
 """
-Игроки для нагрузочного теста (scripts/loadtest/ws_load.py).
+Players for the load test (scripts/loadtest/ws_load.py).
 
-Запуск внутри контейнера API — нужны его БД и SECRET_KEY:
+Run inside the API container - it needs its DB and SECRET_KEY:
 
     docker compose -f docker-compose.prod.yml exec -T api \
         python -m scripts.loadtest.seed_users --count 400 > tokens.json
 
-Создаёт (или переиспользует) игроков loadtest_0001..N и печатает в stdout JSON со списком
-{id, username, token}. Войти под ними паролем нельзя — только по выданному токену, — а регистрация
-через API не годится: она ограничена несколькими аккаунтами в час с одного IP.
+Creates (or reuses) players loadtest_0001..N and prints to stdout a JSON list
+{id, username, token}. One cannot log in as them with a password - only with the issued token - and registration
+through the API will not do: it is limited to a few accounts per hour from one IP.
 
     python -m scripts.loadtest.seed_users --cleanup
 
-удаляет этих игроков вместе с их партиями и ходами.
+removes these players together with their games and moves.
 """
 
 import argparse
@@ -33,7 +33,7 @@ NO_LOGIN_MARKER = "!loadtest_no_login!"
 
 
 async def seed(count: int) -> list[dict]:
-    """Создаёт тестовых игроков в БД и выдаёт им JWT-токены для нагрузки."""
+    """Creates test players in the DB and issues JWT tokens for them for the load."""
     names = [f"{PREFIX}{i:04d}" for i in range(1, count + 1)]
     async with AsyncSessionLocal() as db:
         existing = {
@@ -51,7 +51,7 @@ async def seed(count: int) -> list[dict]:
 
 
 async def cleanup() -> tuple[int, int]:
-    """Удаляет игроков нагрузочного теста вместе с их партиями и ходами."""
+    """Deletes the load-test players together with their games and moves."""
     async with AsyncSessionLocal() as db:
         user_ids = list((await db.execute(
             select(User.id).where(User.hashed_password == NO_LOGIN_MARKER)
@@ -70,10 +70,10 @@ async def cleanup() -> tuple[int, int]:
 
 
 def main() -> None:
-    """Точка входа CLI для создания и удаления тестовых игроков."""
+    """CLI entry point for creating and deleting test players."""
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--count", type=int, default=200, help="число игроков (чётное: партии идут парами)")
-    parser.add_argument("--cleanup", action="store_true", help="удалить игроков нагрузочного теста и их партии")
+    parser.add_argument("--count", type=int, default=200, help="number of players (even: games are played in pairs)")
+    parser.add_argument("--cleanup", action="store_true", help="delete the load-test players and their games")
     args = parser.parse_args()
 
     if args.cleanup:

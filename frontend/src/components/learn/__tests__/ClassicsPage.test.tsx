@@ -1,4 +1,4 @@
-// Партии мастеров (таск 14.7): список, вводный текст, комментарий наставника, остановка «что бы вы сыграли?».
+// Master games (task 14.7): the list, the intro text, the mentor's comment, the "what would you play?" stop.
 
 import {fireEvent, render, screen, within} from '@testing-library/react';
 import {MemoryRouter, Route, Routes} from 'react-router-dom';
@@ -21,35 +21,35 @@ function renderAt(path: string) {
 
 afterEach(() => vi.unstubAllGlobals());
 
-describe('Партии мастеров', () => {
-    it('список из сорока пяти партий', async () => {
+describe('Master games', () => {
+    it('a list of forty-five games', async () => {
         renderAt('/learn/classics');
         expect(await screen.findByTestId('classic-botvinnik-tal-1961')).toHaveTextContent('Botvinnik');
         expect(screen.getAllByTestId(/^classic-[a-z]/)).toHaveLength(45);
     });
 
-    it('вводный текст, затем остановка перед ключевым ходом и баллы за ход мастера', async () => {
+    it('the intro text, then a stop before the key move and points for the master\'s move', async () => {
         renderAt('/learn/classics/botvinnik-tal-1961');
-        expect(await screen.findByTestId('classic-intro')).toHaveTextContent('Защита Нимцовича');
+        expect(await screen.findByTestId('classic-intro')).toHaveTextContent('Nimzo-Indian Defence');
         const stop = game.stops[0];
         const moves = within(screen.getByTestId('classic-moves')).getAllByRole('button');
         fireEvent.click(moves[stop.ply - 1]);
-        fireEvent.click(screen.getByRole('button', {name: 'Ход вперёд'}));
-        expect(screen.getByTestId('classic-stop')).toHaveTextContent('Что бы вы сыграли за белых?');
+        fireEvent.click(screen.getByRole('button', {name: 'Move forward'}));
+        expect(screen.getByTestId('classic-stop')).toHaveTextContent('What would you play as White?');
         await playMove(stop.move.slice(0, 2), stop.move.slice(2, 4));
-        expect(screen.getByTestId('classic-stop-score')).toHaveTextContent('Баллы: 100 из 100');
+        expect(screen.getByTestId('classic-stop-score')).toHaveTextContent('Points: 100 of 100');
         fireEvent.click(screen.getByTestId('classic-stop-continue'));
         expect(screen.queryByTestId('classic-stop')).toBeNull();
-        expect(screen.getByTestId('classic-stop-total')).toHaveTextContent('100 из 100');
+        expect(screen.getByTestId('classic-stop-total')).toHaveTextContent('100 of 100');
     });
 
-    it('без остановок ход проходит сразу', async () => {
+    it('without stops a move goes through at once', async () => {
         renderAt('/learn/classics/botvinnik-tal-1961');
         await screen.findByTestId('classic-intro');
         fireEvent.click(screen.getByTestId('classic-stops-toggle'));
         const moves = within(screen.getByTestId('classic-moves')).getAllByRole('button');
         fireEvent.click(moves[game.stops[0].ply - 1]);
-        fireEvent.click(screen.getByRole('button', {name: 'Ход вперёд'}));
+        fireEvent.click(screen.getByRole('button', {name: 'Move forward'}));
         expect(screen.queryByTestId('classic-stop')).toBeNull();
     });
 });

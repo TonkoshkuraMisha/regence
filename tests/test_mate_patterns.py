@@ -1,5 +1,5 @@
 # --- FILE: tests/test_mate_patterns.py ---
-"""Именные матовые конструкции (таск 13.4): по одному характерному примеру на конструкцию и отрицательные случаи."""
+"""Named mating patterns (task 13.4): one characteristic example per pattern plus negative cases."""
 
 import chess
 import pytest
@@ -11,26 +11,26 @@ from src.services.puzzle_import import TAG_VERSION, import_rows, retag_outdated
 def _after(fen: str, uci: str) -> list[str]:
     board = chess.Board(fen)
     move = chess.Move.from_uci(uci)
-    # push() легальность не проверяет — тестовая позиция с невозможным ходом проверяла бы не то.
+    # push() does not check legality; a test position with an impossible move would test the wrong thing.
     assert move in board.legal_moves, (fen, uci)
     board.push(move)
     return mate_patterns(board, move)
 
 
 @pytest.mark.parametrize("fen, uci, pattern", [
-    # Ферзь вплотную, защищён конём.
+    # Queen adjacent to the king, protected by a knight.
     ("6k1/5ppp/8/6N1/8/8/5PPP/3Q2K1 w - - 0 1", "d1h5", None),
     ("5rk1/5pp1/7p/6N1/8/3Q4/5PPP/6K1 w - - 0 1", "d3h7", "queen_kiss_mate"),
-    # Блэкберн: Сh7# при слоне f6 и коне g5 (позиция из базы задач).
+    # Blackburne: Bh7# with a bishop on f6 and a knight on g5 (position from the puzzle database).
     ("r4rk1/1b1q1p2/p3pB2/1p4Np/3PBb2/P7/1P3PPP/2R3K1 w - - 0 25", "e4h7", "blackburne_mate"),
-    # Эполетный: Фb6#, по бокам короля b8 — ладьи a8 и c8.
+    # Epaulette: Qb6#, with rooks on a8 and c8 flanking the king on b8.
     ("rkrq4/2p5/np4p1/p7/5B2/4Q3/1P3PPP/2R3K1 w - - 4 37", "e3b6", "epaulette_mate"),
-    # Дамиано: Фh7#, ферзь на краю защищён пешкой g6.
+    # Damiano: Qh7#, the queen on the edge is protected by a pawn on g6.
     ("5rk1/5p2/6P1/8/8/8/5PP1/6KQ w - - 0 1", "h1h7", "damiano_mate"),
-    # Лолли: Фg7#, защищён пешкой f6.
+    # Lolli: Qg7#, protected by a pawn on f6.
     ("5rk1/5p1p/5P2/8/8/8/6PP/4Q1K1 w - - 0 1", "e1g3", None),
     ("5rk1/5p1p/5PQ1/8/8/8/6PP/6K1 w - - 0 1", "g6g7", "lolli_mate"),
-    # Греко: Кh8 в углу, Лh-вертикаль, слон c4 отнимает g8.
+    # Greco: king on h8 in the corner, rook on the h-file, bishop c4 takes away g8.
     ("7k/6p1/8/8/2B5/8/6PP/4R1K1 w - - 0 1", "e1e8", None),
     ("7k/6p1/8/8/2B5/8/6P1/7R w - - 0 1", "h1h7", None),
     ("7k/6p1/8/8/2B5/7R/6PP/6K1 w - - 0 1", "h3h7", None),
@@ -71,7 +71,7 @@ async def test_retag_updates_old_puzzles(db_session):
     await import_rows(db_session, [row])
     puzzle = await db_session.scalar(select(Puzzle).where(Puzzle.source_id == "BLK"))
     assert "blackburne_mate" in puzzle.theme_codes and puzzle.tag_version == TAG_VERSION
-    # Старая разметка: тем меньше, версия 0 — переразметка возвращает всё.
+    # Old tagging: fewer themes, version 0; re-tagging restores everything.
     puzzle.tag_version = 0
     puzzle.themes = [t for t in puzzle.themes if t.theme == "mate_in_1"]
     await db_session.commit()

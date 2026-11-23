@@ -1,18 +1,18 @@
 # --- FILE: scripts/build_guess_positions.py ---
 """
-Отбор позиций для «Угадай ход мастера» (таск 14.3). Не для CI: нужен Stockfish и время.
+Selection of positions for "Guess the master's move" (task 14.3). Not for CI: needs Stockfish and time.
 
-Партии — архив мастеров в базе (оба игрока из PGN-архива). Два прохода движком:
-1. быстрый (MultiPV 2, --shallow-depth) по каждому ходу партии после книжного дебюта (таблица 16.1) и до
-   технического эндшпиля: кандидаты — ход мастера лучший и отрыв близок к порогу; заодно — ошибки соперника для
-   обрыва серий;
-2. глубокий (MultiPV 3, --deep-time с на позицию) только по кандидатам: правила src/services/guess_selection.py,
-   темы позиции — по ходу мастера и продолжению движка.
-Прошедшие позиции и серии пишутся в guess_positions (повторный запуск пропускает уже отобранные партии).
+Games are the masters archive in the database (both players from the PGN archive). Two engine passes:
+1. fast (MultiPV 2, --shallow-depth) over every move of the game after the book opening (table 16.1) and before the
+   technical endgame: candidates - the master's move is best and the gap is close to the threshold; also the
+   opponent's mistakes for breaking streaks;
+2. deep (MultiPV 3, --deep-time s per position) over the candidates only: the rules of src/services/guess_selection.py,
+   position themes - from the master's move and the engine continuation.
+Positions and streaks that pass are written to guess_positions (a re-run skips games that were already selected).
 
     python scripts/build_guess_positions.py --games 300 --workers 8
-    python scripts/build_guess_positions.py --refilter   # отобранные раньше: убрать дебют и технический эндшпиль,
-                                                         # проставить темы (без движка, по ходу мастера)
+    python scripts/build_guess_positions.py --refilter   # previously selected: drop the opening and technical endgame,
+                                                         # set the themes (no engine, from the master's move)
 """
 
 import argparse
@@ -47,24 +47,24 @@ from src.services.guess_selection import (  # noqa: E402
 )
 
 ARCHIVE_MARKER = "!historical_archive_no_login!"
-CANDIDATE_SLACK_CP = 40  # быстрый проход щадящий: глубокий решает окончательно
+CANDIDATE_SLACK_CP = 40  # the fast pass is lenient: the deep one decides finally
 MATE = 100000
 SAVE_EVERY = 25
 
 def _open_engine() -> chess.engine.SimpleEngine:
-    """Движок на одну партию: закрывается в analyse_game — иначе его фоновый поток не даёт процессу завершиться."""
+    """One engine per game: closed in analyse_game - otherwise its background thread keeps the process from exiting."""
     from src.services.bots.base import resolve_stockfish_path
 
     path = resolve_stockfish_path()
     if not path:
-        raise SystemExit("Stockfish не найден: python scripts/setup_stockfish.py")
+        raise SystemExit("Stockfish not found: python scripts/setup_stockfish.py")
     engine = chess.engine.SimpleEngine.popen_uci(path)
     engine.configure({"Threads": 1, "Hash": 32})
     return engine
 
 
 def _analyse(engine, board: chess.Board, limit: chess.engine.Limit, multipv: int) -> tuple[list[Line], list[chess.Move]]:
-    """Строки движка (первый ход, оценка) и линия лучшей из них."""
+    """Engine lines (first move, evaluation) and the line of the best of them."""
     infos = engine.analyse(board, limit, multipv=min(multipv, board.legal_moves.count()))
     infos = [i for i in infos if i.get("pv")]
     lines = [(i["pv"][0], i["score"].pov(board.turn).score(mate_score=MATE)) for i in infos]
@@ -72,18 +72,18 @@ def _analyse(engine, board: chess.Board, limit: chess.engine.Limit, multipv: int
 
 
 def _lines(engine, board: chess.Board, limit: chess.engine.Limit, multipv: int) -> list[Line]:
-    """Запрашивает у движка несколько лучших линий (MultiPV) для позиции."""
+    """Asks the engine for several best lines (MultiPV) for a position."""
     return _analyse(engine, board, limit, multipv)[0]
 
 
 def _move_cp(engine, board: chess.Board, move: chess.Move, limit: chess.engine.Limit) -> int:
-    """Возвращает оценку конкретного хода в сантипешках для ходящей стороны."""
+    """Returns the evaluation of a specific move in centipawns for the side to move."""
     info = engine.analyse(board, limit, root_moves=[move])
     return info["score"].pov(board.turn).score(mate_score=MATE)
 
 
 def _candidate(best: int, second: int) -> bool:
-    """Быстрый проход: близко к правилам отбора с запасом CANDIDATE_SLACK_CP — окончательно решает глубокий."""
+    """Fast pass: close to the selection rules with the CANDIDATE_SLACK_CP margin - the deep pass decides finally."""
     slack = CANDIDATE_SLACK_CP
     return (best - second >= GAP_CP - slack
             or (best >= WIN_CP - slack and second <= EQUAL_CP + slack)
@@ -91,7 +91,7 @@ def _candidate(best: int, second: int) -> bool:
 
 
 def analyse_game(game_id: int, pgn: str, shallow_depth: int, deep_time: float) -> tuple[int, list[dict]]:
-    """Позиции партии, прошедшие отбор: [{ply, fen, move, best_cp, gap_cp, lines, difficulty, side}] + серии."""
+    """Positions of the game that passed selection: [{ply, fen, move, best_cp, gap_cp, lines, difficulty, side}] + streaks."""
     game = chess.pgn.read_game(io.StringIO(pgn))
     if game is None:
         return game_id, []
@@ -110,12 +110,12 @@ def analyse_game(game_id: int, pgn: str, shallow_depth: int, deep_time: float) -
 
 
 def _scan(engine, game, board, shallow, deep, passing: dict[int, dict], errors: set[int]) -> None:
-    """Находит в партии объективно решаемые позиции и серии для «Угадай ход»."""
+    """Finds objectively solvable positions and streaks in a game for "Guess the move"."""
     moves = list(game.mainline_moves())
     book = book_plies(moves)
     for ply, move in enumerate(moves):
         if is_technical_endgame(board):
-            break  # фигуры только уходят с доски: дальше — техника по таблицам
+            break  # pieces only leave the board: what follows is tablebase technique
         if not in_opening(board, book) and board.legal_moves.count() > 1:
             lines = _lines(engine, board, shallow, 2)
             if len(lines) == 2:
@@ -138,7 +138,7 @@ def _scan(engine, game, board, shallow, deep, passing: dict[int, dict], errors: 
 
 
 def _mark_series(passing: dict[int, dict], errors: set[int]) -> None:
-    """Серии — отдельно для белых (чётные полуходы) и чёрных."""
+    """Streaks - separately for white (even plies) and black."""
     for parity in (0, 1):
         plies = [p for p in passing if p % 2 == parity]
         for number, run in enumerate(build_series(plies, errors)):
@@ -149,7 +149,7 @@ def _mark_series(passing: dict[int, dict], errors: set[int]) -> None:
 
 
 def _sessions():
-    """Свой движок базы на каждый asyncio.run: пул общего движка привязан к циклу событий, который уже закрыт."""
+    """The base's own engine for each asyncio.run: the shared engine pool is bound to an event loop that is already closed."""
     from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
     from sqlalchemy.pool import NullPool
 
@@ -160,7 +160,7 @@ def _sessions():
 
 
 async def _load_games(limit: int, seed: int) -> list[tuple[int, str]]:
-    """Загружает партии мастеров из базы данных для поиска ключевых моментов."""
+    """Loads master games from the database to look for key moments."""
     from sqlalchemy import select
     from sqlalchemy.orm import aliased
 
@@ -185,7 +185,7 @@ async def _load_games(limit: int, seed: int) -> list[tuple[int, str]]:
 
 
 async def _save(results: list[tuple[int, list[dict]]]) -> tuple[int, int]:
-    """Сохраняет отобранные позиции и серии в таблицу guess_positions."""
+    """Saves the selected positions and streaks into the guess_positions table."""
     from sqlalchemy import func, select
 
     from src.models.guess import GuessPosition
@@ -217,7 +217,7 @@ async def _save(results: list[tuple[int, list[dict]]]) -> tuple[int, int]:
 
 
 async def _refilter() -> tuple[int, int]:
-    """Перепроверяет сохранённые позиции по фильтрам дебюта/эндшпиля и размечает темы."""
+    """Re-checks stored positions against the opening/endgame filters and tags the themes."""
     from src.services.guess import refilter
 
     engine, sessions = _sessions()
@@ -228,29 +228,29 @@ async def _refilter() -> tuple[int, int]:
 
 
 def main() -> None:
-    """Точка входа генератора и фильтра позиций режима «Угадай ход мастера»."""
+    """Entry point of the generator and filter of "Guess the master's move" mode positions."""
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--games", type=int, default=200, help="Сколько новых партий разобрать")
+    parser.add_argument("--games", type=int, default=200, help="How many new games to analyse")
     parser.add_argument("--workers", type=int, default=4)
     parser.add_argument("--shallow-depth", type=int, default=10)
-    parser.add_argument("--deep-time", type=float, default=1.0, help="Секунд на позицию во втором проходе")
+    parser.add_argument("--deep-time", type=float, default=1.0, help="Seconds per position in the second pass")
     parser.add_argument("--seed", type=int, default=20261115)
     parser.add_argument("--refilter", action="store_true",
-                        help="Только привести отобранные позиции к нынешним правилам (без движка)")
+                        help="Only bring the selected positions to the current rules (no engine)")
     args = parser.parse_args()
     if args.refilter:
         removed, tagged = asyncio.run(_refilter())
-        print(f"Удалено {removed} позиций (дебют, технический эндшпиль), темы проставлены у {tagged}", flush=True)
+        print(f"Removed {removed} positions (opening, technical endgame), themes set for {tagged}", flush=True)
         return
 
     started = time.monotonic()
     games = asyncio.run(_load_games(args.games, args.seed))
-    print(f"{len(games)} партий, {args.workers} процесса", flush=True)
+    print(f"{len(games)} games, {args.workers} processes", flush=True)
     batch: list[tuple[int, list[dict]]] = []
     positions = series = 0
 
     def flush() -> None:
-        """Записывает накопленную пачку отобранных позиций в базу данных."""
+        """Writes the accumulated batch of selected positions into the database."""
         nonlocal positions, series
         if batch:
             saved, new_series = asyncio.run(_save(batch))
@@ -262,11 +262,11 @@ def main() -> None:
         for done, future in enumerate(as_completed(futures), 1):
             game_id, items = future.result()
             batch.append((game_id, items))
-            print(f"[{done}/{len(games)}] партия {game_id}: {len(items)} позиций", flush=True)
+            print(f"[{done}/{len(games)}] game {game_id}: {len(items)} positions", flush=True)
             if len(batch) >= SAVE_EVERY:
-                flush()  # сбой посреди долгого прогона теряет не больше одной пачки
+                flush()  # a failure in the middle of a long run loses at most one batch
     flush()
-    print(f"Сохранено {positions} позиций, {series} серий за {(time.monotonic() - started) / 60:.1f} мин", flush=True)
+    print(f"Saved {positions} positions, {series} streaks in {(time.monotonic() - started) / 60:.1f} min", flush=True)
 
 
 if __name__ == "__main__":

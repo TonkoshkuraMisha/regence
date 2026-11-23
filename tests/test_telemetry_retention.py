@@ -1,8 +1,8 @@
 # --- FILE: tests/test_telemetry_retention.py ---
 """
-Хранение телеметрии ходов (задача 9 плана 18.11, src/services/telemetry_retention.py): ходы партий старше срока
-апелляции превращаются в сводку games.telemetry_summary и удаляются, свежие остаются; сводку, записанную античитом,
-задача не переписывает; задача стоит в расписании beat. Время зафиксировано (now передаётся явно).
+Move telemetry retention (task 9 of the 18.11 plan, src/services/telemetry_retention.py): moves of games older than the
+appeal period are turned into the games.telemetry_summary summary and deleted, fresh ones stay; a summary written by the
+anti-cheat is not overwritten by the task; the task is in the beat schedule. Time is fixed (now is passed explicitly).
 """
 
 from datetime import UTC, datetime, timedelta
@@ -18,7 +18,7 @@ NOW = datetime(2026, 11, 18, 12, 0, tzinfo=UTC)
 
 
 async def _game(db, white, black, days_ago: int, summary: dict | None = None) -> Game:
-    """Законченная партия days_ago дней назад с шестью ходами каждой стороны (у белых два предхода)."""
+    """A finished game days_ago days ago with six moves per side (White has two pre-moves)."""
     game = Game(white_player_id=white.id, black_player_id=black.id, status=GameStatus.COMPLETED,
                 finished_at=NOW - timedelta(days=days_ago), telemetry_summary=summary)
     db.add(game)
@@ -50,8 +50,8 @@ async def test_old_moves_become_a_summary_and_are_deleted(db_session, test_user_
     assert (white["moves"], white["premoves"], white["max_lag_ms"]) == (6, 2, 50)
     assert {"penalty", "blur_ratio", "timing_cv", "mean_time_ms"} <= set(white)
     assert old.telemetry_summary["black"]["moves"] == 6
-    assert evaluated.telemetry_summary == {"white": {"penalty": 7}}  # сводку античита не переписывает
-    # Повторный запуск — делать нечего.
+    assert evaluated.telemetry_summary == {"white": {"penalty": 7}}  # the anti-cheat summary is not overwritten
+    # A repeated run has nothing to do.
     assert await telemetry_retention.archive_old_moves(db_session, NOW) == 0
 
 

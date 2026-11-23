@@ -1,36 +1,36 @@
 // --- FILE: frontend/src/services/puzzles.ts ---
-// Задачи (таски 13.2–13.3, защитные упражнения 13.6): клиент API. Решение с сервера не приходит — только позиция,
-// первый ход соперника и ответы на верные ходы.
-// Все запросы — к /api/v1/puzzles и только с входом (маршруты src/api/puzzles.py). Правила считает сервер:
-// задачи, рейтинг решателя, забег на время и ступени тем — src/services/puzzles.py; «Ваши ошибки» —
-// personal_puzzles.py; защита — defense_drills.py; упражнения-генераторы — generated_drills.py; курс матов —
-// mate_course.py. Какой ход решающего сейчас ожидается, сервер хранит в Redis (одна активная задача на игрока).
+// Puzzles (tasks 13.2–13.3, defense drills 13.6): API client. The solution never comes from the server — only the position,
+// the opponent's first move and replies to correct moves.
+// All requests go to /api/v1/puzzles and require sign-in (routes in src/api/puzzles.py). The server owns the rules:
+// puzzles, solver rating, timed runs and theme stages — src/services/puzzles.py; "Your mistakes" —
+// personal_puzzles.py; defense — defense_drills.py; generator drills — generated_drills.py; mate course —
+// mate_course.py. Which solver move is expected next is kept by the server in Redis (one active puzzle per player).
 
 import {apiRequest} from './http';
 
-/** Задача для решения: позиция до первого хода соперника. Решения в ней нет. */
+/** A puzzle to solve: the position before the opponent's first move. It contains no solution. */
 export interface PuzzleView {
     id: number;
     fen: string;
-    /** Ход соперника (UCI), с которого задача начинается: клиент показывает его, после него ходит решающий. */
+    /** The opponent's move (UCI) the puzzle starts with: the client shows it, then the solver moves. */
     first_move: string;
     rating: number;
-    /** Коды тем реестра (src/services/themes.py); названия — в каталоге themes.<код>.name. */
+    /** Theme registry codes (src/services/themes.py); names are in the catalog under themes.<code>.name. */
     themes: string[];
-    /** Цвет решающего. */
+    /** The solver's color. */
     color: 'white' | 'black';
-    /** Сколько ходов должен сделать решающий. */
+    /** How many moves the solver must make. */
     solution_length: number;
     daily?: boolean;
-    /** Состояние забега на время, если задача выдана в нём. */
+    /** Timed-run state, if the puzzle was issued within one. */
     run?: TimedRun;
-    /** Тренировка по приёмам: ступень задачи (смешанная подборка — null). */
+    /** Tactic training: the puzzle's stage (mixed set — null). */
     stage?: number | null;
 }
 
 /**
- * Забег на время (3 или 5 минут): счёт, ошибки и остаток времени считает сервер, клиент только показывает таймер.
- * over — забег окончен: вышло время или набрано три ошибки.
+ * Timed run (3 or 5 minutes): the server counts the score, mistakes and time left; the client only shows the timer.
+ * over — the run is finished: time ran out or three mistakes were made.
  */
 export interface TimedRun {
     run_id: string;
@@ -42,22 +42,22 @@ export interface TimedRun {
 }
 
 /**
- * Прогресс темы после решённой задачи тренировки. Ступень (1–4) пройдена, когда из последних window задач не меньше
- * pass решены чисто — без ошибки и подсказки; оба числа присылает сервер (STAGE_WINDOW и STAGE_PASS).
+ * Theme progress after a solved training puzzle. A stage (1–4) is passed when at least pass of the last window puzzles
+ * were solved cleanly — without a mistake or a hint; the server sends both numbers (STAGE_WINDOW and STAGE_PASS).
  */
 export interface TrainingProgress {
     theme: string;
     stage: number;
-    /** Итоги последних задач ступени строкой, по знаку на задачу (сервер ведёт её в theme_progress.recent). */
+    /** Results of the stage's recent puzzles as a string, one character per puzzle (the server keeps it in theme_progress.recent). */
     recent: string;
     mastered: boolean;
-    /** Этой задачей игрок перешёл на следующую ступень. */
+    /** With this puzzle the player advanced to the next stage. */
     advanced: boolean;
     window: number;
     pass: number;
 }
 
-/** Тема в обзоре тренировки (GET /puzzles/training). */
+/** A theme in the training overview (GET /puzzles/training). */
 export interface ThemeOverview {
     code: string;
     section: string;
@@ -65,33 +65,33 @@ export interface ThemeOverview {
     recent: string;
     solved: number;
     mastered: boolean;
-    /** Сколько задач темы есть в базе на каждой из четырёх ступеней. */
+    /** How many puzzles of the theme exist in the database at each of the four stages. */
     available: [number, number, number, number];
-    /** Задач хватает на всех ступенях (минимумы темы заданы в реестре тем) — тему можно тренировать. */
+    /** There are enough puzzles at all stages (theme minimums are set in the theme registry) — the theme can be trained. */
     ready: boolean;
 }
 
-/** Обзор тренировки по приёмам: прогресс игрока по всем темам реестра. */
+/** Tactic training overview: the player's progress across all registry themes. */
 export interface TrainingOverview {
     window: number;
     pass: number;
     themes: ThemeOverview[];
 }
 
-/** Пример для показа приёма (GET /puzzles/demo): позиция и решение целиком; попыткой это не считается. */
+/** Example for demonstrating a tactic (GET /puzzles/demo): the position and the whole solution; it does not count as an attempt. */
 export interface DemoExample {
     fen: string;
     moves: string[];
     color: 'white' | 'black';
 }
 
-/** Цели задачи (таск 27.8): итог решения, выводится сервером из тем задачи. */
+/** Puzzle goals (task 27.8): the solving outcome, derived by the server from the puzzle's themes. */
 export const PUZZLE_GOALS = ['mate', 'draw', 'promotion', 'material'] as const;
 export type PuzzleGoal = typeof PUZZLE_GOALS[number];
 
 /**
- * Что тренируем: тему (на ступени игрока), раздел (смешанная подборка) или только цель без темы и раздела
- * (смешанная подборка по цели). blind — «без названия темы»: темы задачи скрыты до конца решения.
+ * What is being trained: a theme (at the player's stage), a section (mixed set) or just a goal with no theme or section
+ * (mixed set by goal). blind — "no theme name": the puzzle's themes are hidden until the solution is finished.
  */
 export interface TrainingTarget {
     theme?: string;
@@ -100,10 +100,10 @@ export interface TrainingTarget {
     goal?: PuzzleGoal;
 }
 
-/** «Ваши ошибки» (таск 13.5): позиция перед ошибкой в партии игрока. */
+/** "Your mistakes" (task 13.5): the position before a mistake in the player's game. */
 export interface PersonalView {
     id: number;
-    /** Партия на сайте или партия с другого сайта (таск 24.1) — заполнено ровно одно. */
+    /** A game on the site or a game from another site (task 24.1) — exactly one is filled. */
     game_id: number | null;
     imported_game_id?: number | null;
     ply: number;
@@ -113,25 +113,25 @@ export interface PersonalView {
     themes: string[];
     attempts: number;
     solved_streak: number;
-    /** Откуда ошибка: соперник (у бота — его id) и дата партии (таск B.3). */
+    /** Where the mistake came from: the opponent (for a bot, its id) and the game date (task B.3). */
     opponent?: string | null;
     opponent_is_bot?: boolean;
     played_at?: string | null;
 }
 
-/** Ответ на попытку в «Ваших ошибках»: верно ли, лучший ход (solution) и ход, сыгранный в партии (played). */
+/** Response to an attempt in "Your mistakes": whether it is correct, the best move (solution) and the move played in the game (played). */
 export interface PersonalAnswer {
     correct: boolean;
     solution: string;
     played: string;
-    /** Задача освоена (решена верно два раза подряд) и больше не повторяется. */
+    /** The puzzle is mastered (solved correctly twice in a row) and is no longer repeated. */
     done: boolean;
     solved_streak: number;
-    /** Когда задача вернётся на повторение: интервалы 1, 3, 7 и 21 день задаёт сервер. */
+    /** When the puzzle returns for review: the server sets the intervals of 1, 3, 7 and 21 days. */
     next_due_at: string | null;
 }
 
-/** Сводка «Ваших ошибок»: к повторению сейчас, всего в работе, освоено и когда ближайшее повторение. */
+/** "Your mistakes" summary: due now, total in progress, mastered and when the next review is. */
 export interface PersonalSummary {
     due: number;
     active: number;
@@ -139,7 +139,7 @@ export interface PersonalSummary {
     next_due_at: string | null;
 }
 
-/** Итог задачи: рейтинг решателя до и после (Эло против рейтинга задачи) и серия решённых без ошибок и подсказок. */
+/** Puzzle result: the solver's rating before and after (Elo against the puzzle rating) and the streak solved without mistakes or hints. */
 export interface PuzzleResult {
     solved: boolean;
     rating_before: number;
@@ -152,8 +152,8 @@ export interface PuzzleResult {
 }
 
 /**
- * Ответ на ход решающего. Верный ход — reply: ответный ход соперника (null, если задача решена этим ходом).
- * Первая ошибка завершает задачу: done, и в solution приходит решение целиком. result — только когда done.
+ * Response to the solver's move. A correct move gives reply: the opponent's reply move (null if this move solved the puzzle).
+ * The first mistake ends the puzzle: done, and solution carries the whole solution. result is present only when done.
  */
 export interface MoveResponse {
     correct: boolean;
@@ -164,8 +164,8 @@ export interface MoveResponse {
 }
 
 /**
- * Подсказка: первая показывает поле фигуры (from), вторая — и поле хода (to). Подсказки снижают прибавку рейтинга:
- * одна — вдвое, две — до нуля.
+ * Hint: the first shows the piece square (from), the second also the move square (to). Hints reduce the rating gain:
+ * one halves it, two bring it to zero.
  */
 export interface HintResponse {
     from: string;
@@ -173,12 +173,12 @@ export interface HintResponse {
     hints_used: number;
 }
 
-/** Профиль решателя (GET /puzzles/me): рейтинг задач, число попыток, серия, рекорды забегов и последние попытки. */
+/** Solver profile (GET /puzzles/me): puzzle rating, attempt count, streak, run records and recent attempts. */
 export interface PuzzleProfile {
     rating: number;
     games: number;
     streak: number;
-    /** Личные рекорды забегов на 3 и 5 минут. */
+    /** Personal run records for 3 and 5 minutes. */
     best: { '3': number; '5': number };
     history: {
         puzzle_id: number;
@@ -190,7 +190,7 @@ export interface PuzzleProfile {
     }[];
 }
 
-/** Итог забега на время: счёт, ошибки и личный рекорд на эту длительность (best — уже с учётом этого забега). */
+/** Timed-run result: score, mistakes and the personal record for this duration (best already includes this run). */
 export interface TimedResult {
     score: number;
     mistakes: number;
@@ -199,7 +199,7 @@ export interface TimedResult {
     new_record: boolean;
 }
 
-/** Строка таблицы лидеров забегов на время; me — это строка самого игрока. */
+/** A row of the timed-run leaderboard; me — this is the player's own row. */
 export interface LeaderRow {
     place: number;
     username: string;
@@ -209,22 +209,22 @@ export interface LeaderRow {
 
 export type LeaderScope = 'week' | 'all';
 
-/** Таблица лидеров: топ и своя строка (если игрок в зачёте, в том числе ниже топа). */
+/** Leaderboard: the top and the player's own row (if the player is ranked, including below the top). */
 export interface TimedLeaders {
     rows: LeaderRow[];
     me: LeaderRow | null;
 }
 
-/** Защитные упражнения (таск 13.6): «Что грозит соперник?» и «Не зевни». */
+/** Defense drills (task 13.6): "What does the opponent threaten?" and "Don't blunder". */
 export type DefenseKind = 'threat' | 'blunder';
 
-/** Темы реестра, которые решаются защитными упражнениями, а не задачами базы. */
+/** Registry themes solved by defense drills rather than by database puzzles. */
 export const DEFENSE_DRILL_THEMES: Record<string, DefenseKind> = {
     find_the_threat: 'threat',
     blunder_check: 'blunder',
 };
 
-/** Защитное упражнение на ступени игрока. Угроза и верные ходы в нём не приходят — только после ответа. */
+/** A defense drill at the player's stage. The threat and the correct moves are not sent in it — only after the answer. */
 export interface DefenseDrillView {
     id: number;
     kind: DefenseKind;
@@ -233,67 +233,67 @@ export interface DefenseDrillView {
     color: 'white' | 'black';
     rating: number;
     stage: number;
-    /** «Не зевни»: три хода на выбор (UCI). */
+    /** "Don't blunder": three moves to choose from (UCI). */
     choices: string[];
 }
 
-/** Первый этап «Что грозит соперник?»: угадано ли поле; сама угроза (ход соперника, UCI) раскрывается в любом случае. */
+/** First step of "What does the opponent threaten?": whether the square was guessed; the threat itself (the opponent's move, UCI) is revealed either way. */
 export interface DefenseThreatResponse {
     correct: boolean;
     threat: string;
-    /** Коды мотивов угрозы — для подписи. */
+    /** Threat motif codes — for the caption. */
     motifs: string[];
 }
 
-/** Итог защитного упражнения: верные ходы, опровержения неверных и прогресс темы. */
+/** Defense drill result: correct moves, refutations of the wrong ones and theme progress. */
 export interface DefenseAnswer {
     correct: boolean;
-    /** Решено чисто — такой результат идёт в зачёт ступени. */
+    /** Solved cleanly — only such a result counts toward the stage. */
     clean: boolean;
     good: string[];
     threat: string | null;
-    /** Проигрывающий ход → ответ соперника, который его опровергает. */
+    /** A losing move → the opponent's reply that refutes it. */
     refutations: Record<string, string>;
     motifs: string[];
     training: TrainingProgress;
 }
 
-/** Упражнения-генераторы (таск 13.7): матрица «вид × фигура», уровни 1–3. */
+/** Generator drills (task 13.7): a "kind × piece" matrix, levels 1–3. */
 export const DRILL_KINDS = ['capture', 'fork', 'check', 'pin', 'safe', 'escape', 'mate1', 'mate2'] as const;
 export type DrillKind = typeof DRILL_KINDS[number];
-/** Фигура упражнения: ферзь, ладья, слон, конь; x — случайная фигура. */
+/** Drill piece: queen, rook, bishop, knight; x — a random piece. */
 export const DRILL_PIECES = ['q', 'r', 'b', 'n', 'x'] as const;
 export type DrillPiece = typeof DRILL_PIECES[number];
 
-/** Тема реестра → вид упражнения (кнопка в карточке темы «Приёмов»). Та же таблица — THEME_DRILLS сервера. */
+/** Registry theme → drill kind (the button in the theme card of "Tactics"). The same table is THEME_DRILLS on the server. */
 export const THEME_DRILLS: Record<string, DrillKind> = {
     hanging_piece: 'capture', fork: 'fork', pin: 'pin', basic_mates: 'mate1',
 };
 
-/** Есть ли упражнение для пары «вид × фигура»: нет только связки конём — конь не связывает. */
+/** Whether a drill exists for the "kind × piece" pair: only the knight pin combination is missing — a knight does not pin. */
 export function drillSupported(kind: DrillKind, piece: DrillPiece): boolean {
     return !(kind === 'pin' && piece === 'n');
 }
 
-/** Упражнение-генератор: позиция строится сервером по таблице seed (data/drills/seeds.json), решение не приходит. */
+/** Generator drill: the position is built by the server from the seed table (data/drills/seeds.json); the solution is not sent. */
 export interface DrillView {
-    /** Ключ упражнения — с ним клиент присылает ответ (POST /puzzles/drills/answer). */
+    /** Drill key — the client sends it with the answer (POST /puzzles/drills/answer). */
     key: string;
     kind: DrillKind;
     piece: DrillPiece;
     level: number;
     fen: string;
     color: 'white' | 'black';
-    /** Фигура, которой решать (q/r/b/n); в «уйти от мата» — любая. */
+    /** The piece to solve with (q/r/b/n); for "escape mate" — any. */
     piece_type: string | null;
-    /** Ходов решающего: мат в 2 — два. */
+    /** Solver moves: mate in 2 — two. */
     moves: number;
     run?: DrillRun;
 }
 
-/** Забег упражнений на минуту: счёт и время считает сервер; три ошибки или конец времени — over. */
+/** One-minute drill run: the server counts the score and time; three mistakes or time up — over. */
 export interface DrillRun {
-    /** Сочетание «вид, фигура, уровень» — по нему ведётся личный рекорд. */
+    /** The "kind, piece, level" combination — the personal record is kept per combination. */
     combo: string;
     solved: number;
     mistakes: number;
@@ -301,7 +301,7 @@ export interface DrillRun {
     over: boolean;
 }
 
-/** Ответ на ходы упражнения — устроен как MoveResponse задачи; в забеге ещё его состояние (run). */
+/** Response to drill moves — shaped like the puzzle's MoveResponse; within a run it also carries the run state (run). */
 export interface DrillAnswer {
     correct: boolean;
     done: boolean;
@@ -310,7 +310,7 @@ export interface DrillAnswer {
     run: DrillRun | null;
 }
 
-/** Итог забега упражнений: счёт и личный рекорд сочетания (таблица drill_records). */
+/** Drill run result: score and the personal record of the combination (drill_records table). */
 export interface DrillRunResult {
     combo: string;
     score: number;
@@ -319,12 +319,12 @@ export interface DrillRunResult {
     new_record: boolean;
 }
 
-/** Запрос к /api/v1/puzzles через общую обёртку http.ts (токен, JSON, ошибки). */
+/** Request to /api/v1/puzzles through the shared http.ts wrapper (token, JSON, errors). */
 const request = <T>(path: string, init: RequestInit = {}) => apiRequest<T>(`/puzzles${path}`, init);
 
 /**
- * Курс матовых конструкций (таск 14.6): конструкции по порядку курса и число задач, найденных для каждой;
- * tasks — сколько задач на конструкцию проходит игрок, exam_size и exam_minutes — размер и время итоговой проверки.
+ * Mate pattern course (task 14.6): patterns in course order and the number of puzzles found for each;
+ * tasks — how many puzzles per pattern the player goes through, exam_size and exam_minutes — size and time of the final test.
  */
 export interface MateCourseOverview {
     tasks: number;
@@ -333,42 +333,42 @@ export interface MateCourseOverview {
     constructions: { code: string; available: number }[];
 }
 
-/** План итоговой проверки курса: задачи разных конструкций (тема и номер задачи в её наборе). */
+/** Plan of the course's final test: puzzles of different patterns (theme and puzzle number within its set). */
 export interface MateExamPlan {
     minutes: number;
     tasks: { theme: string; index: number }[];
 }
 
 /**
- * Эндпоинты задач. Задачи курса матов и забега решаются теми же move / hint / giveUp, что и обычные: начатая
- * задача становится активной задачей игрока на сервере, предыдущая незаконченная отменяется.
+ * Puzzle endpoints. Mate course and run puzzles are solved with the same move / hint / giveUp as ordinary ones: a started
+ * puzzle becomes the player's active puzzle on the server, and the previous unfinished one is cancelled.
  */
 export const puzzlesApi = {
     mateCourse: () => request<MateCourseOverview>('/course/mates'),
     mateExam: () => request<MateExamPlan>('/course/mates/exam'),
-    /** Начать задачу курса: index-я по сложности задача конструкции; рейтинг задач она не меняет. */
+    /** Start a course puzzle: the index-th puzzle of the pattern by difficulty; it does not change the puzzle rating. */
     mateTask: (theme: string, index: number) =>
         request<PuzzleView & { course: string; index: number }>(`/course/mates/${encodeURIComponent(theme)}/${index}`),
-    /** Задача под рейтинг решателя (и по теме), без недавно решавшихся. */
+    /** A puzzle matching the solver's rating (and by theme), excluding recently solved ones. */
     next: (theme?: string | null) => request<PuzzleView>(`/next${theme ? `?theme=${encodeURIComponent(theme)}` : ''}`),
-    /** Задача дня — одна на всех, по дате UTC. */
+    /** Puzzle of the day — the same for everyone, by UTC date. */
     daily: () => request<PuzzleView>('/daily'),
     move: (id: number, move: string) => request<MoveResponse>(`/${id}/move`, {
         method: 'POST', body: JSON.stringify({move}),
     }),
     hint: (id: number) => request<HintResponse>(`/${id}/hint`, {method: 'POST'}),
-    /** «Показать решение»: задача засчитывается как нерешённая. */
+    /** "Show solution": the puzzle counts as unsolved. */
     giveUp: (id: number) => request<{ solution: string[]; result: PuzzleResult }>(`/${id}/give-up`, {method: 'POST'}),
     me: () => request<PuzzleProfile>('/me'),
     timedStart: (minutes: 3 | 5) => request<TimedRun>('/timed/start', {
         method: 'POST', body: JSON.stringify({minutes}),
     }),
-    /** Следующая задача забега: сложнее с каждой решённой; рейтинг решателя задачи забега не меняют. */
+    /** Next run puzzle: harder with each one solved; run puzzles do not change the solver's rating. */
     timedNext: () => request<PuzzleView & { run: TimedRun }>('/timed/next'),
-    /** Таблица лидеров забегов: неделя (понедельник UTC) или рекорды за всё время. */
+    /** Run leaderboard: week (Monday UTC) or all-time records. */
     timedLeaders: (minutes: 3 | 5, scope: LeaderScope) => request<TimedLeaders>(`/timed/leaders?minutes=${minutes}&scope=${scope}`),
     timedFinish: () => request<TimedResult>('/timed/finish', {method: 'POST'}),
-    /** Задача тренировки по приёмам (GET /puzzles/train) — см. TrainingTarget. */
+    /** Tactic training puzzle (GET /puzzles/train) — see TrainingTarget. */
     train: (target: TrainingTarget) => {
         const params = new URLSearchParams();
         if (target.theme) params.set('theme', target.theme);
@@ -383,7 +383,7 @@ export const puzzlesApi = {
     personalAnswer: (id: number, move: string) => request<PersonalAnswer>(`/personal/${id}/answer`, {
         method: 'POST', body: JSON.stringify({move}),
     }),
-    /** Полуходы партии, из которых сделаны задачи игрока, — для значка в разборе партии. */
+    /** Plies of the game that the player's puzzles were made from — for the badge in game review. */
     personalPlies: (gameId: number) => request<{ game_id: number; plies: number[] }>(`/personal/game/${gameId}`),
     drillsNext: (kind: DrillKind, piece: DrillPiece, level: number) =>
         request<DrillView>(`/drills/next?kind=${kind}&piece=${piece}&level=${level}`),
@@ -395,10 +395,10 @@ export const puzzlesApi = {
     }),
     drillsRunNext: () => request<DrillView & { run: DrillRun }>('/drills/run/next'),
     drillsRunFinish: () => request<DrillRunResult>('/drills/run/finish', {method: 'POST'}),
-    /** Личные рекорды забегов по сочетаниям и таблица «тема → вид упражнения» с сервера. */
+    /** Personal run records by combination and the "theme → drill kind" table from the server. */
     drillsRecords: () => request<{ records: Record<string, number>; themes: Record<string, DrillKind> }>('/drills/records'),
     defenseNext: (kind: DefenseKind) => request<DefenseDrillView>(`/defense/next?kind=${kind}`),
-    /** «Что грозит соперник?», первый этап: square — поле фигуры, которая бьёт, или поле удара. */
+    /** "What does the opponent threaten?", first step: square — the square of the attacking piece or of the attack. */
     defenseThreat: (id: number, square: string) => request<DefenseThreatResponse>(`/defense/${id}/threat`, {
         method: 'POST', body: JSON.stringify({square}),
     }),

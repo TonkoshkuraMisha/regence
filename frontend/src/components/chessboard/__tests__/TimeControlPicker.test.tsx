@@ -1,5 +1,5 @@
-// Выбор контроля времени (TimeControlPicker): подпись выбранного варианта, раскрытие списка по категориям, выбор
-// варианта, блокировка при назначенной партии и ручная настройка минут и добавки с зажимом в допустимые пределы.
+// Time control picker (TimeControlPicker): the label of the chosen option, expanding the list by categories, choosing
+// an option, blocking when a game is assigned and manual setting of minutes and increment clamped to the allowed limits.
 
 import {createRef} from 'react';
 import {fireEvent, render, screen} from '@testing-library/react';
@@ -24,14 +24,14 @@ function setup(over: Partial<TimeControlPickerProps> = {}) {
 }
 
 describe('TimeControlPicker', () => {
-    it('закрытый список показывает выбранный вариант, клик по кнопке раскрывает его', () => {
+    it('the closed list shows the chosen option, a click on the button expands it', () => {
         const props = setup();
         fireEvent.click(screen.getByRole('button'));
         expect(props.onToggleOpen).toHaveBeenCalledTimes(1);
         expect(screen.getAllByText(PRESET.label).length).toBeGreaterThan(0);
     });
 
-    it('открытый список содержит все категории и отдаёт выбранный вариант', () => {
+    it('the open list contains all categories and returns the chosen option', () => {
         const props = setup({isOpen: true});
         for (const g of TIME_CONTROLS) expect(screen.getAllByText(g.title).length).toBeGreaterThan(0);
         const other = ALL.find((o) => o.id !== PRESET.id && !o.isManual)!;
@@ -39,12 +39,12 @@ describe('TimeControlPicker', () => {
         expect(props.onSelect).toHaveBeenCalledWith(other);
     });
 
-    it('при назначенной партии кнопка недоступна', () => {
+    it('with an assigned game the button is unavailable', () => {
         setup({disabled: true});
         expect(screen.getByRole('button')).toBeDisabled();
     });
 
-    it('ручной режим: поля и зажим значений в 1–240 минут и 0–180 секунд', () => {
+    it('manual mode: fields and clamping of values to 1–240 minutes and 0–180 seconds', () => {
         const props = setup({selectedTimeControl: MANUAL, isOpen: true});
         const [base, inc] = screen.getAllByRole('spinbutton');
         expect(base).toHaveValue(7);
@@ -59,7 +59,7 @@ describe('TimeControlPicker', () => {
         expect(props.onManualIncSecondsChange).toHaveBeenLastCalledWith(0);
     });
 
-    it('у готового варианта полей ручной настройки нет', () => {
+    it('a ready-made option has no manual setting fields', () => {
         setup();
         expect(screen.queryAllByRole('spinbutton')).toHaveLength(0);
     });

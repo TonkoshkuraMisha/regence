@@ -1,5 +1,5 @@
 # --- FILE: src/models/achievement.py ---
-"""Открытые достижения игрока (таск 17.6): код и дата; условия — src/services/achievements.py."""
+"""A player's unlocked achievements (task 17.6): the code and date; the conditions are in src/services/achievements.py."""
 
 from datetime import datetime
 
@@ -11,7 +11,8 @@ from src.models.base import Base
 
 class UserAchievement(Base):
     """
-    Достижение, открытое игроком: код достижения и дата. Одно достижение записывается один раз; условия проверяет
+    An achievement unlocked by a player: the achievement code and the date. One achievement is recorded once; the conditions
+    are checked by
     src/services/achievements.py.
     """
     __tablename__ = "user_achievements"

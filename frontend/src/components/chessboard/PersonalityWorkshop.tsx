@@ -1,10 +1,10 @@
 // --- FILE: frontend/src/components/chessboard/PersonalityWorkshop.tsx ---
-// Мастерская соперников: игрок собирает бота из ползунков характера и силы, выбирает ему дебюты, сохраняет и играет
-// с ним. Как ползунки превращаются в стиль игры — src/services/bots/personality.py; хранение —
-// services/personalities.ts: у вошедшего игрока — сервер (GET, POST, PUT, DELETE /bots/personalities), без токена —
-// localStorage этого браузера (ключ regence_guest_personalities). Готовые архетипы и их сила — GET /bots/catalog.
-// Радар стиля, оценка силы и метки стиля считаются на клиенте (config/archetypes.ts). Сейчас мастерскую показывает
-// только Chessboard, а он без входа выводит заглушку — гостевая ветка с главной доски недостижима.
+// Opponent workshop: the player builds a bot from character and strength sliders, picks its openings, saves it and plays
+// against it. How the sliders turn into a playing style is in src/services/bots/personality.py; storage is
+// services/personalities.ts: for a signed-in player the server (GET, POST, PUT, DELETE /bots/personalities), without a token
+// this browser's localStorage (key regence_guest_personalities). Ready-made archetypes and their strength: GET /bots/catalog.
+// The style radar, strength estimate and style tags are computed on the client (config/archetypes.ts). For now the workshop is shown
+// only by Chessboard, and without sign-in it renders a stub, so the guest branch from the main board is unreachable.
 
 import {useCallback, useEffect, useState} from 'react';
 import {PolarAngleAxis, PolarGrid, Radar, RadarChart} from 'recharts';
@@ -35,7 +35,7 @@ import type {UiMessage} from '../../i18n';
 type SliderKey = 'aggression' | 'center_control' | 'mobility' | 'king_safety' | 'pawn_structure'
     | 'randomness' | 'blunder_guard_cp' | 'target_elo' | 'draw_attitude' | 'passed_pawns';
 
-/** Значения новых ползунков у соперников, сохранённых до них (таск 21.4). */
+/** Default values of the new sliders for opponents saved before they existed (task 21.4). */
 const SLIDER_FALLBACK: Partial<Record<SliderKey, number>> = {draw_attitude: 0, passed_pawns: 100};
 
 interface SliderSpec {
@@ -47,8 +47,8 @@ interface SliderSpec {
     readonly hint: string;
 }
 
-// Описание ползунка; подпись и подсказка «что это меняет» читаются из каталога при показе (геттеры), поэтому
-// меняются вместе с языком.
+// Slider description; the label and the "what does this change" hint are read from the catalog when shown (getters), so
+// they change together with the language.
 function slider(key: SliderKey, min: number, max: number, step: number): SliderSpec {
     return {
         key,
@@ -65,8 +65,8 @@ function slider(key: SliderKey, min: number, max: number, step: number): SliderS
 }
 
 /**
- * Ползунки конструктора. Границы — те же, что в BotPersonalityConfig на сервере (src/services/bots/personality.py):
- * значение вне границ сервер не примет.
+ * Builder sliders. The bounds are the same as in BotPersonalityConfig on the server (src/services/bots/personality.py):
+ * the server will not accept a value outside the bounds.
  */
 export const SLIDERS: SliderSpec[] = [
     slider('aggression', -100, 100, 5),
@@ -82,33 +82,33 @@ export const SLIDERS: SliderSpec[] = [
 ];
 
 export interface PersonalityWorkshopProps {
-    /** Токен вошедшего игрока: персоналии на сервере; без него — в этом браузере. */
+    /** Token of the signed-in player: personalities on the server; without it, in this browser. */
     token: string | null;
     playDisabled: boolean;
-    /** Начать партию с соперником из черновика; партию ведёт вызывающий (useBotGame, /bots/custom-move). */
+    /** Start a game against the opponent from the draft; the caller runs the game (useBotGame, /bots/custom-move). */
     onPlay: (opponent: CustomOpponent, colorPref: 'white' | 'black' | 'random') => void;
-    /** На свободной доске стоит своя позиция — партию можно начать с неё (флажок под кнопкой сохранения). */
+    /** The free board holds a custom position: a game can start from it (a checkbox under the save button). */
     canStartFromPosition: boolean;
     startFromPosition: boolean;
     onStartFromPositionChange: (value: boolean) => void;
 }
 
-/** Соперник в конструкторе: то, что сейчас на ползунках; до сохранения живёт только в памяти компонента. */
+/** Opponent in the builder: what is currently on the sliders; until saved it lives only in the component's memory. */
 interface Draft {
     name: string;
     config: PersonalityConfig;
     bio?: string;
-    /** id сохранённой персоналии, которую редактируем (null — новая). */
+    /** id of the saved personality being edited (null means a new one). */
     savedId: number | string | null;
-    /** Черновик начат с архетипа: пока имя и ползунки не тронуты, играем именно этим архетипом. */
+    /** The draft started from an archetype: until the name and sliders are touched, we play exactly that archetype. */
     archetypeId?: ArchetypeId;
 }
 
 const emptyDraft = (): Draft => ({name: '', config: {...DEFAULT_CONFIG}, savedId: null});
 
 /**
- * Мастерская соперников: «Мои соперники» (сервер или браузер гостя), готовые архетипы и
- * конструктор — ползунки с подсказками, радар стиля, оценка силы, сохранение и игра.
+ * Opponent workshop: "My opponents" (server or the guest's browser), ready-made archetypes and
+ * the builder: sliders with hints, style radar, strength estimate, saving and playing.
  */
 export function PersonalityWorkshop({
     token, playDisabled, onPlay, canStartFromPosition, startFromPosition, onStartFromPositionChange,
@@ -120,7 +120,7 @@ export function PersonalityWorkshop({
     const [notice, setNotice] = useState<'workshop.savedProfile' | 'workshop.savedBrowser' | null>(null);
     const [busy, setBusy] = useState(false);
     const [archetypes, setArchetypes] = useState<CatalogArchetype[]>([]);
-    // Фильтры выбора соперника (таск 21.4).
+    // Opponent selection filters (task 21.4).
     const [show, setShow] = useState<'all' | 'archetypes' | 'mine'>('all');
     const [bucket, setBucket] = useState<StrengthBucket | 'any'>('any');
     const [styleTag, setStyleTag] = useState<StyleTag | 'any'>('any');
@@ -129,7 +129,7 @@ export function PersonalityWorkshop({
     const shownMine = mine.filter((p) => fits(p.config.target_elo, p.config));
     const shownArchetypes = archetypes.filter((a) => fits(a.rating, a.config));
 
-    // Архетипы — из каталога ботов (GET /bots/catalog; services/botCatalog.ts держит ответ в памяти).
+    // Archetypes come from the bot catalog (GET /bots/catalog; services/botCatalog.ts keeps the response in memory).
     useEffect(() => {
         let alive = true;
         fetchBotCatalog()
@@ -153,14 +153,14 @@ export function PersonalityWorkshop({
         reload();
     }, [reload]);
 
-    // Без мемоизации: подписи осей зависят от языка, а расчёт копеечный.
+    // Not memoised: axis labels depend on the language, and the calculation is trivial.
     const radar = styleRadar(draft.config);
 
     const setValue = (key: SliderKey, value: number) =>
         setDraft((d) => ({...d, config: {...d.config, [key]: value}}));
 
-    // Берёт соперника (своего или архетип) в конструктор. Конфиг копируется, чтобы правки черновика не меняли
-    // сохранённого соперника и архетип из каталога.
+    // Takes an opponent (one's own or an archetype) into the builder. The config is copied so that draft edits do not change
+    // the saved opponent or the archetype from the catalog.
     const pick = (
         name: string, config: PersonalityConfig, savedId: Draft['savedId'], bio?: string, archetypeId?: ArchetypeId,
     ) => {
@@ -217,8 +217,8 @@ export function PersonalityWorkshop({
         }
     };
 
-    // Играть можно и несохранённым черновиком: тогда на сервер с каждым ходом уходят сами ползунки (config).
-    // Архетип без правок играет как архетип (в архив — его ключ, имя на языке игрока).
+    // One can play with an unsaved draft too: then the sliders themselves (config) go to the server with every move.
+    // An archetype without edits plays as the archetype (the archive gets its key, the name in the player's language).
     const play = (colorPref: 'white' | 'black' | 'random') => {
         const name = draft.name.trim() || t('workshop.defaultName');
         const savedOnServer = token && typeof draft.savedId === 'number';
@@ -231,7 +231,7 @@ export function PersonalityWorkshop({
             config: draft.config,
             bio: draft.bio,
             ...(pristineArchetype ? {archetypeId: archetype.id} : {}),
-            // Сохранённый на сервере соперник играет по своему id — но только если конфиг не меняли.
+            // An opponent saved on the server plays by its id, but only if the config was not changed.
             personalityId: savedOnServer && isUnchanged(mine, draft) ? (draft.savedId as number) : undefined,
         }, colorPref);
     };
@@ -426,13 +426,13 @@ export function PersonalityWorkshop({
     );
 }
 
-/** Черновик совпадает с сохранённым соперником (имя и все ползунки) — можно играть по его id. */
+/** The draft matches the saved opponent (name and all sliders): can play by its id. */
 function isUnchanged(mine: Personality[], draft: Draft): boolean {
     const saved = mine.find((p) => p.id === draft.savedId);
     return !!saved && saved.name === draft.name.trim() && sameConfig(saved.config, draft.config);
 }
 
-/** Сравнение конфигов: у соперников, сохранённых до любимых дебютов (таск 21.2), этих полей нет — это пустые списки. */
+/** Config comparison: opponents saved before favourite openings (task 21.2) lack these fields; they are empty lists. */
 function sameConfig(a: PersonalityConfig, b: PersonalityConfig): boolean {
     const normal = (c: PersonalityConfig) => JSON.stringify({
         ...c, openings_white: c.openings_white ?? [], openings_black: c.openings_black ?? [], habits: c.habits ?? [],

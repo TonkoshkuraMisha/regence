@@ -1,8 +1,8 @@
 # --- FILE: tests/test_game_state_paths.py ---
 """
-Состояние партии в Redis (src/services/game_state.py): редкие ветки — повтор при конфликте WATCH, лидерство цикла
-таймаутов, сверка, отмена на первом ходу, берсерк, итог партии с нестандартными данными. Время и сон подменены,
-движок не используется. Дополняет test_game_state.py, test_timeouts_loop.py и test_game_end_reconciliation.py.
+Game state in Redis (src/services/game_state.py): rare branches: retry on a WATCH conflict, timeout loop leadership,
+reconciliation, abort on the first move, berserk, game result with non-standard data. Time and sleep are stubbed,
+the engine is not used. Complements test_game_state.py, test_timeouts_loop.py and test_game_end_reconciliation.py.
 """
 
 import time
@@ -22,11 +22,11 @@ from src.services.game_state import (
     state_manager,
 )
 
-KVK = "8/8/8/8/8/8/8/K1k5 w - - 0 1"  # голые короли: мата не поставить никому
+KVK = "8/8/8/8/8/8/8/K1k5 w - - 0 1"  # bare kings: nobody can deliver mate
 
 
 class Recorder:
-    """Менеджер соединений-заглушка: запоминает рассылку."""
+    """Connection manager stub: records broadcasts."""
 
     def __init__(self):
         self.sent: list[tuple[int, dict]] = []
@@ -48,7 +48,7 @@ async def _db_users(db_session, n=2) -> list[User]:
 
 
 def _watch_error_once(monkeypatch):
-    """Первый execute() транзакции WATCH/MULTI падает с WatchError — код обязан повторить попытку."""
+    """The first execute() of a WATCH/MULTI transaction fails with WatchError; the code must retry."""
     real = state_manager.redis.pipeline
     seen = {"failed": False}
 
@@ -69,7 +69,7 @@ def _watch_error_once(monkeypatch):
     return seen
 
 
-# --- Чистые правила -----------------------------------------------------------------------
+# --- Pure rules -----------------------------------------------------------------------
 
 async def test_abandon_rules_for_white_and_for_dead_draw():
     await state_manager.initialize_game(8001, 1, 2, 600000, 0)
@@ -82,12 +82,12 @@ async def test_abandon_rules_for_white_and_for_dead_draw():
                  black_disconnect_started_at=str(now - ABANDON_TIMEOUT_MS - 1))
     assert evaluate_clock_expiry(state, now) == ("1-0", 1, "abandoned")
 
-    state["board_fen"] = KVK  # у оставшегося нет материала для мата — ничья, а не победа
+    state["board_fen"] = KVK  # the remaining player has no mating material: a draw, not a win
     result, winner, _ = evaluate_clock_expiry(state, now)
     assert (result, winner) == ("1/2-1/2", None)
 
 
-# --- Конфликты WATCH ----------------------------------------------------------------------
+# --- WATCH conflicts ----------------------------------------------------------------------
 
 async def test_update_if_in_progress_retries_and_refuses_finished(monkeypatch):
     await state_manager.initialize_game(8002, 1, 2, 600000, 0)
@@ -106,38 +106,38 @@ async def test_claim_game_end_retries_on_watch_error(monkeypatch):
     seen = _watch_error_once(monkeypatch)
     assert await state_manager.claim_game_end(8003, "1-0", "resignation") is not None
     assert seen["failed"]
-    # повторный захват и захват с отказом guard — None
+    # a repeated claim and a claim rejected by the guard give None
     assert await state_manager.claim_game_end(8003, "1-0", "resignation") is None
     await state_manager.initialize_game(8004, 1, 2, 600000, 0)
     assert await state_manager.claim_game_end(8004, "1-0", "x", guard=lambda fresh: False) is None
 
 
-# --- Берсерк ------------------------------------------------------------------------------
+# --- Berserk ------------------------------------------------------------------------------
 
 async def test_apply_berserk_error_codes_and_retry(monkeypatch):
     assert (await state_manager.apply_berserk(404, 1))["code"] == "game_not_in_progress"
 
     await state_manager.initialize_game(8005, 1, 2, 600000, 0)
-    assert (await state_manager.apply_berserk(8005, 1))["code"] == "berserk_unavailable"  # не партия арены
+    assert (await state_manager.apply_berserk(8005, 1))["code"] == "berserk_unavailable"  # not an arena game
 
     await state_manager.update_game_state(8005, {"berserk_allowed": "1"})
-    assert (await state_manager.apply_berserk(8005, 99))["code"] == "berserk_unavailable"  # не игрок партии
+    assert (await state_manager.apply_berserk(8005, 99))["code"] == "berserk_unavailable"  # not a player of the game
 
     seen = _watch_error_once(monkeypatch)
     ok = await state_manager.apply_berserk(8005, 1)
     assert seen["failed"] and ok["status"] == "ok" and ok["state"]["white_time_ms"] == 300000
     assert (await state_manager.apply_berserk(8005, 1))["status"] == "ignored"
 
-    # чёрные после двух полуходов уже опоздали
+    # Black is already too late after two plies
     await state_manager.update_game_state(8005, {"state_version": "2"})
     assert (await state_manager.apply_berserk(8005, 2))["code"] == "berserk_too_late"
 
 
-# --- Отключение и возвращение -------------------------------------------------------------
+# --- Disconnect and return -------------------------------------------------------------
 
 async def test_disconnect_reconnect_ignore_players_without_live_game():
     manager = Recorder()
-    await state_manager.handle_player_disconnect(1, manager)  # нет партии
+    await state_manager.handle_player_disconnect(1, manager)  # no game
     await state_manager.handle_player_reconnect(1, manager)
     await state_manager.initialize_game(8006, 1, 2, 600000, 0)
     await state_manager.update_game_state(8006, {"status": "completed"})
@@ -145,7 +145,7 @@ async def test_disconnect_reconnect_ignore_players_without_live_game():
     await state_manager.handle_player_reconnect(1, manager)
     assert manager.sent == []
 
-    # партия есть, но завершилась между чтением и записью: соперник не оповещается
+    # the game exists but finished between read and write: the opponent is not notified
     await state_manager.update_game_state(8006, {"status": "in_progress"})
     real = state_manager._update_if_in_progress
 
@@ -162,12 +162,12 @@ async def test_disconnect_reconnect_ignore_players_without_live_game():
     assert manager.sent == []
 
 
-# --- Лидерство и цикл таймаутов -----------------------------------------------------------
+# --- Leadership and the timeout loop -----------------------------------------------------------
 
 async def test_timeouts_leadership_variants(monkeypatch):
     redis = state_manager.redis
-    assert await state_manager._hold_timeouts_leadership() is True  # свободно — берём
-    assert await state_manager._hold_timeouts_leadership() is True  # уже наше — продлеваем
+    assert await state_manager._hold_timeouts_leadership() is True  # free: take it
+    assert await state_manager._hold_timeouts_leadership() is True  # already ours: extend it
 
     await redis.set(gs.TIMEOUTS_LEADER_KEY, "other-worker")
     assert await state_manager._hold_timeouts_leadership() is False
@@ -176,7 +176,7 @@ async def test_timeouts_leadership_variants(monkeypatch):
         raise RuntimeError("redis down")
 
     monkeypatch.setattr(redis, "set", boom)
-    assert await state_manager._hold_timeouts_leadership() is True  # при сбое Redis проход всё равно идёт
+    assert await state_manager._hold_timeouts_leadership() is True  # the pass still runs when Redis fails
     assert WORKER_ID
 
 
@@ -190,7 +190,7 @@ async def test_timeouts_loop_runs_pass_survives_errors_and_sleeps(monkeypatch):
     async def once(manager):
         calls.append("once")
         if calls.count("once") == 1:
-            raise RuntimeError("redis down")  # сбой прохода не убивает цикл
+            raise RuntimeError("redis down")  # a failed pass does not kill the loop
 
     async def reconcile(manager):
         calls.append("reconcile")
@@ -223,11 +223,11 @@ async def test_maybe_reconcile_is_throttled(monkeypatch):
     monkeypatch.setattr(state_manager, "reconcile_unfinished_games", fake_reconcile)
     monkeypatch.setattr(state_manager, "_last_reconcile_ms", 0)
     await state_manager._maybe_reconcile(Recorder())
-    await state_manager._maybe_reconcile(Recorder())  # слишком рано
+    await state_manager._maybe_reconcile(Recorder())  # too early
     assert len(runs) == 1
 
 
-# --- Проверка срока одной партии ----------------------------------------------------------
+# --- Deadline check of a single game ----------------------------------------------------------
 
 async def test_malformed_deadline_ids_and_vanished_games_are_cleaned():
     await state_manager.redis.zadd(GAME_DEADLINES_KEY, {"not-a-number": 1, "9999": 1})
@@ -246,7 +246,7 @@ async def test_stale_failure_counters_are_dropped(monkeypatch):
 async def test_due_game_with_time_left_gets_new_deadline():
     await state_manager.initialize_game(8010, 1, 2, 600000, 0)
     await state_manager.update_game_state(8010, {"state_version": "4"})
-    await state_manager.redis.zadd(GAME_DEADLINES_KEY, {"8010": 1})  # дедлайн «подошёл», а времени ещё много
+    await state_manager.redis.zadd(GAME_DEADLINES_KEY, {"8010": 1})  # the deadline is "due" while plenty of time remains
     await state_manager.check_timeouts_once(Recorder(), now_ms=int(time.time() * 1000))
     assert await state_manager.redis.zscore(GAME_DEADLINES_KEY, "8010") > 1
 
@@ -289,14 +289,14 @@ async def test_first_move_timeout_aborts_and_notifies(db_session):
 async def test_check_first_move_abort_guards(db_session):
     white, black = await _db_users(db_session)
     manager = Recorder()
-    assert await state_manager.check_first_move_abort_timeout(db_session, 404, manager) is False  # нет партии
+    assert await state_manager.check_first_move_abort_timeout(db_session, 404, manager) is False  # no game
 
     await state_manager.initialize_game(8013, white.id, black.id, 180000, 0)
-    assert await state_manager.check_first_move_abort_timeout(db_session, 8013, manager) is False  # рано
+    assert await state_manager.check_first_move_abort_timeout(db_session, 8013, manager) is False  # too early
     await state_manager.update_game_state(8013, {"state_version": "2", "last_move_at": "0"})
-    assert await state_manager.check_first_move_abort_timeout(db_session, 8013, manager) is False  # ходы уже были
+    assert await state_manager.check_first_move_abort_timeout(db_session, 8013, manager) is False  # moves already made
     await state_manager.update_game_state(8013, {"state_version": "0"})
-    # отмена без менеджера: результат тот же, рассылки нет
+    # abort without a manager: same result, no broadcast
     assert await state_manager.check_first_move_abort_timeout(db_session, 8013, None) is True
 
 
@@ -312,7 +312,7 @@ async def test_abort_game_error_codes(db_session):
     refused = await state_manager.abort_game(db_session, 8014, guard=lambda fresh: False)
     assert refused["code"] == "game_not_in_progress"
 
-    # между чтением и захватом партия «доросла» до двух полуходов
+    # between the read and the claim the game "grew" to two plies
     real = state_manager.claim_game_end
 
     async def claim_after_move(game_id, *args, **kwargs):
@@ -327,7 +327,7 @@ async def test_abort_game_error_codes(db_session):
     assert late["code"] == "game_not_in_progress"
 
 
-# --- Сверка -------------------------------------------------------------------------------
+# --- Reconciliation -------------------------------------------------------------------------------
 
 async def test_finish_pending_game_without_state_just_drops_registry_entry():
     await state_manager.redis.zadd(PENDING_FINISH_KEY, {"8020": 1})
@@ -339,7 +339,7 @@ async def test_notify_reconciled_without_manager_is_silent():
     await state_manager._notify_reconciled(None, {"white_id": "1", "black_id": "2"}, {"game_id": 1})
 
 
-# --- Восстановление из БД и итог партии ---------------------------------------------------
+# --- Restoring from the DB and the game result ---------------------------------------------------
 
 async def test_recover_finished_game_gets_ttl_and_db_failure_returns_none(db_session, monkeypatch):
     white, black = await _db_users(db_session)
@@ -372,7 +372,7 @@ async def test_finish_game_missing_game_and_bad_moves_and_failures(db_session, m
     await db_session.commit()
     await state_manager.initialize_game(8040, white.id, black.id, 180000, 0)
 
-    # телеметрия с нелегальным и мусорным ходом: PGN обрывается на первом же
+    # telemetry with an illegal and a garbage move: the PGN stops at the first one
     for notation in ("e2e4", "e2e4", "zzzz"):
         await state_manager.save_move_telemetry(8040, {
             "player_id": white.id, "move_number": 1, "notation": notation, "san": notation, "fen_after": "",
@@ -399,7 +399,7 @@ async def test_finish_game_with_final_pgn_copies_metadata(db_session, monkeypatc
                 base_time_ms=180000, increment_ms=0, is_rated=False)
     db_session.add(game)
     await db_session.commit()
-    # состояния в Redis нет, ходов телеметрии нет: PGN берётся из final_pgn вместе с заголовками
+    # no state in Redis and no telemetry moves: the PGN is taken from final_pgn together with the headers
     pgn = '[Event "x"]\n[Site "Somewhere"]\n[Date "2026.01.02"]\n[ECO "C20"]\n[Result "1-0"]\n\n1. e4 e5 1-0'
     monkeypatch.setattr(gs, "schedule_game_analysis_in_background", lambda game_id: None)
     await state_manager.finish_game(db_session, 8041, "1-0", termination="checkmate", final_pgn=pgn)

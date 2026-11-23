@@ -1,16 +1,18 @@
 # --- FILE: src/services/generated_drills.py ---
 """
-Упражнения-генераторы (таск 13.7): выдача, проверка ответа, забег на минуту и личные рекорды.
+Generator exercises (task 13.7): serving, answer checking, the one-minute run and personal records.
 
-Позиция не хранится: упражнение — ключ «вид.фигура.уровень.seed», сервер восстанавливает его генератором
-(src/services/drill_generator.py) и проверяет ответ. Seed берутся из таблицы data/drills/seeds.json — заранее
-подобранных позиций с единственным ответом. Мат в 2 — два хода: после первого верного сервер отвечает самым упорным
-ходом соперника, затем засчитывается любой мат.
+The position is not stored: an exercise is the key "kind.piece.level.seed", the server restores it with the generator
+(src/services/drill_generator.py) and checks the answer. Seeds are taken from the table data/drills/seeds.json -- pre-selected
+positions with a single answer. Mate in 2 takes two moves: after the first correct one the server replies with the opponent's
+most stubborn
+move, then any mate is counted.
 
-Забег на время (RUN_SECONDS, три ошибки — конец) хранится на сервере: счёт растёт только за упражнение, выданное в
-этом забеге; лучший счёт по сочетанию «вид.фигура.уровень» — личный рекорд (таблица drill_records). Идущий забег —
-запись Redis drills:run:{user_id}: сочетание, время конца, счёт, ошибки и ключ выданного упражнения; у игрока один
-забег, новый заменяет прежний.
+The timed run (RUN_SECONDS, three mistakes end it) is kept on the server: the score grows only for an exercise issued in
+this run; the best score per "kind.piece.level" combination is a personal record (the drill_records table). A running run is
+the Redis record drills:run:{user_id}: the combination, end time, score, mistakes and the key of the issued exercise; a
+player has one
+run, a new one replaces the previous.
 """
 
 import json
@@ -28,21 +30,21 @@ from src.models.user import User
 from src.services import drill_generator as gen
 from src.services.puzzles import PuzzleError
 
-# Таблица проверенных seed: «вид.фигура.уровень» → список seed (собирает scripts/dev/build_drill_seeds.py).
+# The table of verified seeds: "kind.piece.level" -> a list of seeds (built by scripts/dev/build_drill_seeds.py).
 SEEDS_FILE = pathlib.Path(__file__).resolve().parents[2] / "data" / "drills" / "seeds.json"
-# Забег на время: длительность в секундах и число ошибок, после которого он заканчивается.
+# The timed run: the duration in seconds and the number of mistakes after which it ends.
 RUN_SECONDS = 60
 RUN_MISTAKES = 3
-# Запас на задержку сети: ответ, пришедший в эти секунды после конца забега, ещё засчитывается.
+# A margin for network delay: an answer that arrives within these seconds after the run ends still counts.
 RUN_GRACE_S = 2
-# Связь с путём по приёмам (13.4): тема → вид упражнения (кнопка в карточке темы).
+# The link with the motif path (13.4): theme -> exercise kind (a button in the theme card).
 THEME_DRILLS = {"hanging_piece": "capture", "fork": "fork", "pin": "pin", "basic_mates": "mate1"}
 
 _seeds: dict[str, list[int]] | None = None
 
 
 def seeds() -> dict[str, list[int]]:
-    """Таблица seed из SEEDS_FILE; читается с диска один раз на процесс."""
+    """The seed table from SEEDS_FILE; read from disk once per process."""
     global _seeds
     if _seeds is None:
         _seeds = json.loads(SEEDS_FILE.read_text(encoding="utf-8"))
@@ -50,7 +52,10 @@ def seeds() -> dict[str, list[int]]:
 
 
 def combo(kind: str, piece: str, level: int) -> str:
-    """Ключ сочетания «вид.фигура.уровень» (ключ таблицы seed и рекорда); неизвестное сочетание — unknown_drill."""
+    """
+    The key of a "kind.piece.level" combination (the key of the seed table and of the record); an unknown combination --
+    unknown_drill.
+    """
     if not gen.supported(kind, piece) or level not in gen.LEVELS:
         raise PuzzleError("unknown_drill", 400, drill=f"{kind}/{piece}/{level}")
     return f"{kind}.{piece}.{level}"
@@ -61,13 +66,16 @@ def _color(fen: str) -> str:
 
 
 def view(drill: gen.Drill) -> dict:
-    """Упражнение для клиента: позиция, чей ход, какой фигурой решать и сколько ходов в решении. Ответ не отдаётся."""
+    """
+    An exercise for the client: position, whose move, which piece to solve with and how many moves are in the solution. The
+    answer is not given.
+    """
     board = chess.Board(drill.fen)
     moved = board.piece_at(chess.parse_square(drill.solutions[0][:2]))
     return {
         "key": drill.key, "kind": drill.kind, "piece": drill.piece, "level": drill.level,
         "fen": drill.fen, "color": _color(drill.fen),
-        # Какой фигурой решать (для «случайной» — станет известно по задаче); в «уйти от мата» — любой.
+        # Which piece to solve with (for a "random" one it becomes known from the puzzle); for "escape mate" -- any.
         "piece_type": None if drill.kind == "escape" or moved is None else moved.symbol().lower(),
         "moves": 2 if drill.kind == "mate2" else 1,
     }
@@ -75,13 +83,13 @@ def view(drill: gen.Drill) -> dict:
 
 def pick(kind: str, piece: str, level: int, rng: random.Random | None = None) -> gen.Drill:
     """
-    Случайное упражнение сочетания: seed из таблицы в случайном порядке, первый, по которому генератор строит
-    позицию. Для сочетания нет ни одного годного seed — no_puzzles_available.
+    A random exercise of a combination: seeds from the table in random order, the first for which the generator builds
+    a position. If the combination has no usable seed -- no_puzzles_available.
     """
     table = seeds().get(combo(kind, piece, level)) or []
     for seed in (rng or random).sample(table, len(table)):
         drill = gen.build(kind, piece, level, seed)
-        if drill is not None:  # таблица собрана той же версией генератора — неудача означает его изменение
+        if drill is not None:  # the table was built by the same generator version -- a failure means it changed
             return drill
     raise PuzzleError("no_puzzles_available", 404)
 
@@ -104,7 +112,7 @@ def _legal(board: chess.Board, uci: str) -> chess.Move:
 
 
 def full_line(drill: gen.Drill) -> list[str]:
-    """Решение целиком: один ход, а в мате в 2 — первый ход, упорный ответ и мат."""
+    """The whole solution: one move, and in mate in 2 -- the first move, the stubborn reply and the mate."""
     if drill.kind != "mate2":
         return list(drill.solutions)
     board = chess.Board(drill.fen)
@@ -125,10 +133,11 @@ def _mates(board: chess.Board, move: chess.Move) -> bool:
 
 def check(key: str, moves: list[str]) -> dict:
     """
-    Ответ на упражнение: moves — ходы решающего и ответы соперника по порядку (в мате в 2 — сначала один ход,
-    затем все три). Возвращает, верно ли, закончено ли, ответ соперника (мат в 2) и решение при ошибке. Неверное
-    число ходов или не тот ответ соперника во втором запросе — drill_wrong_step; нелегальный ход — illegal_move.
-    Вторым ходом мата в 2 засчитывается любой матующий ход.
+    An answer to an exercise: moves -- the solver's moves and the opponent's replies in order (in mate in 2 -- first one move,
+    then all three). Returns whether correct, whether finished, the opponent's reply (mate in 2) and the solution on a
+    mistake. A wrong
+    number of moves or a wrong opponent reply in the second request -- drill_wrong_step; an illegal move -- illegal_move.
+    As the second move of mate in 2 any mating move is accepted.
     """
     drill = _restore(key)
     if not moves or len(moves) > 3 or (drill.kind != "mate2" and len(moves) != 1) or len(moves) == 2:
@@ -152,7 +161,7 @@ def check(key: str, moves: list[str]) -> dict:
     return {"correct": False, "done": True, "reply": None, "solution": full_line(drill)}
 
 
-# --- забег на время ------------------------------------------------------------------------------------------
+# --- timed run ---------------------------------------------------------------------------------------------
 
 def _run_key(user_id: int) -> str:
     return f"drills:run:{user_id}"
@@ -164,12 +173,14 @@ async def _load_run(user_id: int) -> dict | None:
 
 
 async def _save_run(user_id: int, run: dict) -> None:
-    """Сохраняет забег в Redis; запись живёт на 10 минут дольше забега, чтобы итог можно было забрать (finish_run)."""
+    """
+    Saves the run in Redis; the record lives 10 minutes longer than the run so that the result can be collected (finish_run).
+    """
     await redis_module.redis_client.set(_run_key(user_id), json.dumps(run), ex=RUN_SECONDS + 600)
 
 
 def _run_over(run: dict) -> bool:
-    """Забег окончен: набрано RUN_MISTAKES ошибок или вышло время (с запасом RUN_GRACE_S)."""
+    """The run is over: RUN_MISTAKES mistakes reached or time is out (with the RUN_GRACE_S margin)."""
     return run["mistakes"] >= RUN_MISTAKES or time.time() > run["ends_at"] + RUN_GRACE_S
 
 
@@ -179,7 +190,7 @@ def run_view(run: dict) -> dict:
 
 
 async def start_run(user: User, kind: str, piece: str, level: int) -> dict:
-    """Начинает забег на время по сочетанию; прежний забег игрока, если он был, заменяется."""
+    """Starts a timed run for a combination; the player's previous run, if any, is replaced."""
     run = {"combo": combo(kind, piece, level), "ends_at": time.time() + RUN_SECONDS,
            "solved": 0, "mistakes": 0, "current": None}
     await _save_run(user.id, run)
@@ -187,7 +198,7 @@ async def start_run(user: User, kind: str, piece: str, level: int) -> dict:
 
 
 async def next_in_run(user: User) -> tuple[gen.Drill, dict]:
-    """Следующее упражнение забега на время. Забега нет или он закончился — отказ."""
+    """The next exercise of the timed run. No run or it has ended -- a refusal."""
     run = await _load_run(user.id)
     if run is None:
         raise PuzzleError("timed_run_not_active", 409)
@@ -202,8 +213,9 @@ async def next_in_run(user: User) -> tuple[gen.Drill, dict]:
 
 async def answer(user: User, key: str, moves: list[str], *, in_run: bool) -> dict:
     """
-    Проверка ответа; в забеге законченное упражнение (то, что выдано забегом) меняет счёт. Ответ на упражнение,
-    которое забег не выдавал, — отказ timed_run_not_active; ответ после конца забега проверяется, но счёт не меняет.
+    Answer checking; in a run a finished exercise (the one issued by the run) changes the score. An answer to an exercise
+    that the run did not issue -- a refusal timed_run_not_active; an answer after the run ends is checked but does not change
+    the score.
     """
     result = check(key, moves)
     result["run"] = None
@@ -220,7 +232,7 @@ async def answer(user: User, key: str, moves: list[str], *, in_run: bool) -> dic
 
 
 async def finish_run(db: AsyncSession, user: User) -> dict:
-    """Конец забега: счёт, ошибки и личный рекорд по сочетанию «вид.фигура.уровень» (обновляется, если побит)."""
+    """End of the run: score, mistakes and the personal record for the "kind.piece.level" combination (updated if beaten)."""
     run = await _load_run(user.id)
     if run is None:
         raise PuzzleError("timed_run_not_active", 409)
@@ -239,6 +251,6 @@ async def finish_run(db: AsyncSession, user: User) -> dict:
 
 
 async def records(db: AsyncSession, user: User) -> dict[str, int]:
-    """Личные рекорды игрока: сочетание «вид.фигура.уровень» → лучший счёт забега (таблица drill_records)."""
+    """The player's personal records: the "kind.piece.level" combination -> the best run score (the drill_records table)."""
     rows = await db.execute(select(DrillRecord.combo, DrillRecord.best).where(DrillRecord.user_id == user.id))
     return {combo_key: best for combo_key, best in rows}

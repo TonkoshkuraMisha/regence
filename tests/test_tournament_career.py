@@ -1,5 +1,5 @@
 # --- FILE: tests/test_tournament_career.py ---
-"""Карьера турниров (таск 15.4): лестница, открытие этапов и скрытых приглашений, случайные соперники."""
+"""Tournament career (task 15.4): ladder, unlocking of stages and hidden invitations, random opponents."""
 
 import random
 from datetime import UTC, datetime
@@ -82,7 +82,7 @@ def test_random_opponents_come_from_the_range():
     for mode, target in (("my_level", 1500), ("stronger", 1700), ("weaker", 1300)):
         chosen = career.random_opponents(1500, mode, 3, rng)
         assert len(set(chosen)) == 3
-        # Выбор — из шести ближайших по силе к цели режима.
+        # Pick from the six opponents closest in strength to the mode's target.
         assert set(chosen) <= set(career.nearest(target, 6)), mode
 
 

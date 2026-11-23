@@ -1,6 +1,6 @@
 // --- FILE: frontend/src/components/__tests__/ChampionGames.test.tsx ---
-// Архив партий чемпиона: карточка, результаты с точки зрения чемпиона (белыми и чёрными), даты из
-// PGN, переход к разбору партии, скачивание PGN, пагинация и ошибки.
+// The champion's game archive: the card, results from the champion's point of view (as White and as Black), dates from
+// the PGN, going to the game review, downloading the PGN, pagination and errors.
 
 import {fireEvent, render, screen, waitFor, within} from '@testing-library/react';
 import {MemoryRouter, Route, Routes, useLocation, useParams} from 'react-router-dom';
@@ -24,10 +24,10 @@ const game = (id: number, white: string, black: string, result: string, extra: R
 });
 
 const TAL_GAMES = [
-    game(1, 'Tal, Mikhail', 'Botvinnik, Mikhail', '1-0'),                 // белыми — победа
-    game(2, 'Botvinnik, Mikhail', 'Tal, Mikhail', '1-0'),                 // чёрными — поражение
-    game(3, 'Tseshkovsky, Vitaly', 'Tal, Mikhail', '0-1'),                // чёрными — победа («Vitaly» ≠ Tal)
-    game(4, 'TAL, M.', 'Smyslov, Vassily', '0-1', {pgn_date: '1860.??.??'}),  // белыми — поражение
+    game(1, 'Tal, Mikhail', 'Botvinnik, Mikhail', '1-0'),                 // as White — a win
+    game(2, 'Botvinnik, Mikhail', 'Tal, Mikhail', '1-0'),                 // as Black — a loss
+    game(3, 'Tseshkovsky, Vitaly', 'Tal, Mikhail', '0-1'),                // as Black — a win ("Vitaly" ≠ Tal)
+    game(4, 'TAL, M.', 'Smyslov, Vassily', '0-1', {pgn_date: '1860.??.??'}),  // as White — a loss
     game(5, 'Tal, Mikhail', 'Petrosian, Tigran', '1/2-1/2', {pgn_date: '????.??.??', finished_at: '2026-11-01T12:00:00Z'}),
     game(6, 'Spassky, Boris', 'Tal, Mikhail', '1/2-1/2', {pgn_date: null, site: null, eco: null}),
 ];
@@ -44,14 +44,14 @@ function stubGames(reply: (url: string) => Reply) {
 }
 
 const okPage = (total: number, items = TAL_GAMES) => () => ({ok: true, body: {total, items}});
-// Запросы архива партий (запрос кнопок «Угадай ход» к /guess/games идёт следом и здесь не нужен).
+// Requests of the game archive (the request of the "Guess the move" buttons to /guess/games follows and is not needed here).
 const urls = (fetchMock: ReturnType<typeof stubGames>) => fetchMock.mock.calls.map(([url]) => url.toString())
     .filter((url) => !url.includes('/guess/'));
 
 function GameStub() {
     const {id} = useParams();
     const location = useLocation();
-    return <div>Партия {id} ({(location.state as any)?.game?.white_username})</div>;
+    return <div>Game {id} ({(location.state as any)?.game?.white_username})</div>;
 }
 
 function renderChampion(path = '/champions/Tal') {
@@ -60,7 +60,7 @@ function renderChampion(path = '/champions/Tal') {
             <Routes>
                 <Route path="/champions/:championId" element={<ChampionGames/>}/>
                 <Route path="/game/:id" element={<GameStub/>}/>
-                <Route path="/" element={<div>Главная</div>}/>
+                <Route path="/" element={<div>Home</div>}/>
             </Routes>
         </MemoryRouter>,
     );
@@ -84,113 +84,113 @@ describe('isChampionName', () => {
         expect(isChampionName(username, 'Tal')).toBe(expected);
     });
 
-    it('работает с кириллицей и составными фамилиями', () => {
-        expect(isChampionName('Дин Лижэнь', 'Дин')).toBe(true);
+    it('works with non-Latin letters and compound surnames', () => {
+        expect(isChampionName('Świercz, Dariusz', 'Świercz')).toBe(true);
         expect(isChampionName('Ding Liren', 'Ding')).toBe(true);
     });
 });
 
 describe('ChampionGames', () => {
-    it('показывает карточку чемпиона и число партий в базе', async () => {
+    it('shows the champion card and the number of games in the database', async () => {
         stubGames(okPage(130));
         renderChampion();
 
-        expect(screen.getByRole('heading', {name: 'Михаил Таль'})).toBeInTheDocument();
+        expect(screen.getByRole('heading', {name: 'Mikhail Tal'})).toBeInTheDocument();
         expect(screen.getByText('1960–1961')).toBeInTheDocument();
-        await waitFor(() => expect(screen.getByText(/Партий в базе/).textContent).toContain('130'));
+        await waitFor(() => expect(screen.getByText(/Games in the database/).textContent).toContain('130'));
     });
 
-    it('считает результат с точки зрения чемпиона — белыми и чёрными, без учёта регистра', async () => {
+    it('counts the result from the champion\'s point of view — as White and as Black, case-insensitive', async () => {
         stubGames(okPage(6));
         renderChampion();
         await screen.findByText('Tseshkovsky, Vitaly');
 
         const results = rows().map((row) => within(row).getAllByRole('cell')[3].textContent);
         expect(results).toEqual([
-            'Победа (1-0)', 'Поражение (1-0)', 'Победа (0-1)', 'Поражение (0-1)', 'Ничья (1/2-1/2)', 'Ничья (1/2-1/2)',
+            'Win (1-0)', 'Loss (1-0)', 'Win (0-1)', 'Loss (0-1)', 'Draw (1/2-1/2)', 'Draw (1/2-1/2)',
         ]);
     });
 
-    it('форматирует даты PGN: неизвестные части убираются, иначе — дата завершения или прочерк', async () => {
+    it('formats the PGN dates: unknown parts are dropped, otherwise — the finish date or a dash', async () => {
         stubGames(okPage(6));
         renderChampion();
         await screen.findByText('Tseshkovsky, Vitaly');
 
         const dates = rows().map((row) => within(row).getAllByRole('cell')[6].textContent);
-        expect(dates).toEqual(['1960.05.07', '1960.05.07', '1960.05.07', '1860', '1 нояб. 2026', '—']);
-        expect(within(rows()[5]).getAllByRole('cell')[4].textContent).toBe('—');  // нет кода дебюта
+        expect(dates).toEqual(['1960.05.07', '1960.05.07', '1960.05.07', '1860', '1 Nov 2026', '—']);
+        expect(within(rows()[5]).getAllByRole('cell')[4].textContent).toBe('—');  // no opening code
     });
 
-    it('клик по строке открывает разбор партии и передаёт её данные', async () => {
+    it('a click on a row opens the game review and passes its data', async () => {
         stubGames(okPage(6));
         renderChampion();
 
         fireEvent.click(await screen.findByText('Tseshkovsky, Vitaly'));
 
-        expect(await screen.findByText('Партия 3 (Tseshkovsky, Vitaly)')).toBeInTheDocument();
+        expect(await screen.findByText('Game 3 (Tseshkovsky, Vitaly)')).toBeInTheDocument();
     });
 
-    it('кнопка «Угадай ход мастера» — только у партий с отобранными моментами (14.3)', async () => {
+    it('the "Guess the master\'s move" button — only for games with selected moments (14.3)', async () => {
         const fetchMock = stubGames((url) => url.includes('/guess/games')
             ? {ok: true, body: {games: {'3': 77}}} : {ok: true, body: {total: 6, items: TAL_GAMES}});
         renderChampion();
         const link = await screen.findByTestId('champion-guess-3');
-        expect(link.getAttribute('href')).toBe('/guess/77?whole=1');  // партия целиком
+        expect(link.getAttribute('href')).toBe('/guess/77?whole=1');  // the whole game
         expect(screen.queryByTestId('champion-guess-1')).not.toBeInTheDocument();
         const guessCall = fetchMock.mock.calls.map(([url]) => url.toString()).find((url) => url.includes('/guess/games'));
         expect(guessCall).toMatch(/ids=1,2,3,4,5,6$/);
     });
 
-    it('скачивание PGN не открывает разбор партии', async () => {
+    it('downloading the PGN does not open the game review', async () => {
         stubGames(okPage(6));
         renderChampion();
-        const links = await screen.findAllByTitle('Скачать PGN');
+        const links = await screen.findAllByTitle('Download PGN');
         expect(links[0].getAttribute('href')).toMatch(/\/api\/v1\/profile\/games\/1\/pgn$/);
 
-        // Настоящая загрузка файла в jsdom не нужна — отменяем переход по ссылке до браузера.
+        // A real file download is not needed in jsdom — we cancel the navigation by the link before the browser.
         const cancelNavigation = (e: Event) => e.preventDefault();
         window.addEventListener('click', cancelNavigation, true);
         fireEvent.click(links[0]);
         window.removeEventListener('click', cancelNavigation, true);
 
-        expect(screen.queryByText(/^Партия 1/)).not.toBeInTheDocument();
-        expect(screen.getByRole('heading', {name: 'Михаил Таль'})).toBeInTheDocument();
+        expect(screen.queryByText(/^Game 1/)).not.toBeInTheDocument();
+        expect(screen.getByRole('heading', {name: 'Mikhail Tal'})).toBeInTheDocument();
     });
 
-    it('пагинация: соседние страницы, начало и конец, нумерация строк', async () => {
+    it('pagination: neighbouring pages, the start and the end, row numbering', async () => {
         const fetchMock = stubGames(okPage(130));
         renderChampion();
         await screen.findByText('Tseshkovsky, Vitaly');
 
         expect(urls(fetchMock).at(-1)).toMatch(/\/profile\/Tal\/games\?limit=25&offset=0&sort=asc$/);
-        expect(screen.getByRole('button', {name: 'В начало'})).toBeDisabled();
-        expect(screen.getByRole('button', {name: 'Предыдущая страница'})).toBeDisabled();
+        expect(screen.getByRole('button', {name: 'First page'})).toBeDisabled();
+        expect(screen.getByRole('button', {name: 'Previous page'})).toBeDisabled();
 
-        fireEvent.click(screen.getByRole('button', {name: 'Следующая страница'}));
+        fireEvent.click(screen.getByRole('button', {name: 'Next page'}));
         await waitFor(() => expect(urls(fetchMock).at(-1)).toContain('limit=25&offset=25'));
         expect(screen.getByRole('button', {name: '2'})).toHaveAttribute('aria-current', 'page');
         await waitFor(() => expect(within(rows()[0]).getAllByRole('cell')[0].textContent).toBe('26'));
 
-        fireEvent.click(screen.getByRole('button', {name: 'В конец'}));
+        fireEvent.click(screen.getByRole('button', {name: 'Last page'}));
         await waitFor(() => expect(urls(fetchMock).at(-1)).toContain('offset=125'));
-        expect(screen.getByRole('button', {name: 'Следующая страница'})).toBeDisabled();
+        expect(screen.getByRole('button', {name: 'Next page'})).toBeDisabled();
         expect(screen.getByRole('button', {name: '6'})).toHaveAttribute('aria-current', 'page');
 
         fireEvent.click(screen.getByRole('button', {name: '4'}));
         await waitFor(() => expect(urls(fetchMock).at(-1)).toContain('offset=75'));
 
-        fireEvent.click(screen.getByRole('button', {name: 'В начало'}));
+        fireEvent.click(screen.getByRole('button', {name: 'First page'}));
         await waitFor(() => expect(urls(fetchMock).at(-1)).toContain('offset=0'));
     });
 
-    it('смена размера страницы на 50 возвращает на первую страницу', async () => {
+    it('changing the page size to 50 returns to the first page', async () => {
         const fetchMock = stubGames(okPage(130));
         renderChampion();
         await screen.findByText('Tseshkovsky, Vitaly');
-        fireEvent.click(screen.getByRole('button', {name: 'В конец'}));
+        fireEvent.click(screen.getByRole('button', {name: 'Last page'}));
         await waitFor(() => expect(urls(fetchMock).at(-1)).toContain('offset=125'));
 
-        fireEvent.change(screen.getByLabelText('Партий на странице'), {target: {value: '50'}});
+        fireEvent.change(screen.getByLabelText('Games per page'), {target: {value: '50'}});
 
         await waitFor(() => expect(urls(fetchMock).at(-1)).toContain('limit=50&offset=0'));
         expect(screen.getByRole('button', {name: '1'})).toHaveAttribute('aria-current', 'page');
@@ -198,41 +198,41 @@ describe('ChampionGames', () => {
         expect(screen.queryByRole('button', {name: '4'})).not.toBeInTheDocument();
     });
 
-    it('пустая страница архива', async () => {
+    it('an empty archive page', async () => {
         stubGames(okPage(0, []));
         renderChampion();
-        expect(await screen.findByText('В архиве нет записей для этой страницы.')).toBeInTheDocument();
-        expect(screen.queryByRole('button', {name: 'В конец'})).not.toBeInTheDocument();
+        expect(await screen.findByText('There are no records on this page of the archive.')).toBeInTheDocument();
+        expect(screen.queryByRole('button', {name: 'Last page'})).not.toBeInTheDocument();
     });
 
-    it('неизвестный чемпион — ошибка и ссылка на главную', async () => {
+    it('an unknown champion — an error and a link to the home page', async () => {
         stubGames(okPage(0, []));
         renderChampion('/champions/Nobody');
 
-        expect(screen.getByText(/Игрок с идентификатором Nobody не найден/)).toBeInTheDocument();
-        fireEvent.click(screen.getByRole('link', {name: 'На главную'}));
-        expect(await screen.findByText('Главная')).toBeInTheDocument();
+        expect(screen.getByText(/No player with the id Nobody/)).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('link', {name: 'Home'}));
+        expect(await screen.findByText('Home')).toBeInTheDocument();
     });
 
-    it('ошибка сервера показывает его текст', async () => {
-        stubGames(() => ({ok: false, status: 503, body: {detail: 'База партий временно недоступна'}}));
+    it('a server error shows its text', async () => {
+        stubGames(() => ({ok: false, status: 503, body: {detail: 'The games database is temporarily unavailable'}}));
         renderChampion();
 
-        expect(await screen.findByText('Ошибка загрузки')).toBeInTheDocument();
-        expect(screen.getByText('База партий временно недоступна')).toBeInTheDocument();
+        expect(await screen.findByText('Loading error')).toBeInTheDocument();
+        expect(screen.getByText('The games database is temporarily unavailable')).toBeInTheDocument();
     });
 
-    it('ошибка валидации со списком detail не роняет страницу', async () => {
+    it('a validation error with a detail list does not crash the page', async () => {
         stubGames(() => ({
             ok: false, status: 422,
             body: {detail: [{type: 'less_than_equal', loc: ['query', 'limit'], msg: '…', params: {le: 100}}]},
         }));
         renderChampion();
 
-        expect(await screen.findByText('limit: должно быть не больше 100')).toBeInTheDocument();
+        expect(await screen.findByText('limit: must be at most 100')).toBeInTheDocument();
     });
 
-    it('ответ без тела — текст по умолчанию', async () => {
+    it('a response without a body — the default text', async () => {
         vi.stubGlobal('fetch', vi.fn(async () => ({
             ok: false, status: 500, json: async () => {
                 throw new Error('not json');
@@ -240,6 +240,6 @@ describe('ChampionGames', () => {
         }) as unknown as Response));
         renderChampion();
 
-        expect(await screen.findByText('Не удалось загрузить партии из базы данных')).toBeInTheDocument();
+        expect(await screen.findByText('Could not load the games from the database')).toBeInTheDocument();
     });
 });

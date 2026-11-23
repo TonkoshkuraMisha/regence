@@ -1,15 +1,15 @@
-// Оформление и «Сообщить о проблеме» в настоящем браузере против полного стека (таски 31.1 и 24.4).
-// Тема-комплект меняет фон самой страницы: до 17.11 его закрывал корневой блок приложения, и выбранный узор был
-// виден только в превью настроек — юнит-тесты проверяли стиль body, а не то, что видит игрок.
+// Appearance and "Report a problem" in a real browser against the full stack (tasks 31.1 and 24.4).
+// A theme preset changes the page background itself: until 17.11 the app's root block covered it, and the chosen pattern was
+// visible only in the settings preview — unit tests checked the body style, not what the player sees.
 
 import {expect, test} from '@playwright/test';
 import {loginNewPlayer} from './helpers.ts';
 
-test('тема «Осенний парк»: фон страницы виден, выбор переживает перезагрузку', async ({page}) => {
+test('"Autumn park" theme: page background is visible, the choice survives a reload', async ({page}) => {
     await page.goto('/settings');
     await page.getByTestId('preset-autumn_park').click();
 
-    // Фон задан на body, а корневой блок приложения его не закрывает.
+    // The background is set on body, and the app's root block does not cover it.
     const look = async () => await page.evaluate(`(() => {
         const root = document.querySelector('#root > div');
         return {
@@ -25,7 +25,7 @@ test('тема «Осенний парк»: фон страницы виден, 
     expect(chosen.cover).toBe('rgba(0, 0, 0, 0)');
     expect(chosen.board).toBe('autumn');
 
-    // Сам узор отдаётся сервером как картинка, а не как страница-заглушка.
+    // The pattern itself is served by the server as an image, not as a placeholder page.
     const tile = await page.request.get('/assets/patterns/leaves.svg');
     expect(tile.ok()).toBe(true);
     expect(tile.headers()['content-type']).toContain('svg');
@@ -35,12 +35,12 @@ test('тема «Осенний парк»: фон страницы виден, 
     expect((await look()).cover).toBe('rgba(0, 0, 0, 0)');
 });
 
-test('сообщить о проблеме: гость отправляет сообщение, сервер его принимает', async ({page}) => {
+test('report a problem: a guest sends a message, the server accepts it', async ({page}) => {
     await page.goto('/about');
     await page.getByTestId('report-problem-open').click();
     await expect(page.getByTestId('report-problem')).toBeVisible();
-    await page.getByTestId('report-problem-text').fill('Сквозная проверка: сообщение гостя со страницы «О проекте».');
-    // Адрес страницы уходит вместе с сообщением — он показан в окне.
+    await page.getByTestId('report-problem-text').fill('End-to-end check: a guest message from the "About" page.');
+    // The page address is sent with the message — it is shown in the dialog.
     await expect(page.getByTestId('report-problem-context')).toContainText('/about');
     const [response] = await Promise.all([
         page.waitForResponse((r) => r.url().includes('/api/v1/beta/feedback') && r.request().method() === 'POST'),
@@ -50,10 +50,10 @@ test('сообщить о проблеме: гость отправляет со
     await expect(page.getByTestId('report-problem-sent')).toBeVisible();
 });
 
-test('после прямого захода вошедший игрок сразу видит страницу со своим входом и открывает окно сообщения', async ({page, request}) => {
+test('after a direct visit a logged-in player immediately sees the page with their session and opens the message dialog', async ({page, request}) => {
     await loginNewPlayer(page, request, 'report');
     await page.setViewportSize({width: 1366, height: 768});
-    // Прямой заход: вход восстанавливается по cookie до первой страницы — место страницы не остаётся пустым.
+    // Direct visit: the session is restored from the cookie before the first page — the page area is never left empty.
     await page.goto('/library');
     await expect(page.getByTestId('session-restoring')).toHaveCount(0);
     await page.getByTestId('report-problem-open').click();

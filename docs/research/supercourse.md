@@ -1,167 +1,167 @@
-# Большой курс: единая программа обучения (проект, 15.11.2026)
+# The Big Course: a single study program (design, 15.11.2026)
 
-Рабочий документ разработки. Все учебные программы из библиотеки владельца (обзор —
-`docs/research/books-library-review.md`) сведены в одну программу и встроены в то, что уже есть на платформе.
-Курс — это **каркас**: уровни, ветви, модули и пустые ячейки. Ячейки наполняются постепенно — задачами, позициями,
-вопросами, партиями из библиотеки (27.1), уроками в формате 14.1. Тексты — свои, на трёх языках; из книг взяты
-только темы, порядок и виды упражнений.
+Development working document. All the study programs from the owner's library (overview:
+`docs/research/books-library-review.md`) are merged into one program and built into what the platform already has.
+The course is a **skeleton**: levels, branches, modules and empty cells. The cells are filled gradually - with puzzles, positions,
+questions, games from the library (27.1), lessons in the 14.1 format. The texts are our own, in three languages; from the books we took
+only the topics, the order and the kinds of exercises.
 
-Рабочее название — «Большой курс», адрес `/learn/course`. Он не заменяет существующие разделы, а связывает их в
-один путь: модуль курса может просто вести в азбуку, в курс матов, в эндшпильный тренажёр, в тренажёр зрения, в
-путь по теме задач или в репертуар.
+The working title is "The Big Course", at `/learn/course`. It does not replace the existing sections but links them into
+one path: a course module can simply lead to the basics, to the mates course, to the endgame trainer, to the vision trainer, to a
+path through a puzzle theme or to the repertoire.
 
-## Устройство
+## Structure
 
-* **Уровень** — 6 ступеней по разрядам (ориентир по рейтингу — примерный, показывается рядом):
+* **Level** - 6 steps by rating class (the rating guide is approximate and is shown alongside):
 
-  | Уровень | Для кого | Ориентир |
+  | Level | For whom | Guide |
   |---|---|---|
-  | 0. Азбука | только узнал правила | — |
-  | 1. Новичок | без разряда → IV разряд | до ~1000 |
-  | 2. IV–III разряд | | ~1000–1400 |
-  | 3. III–II разряд | | ~1400–1700 |
-  | 4. II–I разряд | | ~1700–2000 |
-  | 5. I разряд — КМС | | ~2000–2200 |
+  | 0. Basics | just learned the rules | — |
+  | 1. Beginner | no class → Class IV | up to ~1000 |
+  | 2. Class IV–III | | ~1000–1400 |
+  | 3. Class III–II | | ~1400–1700 |
+  | 4. Class II–I | | ~1700–2000 |
+  | 5. Class I – Candidate Master (CM) | | ~2000–2200 |
 
-* **Ветвь** — направление внутри уровня: **Т** тактика, **М** мат и атака на короля, **Э** эндшпиль,
-  **С** стратегия и пешечные структуры, **Д** дебют, **Р** расчёт, зрение и мышление, **П** партии и история.
-* **Модуль** — тема ветви на уровне (например, «Т2.4 Отвлечение»). Код модуля неизменный: `<ветвь><уровень>.<номер>`.
-* **Шаг (ячейка)** — единица наполнения. Виды:
-  * `lesson` — урок в формате 14.1 (объяснение на своих позициях);
-  * `demo` — показ решения (`/puzzles/demo`);
-  * `puzzles` — N задач по теме × цели × ступени (13.4), в том числе из своих партий (13.5);
-  * `drill` — упражнение-генератор 13.7 (вид × фигура × уровень);
-  * `trainer` — тренажёр 16.5/19.x с уровнем;
-  * `endgame` — позиция эндшпильного тренажёра 14.4;
-  * `game` — партия из библиотеки (27.1) с остановками «что бы вы сыграли?» (как 14.7);
-  * `guess` — «Угадай ход мастера» по партии (14.3);
-  * `question` — вопрос с выбором ответа (план, оценка, структура, «какой ход сильнее»);
-  * `play` — партия против соперника с заданной позиции или игра тренера (19.8);
-  * `test` — проверка модуля на время.
-* У ячейки — статус: `empty` (только место в каркасе), `draft`, `ready`. Пустые ячейки игроку не показываются;
-  модуль виден, когда в нём есть хотя бы урок и задачи.
-* **Экзамен уровня** — «тест на разряд» (22.0): фиксированный набор позиций по всем ветвям на время, итог —
-  профиль по ветвям (карта навыков 22.1) и решение «уровень пройден».
-* **Программы по годам** (22.3) — это маршруты через курс: какие модули и в каком порядке проходить по неделям.
+* **Branch** - a direction within a level: **T** tactics, **M** mate and attack on the king, **E** endgame,
+  **S** strategy and pawn structures, **O** opening, **C** calculation, vision and thinking, **G** games and history.
+* **Module** - a branch topic at a level (for example, "T2.4 Deflection"). The module code is immutable: `<branch><level>.<number>`.
+* **Step (cell)** - the unit of filling. Kinds:
+  * `lesson` - a lesson in the 14.1 format (an explanation on our own positions);
+  * `demo` - a demonstration of the solution (`/puzzles/demo`);
+  * `puzzles` - N puzzles by theme × goal × step (13.4), including from your own games (13.5);
+  * `drill` - a 13.7 generator exercise (kind × piece × level);
+  * `trainer` - a 16.5/19.x trainer with a level;
+  * `endgame` - a position of the 14.4 endgame trainer;
+  * `game` - a game from the library (27.1) with "what would you play?" stops (as in 14.7);
+  * `guess` - "Guess the master's move" on a game (14.3);
+  * `question` - a multiple-choice question (plan, evaluation, structure, "which move is stronger");
+  * `play` - a game against an opponent from a given position or a trainer game (19.8);
+  * `test` - a timed check of the module.
+* A cell has a status: `empty` (only a place in the skeleton), `draft`, `ready`. Empty cells are not shown to the player;
+  a module is visible when it has at least a lesson and puzzles.
+* **Level exam** - the "class test" (22.0): a fixed set of positions across all branches, timed, the result is
+  a profile by branch (skill map 22.1) and the decision "level passed".
+* **Programs by year** (22.3) are routes through the course: which modules to take and in what order, week by week.
 
-## Что уже есть и куда встаёт
+## What already exists and where it fits
 
-| Готовый раздел | Место в курсе |
+| Existing section | Place in the course |
 |---|---|
-| Азбука `/learn/basics` (14.5, 8 разделов, 52 уровня) | Уровень 0, ветви Т/П целиком |
-| Курс матов `/learn/mates` (14.6, 20 конструкций) | М1–М3: простые конструкции на 1–2, остальные на 3 |
-| Эндшпильный тренажёр `/learn/endgames` (14.4, 25 позиций) | Э0–Э3 по сложности: маты — 0–1, пешки и квадрат — 1–2, Лусена/Филидор — 3 |
-| Курсы «Тактика», «Атака на короля», «Эндшпиль: реализация» (14.2) | Т1–Т2, М2, Э2 |
-| Партии мастеров с объяснениями `/learn/classics` (14.7, 30 партий) | Ветвь П, уровни 2–5 |
-| Темы задач A–L (13.0–13.4), задачи из своих партий (13.5), защита (13.6) | Шаги `puzzles` во всех модулях Т, М, Э, С |
-| Упражнения-генераторы (13.7) | Т0–Т1 |
-| Тренажёры зрения, памяти, счёта, вслепую (16.5, 19.1–19.7) | Ветвь Р, все уровни |
-| Игры тренеров (19.8) | Уровни 0–1: пешечный бой, король и пешки, захват флага |
-| Репертуар и стартовые наборы (20.1–20.3) | Ветвь Д, уровни 2–5 |
-| «Угадай ход мастера» (14.3) | Ветвь П, уровни 2–5 |
+| Basics `/learn/basics` (14.5, 8 sections, 52 levels) | Level 0, branches T/G entirely |
+| Mates course `/learn/mates` (14.6, 20 patterns) | M1–M3: simple patterns at 1–2, the rest at 3 |
+| Endgame trainer `/learn/endgames` (14.4, 25 positions) | E0–E3 by difficulty: mates - 0–1, pawns and the square - 1–2, Lucena/Philidor - 3 |
+| Courses "Tactics", "Attack on the king", "Endgame: converting" (14.2) | T1–T2, M2, E2 |
+| Master games with explanations `/learn/classics` (14.7, 30 games) | Branch G, levels 2–5 |
+| Puzzle themes A–L (13.0–13.4), puzzles from your own games (13.5), defense (13.6) | `puzzles` steps in all T, M, E, S modules |
+| Generator exercises (13.7) | T0–T1 |
+| Vision, memory, counting, blindfold trainers (16.5, 19.1–19.7) | Branch C, all levels |
+| Trainer games (19.8) | Levels 0–1: pawn battle, king and pawns, capture the flag |
+| Repertoire and starter sets (20.1–20.3) | Branch O, levels 2–5 |
+| "Guess the master's move" (14.3) | Branch G, levels 2–5 |
 
-## Программа
+## Program
 
-Ниже — модули по уровням. В скобках — готовые разделы, которые модуль использует. Темы сведены из всех курсов
-библиотеки; повторы объединены.
+Below are the modules by level. In parentheses are the existing sections the module uses. The topics are merged from all the courses
+of the library; repetitions are combined.
 
-### Уровень 0. Азбука
-* Т0/П0. Доска и фигуры, ходы, взятие (азбука 14.5).
-* Т0.1. Шах и защита от шаха: уход, перекрытие, взятие.
-* М0.1. Мат и пат: отличить; мат в 1 ход (генератор «мат в 1»).
-* Э0.1. Простейшие маты: ферзём, ладьёй (эндшпиль 14.4); король помогает.
-* Т0.2. Ценность фигур и выгодный размен; взять незащищённую (генератор).
-* Д0.1. Как начинать партию: центр, развитие, рокировка, не ходить ферзём рано.
-* П0.1. Игры тренеров: пешечный бой, король и пешки, захват флага (19.8).
-* Экзамен уровня 0.
+### Level 0. Basics
+* T0/G0. The board and pieces, moves, capture (basics 14.5).
+* T0.1. Check and defense against check: moving away, blocking, capturing.
+* M0.1. Mate and stalemate: telling them apart; mate in 1 move ("mate in 1" generator).
+* E0.1. The simplest mates: with the queen, with the rook (endgame 14.4); the king helps.
+* T0.2. The value of pieces and a favorable exchange; capturing an unprotected piece (generator).
+* O0.1. How to begin a game: center, development, castling, not moving the queen early.
+* G0.1. Trainer games: pawn battle, king and pawns, capture the flag (19.8).
+* Level 0 exam.
 
-### Уровень 1. Новичок
-* Т1.1. Двойной удар (вилки всеми фигурами). Т1.2. Связка (абсолютная и относительная). Т1.3. Открытое нападение и
-  вскрытый шах. Т1.4. Линейный удар. Т1.5. Защита от угроз: «что грозит?» (13.6).
-* М1.1. Мат в 1–2 хода: смешанные наборы. М1.2. Мат на последней горизонтали, спёртый мат (курс матов).
-  М1.3. Атака на f7/f2.
-* Э1.1. Король и пешка против короля: правило квадрата, ключевые поля, оппозиция (14.4).
-  Э1.2. Ферзь против пешки. Э1.3. Реализация лишней фигуры: размены, активный король.
-* Д1.1. Принципы дебюта на примерах. Д1.2. Ловушки и ранние ошибки (раздел H). Д1.3. Первые ходы за белых и за
-  чёрных (стартовые наборы 20.1 для начинающих).
-* Р1.1. Координаты, видение доски (19.2, 16.5). Р1.2. Шахи, взятия, угрозы (19.7). Р1.3. Сколько ходов до поля.
-* П1.1. Миниатюры: короткие партии с наказанием за ошибку (27.9).
-* Экзамен уровня 1 («тест на IV разряд»).
+### Level 1. Beginner
+* T1.1. Double attack (forks by all pieces). T1.2. Pin (absolute and relative). T1.3. Discovered attack and
+  discovered check. T1.4. Skewer. T1.5. Defense against threats: "what is threatened?" (13.6).
+* M1.1. Mate in 1–2 moves: mixed sets. M1.2. Back-rank mate, smothered mate (mates course).
+  M1.3. Attack on f7/f2.
+* E1.1. King and pawn against king: the rule of the square, key squares, opposition (14.4).
+  E1.2. Queen against pawn. E1.3. Converting an extra piece: exchanges, active king.
+* O1.1. Opening principles by example. O1.2. Traps and early mistakes (section H). O1.3. First moves for White and for
+  Black (starter sets 20.1 for beginners).
+* C1.1. Coordinates, seeing the board (19.2, 16.5). C1.2. Checks, captures, threats (19.7). C1.3. How many moves to a square.
+* G1.1. Miniatures: short games with punishment for a mistake (27.9).
+* Level 1 exam ("Class IV test").
 
-### Уровень 2. IV–III разряд
-* Т2.1. Двойной шах и мельница. Т2.2. Промежуточный ход и промежуточный шах. Т2.3. Рентген и засада.
-  Т2.4. Отвлечение. Т2.5. Завлечение. Т2.6. Уничтожение защиты, перегрузка. Т2.7. Контрудар и неотвратимая угроза.
-  Т2.8. Выигрыш темпа, вторжение. Т2.9. Ловля фигуры, доминация. Т2.10. Проходная пешка: прорыв, превращение,
-  слабое превращение.
-* М2.1. Конструкции мата: Анастасия, арабский, Боден, мат двумя слонами, эполет и др. (курс матов). М2.2. Мат в 3.
-  М2.3. Атака на нерокированного короля.
-* Э2.1. Пешечные окончания: треугольник, обход, отталкивание, прорыв. Э2.2. Ладейные окончания: Лусена, Филидор,
-  ладья сзади проходной. Э2.3. «Не тот» слон, крайняя пешка. Э2.4. «Обязательные позиции» I (27.9).
-* С2.1. Открытая линия, седьмая горизонталь. С2.2. Форпост. С2.3. Хороший и плохой слон. С2.4. Слабые поля и
-  пешки: изолированная, сдвоенная, отсталая. С2.5. Центр: открытый, закрытый, подвижный.
-* Д2.1. Открытые начала: итальянская, испанская, шотландская (репертуар). Д2.2. Свой первый репертуар (20.1–20.2).
-* Р2.1. Расчёт на 2–3 хода вслепую (19.6). Р2.2. Кто выиграет размен (19.7). Р2.3. Кандидаты (27.9).
-* П2.1. Партии мастеров с остановками (14.7). П2.2. «Угадай ход мастера» (14.3). П2.3. Красивые партии (библиотека).
-* Экзамен уровня 2 («тест на III разряд»).
+### Level 2. Class IV–III
+* T2.1. Double check and windmill. T2.2. Intermezzo and intermediate check. T2.3. X-ray and ambush.
+  T2.4. Deflection. T2.5. Decoy. T2.6. Destroying the defender, overload. T2.7. Counterblow and unstoppable threat.
+  T2.8. Gaining a tempo, invasion. T2.9. Trapping a piece, domination. T2.10. Passed pawn: breakthrough, promotion,
+  underpromotion.
+* M2.1. Mating patterns: Anastasia, Arabian, Boden, two-bishop mate, epaulette and others (mates course). M2.2. Mate in 3.
+  M2.3. Attack on an uncastled king.
+* E2.1. Pawn endings: triangulation, outflanking, shouldering, breakthrough. E2.2. Rook endings: Lucena, Philidor,
+  rook behind the passed pawn. E2.3. The "wrong" bishop, rook's pawn. E2.4. "Must-know positions" I (27.9).
+* S2.1. Open file, seventh rank. S2.2. Outpost. S2.3. Good and bad bishop. S2.4. Weak squares and
+  pawns: isolated, doubled, backward. S2.5. Center: open, closed, mobile.
+* O2.1. Open games: Italian, Spanish, Scotch (repertoire). O2.2. Your first repertoire (20.1–20.2).
+* C2.1. Calculating 2–3 moves blindfold (19.6). C2.2. Who wins the exchange (19.7). C2.3. Candidate moves (27.9).
+* G2.1. Master games with stops (14.7). G2.2. "Guess the master's move" (14.3). G2.3. Beautiful games (library).
+* Level 2 exam ("Class III test").
 
-### Уровень 3. III–II разряд
-* Т3.1. Открытие линий (для мата, вторжения, двойного удара). Т3.2. Завоевание поля. Т3.3. Освобождение поля и линии.
-  Т3.4. Перекрытие. Т3.5. Блокада. Т3.6. Тихий ход. Т3.7. Сочетание приёмов: двух- и трёхходовые комбинации.
-* Т3.8. **Спасите партию**: пат, вечный шах, вечное нападение, вечная угроза, «бешеная» фигура, крепость, блокада,
-  позиционная ничья (27.9).
-* М3.1. Жертвы на h7/h2 («греческий дар»), двойная жертва слонов. М3.2. Атака пешками, подключение ладьи.
-  М3.3. Атака при разносторонних рокировках. М3.4. Жертва ради инициативы.
-* Э3.1. Слон против коня. Э3.2. Разноцветные слоны. Э3.3. Ферзевые окончания. Э3.4. Практические ладейные окончания:
-  активность ладьи и короля. Э3.5. «Обязательные позиции» II.
-* С3.1–С3.7. **Пешечные структуры I**: испанская (e4 против d6), французская цепь, симметрия в центре,
-  разменная французская, «пила», Мароци, изолированная пешка — план за обе стороны, 3–5 примерных партий из
-  библиотеки, «Найди план», «Узнай структуру» (27.9).
-* С3.8. Позиционные элементы: блокада, сверхзащита, централизация, пешечная цепь и атака её основания (27.8).
-* С3.9. Атака меньшинства, преимущество двух слонов.
-* Д3.1. Закрытые начала: ферзевый гамбит, славянская, индийские. Д3.2. Сицилианская: типовые идеи.
-  Д3.3. Расширение репертуара, отклонения соперника (20.3).
-* Р3.1. Ходы-кандидаты и дерево вариантов. Р3.2. Расчёт форсированных вариантов (шахи, взятия, угрозы).
-  Р3.3. Визуализация длинных линий (19.6).
-* П3.1. Партии чемпионов: история от Стейница (библиотека + исторические соперники 21.5).
-* Экзамен уровня 3 («тест на II разряд»).
+### Level 3. Class III–II
+* T3.1. Opening lines (for mate, invasion, double attack). T3.2. Conquering a square. T3.3. Clearing a square and a line.
+  T3.4. Interference. T3.5. Blockade. T3.6. Quiet move. T3.7. Combining techniques: two- and three-move combinations.
+* T3.8. **Save the game**: stalemate, perpetual check, perpetual attack, perpetual threat, "rampant" piece, fortress, blockade,
+  positional draw (27.9).
+* M3.1. Sacrifices on h7/h2 ("Greek gift"), double bishop sacrifice. M3.2. Pawn attack, bringing in the rook.
+  M3.3. Attack with opposite-side castling. M3.4. Sacrifice for the initiative.
+* E3.1. Bishop against knight. E3.2. Opposite-colored bishops. E3.3. Queen endings. E3.4. Practical rook endings:
+  activity of the rook and king. E3.5. "Must-know positions" II.
+* S3.1–S3.7. **Pawn structures I**: Spanish (e4 against d6), French chain, symmetry in the center,
+  Exchange French, "saw", Maroczy, isolated pawn - the plan for both sides, 3–5 sample games from the
+  library, "Find the plan", "Recognize the structure" (27.9).
+* S3.8. Positional elements: blockade, overprotection, centralization, pawn chain and attack on its base (27.8).
+* S3.9. Minority attack, advantage of the two bishops.
+* O3.1. Closed games: Queen's Gambit, Slav, Indian defenses. O3.2. Sicilian: typical ideas.
+  O3.3. Broadening the repertoire, the opponent's deviations (20.3).
+* C3.1. Candidate moves and the tree of variations. C3.2. Calculating forcing lines (checks, captures, threats).
+  C3.3. Visualizing long lines (19.6).
+* G3.1. Champions' games: history from Steinitz (library + historical opponents 21.5).
+* Level 3 exam ("Class II test").
 
-### Уровень 4. II–I разряд
-* Т4.1. Форсированные комбинации: мат, двойной удар, линейная атака с подготовкой. Т4.2. Комбинации на превращение.
-  Т4.3. Защита в трудных позициях (13.6, уровень трудный).
-* М4.1. Атака на короля в центре. М4.2. Атака при одноимённых рокировках. М4.3. Оборона: контратака, размен
-  атакующих фигур.
-* Э4.1. Стратегия эндшпиля: активный король, слабости, принцип двух слабостей. Э4.2. Переход в выигранный эндшпиль.
-  Э4.3. Ладья против лёгкой фигуры, ферзь против ладьи. Э4.4. Этюды для комбинационного зрения (только давние
-  составители).
-* С4.1–С4.7. **Пешечные структуры II**: висячие пешки, карлсбадская, каменная стена, староиндийская цепь,
-  клин в центре, модерн-Бенони, ёж.
-* С4.8. Ограничение фигур и пешек противника. С4.9. Улучшение худшей фигуры, профилактика.
-  С4.10. Стратегические приёмы: размен ключевой фигуры, перевод фигуры, захват линии, вскрытие позиции.
-  С4.11. Планирование: оценка позиции → цель → план.
-* Д4.1. Дебют и миттельшпиль: план по пешечной структуре дебюта. Д4.2. Продвинутые стартовые репертуары
-  (скелет из библиотеки владельца, 27.10).
-* Р4.1. Техника расчёта: вычислить до спокойной позиции, оценить. Р4.2. «Сравни два хода».
-* П4.1. Матчи на первенство мира: ключевые партии (библиотека). П4.2. Работа над своими ошибками (13.5 + разбор).
-* Экзамен уровня 4 («тест на I разряд»).
+### Level 4. Class II–I
+* T4.1. Forcing combinations: mate, double attack, line attack with preparation. T4.2. Combinations with promotion.
+  T4.3. Defense in difficult positions (13.6, hard level).
+* M4.1. Attack on a king in the center. M4.2. Attack with same-side castling. M4.3. Defense: counterattack, exchange of
+  attacking pieces.
+* E4.1. Endgame strategy: active king, weaknesses, the principle of two weaknesses. E4.2. Transition into a won endgame.
+  E4.3. Rook against a minor piece, queen against rook. E4.4. Studies for combinational vision (only early
+  composers).
+* S4.1–S4.7. **Pawn structures II**: hanging pawns, Carlsbad, stonewall, King's Indian chain,
+  wedge in the center, Modern Benoni, hedgehog.
+* S4.8. Restricting the opponent's pieces and pawns. S4.9. Improving the worst piece, prophylaxis.
+  S4.10. Strategic techniques: exchanging a key piece, transferring a piece, seizing a file, opening the position.
+  S4.11. Planning: evaluating the position → goal → plan.
+* O4.1. Opening and middlegame: a plan from the opening's pawn structure. O4.2. Advanced starter repertoires
+  (a skeleton from the owner's library, 27.10).
+* C4.1. Calculation technique: calculate to a quiet position, evaluate. C4.2. "Compare two moves".
+* G4.1. World Championship matches: key games (library). G4.2. Working on your own mistakes (13.5 + review).
+* Level 4 exam ("Class I test").
 
-### Уровень 5. I разряд — КМС
-* Т5.1. Сложные комбинации, сочетание нескольких идей. Т5.2. Скрытые защитные ресурсы.
-* М5.1. Атака с жертвой материала за инициативу в долгую.
-* Э5.1. Сложные ладейные окончания. Э5.2. Техника реализации у мастеров (партии из библиотеки).
-  Э5.3. «Обязательные позиции» III.
-* С5.1. Критические позиции: статичные и динамичные факторы, выбор плана. С5.2. Динамика и инициатива.
-  С5.3. Интуиция и оценка жертв. С5.4. Позиционная жертва.
-* Д5.1. Подготовка дебюта к сопернику. Д5.2. Новые идеи в своём репертуаре.
-* Р5.1. Творческое мышление: найти идею соперника, профилактика. Р5.2. Расчёт в цейтноте (19.7 на время).
-* П5.1. Лекции по партиям чемпионов (свои тексты по партиям библиотеки). П5.2. Самоанализ сыгранных партий.
-* Экзамен уровня 5 («тест на КМС»).
+### Level 5. Class I – Candidate Master (CM)
+* T5.1. Complex combinations, a combination of several ideas. T5.2. Hidden defensive resources.
+* M5.1. Attack with a long-term sacrifice of material for the initiative.
+* E5.1. Complex rook endings. E5.2. Conversion technique of masters (games from the library).
+  E5.3. "Must-know positions" III.
+* S5.1. Critical positions: static and dynamic factors, choosing a plan. S5.2. Dynamics and initiative.
+  S5.3. Intuition and evaluation of sacrifices. S5.4. Positional sacrifice.
+* O5.1. Opening preparation for an opponent. O5.2. New ideas in your own repertoire.
+* C5.1. Creative thinking: finding the opponent's idea, prophylaxis. C5.2. Calculation in time trouble (19.7 timed).
+* G5.1. Lectures on champions' games (our own texts on library games). G5.2. Self-analysis of played games.
+* Level 5 exam ("Candidate Master test").
 
-## Как наполнять
+## How to fill it
 
-* Наполнение идёт по ячейкам; у каждой ячейки — источник позиций (наша база задач CC0, генератор, архив,
-  библиотека, своя позиция), автор текста, статус. Для партии из библиотеки ячейка хранит ссылку на партию и
-  номера ходов с остановками.
-* Проверки — как у уроков 14.1: легальность, решаемость, единственность ответа там, где он один; тексты — в трёх
-  каталогах с одинаковыми ключами; ходы, упомянутые в тексте, сверяются с партией (как в 14.7).
-* Порядок наполнения: уровни 0–2 (их ждут новички), затем пешечные структуры (у них уже есть партии), затем
-  остальное.
+* Filling goes cell by cell; each cell has a source of positions (our CC0 puzzle database, a generator, an archive,
+  the library, your own position), a text author, a status. For a library game, the cell stores a link to the game and
+  the move numbers with stops.
+* Checks are as for 14.1 lessons: legality, solvability, uniqueness of the answer where there is only one; texts are in three
+  catalogs with identical keys; the moves mentioned in the text are checked against the game (as in 14.7).
+* Order of filling: levels 0–2 (beginners are waiting for them), then pawn structures (they already have games), then
+  the rest.

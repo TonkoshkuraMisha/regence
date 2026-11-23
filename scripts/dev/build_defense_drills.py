@@ -1,15 +1,15 @@
 # --- FILE: scripts/dev/build_defense_drills.py ---
 """
-Сборка защитных упражнений (таск 13.6) → data/puzzles/defense_drills.csv.gz.
+Building the defence drills (task 13.6) -> data/puzzles/defense_drills.csv.gz.
 
-Источник — выборка задач lichess (data/puzzles/lichess_subset.csv.gz, CC0). Каждая задача проверяется движком по
-критериям решаемости из src/services/defense_drills.py: угроза настоящая, защита существует и она не случайный ход;
-в «Не зевни» из трёх естественных ходов не проигрывает ровно один. Затем каждое упражнение независимо
-перепроверяется глубже (``--verify-depth``) с чистой памятью движка — нестабильные оценки (эндшпиль, цугцванг)
-отсеиваются. Задачи перебираются в детерминированном порядке
-(по crc32 номера задачи), пока на каждой ступени каждого вида не наберётся ``--per-stage`` упражнений.
+The source is the lichess puzzle selection (data/puzzles/lichess_subset.csv.gz, CC0). Each puzzle is checked by the engine
+the solvability criteria from src/services/defense_drills.py: the threat is real, a defence exists and it is not a random move;
+in "Don't blunder" exactly one of three natural moves does not lose. Then every drill is independently
+re-checked deeper (``--verify-depth``) with clean engine memory - unstable evaluations (endgame, zugzwang)
+are dropped. Puzzles are iterated in a deterministic order
+(by crc32 of the puzzle id) until every stage of every kind has collected ``--per-stage`` drills.
 
-Нужен Stockfish (bin/ или PATH). В CI не запускается: результат — файл в репозитории.
+Needs Stockfish (bin/ or PATH). Not run in CI: the result is a file in the repository.
 
     python -m scripts.dev.build_defense_drills [--per-stage 100] [--depth 12]
 """
@@ -38,9 +38,9 @@ from src.services.puzzles import STAGES
 
 
 def make_analyse(engine: chess.engine.SimpleEngine, depth: int):
-    """Создаёт функцию анализа лучших ходов позиции на заданной глубине."""
+    """Creates a function that analyses the best moves of a position at the given depth."""
     def analyse(board: chess.Board, multipv: int, moves: list[str] | None) -> MoveScores:
-        """Возвращает лучшие ходы позиции с оценками и ответами соперника."""
+        """Returns the best moves of a position with evaluations and the opponent's replies."""
         root = [chess.Move.from_uci(uci) for uci in moves] if moves else None
         infos = engine.analyse(board, chess.engine.Limit(depth=depth), multipv=multipv, root_moves=root)
         scores: MoveScores = {}
@@ -55,9 +55,9 @@ def make_analyse(engine: chess.engine.SimpleEngine, depth: int):
 
 
 def make_score_after(engine: chess.engine.SimpleEngine, depth: int):
-    """Оценка после хода — с точки зрения сыгравшего; новая «партия» на каждый вызов: без памяти прошлых поисков."""
+    """Evaluation after a move - from the mover's point of view; a new "game" per call: no memory of earlier searches."""
     def score_after(fen: str, uci: str) -> int:
-        """Оценивает позицию после хода с чистой памятью движка для перепроверки."""
+        """Evaluates the position after a move with clean engine memory for re-checking."""
         board = chess.Board(fen)
         mover = board.turn
         board.push_uci(uci)
@@ -68,19 +68,19 @@ def make_score_after(engine: chess.engine.SimpleEngine, depth: int):
 
 
 def main() -> None:
-    """Отбирает, верифицирует и сохраняет защитные упражнения из базы задач."""
+    """Selects, verifies and saves defence drills from the puzzle database."""
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--per-stage", type=int, default=100, help="упражнений каждого вида на каждой ступени")
-    parser.add_argument("--depth", type=int, default=12, help="глубина проверки движком")
-    parser.add_argument("--shallow-depth", type=int, default=2, help="глубина «на глаз» для естественных ходов")
-    parser.add_argument("--verify-depth", type=int, default=16, help="глубина независимой перепроверки")
+    parser.add_argument("--per-stage", type=int, default=100, help="drills of each kind per stage")
+    parser.add_argument("--depth", type=int, default=12, help="engine check depth")
+    parser.add_argument("--shallow-depth", type=int, default=2, help="\"by eye\" depth for natural moves")
+    parser.add_argument("--verify-depth", type=int, default=16, help="depth of the independent re-check")
     parser.add_argument("--keep-existing", action="store_true",
-                        help="перепроверить уже собранную выборку и только добрать отбракованное")
+                        help="re-check the already built selection and only top up the rejected ones")
     args = parser.parse_args()
 
     path = resolve_stockfish_path()
     if not path:
-        raise SystemExit("Stockfish не найден: python scripts/setup_stockfish.py")
+        raise SystemExit("Stockfish not found: python scripts/setup_stockfish.py")
     rows = sorted(read_subset(), key=lambda r: zlib.crc32(r["PuzzleId"].encode()))
     quota = {(kind, stage): args.per_stage for kind in KINDS for stage in STAGES}
     found: list[dict] = []

@@ -1,32 +1,32 @@
 // --- FILE: frontend/src/components/PlayerAvatar.tsx ---
-// Аватар игрока из собственного набора (таск 18.4): фигура «Льюис» (CC0) на цветном фоне. Игрок выбирает аватар в
-// настройках; пока не выбрал — аватар вычисляется из имени. Внешний сервис аватаров больше не нужен: имя игрока не
-// уходит на чужой сервер. Код аватара — «<фигура>-<номер фона>» (например wN-3), хранится в профиле на сервере
-// (поле avatar, сохраняется через services/profileSettings.ts); картинки фигур — public/assets/pieces/lewis/.
-// Используется в таблице лидеров, профиле, настройках (AvatarPicker) и шапке.
+// Player avatar from the own set (task 18.4): the "Lewis" piece (CC0) on a coloured background. The player chooses an avatar in the
+// settings; until chosen, the avatar is computed from the name. An external avatar service is no longer needed: the player's name does not
+// go to a foreign server. The avatar code is "<piece>-<background number>" (for example wN-3), stored in the profile on the server
+// (the avatar field, saved via services/profileSettings.ts); piece images are public/assets/pieces/lewis/.
+// Used in the leaderboard, profile, settings (AvatarPicker) and the header.
 
-/** Фигуры, доступные как аватар: код цвета и вида фигуры (имя файла SVG без расширения). */
+/** Pieces available as an avatar: the colour and kind code of the piece (the SVG file name without the extension). */
 export const AVATAR_PIECES = ['wK', 'wQ', 'wR', 'wB', 'wN', 'wP', 'bK', 'bQ', 'bR', 'bB', 'bN', 'bP'] as const;
-/** Цвета фона аватара; в коде аватара хранится индекс в этом списке. */
+/** Avatar background colours; the avatar code stores an index into this list. */
 export const AVATAR_BACKGROUNDS = ['#D0A972', '#7FA37A', '#7A9CC6', '#C98A7A', '#A58BC4', '#D6C26E', '#6FB0AA', '#B9B2A6'] as const;
-// Формат кода аватара: фигура и индекс фона (0–7 — по числу AVATAR_BACKGROUNDS).
+// Avatar code format: a piece and a background index (0-7, by the number of AVATAR_BACKGROUNDS).
 const AVATAR_RE = /^([wb][KQRBNP])-([0-7])$/;
 
-/** FNV-1a по символам имени: стабильное число, из которого выбираются фигура и фон по умолчанию. */
+/** FNV-1a over the name characters: a stable number from which the default piece and background are chosen. */
 function hash(text: string): number {
     let h = 2166136261;
     for (const ch of text) h = Math.imul(h ^ ch.codePointAt(0)!, 16777619);
     return h >>> 0;
 }
 
-/** Код аватара: выбранный, если он корректен, иначе — по имени игрока. */
+/** Avatar code: the chosen one if it is valid, otherwise by the player's name. */
 export function avatarCode(username: string, chosen?: string | null): string {
     if (chosen && AVATAR_RE.test(chosen)) return chosen;
     const h = hash(username.toLowerCase());
     return `${AVATAR_PIECES[h % AVATAR_PIECES.length]}-${(h >>> 8) % AVATAR_BACKGROUNDS.length}`;
 }
 
-/** Аватар игрока: выбранный или вычисленный из имени; alt пустой, если рядом уже есть имя. */
+/** Player avatar: the chosen one or computed from the name; alt is empty if a name is already next to it. */
 export function PlayerAvatar({username, avatar, className = 'w-8 h-8', alt = ''}: {
     username: string; avatar?: string | null; className?: string; alt?: string;
 }) {
@@ -39,7 +39,7 @@ export function PlayerAvatar({username, avatar, className = 'w-8 h-8', alt = ''}
     );
 }
 
-/** Выбор аватара в настройках: фигура и цвет фона. */
+/** Avatar choice in the settings: a piece and a background colour. */
 export function AvatarPicker({username, value, onChange}: { username: string; value: string | null; onChange: (code: string) => void }) {
     const current = avatarCode(username, value);
     const [, piece, background] = AVATAR_RE.exec(current)!;

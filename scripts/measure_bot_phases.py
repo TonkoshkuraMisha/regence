@@ -1,18 +1,18 @@
 # --- FILE: scripts/measure_bot_phases.py ---
 """
-Профиль силы бота по фазам партии: ровная ли игра от первого хода до последнего.
+A bot's strength profile by game phase: whether play is even from the first move to the last.
 
-Боты играют сами с собой (по `--games` партий каждый), затем сильный движок (глубина `--depth`) оценивает позицию
-после каждого хода, и считается потеря бота в сантипешках: на сколько ход хуже предыдущей оценки с точки зрения
-ходившего. Потери собираются по трём фазам — ходы 1–8 (в основном дебютная книга), 9–20 (сразу после книги) и 21+.
-Показывается средняя потеря, доля зевков (потеря > 200 сп) и доля ошибок (> 100 сп).
+Bots play against themselves (`--games` games each), then a strong engine (depth `--depth`) evaluates the position
+after every move, and the bot's loss is counted in centipawns: how much worse the move is than the previous
+evaluation, from the mover's view. Losses are collected over three phases: moves 1-8 (mostly the book), 9-20, 21+.
+The average loss, the share of blunders (loss > 200 cp) and the share of mistakes (> 100 cp) are shown.
 
-Зачем: человечный бот не должен менять силу скачком (чисто по книге, потом зевки, потом снова сильная игра). Скрипт —
-приёмочная проверка для любого движка за ботами: профиль должен быть ровным, а потеря соответствовать заявленному
-рейтингу. Данные: ходы бота — `BOT_INSTANCES[id].choose_move`; оценщик — Stockfish по `resolve_stockfish_path()`.
-Результат печатается и при `--out` сохраняется таблицей Markdown.
+Why: a human-like bot must not change strength abruptly (by the book, then blunders, then strong play again). The script is
+an acceptance check for any engine behind the bots: the profile must be even and the loss must match the declared
+rating. Data: bot moves - `BOT_INSTANCES[id].choose_move`; the evaluator - Stockfish via `resolve_stockfish_path()`.
+The result is printed and, with `--out`, saved as a Markdown table.
 
-Запуск: `uv run python -m scripts.measure_bot_phases --bots zukertort morphy --games 3`; `--bots all` — все боты.
+Run: `uv run python -m scripts.measure_bot_phases --bots zukertort morphy --games 3`; `--bots all` - all bots.
 """
 
 import argparse
@@ -26,18 +26,18 @@ import chess.engine
 from src.services.bots import BOT_INSTANCES
 from src.services.bots.base import resolve_stockfish_path
 
-# Границы фаз по номеру хода (включительно): имя → (первый ход, последний ход).
+# Phase boundaries by move number (inclusive): name -> (first move, last move).
 PHASES: dict[str, tuple[int, int]] = {"1-8": (1, 8), "9-20": (9, 20), "21+": (21, 999)}
-BLUNDER_CP = 200  # потеря больше этого — зевок
-MISTAKE_CP = 100  # потеря больше этого — ошибка
-LOSS_CAP_CP = 1000  # одна потеря в среднем не считается больше (мат и зевок ферзя не перекашивают среднее)
-MATE_SCORE = 3000  # цена мата в сантипешках для сравнения оценок
-MAX_PLIES = 140  # партия обрывается на этом полуходе
+BLUNDER_CP = 200  # a loss above this is a blunder
+MISTAKE_CP = 100  # a loss above this is a mistake
+LOSS_CAP_CP = 1000  # a single loss is not counted above this in the average (a mate or a queen blunder does not skew the mean)
+MATE_SCORE = 3000  # the price of a mate in centipawns for comparing evaluations
+MAX_PLIES = 140  # the game is cut off at this ply
 
 
 @dataclass
 class Profile:
-    """Потери бота по фазам и счётчики ходов."""
+    """The bot's losses by phase and move counters."""
 
     losses: dict[str, list[int]] = field(default_factory=lambda: {name: [] for name in PHASES})
     plies: int = 0
@@ -45,13 +45,13 @@ class Profile:
 
 
 def _evaluate(engine: chess.engine.SimpleEngine, board: chess.Board, depth: int) -> int:
-    """Оценка позиции с точки зрения белых, сп."""
+    """Evaluation of a position from White's point of view, cp."""
     info = engine.analyse(board, chess.engine.Limit(depth=depth))
     return int(info["score"].white().score(mate_score=MATE_SCORE) or 0)
 
 
 def measure(bot_id: str, games: int, depth: int, engine: chess.engine.SimpleEngine) -> Profile:
-    """Играет `games` партий бота с самим собой и собирает потери по фазам."""
+    """Plays `games` games of the bot against itself and collects losses by phase."""
     bot = BOT_INSTANCES[bot_id]
     profile = Profile()
     for _ in range(games):
@@ -73,7 +73,7 @@ def measure(bot_id: str, games: int, depth: int, engine: chess.engine.SimpleEngi
 
 
 def table_row(bot_id: str, profile: Profile) -> str:
-    """Строка таблицы Markdown: по каждой фазе — средняя потеря, зевки и ошибки в процентах от ходов фазы."""
+    """A Markdown table row: for each phase - the average loss, blunders and mistakes as a percentage of the phase's moves."""
     cells = []
     for name in PHASES:
         values = profile.losses[name]
@@ -82,26 +82,26 @@ def table_row(bot_id: str, profile: Profile) -> str:
             continue
         blunders = 100 * sum(v > BLUNDER_CP for v in values) / len(values)
         mistakes = 100 * sum(v > MISTAKE_CP for v in values) / len(values)
-        cells.append(f"{statistics.mean(values):.0f} сп / {blunders:.0f}% / {mistakes:.0f}%")
+        cells.append(f"{statistics.mean(values):.0f} cp / {blunders:.0f}% / {mistakes:.0f}%")
     return f"| {bot_id} | {profile.plies} | {profile.book_plies} | " + " | ".join(cells) + " |"
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    parser.add_argument("--bots", nargs="+", default=["all"], help="id ботов или all")
-    parser.add_argument("--games", type=int, default=3, help="партий на бота")
-    parser.add_argument("--depth", type=int, default=10, help="глубина оценщика")
-    parser.add_argument("--out", help="файл Markdown для сохранения таблицы")
+    parser.add_argument("--bots", nargs="+", default=["all"], help="bot ids or all")
+    parser.add_argument("--games", type=int, default=3, help="games per bot")
+    parser.add_argument("--depth", type=int, default=10, help="evaluator depth")
+    parser.add_argument("--out", help="Markdown file to save the table to")
     args = parser.parse_args()
 
     bot_ids = sorted(BOT_INSTANCES) if args.bots == ["all"] else args.bots
     path = resolve_stockfish_path()
     if path is None:
-        print("Движок не найден: положите бинарник в bin/", file=sys.stderr)
+        print("Engine not found: put the binary into bin/", file=sys.stderr)
         return 1
-    header = ["| бот | ходов | из книги | " + " | ".join(f"ходы {n}" for n in PHASES) + " |",
+    header = ["| bot | moves | from book | " + " | ".join(f"moves {n}" for n in PHASES) + " |",
               "|---|---|---|" + "---|" * len(PHASES),
-              "(ячейка фазы: средняя потеря / зевки >200 сп / ошибки >100 сп)"]
+              "(phase cell: average loss / blunders >200 cp / mistakes >100 cp)"]
     rows = []
     engine = chess.engine.SimpleEngine.popen_uci(path)
     try:

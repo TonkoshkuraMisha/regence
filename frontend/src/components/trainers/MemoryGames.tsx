@@ -1,10 +1,10 @@
 // --- FILE: frontend/src/components/trainers/MemoryGames.tsx ---
-// Тренажёры памяти (таск 19.3).
-// * RestoreGame — «Восстанови позицию»: MEMORY_ROUNDS позиций; показ на время уровня, расстановка по памяти (палитра, как в
-//   редакторе позиции), разбор: ваша расстановка и исходная с подсвеченными ошибками. Очки — сумма процентов.
-// * RecallGame — «Запомни партию»: ходы партии проигрываются, затем их нужно повторить; три промаха на ходу — ход
-//   показывается сам. Очки — 10 за каждый ход с первой попытки.
-// Данные: партии классики (content/classics) и эндшпильные позиции (content/endgames.json); правила — trainers/memory.ts. Запускается из TrainersPage.tsx.
+// Memory trainers (task 19.3).
+// * RestoreGame - "Restore the position": MEMORY_ROUNDS positions; a timed display by level, placement from memory (a palette, as in the
+//   position editor), review: your placement and the original with the mistakes highlighted. Score - the sum of percentages.
+// * RecallGame - "Remember the game": the game moves are played back, then they must be repeated; three misses on a move - the move
+//   is shown itself. Score - 10 for each move on the first try.
+// Data: classic games (content/classics) and endgame positions (content/endgames.json); rules - trainers/memory.ts. Launched from TrainersPage.tsx.
 
 import {useEffect, useMemo, useRef, useState} from 'react';
 import {Chess} from 'chess.js';
@@ -18,16 +18,16 @@ import type {Placement, PlacementScore} from '../../trainers/memory';
 import {useClassics} from './trainerGame';
 import type {TrainerGameProps} from './trainerGame';
 
-/** Позиций в одной попытке «Восстанови позицию». */
+/** Positions in one "Restore the position" attempt. */
 export const MEMORY_ROUNDS = 3;
-/** Пауза между показываемыми ходами партии (мс). */
+/** Pause between shown game moves (ms). */
 const RECALL_STEP_MS = 900;
-/** Кисти палитры: заглавные — белые фигуры, строчные — чёрные. */
+/** Palette brushes: uppercase - white pieces, lowercase - black. */
 const PIECES = ['K', 'Q', 'R', 'B', 'N', 'P', 'k', 'q', 'r', 'b', 'n', 'p'] as const;
-/** Значки фигур на кнопках палитры. */
+/** Piece glyphs on the palette buttons. */
 const GLYPHS: Record<string, string> = {K: '♔', Q: '♕', R: '♖', B: '♗', N: '♘', P: '♙', k: '♚', q: '♛', r: '♜', b: '♝', n: '♞', p: '♟'};
 
-/** Обратный отсчёт секунд, пока active; на нуле вызывает onDone (свежий колбэк берётся из ref, чтобы интервал не пересоздавался). */
+/** Countdown of seconds while active; at zero calls onDone (the fresh callback is taken from a ref so the interval is not recreated). */
 function useCountdown(seconds: number, active: boolean, onDone: () => void): number {
     const [left, setLeft] = useState(seconds);
     const done = useRef(onDone);
@@ -49,7 +49,7 @@ function useCountdown(seconds: number, active: boolean, onDone: () => void): num
     return left;
 }
 
-/** Фазы раунда: show (показ на время уровня) → place (расстановка по памяти) → review (разбор). Очки раунда — процент верных клеток. */
+/** Round phases: show (a timed display by level) -> place (placement from memory) -> review. Round score - the percentage of correct squares. */
 export function RestoreGame({level, seed, onFinish}: TrainerGameProps) {
     const {t} = useI18n();
     const games = useClassics();
@@ -151,7 +151,7 @@ export function RestoreGame({level, seed, onFinish}: TrainerGameProps) {
     );
 }
 
-/** Фазы: watch (ход за ходом проигрывается начало партии) → play (повторить ходы); игрок видит только позицию перед своим ходом. */
+/** Phases: watch (the start of the game is played back move by move) -> play (repeat the moves); the player sees only the position before their move. */
 export function RecallGame({level, seed, onFinish}: TrainerGameProps) {
     const {t} = useI18n();
     const games = useClassics();
@@ -205,7 +205,7 @@ export function RecallGame({level, seed, onFinish}: TrainerGameProps) {
         const nextMistakes = mistakes + 1;
         setMistakes(nextMistakes);
         setMark({square: uci.slice(2, 4), ok: false});
-        if (misses + 1 >= 3) advance(false, nextMistakes);   // третий промах — ход показывается сам
+        if (misses + 1 >= 3) advance(false, nextMistakes);   // third miss - the move is shown by itself
         else setMisses((m) => m + 1);
     };
 

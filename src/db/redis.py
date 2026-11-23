@@ -1,9 +1,9 @@
 """
-Клиент Redis — общий для API и сервисов (redis_client).
+The Redis client - shared by the API and services (redis_client).
 
-Адрес — настройки REDIS_HOST и REDIS_PORT. Таймауты короткие, повторов мало (REDIS_CONNECT_TIMEOUT_S,
-REDIS_SOCKET_TIMEOUT_S, REDIS_RETRIES): при недоступном Redis вызов должен быстро вернуть ошибку, а не держать
-вход, ходы и WebSocket по пятнадцать секунд. Что именно хранится в Redis — docs/ARCHITECTURE.md, раздел 3.
+The address is the REDIS_HOST and REDIS_PORT settings. Timeouts are short, retries are few (REDIS_CONNECT_TIMEOUT_S,
+REDIS_SOCKET_TIMEOUT_S, REDIS_RETRIES): when Redis is unavailable a call must quickly return an error and not hold
+login, moves and WebSocket for fifteen seconds. What exactly is stored in Redis - docs/ARCHITECTURE.md, section 3.
 """
 
 from typing import Any
@@ -17,11 +17,11 @@ from src.core.config import settings
 
 def create_redis_client(**overrides: Any) -> redis.Redis:
     """
-    Клиент Redis с короткими таймаутами и ограниченными повторами.
+    A Redis client with short timeouts and limited retries.
 
-    redis-py 8 по умолчанию повторяет команду 10 раз с растущей паузой: при недоступном Redis
-    каждый вызов висел ~15 с, и вход, ходы и WebSocket зависали вместо быстрого fail-open.
-    Один немедленный повтор переживает разорванное соединение после рестарта Redis.
+    redis-py 8 by default retries a command 10 times with a growing pause: when Redis is unavailable
+    every call hung for ~15 s, and login, moves and WebSocket froze instead of a quick fail-open.
+    One immediate retry survives a connection broken after a Redis restart.
     """
     options: dict[str, Any] = {
         "host": settings.REDIS_HOST,
@@ -35,8 +35,8 @@ def create_redis_client(**overrides: Any) -> redis.Redis:
     return redis.Redis(**options)
 
 
-# Глобальный асинхронный клиент Redis.
-# Тип Any сознательно: с decode_responses=True все ответы — str, но заглушки типов redis-py
-# этого не выражают и описывают каждый ответ как bytes | str. Без Any mypy требовал бы
-# декодировать то, что уже декодировано, в каждом месте использования.
+# The global asynchronous Redis client.
+# The type Any is deliberate: with decode_responses=True all replies are str, but the redis-py type stubs
+# do not express this and describe every reply as bytes | str. Without Any mypy would require
+# decoding what is already decoded at every place of use.
 redis_client: Any = create_redis_client()

@@ -1,6 +1,6 @@
-// Страница ожидания (Worker regence-landing): отдаёт заглушку на regence.club и www до запуска сайта.
-// Домены те же, что были привязаны к Worker до появления этого файла; после запуска сайта Worker отвязать
-// (DEPLOY.md, раздел о Cloudflare), иначе он будет перехватывать весь трафик.
+// Waiting page (Worker regence-landing): serves a placeholder on regence.club and www until the site launches.
+// The domains are the same ones that were bound to the Worker before this file existed; after the site launches unbind the Worker
+// (DEPLOY.md, the Cloudflare section), otherwise it will intercept all traffic.
 import { defineConfig } from "cf/config";
 import * as entrypoint from "./src/index.js" with { type: "cf-worker" };
 

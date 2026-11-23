@@ -1,9 +1,9 @@
 // --- FILE: frontend/src/components/chessboard/FavoriteOpeningsPicker.tsx ---
-// Любимые дебюты соперника мастерской (таск 21.2): до трёх за белых и за чёрных из открытой таблицы дебютов. Бот
-// играет их ходы, пока позиция есть в линии; соперник свернул — дальше движок с характером. Дебют хранится в
-// конфиге соперника не названием, а позицией (EPD); названия и поиск по названию или коду ECO — GET /bots/openings
-// (таблица дебютов сервера, src/services/data/openings.tsv). Названия — английские имена собственные из таблицы,
-// они не переводятся.
+// Favourite openings of a workshop opponent (task 21.2): up to three for White and for Black from the open openings table. The bot
+// plays their moves while the position is in the line; once the opponent deviates, the engine with character takes over. An opening is stored in
+// the opponent config not by name but by position (EPD); names and search by name or ECO code come from GET /bots/openings
+// (the server openings table, src/services/data/openings.tsv). The names are English proper nouns from the table,
+// they are not translated.
 
 import {useEffect, useState} from 'react';
 import {X} from 'lucide-react';
@@ -19,15 +19,15 @@ interface Props {
     onChange: (side: Side, epds: string[]) => void;
 }
 
-/** Названия выбранных дебютов по их позициям (общий кэш на сессию, живёт до перезагрузки страницы). */
+/** Names of the chosen openings by their positions (a shared per-session cache, lives until the page reloads). */
 const names = new Map<string, OpeningEntry>();
 
 /**
- * Названия дебютов по позициям: недостающие догружаются одним запросом GET /bots/openings?epd=…, после ответа
- * компонент перерисовывается. Возвращает общий кэш — пока ответа нет, записи для позиции в нём нет.
+ * Opening names by position: missing ones are fetched in one request GET /bots/openings?epd=..., after the response
+ * the component re-renders. Returns the shared cache: until the response arrives there is no entry for the position in it.
  */
 export function useOpeningNames(epds: string[]): Map<string, OpeningEntry> {
-    // Счётчик нужен только затем, чтобы перерисовать компонент, когда кэш пополнился.
+    // The counter is needed only to re-render the component once the cache has been filled.
     const [, setVersion] = useState(0);
     const missing = epds.filter((epd) => !names.has(epd));
     const key = missing.join('|');
@@ -52,7 +52,7 @@ function SidePicker({side, value, onChange}: { side: Side; value: string[]; onCh
     const known = useOpeningNames(value);
     const full = value.length >= MAX_FAVORITE_OPENINGS;
 
-    // Поиск по названию: от двух символов, с паузой 250 мс после ввода (не запрос на каждую букву), до 8 строк.
+    // Search by name: from two characters, with a 250 ms pause after typing (not a request per letter), up to 8 rows.
     useEffect(() => {
         const text = query.trim();
         if (text.length < 2 || full) {
@@ -118,7 +118,7 @@ function SidePicker({side, value, onChange}: { side: Side; value: string[]; onCh
     );
 }
 
-/** Выбор любимых дебютов за белых и за чёрных; onChange отдаёт сторону и новый список позиций (EPD). */
+/** Choice of favourite openings for White and for Black; onChange gives the side and the new list of positions (EPD). */
 export function FavoriteOpeningsPicker({white, black, onChange}: Props) {
     const {t} = useI18n();
     return (
@@ -130,7 +130,7 @@ export function FavoriteOpeningsPicker({white, black, onChange}: Props) {
     );
 }
 
-/** Строка с дебютами соперника для карточки: «♔ Ruy Lopez · ♚ Sicilian Defense» (без кода ECO; он — в выборе). */
+/** Line with the opponent's openings for the card: "♔ Ruy Lopez · ♚ Sicilian Defense" (without the ECO code; that is in the picker). */
 export function OpeningsLine({white = [], black = []}: { white?: string[]; black?: string[] }) {
     const known = useOpeningNames([...white, ...black]);
     if (white.length + black.length === 0) return null;

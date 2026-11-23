@@ -1,11 +1,11 @@
 # --- FILE: scripts/build_openings.py ---
 """
-Таблица дебютов (таск 16.1) из открытого набора lichess-org/chess-openings (CC0-1.0, см. ATTRIBUTION.md):
-файлы a.tsv … e.tsv (eco, name, pgn) превращаются в src/services/data/openings.tsv — код ECO, название, позиция (EPD
-без счётчиков), число полуходов и ходы линии в UCI (для любимых дебютов соперников мастерской, таск 21.2).
-Определение дебюта идёт по позиции, поэтому перестановки ходов узнаются.
+Openings table (task 16.1) from the open lichess-org/chess-openings set (CC0-1.0, see ATTRIBUTION.md):
+files a.tsv ... e.tsv (eco, name, pgn) are turned into src/services/data/openings.tsv - ECO code, name, position (EPD
+without counters), number of plies and the line's moves in UCI (for the favourite openings of workshop opponents, task 21.2).
+An opening is identified by position, so transpositions are recognised.
 
-    python scripts/build_openings.py <папка с a.tsv … e.tsv>
+    python scripts/build_openings.py <folder with a.tsv ... e.tsv>
 """
 
 import csv
@@ -19,7 +19,7 @@ OUT = Path(__file__).resolve().parents[1] / "src" / "services" / "data" / "openi
 
 
 def main() -> None:
-    """Собирает открытую таблицу дебютов (ECO, названия, FEN и линии UCI)."""
+    """Builds the open openings table (ECO, names, FEN and UCI lines)."""
     source = Path(sys.argv[1])
     rows: dict[str, tuple[str, str, int, str]] = {}
     for name in "abcde":
@@ -32,7 +32,7 @@ def main() -> None:
                 for move in game.mainline_moves():
                     board.push(move)
                     line.append(move.uci())
-                # Одна позиция — одно название: у более короткой записи приоритет (как в исходном наборе).
+                # One position - one name: the shorter entry has priority (as in the source set).
                 key = board.epd()
                 if key not in rows or len(line) < rows[key][2]:
                     rows[key] = (row["eco"], row["name"], len(line), " ".join(line))

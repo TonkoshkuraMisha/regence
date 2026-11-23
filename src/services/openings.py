@@ -1,13 +1,13 @@
 # --- FILE: src/services/openings.py ---
 """
-Определение дебюта (таск 16.1): одна таблица вместо двух копий жёстких префиксов (game_state.py, api/bots.py).
-Данные — src/services/data/openings.tsv (собирает scripts/build_openings.py из открытого набора lichess, CC0).
+Opening detection (task 16.1): one table instead of two copies of hard-coded prefixes (game_state.py, api/bots.py).
+Data - src/services/data/openings.tsv (built by scripts/build_openings.py from the open lichess set, CC0).
 
-Дебют определяется по позиции: идём по ходам партии и запоминаем последнюю позицию, которая есть в таблице, — так
-узнаются и перестановки ходов. Названия — английские имена собственные из набора (как имена игроков), не переводятся.
+The opening is determined by position: we walk the game's moves and remember the last position that is in the table - this way
+transpositions are recognised too. The names are English proper nouns from the set (like player names), not translated.
 
-Таблица (3865 строк на 17.11.2026; колонки eco, name, epd, uci) читается с диска один раз на процесс и остаётся в
-памяти. Позиция сравнивается по EPD: расстановка, очередь хода, права рокировки и поле взятия на проходе.
+The table (3865 rows as of 17.11.2026; columns eco, name, epd, uci) is read from disk once per process and stays in
+memory. A position is compared by EPD: piece placement, side to move, castling rights and the en passant square.
 """
 
 import csv
@@ -18,14 +18,14 @@ from pathlib import Path
 import chess
 
 DATA = Path(__file__).resolve().parent / "data" / "openings.tsv"
-# Сколько полуходов партии просматривается: глубже таблицы нет (самая длинная запись набора — 36 полуходов).
+# How many plies of a game are scanned: there is no table deeper (the longest set entry is 36 plies).
 MAX_PLIES = 40
-UNKNOWN_ECO = "A00"  # код ECO, когда ни одна позиция партии в таблице не найдена («неправильные начала»)
+UNKNOWN_ECO = "A00"  # ECO code when no position of the game is found in the table ("irregular openings")
 
 
 @dataclass(frozen=True)
 class Opening:
-    """Дебют: код ECO и английское название из таблицы."""
+    """Opening: the ECO code and the English name from the table."""
 
     eco: str
     name: str
@@ -33,7 +33,7 @@ class Opening:
 
 @dataclass(frozen=True)
 class OpeningLine:
-    """Запись таблицы с ходами — для любимых дебютов соперников мастерской (таск 21.2)."""
+    """A table record with moves - for the favourite openings of the workshop opponents (task 21.2)."""
 
     eco: str
     name: str
@@ -43,14 +43,14 @@ class OpeningLine:
 
 @lru_cache(maxsize=1)
 def lines() -> dict[str, OpeningLine]:
-    """Вся таблица с ходами, ключ — позиция (EPD) в конце линии. Читается один раз, результат общий: не изменять."""
+    """The whole table with moves, keyed by the position (EPD) at the end of the line. Read once and shared: do not modify."""
     with DATA.open(encoding="utf-8") as handle:
         return {row["epd"]: OpeningLine(row["eco"], row["name"], row["epd"], tuple(row["uci"].split()))
                 for row in csv.DictReader(handle, delimiter="\t")}
 
 
 def search(query: str, limit: int = 20) -> list[OpeningLine]:
-    """Дебюты по части названия или по коду ECO: сначала названия, начинающиеся с запроса, внутри — короткие линии."""
+    """Openings by part of the name or by ECO code: first names starting with the query, within them - short lines."""
     text = query.strip().lower()
     if not text:
         return []
@@ -62,16 +62,16 @@ def search(query: str, limit: int = 20) -> list[OpeningLine]:
 
 @lru_cache(maxsize=1)
 def _table() -> dict[str, Opening]:
-    """Позиция (EPD) → дебют: та же таблица без ходов, для определения дебюта партии."""
+    """Position (EPD) -> opening: the same table without moves, for determining a game's opening."""
     with DATA.open(encoding="utf-8") as handle:
         return {row["epd"]: Opening(row["eco"], row["name"]) for row in csv.DictReader(handle, delimiter="\t")}
 
 
 def classify_board_line(board: chess.Board, moves: list[chess.Move]) -> Opening | None:
     """
-    Дебют по ходам из стартовой позиции board (обычно — начальной): последняя позиция линии, найденная в таблице.
-    Просматривается не больше MAX_PLIES полуходов; на первом нелегальном ходе просмотр останавливается. Переданная
-    доска не изменяется. None — ни одной позиции из таблицы не встретилось.
+    Opening by moves from the start position board (usually the initial one): the last position of the line found in the table.
+    No more than MAX_PLIES plies are scanned; at the first illegal move scanning stops. The passed
+    board is not modified. None - no position from the table was met.
     """
     table = _table()
     found = table.get(board.epd())
@@ -85,7 +85,7 @@ def classify_board_line(board: chess.Board, moves: list[chess.Move]) -> Opening 
 
 
 def classify(moves_uci: list[str]) -> Opening | None:
-    """Дебют партии из начальной позиции по ходам в UCI; None — ходов из таблицы не было."""
+    """Opening of a game from the initial position by UCI moves; None - there were no moves from the table."""
     moves = []
     for uci in moves_uci[:MAX_PLIES]:
         try:
@@ -97,8 +97,8 @@ def classify(moves_uci: list[str]) -> Opening | None:
 
 def eco_code(moves_uci: list[str]) -> str:
     """
-    Код ECO для заголовка PGN и колонки games.eco; неизвестное начало — A00. Вызывают завершение партии между
-    людьми (game_state.py), сохранение партии с ботом (api/bots.py) и симуляция турнира (tournament_simulation.py).
+    ECO code for the PGN header and the games.eco column; an unknown opening is A00. Called by the finishing of a game between
+    humans (game_state.py), saving a game with a bot (api/bots.py) and the tournament simulation (tournament_simulation.py).
     """
     opening = classify(moves_uci)
     return opening.eco if opening else UNKNOWN_ECO

@@ -1,11 +1,11 @@
 # --- FILE: src/api/beta.py ---
 """
-Программа беты (таск 24.4): настройки сайта для клиента, проверка кода-приглашения, «Сообщить о проблеме» и
-работа модератора с приглашениями и сообщениями.
+Beta programme (task 24.4): site settings for the client, invite code check, "Report a problem" and
+the moderator's work with invites and reports.
 
-Открытые адреса (без входа): /beta/config (без лимита), /beta/invites/check и POST /beta/feedback — каждый со
-своим лимитом запросов. Остальное — только модератору: роль (users.is_moderator) проверяет сервис
-src/services/beta.py и отвечает отказом moderator_only (403). Данные — таблицы invites и feedback.
+Open addresses (no login): /beta/config (no limit), /beta/invites/check and POST /beta/feedback - each with
+its own request limit. Everything else is for the moderator only: the role (users.is_moderator) is checked by the service
+src/services/beta.py, which answers with the refusal moderator_only (403). Data - tables invites and feedback.
 """
 
 from fastapi import APIRouter, Depends, Query, Request, status
@@ -50,7 +50,7 @@ class FeedbackStatusIn(BaseModel):
 
 @router.get("/config")
 async def site_config():
-    """Что клиенту нужно знать до входа: закрыта ли регистрация, ссылка на сообщество, версия приложения."""
+    """What the client needs to know before login: whether registration is closed, the community link, the app version."""
     return {"invite_only": settings.REGISTRATION_INVITE_ONLY, "community_url": beta.community_url(),
             "version": settings.VERSION}
 
@@ -58,7 +58,7 @@ async def site_config():
 @router.get("/invites/check")
 async def check_invite(request: Request, code: str = Query(..., min_length=1, max_length=beta.MAX_CODE_LENGTH),
                        db: AsyncSession = Depends(get_db)):
-    """Подсказка для формы регистрации: действует ли код. Сам код при этом не тратится."""
+    """A hint for the registration form: whether the code is valid. The code itself is not spent."""
     await enforce_rate_limit("invite_check", f"ip:{client_ip(request)}", settings.RATE_LIMIT_INVITE_CHECK,
                              settings.RATE_LIMIT_WINDOW_S, "too_many_invite_checks")
     return {"valid": await beta.invite_usable(db, code)}
@@ -67,8 +67,9 @@ async def check_invite(request: Request, code: str = Query(..., min_length=1, ma
 @router.post("/feedback", status_code=status.HTTP_201_CREATED)
 async def send_feedback(payload: FeedbackIn, request: Request, db: AsyncSession = Depends(get_db)):
     """
-    Сообщение о проблеме — от игрока или гостя: записывается в таблицу feedback вместе с контекстом (страница, язык,
-    размер экрана от клиента; версию приложения добавляет сервер). Лимит — на игрока, а без входа — на адрес.
+    A problem report - from a player or a guest: it is written to the feedback table together with context (page, language,
+    screen size from the client; the app version is added by the server). The limit is per player, and without login - per
+    address.
     """
     await enforce_rate_limit("feedback", client_identity(request), settings.RATE_LIMIT_FEEDBACK,
                              settings.RATE_LIMIT_FEEDBACK_WINDOW_S, "too_many_feedback")
@@ -82,13 +83,14 @@ async def send_feedback(payload: FeedbackIn, request: Request, db: AsyncSession 
 
 @router.get("/my-invite")
 async def my_invite(db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
-    """Личный код игрока для приглашения друзей: ссылка вида /?invite=КОД; в ответе — сколько человек уже пришло."""
+    """A player's personal code for inviting friends: a link like /?invite=CODE; the response says how many people have already
+    come."""
     return await beta.my_invite(db, user)
 
 
 @router.get("/invites")
 async def invites(db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
-    """Модератору: все коды-приглашения (сколько человек пришло по каждому) и закрыта ли сейчас регистрация."""
+    """For the moderator: all invite codes (how many people came by each) and whether registration is closed right now."""
     try:
         return {"invite_only": settings.REGISTRATION_INVITE_ONLY, "invites": await beta.list_invites(db, user)}
     except DomainError as exc:
@@ -97,7 +99,7 @@ async def invites(db: AsyncSession = Depends(get_db), user: User = Depends(get_c
 
 @router.post("/invites", status_code=status.HTTP_201_CREATED)
 async def create_invite(payload: InviteIn, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
-    """Модератору: новый код-приглашение с пометкой, лимитом использований и сроком действия (всё необязательно)."""
+    """For the moderator: a new invite code with a note, usage limit and expiry (all optional)."""
     try:
         return await beta.create_invite(db, user, payload.note, payload.max_uses, payload.expires_in_days)
     except DomainError as exc:
@@ -106,7 +108,7 @@ async def create_invite(payload: InviteIn, db: AsyncSession = Depends(get_db), u
 
 @router.post("/invites/{invite_id}/revoke")
 async def revoke_invite(invite_id: int, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
-    """Модератору: отозвать код — по нему больше нельзя зарегистрироваться."""
+    """For the moderator: revoke a code - nobody can register with it any more."""
     try:
         return await beta.revoke_invite(db, user, invite_id)
     except DomainError as exc:
@@ -116,7 +118,7 @@ async def revoke_invite(invite_id: int, db: AsyncSession = Depends(get_db), user
 @router.get("/feedback")
 async def feedback_queue(status_filter: str | None = Query(None, alias="status", pattern="^(new|in_progress|done|rejected)$"),
                          db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
-    """Модератору: сообщения о проблемах — неразобранные (new и in_progress) или с заданным статусом."""
+    """For the moderator: problem reports - unresolved (new and in_progress) or with the given status."""
     try:
         return await beta.feedback_queue(db, user, status_filter)
     except DomainError as exc:
@@ -126,7 +128,7 @@ async def feedback_queue(status_filter: str | None = Query(None, alias="status",
 @router.post("/feedback/{feedback_id}/status")
 async def set_feedback_status(feedback_id: int, payload: FeedbackStatusIn, db: AsyncSession = Depends(get_db),
                               user: User = Depends(get_current_user)):
-    """Модератору: сменить статус сообщения о проблеме (new, in_progress, done, rejected)."""
+    """For the moderator: change the status of a problem report (new, in_progress, done, rejected)."""
     try:
         item = await beta.set_feedback_status(db, user, feedback_id, payload.status)
     except DomainError as exc:

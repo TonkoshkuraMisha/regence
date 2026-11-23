@@ -1,4 +1,4 @@
-// Мастерская соперников: гостевые персоналии в localStorage и их перенос в профиль после входа.
+// The opponent workshop: guest personalities in localStorage and moving them to the profile after login.
 
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {
@@ -29,7 +29,7 @@ function mockFetch(status: number, body: unknown) {
 beforeEach(() => localStorage.clear());
 afterEach(() => vi.unstubAllGlobals());
 
-/** Сообщение из UiError, брошенной функцией (гостевые ошибки — те же коды, что у сервера). */
+/** The message from a UiError thrown by a function (guest errors are the same codes as the server's). */
 function thrownUi(fn: () => unknown) {
     try {
         fn();
@@ -37,15 +37,15 @@ function thrownUi(fn: () => unknown) {
         if (err instanceof UiError) return err.ui;
         throw err;
     }
-    throw new Error('ничего не брошено');
+    throw new Error('nothing was thrown');
 }
 
-describe('гостевые персоналии', () => {
-    it('сохраняются, обновляются и удаляются в localStorage', () => {
-        const created = saveGuestPersonality(draft('Гамбитёр', 80));
+describe('guest personalities', () => {
+    it('are saved, updated and deleted in localStorage', () => {
+        const created = saveGuestPersonality(draft('Gambiteer', 80));
         expect(readGuestPersonalities()).toHaveLength(1);
 
-        saveGuestPersonality(draft('Гамбитёр', -40), created.id as string);
+        saveGuestPersonality(draft('Gambiteer', -40), created.id as string);
         expect(readGuestPersonalities()[0].config.aggression).toBe(-40);
 
         deleteGuestPersonality(created.id as string);
@@ -53,7 +53,7 @@ describe('гостевые персоналии', () => {
         expect(localStorage.getItem(GUEST_STORAGE_KEY)).toBeNull();
     });
 
-    it('имя уникально без учёта регистра, и действует лимит', () => {
+    it('the name is unique case-insensitively, and the limit applies', () => {
         saveGuestPersonality(draft('Tactician'));
         expect(thrownUi(() => saveGuestPersonality(draft('TACTICIAN'))))
             .toEqual({key: 'serverErrors.personality_duplicate'});
@@ -63,14 +63,14 @@ describe('гостевые персоналии', () => {
             .toEqual({key: 'serverErrors.personality_limit', params: {max: 20}});
     });
 
-    it('испорченное хранилище не роняет страницу', () => {
+    it('corrupted storage does not crash the page', () => {
         localStorage.setItem(GUEST_STORAGE_KEY, '{not json');
         expect(readGuestPersonalities()).toEqual([]);
     });
 });
 
-describe('перенос в профиль', () => {
-    it('перенесённые удаляются из браузера, пропущенные остаются', async () => {
+describe('moving to the profile', () => {
+    it('the moved ones are removed from the browser, the skipped ones stay', async () => {
         saveGuestPersonality(draft('Fresh'));
         saveGuestPersonality(draft('Existing'));
         const fetchMock = mockFetch(200, {
@@ -88,7 +88,7 @@ describe('перенос в профиль', () => {
         expect(JSON.parse(init.body as string).items).toHaveLength(2);
     });
 
-    it('без гостевых персоналий ничего не спрашивает и не шлёт', async () => {
+    it('without guest personalities it asks nothing and sends nothing', async () => {
         const fetchMock = mockFetch(200, {});
         const confirm = vi.fn(() => true);
         expect(await offerGuestPersonalityTransfer('jwt', confirm)).toBeNull();
@@ -96,7 +96,7 @@ describe('перенос в профиль', () => {
         expect(fetchMock).not.toHaveBeenCalled();
     });
 
-    it('отказ игрока оставляет персоналии в браузере', async () => {
+    it('the player\'s refusal leaves the personalities in the browser', async () => {
         saveGuestPersonality(draft('Keep'));
         const fetchMock = mockFetch(200, {});
         expect(await offerGuestPersonalityTransfer('jwt', () => false)).toBeNull();
@@ -104,18 +104,18 @@ describe('перенос в профиль', () => {
         expect(readGuestPersonalities()).toHaveLength(1);
     });
 
-    it('ошибка сервера показывает его текст и ничего не теряет', async () => {
+    it('a server error shows its text and loses nothing', async () => {
         saveGuestPersonality(draft('Keep'));
-        mockFetch(409, {detail: 'Не больше 20 соперников в мастерской — удалите лишних'});
-        await expect(importGuestPersonalities('jwt')).rejects.toThrow(/Не больше 20/);
+        mockFetch(409, {detail: 'No more than 20 opponents in the workshop — delete the extras'});
+        await expect(importGuestPersonalities('jwt')).rejects.toThrow(/No more than 20/);
         expect(readGuestPersonalities()).toHaveLength(1);
     });
 });
 
-describe('сервер', () => {
-    it('создание шлёт имя и конфиг с токеном', async () => {
-        const fetchMock = mockFetch(201, {id: 1, ...draft('Гамбитёр'), created_at: '', updated_at: ''});
-        const saved = await createPersonality('jwt', draft('Гамбитёр', 60));
+describe('server', () => {
+    it('creating sends the name and the config with a token', async () => {
+        const fetchMock = mockFetch(201, {id: 1, ...draft('Gambiteer'), created_at: '', updated_at: ''});
+        const saved = await createPersonality('jwt', draft('Gambiteer', 60));
         expect(saved.id).toBe(1);
         const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
         expect(init.method).toBe('POST');

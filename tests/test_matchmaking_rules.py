@@ -1,6 +1,6 @@
 # --- FILE: tests/test_matchmaking_rules.py ---
 """
-Матчмейкинг: свежий рейтинг из БД, диапазон рейтинга, запрет второй партии одновременно.
+Matchmaking: fresh rating from the DB, the rating range, a ban on a second simultaneous game.
 """
 
 import pytest
@@ -26,10 +26,10 @@ async def _in_queue(uid: int) -> bool:
     return bool(await matchmaker.redis.hgetall(f"queue:prefs:{uid}"))
 
 
-# --- Свежий рейтинг ---------------------------------------------------------------------
+# --- Fresh rating ---------------------------------------------------------------------
 
 async def test_stale_session_sees_fresh_rating(db_session):
-    """Долгоживущая WS-сессия держит старый объект пользователя; рейтинг перечитывается из БД."""
+    """A long-lived WS session holds a stale user object; the rating is re-read from the DB."""
     from src.api.websockets import _fresh_current_user
 
     (user,) = await _users(db_session, 1500)
@@ -39,7 +39,7 @@ async def test_stale_session_sees_fresh_rating(db_session):
         (await session.get(User, user.id)).blitz_rating = 1700
         await session.commit()
 
-    assert user.blitz_rating == 1500  # объект в identity map WS-сессии устарел
+    assert user.blitz_rating == 1500  # the object in the WS session's identity map is stale
     assert (await _fresh_current_user(db_session, user)).blitz_rating == 1700
 
 
@@ -57,13 +57,13 @@ async def test_game_record_uses_fresh_ratings(db_session):
     assert game.white_initial_rating == 1555
 
 
-# --- Диапазон рейтинга ------------------------------------------------------------------
+# --- Rating range ------------------------------------------------------------------
 
 async def test_auto_match_respects_both_rating_windows(db_session):
     a, b, c = await _users(db_session, 1200, 1800, 1250)
 
     assert await matchmaker.join_queue(a.id, "a", 1200, 180000, 0, 1100, 1300, db=db_session) is None
-    # b без ограничений, но a его не принимает (1800 вне 1100–1300).
+    # b has no limits, but a does not accept him (1800 is outside 1100-1300).
     assert await matchmaker.join_queue(b.id, "b", 1800, 180000, 0, db=db_session) is None
     assert await _in_queue(a.id) and await _in_queue(b.id)
 
@@ -76,7 +76,7 @@ async def test_auto_match_respects_both_rating_windows(db_session):
 
 async def test_auto_match_prefers_closest_rating(db_session):
     a, d, e = await _users(db_session, 1200, 1400, 1380)
-    # a и d друг другу не подходят (d не принимает 1200), а e (1380) подходит обоим.
+    # a and d do not suit each other (d does not accept 1200), while e (1380) suits both.
     await matchmaker.join_queue(a.id, "a", 1200, 180000, 0, 1100, 1400, db=db_session)
     assert await matchmaker.join_queue(d.id, "d", 1400, 180000, 0, 1350, 1450, db=db_session) is None
 
@@ -94,7 +94,7 @@ async def test_manual_accept_outside_challenge_range_is_rejected(db_session):
         await matchmaker.accept_challenge(a.id, b.id, None, db=db_session)
 
     assert err.value.code == "rating_out_of_range"
-    assert await _in_queue(a.id)  # вызов остался в лобби
+    assert await _in_queue(a.id)  # the challenge stayed in the lobby
 
 
 async def test_default_rating_window_from_settings(db_session, monkeypatch):
@@ -114,7 +114,7 @@ async def test_invalid_time_control_is_rejected(db_session):
     assert err.value.code == "invalid_time_control"
 
 
-# --- Уже в партии -----------------------------------------------------------------------
+# --- Already in a game -----------------------------------------------------------------------
 
 async def test_player_in_game_cannot_join_or_accept(db_session):
     a, b, c = await _users(db_session, 1500, 1500, 1500)
@@ -134,7 +134,7 @@ async def test_player_in_game_cannot_join_or_accept(db_session):
 async def test_challenge_of_busy_player_is_removed(db_session):
     a, b, c = await _users(db_session, 1500, 1500, 1500)
     await matchmaker.join_queue(a.id, "a", 1500, 180000, 0, db=db_session)
-    # a начал партию по приглашению, а его вызов остался бы в лобби.
+    # a started a game via an invitation, while his challenge would remain in the lobby.
     await state_manager.initialize_game(4242, a.id, b.id, 180000, 0)
 
     with pytest.raises(MatchmakingError) as err:
@@ -146,7 +146,7 @@ async def test_challenge_of_busy_player_is_removed(db_session):
 
 async def test_starting_game_removes_both_players_from_lobby(db_session):
     a, b = await _users(db_session, 1500, 1500)
-    await matchmaker.join_queue(a.id, "a", 1500, 300000, 0, db=db_session)  # другой контроль — не сведутся
+    await matchmaker.join_queue(a.id, "a", 1500, 300000, 0, db=db_session)  # different time control: they will not be paired
     await matchmaker.join_queue(b.id, "b", 1500, 180000, 0, db=db_session)
 
     await matchmaker.start_pvp_game(a.id, b.id, 600000, 0, db=db_session)
@@ -176,7 +176,7 @@ async def test_finished_game_does_not_block_new_one(db_session):
 
 
 async def test_http_join_while_in_game_returns_active_game(client, db_session, test_user_1, test_user_2, token_user_1):
-    """Фронтенд шлёт join и по WS, и по HTTP: проигравший гонку HTTP-запрос отдаёт начатую партию."""
+    """The frontend sends join over both WS and HTTP: the HTTP request that loses the race returns the already started game."""
     started = await matchmaker.start_pvp_game(test_user_1.id, test_user_2.id, 180000, 0, db=db_session)
 
     res = client.post(

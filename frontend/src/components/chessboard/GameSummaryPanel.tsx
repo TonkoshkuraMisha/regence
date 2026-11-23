@@ -1,12 +1,12 @@
 // --- FILE: frontend/src/components/chessboard/GameSummaryPanel.tsx ---
-// Окно итога партии — с ботом (таск 11.5) и с человеком (после конца партии): разбор запускается сам после сохранения партии, затем — тип партии,
-// точность, ключевые ходы с объяснением наставника и рекомендуемый следующий соперник. Разбор — POST
-// /analysis/game/{id} (движок оценивает каждый ход; готовый разбор сервер отдаёт из базы). Тип партии и ключевые
-// ходы — поле summary ответа (src/services/game_summary.py), подписи — каталог summary.*. Рекомендацию соперника
-// считает Chessboard (services/gameSummary.ts) и передаёт пропсом. Когда разбор готов — карточки «Клубного тренера»
-// (CoachCards: задача из своей ошибки, отклонение от репертуара, урок по теме ошибки). В партии с человеком
-// рекомендации соперника нет; разбор просится только после конца партии — во время своей партии с человеком сервер
-// его не даст (честная игра, forbid_engine_help_during_game).
+// Game result window: against a bot (task 11.5) and against a human (after the game ends): the review starts by itself after the game is saved, then the game type,
+// accuracy, key moves with the coach's explanation and the recommended next opponent. The review is POST
+// /analysis/game/{id} (the engine evaluates every move; the server serves a finished review from the database). The game type and key
+// moves are the summary field of the response (src/services/game_summary.py), the labels are the summary.* catalog. The opponent recommendation
+// is computed by Chessboard (services/gameSummary.ts) and passed as a prop. When the review is ready, the "Club coach" cards
+// (CoachCards: a puzzle from one's own mistake, a repertoire deviation, a lesson on the mistake's theme). In a game against a human
+// there is no opponent recommendation; the review is requested only after the game ends: during one's own game against a human the server
+// will not provide it (fair play, forbid_engine_help_during_game).
 
 import {useEffect, useState} from 'react';
 import {Trophy} from 'lucide-react';
@@ -20,7 +20,7 @@ import {isSummaryKind} from '../../services/gameSummary';
 import type {GameSummary} from '../../services/gameSummary';
 import {CoachCards} from './CoachCards';
 
-// Части ответа разбора, которые нужны этой панели (полный ответ — FullGameAnalysisResponse на сервере).
+// Parts of the review response this panel needs (the full response is FullGameAnalysisResponse on the server).
 interface ReportMove {
     ply: number;
     move_number: number;
@@ -37,29 +37,29 @@ interface Report {
 }
 
 interface Props {
-    /** id партии: с ботом — ответ /bots/save-game (пока партия не сохранена, панели нет), с человеком — id партии. */
+    /** Game id: for a bot game, the /bots/save-game response (no panel until the game is saved); for a human game, the game id. */
     gameId: number;
     playerColor: 'white' | 'black';
-    /** Имя и сила рекомендуемого соперника (уже на языке игрока); null — рекомендовать некого. */
+    /** Name and strength of the recommended opponent (already in the player's language); null means nobody to recommend. */
     recommendation: { name: string; rating: number } | null;
-    /** «Сыграть» с рекомендованным соперником; без рекомендации не нужен. */
+    /** "Play" against the recommended opponent; not needed without a recommendation. */
     onPlayRecommended?: () => void;
 }
 
-/** Ход с номером: «12. Nf3» у белых, «12… Nf6» у чёрных. */
+/** Move with its number: "12. Nf3" for White, "12... Nf6" for Black. */
 function moveLabel(move: ReportMove): string {
     return `${move.move_number}${move.color === 'white' ? '.' : '…'} ${move.san}`;
 }
 
-/** Итог партии: сам запрашивает разбор сохранённой партии и показывает его главное. */
+/** Game result: requests the review of the saved game itself and shows its main points. */
 export function GameSummaryPanel({gameId, playerColor, recommendation, onPlayRecommended}: Props) {
     const {t} = useI18n();
     const [report, setReport] = useState<Report | null>(null);
     const [error, setError] = useState<UiMessage | null>(null);
 
-    // Разбор запрашивается при появлении панели и при смене партии. Флаг cancelled отбрасывает ответ, пришедший
-    // после закрытия панели или к уже другой партии. Отказ сервера (движок занят, исчерпан лимит разборов)
-    // показывается текстом по коду ошибки.
+    // The review is requested when the panel appears and when the game changes. The cancelled flag drops a response that arrives
+    // after the panel is closed or for an already different game. A server refusal (engine busy, review limit exhausted)
+    // is shown as text by the error code.
     useEffect(() => {
         let cancelled = false;
         setReport(null);
@@ -73,9 +73,9 @@ export function GameSummaryPanel({gameId, playerColor, recommendation, onPlayRec
     }, [gameId]);
 
     const opponentColor = playerColor === 'white' ? 'black' : 'white';
-    // Незнакомый тип партии (сервер новее клиента) — итог без типа и ключевых ходов, только точность.
+    // An unknown game type (the server is newer than the client): the result without type and key moves, accuracy only.
     const summary = report?.summary && isSummaryKind(report.summary.kind) ? report.summary : null;
-    // Сервер называет ключевые ходы номером полухода с единицы; в массиве moves они лежат с нуля.
+    // The server numbers key moves by ply starting from one; in the moves array they are indexed from zero.
     const moveAt = (ply: number | null | undefined) => (ply ? report?.moves[ply - 1] ?? null : null);
     const moments: { label: 'summary.turningPoint' | 'summary.yourBest' | 'summary.yourWorst'; move: ReportMove }[] = [];
     if (summary) {

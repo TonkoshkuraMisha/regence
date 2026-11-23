@@ -1,9 +1,9 @@
 // --- FILE: frontend/src/components/About.tsx ---
-// «О проекте»: чужие работы, которые использует regence, их авторы и лицензии. Список фигур берётся
-// из того же конфига, что и выбор набора в интерфейсе, портреты — из манифеста, который пишет
-// scripts/download_champions.py, поэтому страница не расходится с тем, что реально раздаётся. Версию движка и
-// ссылку на его исходники отдаёт сервер (GET /api/v1/bots/engine); ссылка на сообщество — из настроек сайта
-// (services/beta.ts, useSiteConfig). Маршрут — App.tsx.
+// "About": third-party work that regence uses, its authors and licences. The piece list is taken
+// from the same config as the set choice in the interface, the portraits from the manifest written by
+// scripts/download_champions.py, so the page does not diverge from what is actually served. The engine version and
+// the link to its source are provided by the server (GET /api/v1/bots/engine); the community link comes from the site settings
+// (services/beta.ts, useSiteConfig). Route is App.tsx.
 
 import {useEffect, useState} from 'react';
 import {Link} from 'react-router-dom';
@@ -26,18 +26,18 @@ interface PortraitCredit {
     source_url: string;
 }
 
-// Подписи портретов (автор, лицензия, источник) по коду шахматиста.
+// Portrait captions (author, licence, source) by the chess player's code.
 const PORTRAITS = portraitCredits as Record<string, PortraitCredit>;
 
-/** Имя шахматиста на текущем языке (геттеры профилей читают каталог при обращении). */
+/** Chess player's name in the current language (profile getters read the catalog on access). */
 function playerName(id: string): string {
     return HISTORICAL_BOTS_LIST.find((bot) => bot.id === id)?.name
         ?? CHAMPIONS_LIST.find((champ) => champ.id === id)?.name
         ?? id;
 }
 
-// Библиотеки, на которых построен проект, с лицензиями; список правится вручную вместе с ATTRIBUTION.md.
-/** name — собственное имя библиотеки; nameKey — подпись с пояснением, которая переводится. */
+// Libraries the project is built on, with licences; the list is edited by hand together with ATTRIBUTION.md.
+/** name is the library's own name; nameKey is a caption with an explanation, which is translated. */
 const LIBRARIES: Array<{ name: string; nameKey?: MessageKey; license: string; url: string }> = [
     {name: 'Stockfish', nameKey: 'about.stockfish', license: 'GPL-3.0', url: 'https://github.com/official-stockfish/Stockfish'},
     {name: 'python-chess', license: 'GPL-3.0', url: 'https://github.com/niklasf/python-chess'},
@@ -51,13 +51,13 @@ const LIBRARIES: Array<{ name: string; nameKey?: MessageKey; license: string; ur
     {name: 'date-fns', license: 'MIT', url: 'https://github.com/date-fns/date-fns'},
 ];
 
-// Общие классы оформления секций, заголовков, ссылок и ячеек таблиц.
+// Shared styling classes for sections, headings, links and table cells.
 const sectionClass = 'bg-acacia-dark border border-amber-900/40 p-5 rounded shadow-heavy';
 const headingClass = 'text-lg font-bold text-amber-200 mb-2';
 const linkClass = 'text-amber-400 hover:underline';
 const cellClass = 'py-1.5 pr-4 align-top';
 
-/** Страница «О проекте»: движок, наборы фигур, портреты, медиа, архив и библиотеки с лицензиями. */
+/** "About" page: the engine, piece sets, portraits, media, the archive and libraries with licences. */
 export default function About() {
     const {t, rich} = useI18n();
     const [engine, setEngine] = useState<EngineInfo | null>(null);

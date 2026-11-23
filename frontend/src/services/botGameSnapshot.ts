@@ -1,23 +1,23 @@
 // --- FILE: frontend/src/services/botGameSnapshot.ts ---
-// Снимок идущей партии с ботом в localStorage: партия с ботом живёт только в браузере, и без снимка перезагрузка
-// страницы (или переход на другую страницу и возврат) теряла позицию, а в турнире повторный старт засчитывал поражение
-// (сервер: start_player_game, таск A.2). Снимок хранит всё, чтобы продолжить: PGN (с позицией «со своей расстановки» и
-// форой), цвет игрока, соперника, часы, добавку, признаки лестницы и турнира. Пишет Chessboard.tsx при каждом ходе и
-// при закрытии страницы, читает и применяет он же при открытии; стирается с концом партии и выходом из неё.
-// Правила: снимок один (партия с ботом на доске одна), принадлежит игроку (чужой аккаунт его не видит), живёт
-// SNAPSHOT_TTL_MS; часы того, чей ход, при продолжении уменьшаются на время, прошедшее с записи (перезагрузка не
-// останавливает часы). Единственное хранилище — localStorage с ключом regence_bot_game.
+// Snapshot of a game in progress against a bot in localStorage: a bot game lives only in the browser, and without a snapshot a page reload
+// (or navigating to another page and back) lost the position, and in a tournament a repeated start counted as a loss
+// (server: start_player_game, task A.2). The snapshot stores everything needed to continue: the PGN (with a «from own setup» position and
+// odds), the player's color, the opponent, clocks, increment, ladder and tournament flags. Written by Chessboard.tsx on every move and
+// when the page closes, read and applied by it on opening; erased when the game ends or is left.
+// Rules: there is one snapshot (one bot game on the board), it belongs to the player (another account does not see it), it lives
+// SNAPSHOT_TTL_MS; the clock of the side to move is reduced on resume by the time elapsed since the write (a reload does not
+// stop the clock). The only storage is localStorage under the key regence_bot_game.
 
 import type {CustomOpponent} from '../config/archetypes';
 
-// Ключ localStorage со снимком.
+// localStorage key holding the snapshot.
 const STORAGE_KEY = 'regence_bot_game';
-// Версия формата: снимок другой версии игнорируется (не пытаемся читать чужую структуру).
+// Format version: a snapshot of another version is ignored (we do not try to read a foreign structure).
 const SNAPSHOT_VERSION = 1;
-// Сколько снимок считается живым (мс): сутки — партия с ботом дольше не идёт, дальше это забытая партия.
+// How long a snapshot counts as alive (ms): a day — a bot game does not last longer, beyond that it is a forgotten game.
 export const SNAPSHOT_TTL_MS = 24 * 60 * 60 * 1000;
 
-/** Фора партии: вид и кто её даёт (как в chessboard/odds.ts); строки — чтобы не зависеть от модуля доски. */
+/** Game odds: kind and who gives them (as in chessboard/odds.ts); strings, so as not to depend on the board module. */
 export interface SnapshotOdds {
     kind: string;
     giver: string;
@@ -25,49 +25,49 @@ export interface SnapshotOdds {
 
 export interface BotGameSnapshot {
     version: number;
-    /** Когда записан (мс с эпохи) — от него отсчитывается время, ушедшее на перезагрузку. */
+    /** When it was written (ms since the epoch) — the time spent on the reload is counted from it. */
     savedAt: number;
-    /** Имя игрока: чужой аккаунт снимок не получает. */
+    /** Player name: another account does not get the snapshot. */
     username: string;
-    /** id исторического бота или «custom» (тогда соперник — в custom). */
+    /** id of a historical bot or «custom» (then the opponent is in custom). */
     botId: string;
     custom: CustomOpponent | null;
     color: 'white' | 'black';
-    /** Партия целиком в PGN: с заголовками FEN и SetUp, если начата не с обычной расстановки. */
+    /** The whole game as PGN: with FEN and SetUp headers if it did not start from the standard setup. */
     pgn: string;
     whiteTimeMs: number;
     blackTimeMs: number;
-    /** Базовое время (минуты) и добавка (секунды) партии — для часов после продолжения. */
+    /** Base time (minutes) and increment (seconds) of the game — for the clocks after resuming. */
     baseMinutes: number;
     incrementSeconds: number;
     odds: SnapshotOdds | null;
     ladder: boolean;
-    /** Партия турнира: номер партии расписания и турнира — иначе null. */
+    /** Tournament game: the number of the schedule game and of the tournament — otherwise null. */
     tournamentGameId: number | null;
     tournamentId: number | null;
-    /** Партия стояла на паузе: часы при продолжении не уменьшаются на время перезагрузки (снимки без поля — не на паузе). */
+    /** The game was paused: on resume the clocks are not reduced by the reload time (snapshots without the field — not paused). */
     paused?: boolean;
 }
 
-/** Сохраняет снимок; хранилище недоступно — молча (продолжение партии — удобство, не гарантия). */
+/** Saves the snapshot; storage unavailable — silently (resuming a game is a convenience, not a guarantee). */
 export function saveBotGameSnapshot(snapshot: Omit<BotGameSnapshot, 'version' | 'savedAt'>, now: number = Date.now()): void {
     try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify({...snapshot, version: SNAPSHOT_VERSION, savedAt: now}));
     } catch {
-        // Переполнено или запрещено — без снимка партия просто не переживёт перезагрузку.
+        // Full or forbidden — without a snapshot the game simply will not survive a reload.
     }
 }
 
-/** Стирает снимок (партия окончена, оставлена или результат уже записан). */
+/** Erases the snapshot (the game is over, abandoned, or the result is already recorded). */
 export function clearBotGameSnapshot(): void {
     try {
         localStorage.removeItem(STORAGE_KEY);
     } catch {
-        // Нечего делать.
+        // Nothing to do.
     }
 }
 
-/** Годится ли разобранное значение как снимок текущей версии: поля нужных типов, часы и PGN на месте. */
+/** Whether the parsed value fits as a snapshot of the current version: fields of the right types, clocks and PGN present. */
 function isSnapshot(value: unknown): value is BotGameSnapshot {
     if (!value || typeof value !== 'object') return false;
     const s = value as Record<string, unknown>;
@@ -82,8 +82,8 @@ function isSnapshot(value: unknown): value is BotGameSnapshot {
 }
 
 /**
- * Снимок для этого игрока, если он есть, свежий и целый; иначе null (и испорченный или просроченный стирается).
- * username — текущий игрок: снимок другого аккаунта не отдаётся и не стирается (он ещё нужен владельцу).
+ * Snapshot for this player if it exists, is fresh and intact; otherwise null (and a corrupted or expired one is erased).
+ * username — the current player: another account's snapshot is neither returned nor erased (its owner still needs it).
  */
 export function loadBotGameSnapshot(username: string, now: number = Date.now()): BotGameSnapshot | null {
     let raw: string | null;
@@ -107,8 +107,8 @@ export function loadBotGameSnapshot(username: string, now: number = Date.now()):
 }
 
 /**
- * Часы после продолжения: у стороны, чей ход, вычитается время, прошедшее с записи снимка (перезагрузка часы не
- * останавливает, но партия на паузе их не уменьшает); не меньше нуля — упавший флаг обработает обычная проверка времени.
+ * Clocks after resuming: from the side to move the time elapsed since the snapshot was written is subtracted (a reload does not
+ * stop the clock, but a paused game does not reduce it); not below zero — a fallen flag is handled by the usual time check.
  */
 export function clocksAfterGap(
     snapshot: Pick<BotGameSnapshot, 'whiteTimeMs' | 'blackTimeMs' | 'savedAt'> & { paused?: boolean }, whiteToMove: boolean, now: number = Date.now(),

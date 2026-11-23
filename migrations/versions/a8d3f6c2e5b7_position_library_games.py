@@ -4,11 +4,11 @@ Revision ID: a8d3f6c2e5b7
 Revises: f2a7c4e9b1d6
 Create Date: 2026-11-18 18:00:00.000000
 
-Партии публичных коллекций библиотеки показываются под позицией в справочнике дебютов как примеры. Для этого —
-своя таблица позиций position_library_games (как position_games у партий сайта и архива) и отметка
-library_games.positions_indexed. В статистику ходов (position_stats) партии библиотеки не входят: многие из них есть и
-в архиве чемпионов. Заполняет таблицу импорт библиотеки, а уже загруженные партии — scripts/build_position_index.py
---library. Откат удаляет таблицу и отметку; индекс собирается заново тем же скриптом.
+Games from public library collections are shown under a position in the opening reference as examples. For this there is
+a dedicated table of positions position_library_games (like position_games for site and archive games) and a flag
+library_games.positions_indexed. Library games are not part of the move statistics (position_stats): many of them are also in
+the champions archive. The table is filled by the library import, and already loaded games by scripts/build_position_index.py
+--library. The downgrade drops the table and the flag; the index is rebuilt by the same script.
 """
 from collections.abc import Sequence
 

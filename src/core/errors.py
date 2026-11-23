@@ -1,17 +1,18 @@
 # --- FILE: src/core/errors.py ---
 """
-Ошибки для клиента: код + параметры, а не готовый текст.
+Errors for the client: a code + parameters, not ready text.
 
-Сервер не знает языка игрока — текст собирает клиент из каталогов сообщений на трёх языках
-(frontend/src/i18n/messages/*.ts, раздел serverErrors). Здесь у каждого кода есть английский
-шаблон: он уходит в поле `message` для логов, внешних клиентов API и на случай, если клиент
-устарел и кода ещё не знает. Тест tests/test_error_codes.py сверяет реестр с каталогами клиента:
-коды и параметры шаблонов должны совпадать.
+The server does not know the player's language - the text is assembled by the client from message catalogues in three languages
+(frontend/src/i18n/messages/*.ts, the serverErrors section). Here every code has an English
+template: it goes into the `message` field for logs, external API clients and in case the client
+is outdated and does not know the code yet. The test tests/test_error_codes.py checks the registry against the client
+catalogues:
+codes and template parameters must match.
 
-Формат ответа HTTP: {"detail": {"code": "...", "params": {...}, "message": "..."}}.
-Формат события WebSocket: {"event": "error", "code": "...", "params": {...}, "message": "..."}.
-Ошибки валидации запроса (422) — список {"type", "loc", "msg", "params"}; собственные проверки
-схем используют коды этого же реестра в поле type (validation_error()).
+The HTTP response format: {"detail": {"code": "...", "params": {...}, "message": "..."}}.
+The WebSocket event format: {"event": "error", "code": "...", "params": {...}, "message": "..."}.
+Request validation errors (422) - a list {"type", "loc", "msg", "params"}; the schemas' own checks
+use codes of this same registry in the type field (validation_error()).
 """
 
 import string
@@ -21,7 +22,7 @@ from fastapi import HTTPException
 from pydantic_core import PydanticCustomError
 
 ERROR_MESSAGES: dict[str, str] = {
-    # --- общее ------------------------------------------------------------------------------
+    # --- general ------------------------------------------------------------------------------
     "internal_error": "Internal server error",
     "not_authenticated": "Could not validate credentials",
     "rate_limited": "Too many actions in a row, please wait a moment",
@@ -31,7 +32,7 @@ ERROR_MESSAGES: dict[str, str] = {
     "daily_limit_reached": "The free daily limit of {limit} is used up, it renews in {hours} h",
     "engine_locked_in_game": "Engine analysis and hints are unavailable during a game against a person",
     "engine_locked_guest_ip": "A game against a person is in progress from this address — log in to use the engine",
-    # --- вход и регистрация --------------------------------------------------------------------
+    # --- login and registration --------------------------------------------------------------------
     "too_many_registrations": "Too many registrations from this address, please try again in {retry_after} s",
     "too_many_login_attempts": "Too many login attempts, please try again in {retry_after} s",
     "account_login_locked": "Too many failed login attempts for this account, please try again in {retry_after} s",
@@ -44,7 +45,7 @@ ERROR_MESSAGES: dict[str, str] = {
     "username_invalid_chars": "A name may contain only letters (Latin or Cyrillic), digits, “_” and “-”",
     "username_mixed_scripts": "A name cannot mix Latin and Cyrillic letters",
     "username_no_letters": "A name must contain at least one letter",
-    # --- позиции и партии ----------------------------------------------------------------------
+    # --- positions and games ----------------------------------------------------------------------
     "invalid_fen": "Invalid FEN",
     "invalid_position": "The position is impossible under the rules of chess",
     "game_already_over": "The game is already over in this position",
@@ -174,7 +175,7 @@ ERROR_MESSAGES: dict[str, str] = {
     "pgn_parse_failed": "Could not parse the game PGN",
     "game_init_failed": "Could not initialize the game state",
     "user_not_found": "User {username} not found",
-    # --- боты, мастерская, лестница ----------------------------------------------------------------
+    # --- bots, workshop, ladder ----------------------------------------------------------------
     "bot_not_found": "Bot '{bot_id}' not found",
     "guest_not_found": "There is no such master of the past",
     "config_or_personality": "Specify either config or personality_id, not both",
@@ -187,7 +188,7 @@ ERROR_MESSAGES: dict[str, str] = {
     "personality_duplicate": "An opponent with this name already exists",
     "personality_name_reserved": "This name belongs to a historical bot or a champion",
     "personality_not_found": "Opponent not found",
-    # --- матчмейкинг и вызовы ----------------------------------------------------------------------
+    # --- matchmaking and challenges ----------------------------------------------------------------------
     "invalid_time_control": "Invalid time control",
     "self_in_game": "You are already playing a game",
     "opponent_in_game": "The opponent is already playing another game",
@@ -198,7 +199,7 @@ ERROR_MESSAGES: dict[str, str] = {
     "challenge_gone": "The challenge is no longer active or was accepted by another player",
     "rating_out_of_range": "Your rating {rating} is outside the challenge range ({min}–{max})",
     "invite_invalid": "The invitation is invalid or has expired",
-    # --- действия в партии (WebSocket) ----------------------------------------------------------------
+    # --- actions in a game (WebSocket) ----------------------------------------------------------------
     "spectate_unavailable": "The game is already over or was not found",
     "chat_forbidden": "Only the players of the game can write in its chat",
     "draw_offer_too_soon": "A draw can be offered once per move",
@@ -206,7 +207,7 @@ ERROR_MESSAGES: dict[str, str] = {
     "abort_too_late": "The game can only be aborted before move 2",
     "no_draw_offer": "There is no draw offer to accept",
     "no_rematch_offer": "There is no rematch offer to accept",
-    # --- турниры ---------------------------------------------------------------------------------------
+    # --- tournaments ---------------------------------------------------------------------------------------
     "account_in_game": "Finish your current game before deleting the account",
     "email_taken": "This e-mail is already linked to another account",
     "email_link_invalid": "The link is invalid, expired or already used",
@@ -221,7 +222,7 @@ ERROR_MESSAGES: dict[str, str] = {
     "tournament_game_closed": "This tournament game is already finished",
     "tournament_game_mismatch": "The game does not match your tournament game",
     "tournament_game_not_started": "Start your tournament game from the tournament page",
-    # --- импорт партий с других сайтов (таск 24.1) ----------------------------------------------------
+    # --- game import from other sites (task 24.1) ----------------------------------------------------
     "import_rate_limited": "Too many imports, please try again in {retry_after} s",
     "import_source_unknown": "Unknown site",
     "import_username_invalid": "Enter a username from the site: letters, digits, “_” and “-”",
@@ -233,19 +234,19 @@ ERROR_MESSAGES: dict[str, str] = {
     "import_pgn_empty": "No standard chess games with moves were found in the PGN",
     "import_player_not_in_pgn": "No game in the PGN has a player named “{player}”",
     "imported_game_not_found": "Imported game not found",
-    # --- открытые данные (таск 24.3) ---------------------------------------------------------------------
+    # --- open data (task 24.3) ---------------------------------------------------------------------
     "public_api_rate_limited": "Too many requests to the public API, please try again in {retry_after} s",
     "calibration_run_not_found": "Calibration log not found",
 }
 
 
 def template_params(code: str) -> set[str]:
-    """Имена параметров в английском шаблоне кода."""
+    """Parameter names in the English template of a code."""
     return {name for _, name, _, _ in string.Formatter().parse(ERROR_MESSAGES[code]) if name}
 
 
 def error_payload(code: str, **params: Any) -> dict[str, Any]:
-    """Тело ошибки для клиента; неизвестный код — ошибка программиста, а не игрока."""
+    """The error body for the client; an unknown code is a programmer error, not a player error."""
     if code not in ERROR_MESSAGES:
         raise KeyError(f"Unknown error code: {code}")
     missing = template_params(code) - params.keys()
@@ -256,8 +257,8 @@ def error_payload(code: str, **params: Any) -> dict[str, Any]:
 
 class DomainError(Exception):
     """
-    Ожидаемый отказ бизнес-логики с кодом для клиента. Сервисы бросают его, не зная про HTTP;
-    API превращает в ответ нужного статуса через to_http().
+    An expected refusal of business logic with a code for the client. Services raise it without knowing about HTTP;
+    the API turns it into a response of the needed status via to_http().
     """
 
     def __init__(self, code: str, **params: Any):
@@ -281,11 +282,11 @@ class DomainError(Exception):
 
 
 class DomainValueError(DomainError, ValueError):
-    """Некорректные входные данные (позиция, ходы, PGN): код для клиента и совместимость с ValueError."""
+    """Invalid input data (position, moves, PGN): a code for the client and compatibility with ValueError."""
 
 
 class ApiError(HTTPException):
-    """HTTPException с кодом: detail = {"code", "params", "message"}."""
+    """HTTPException with a code: detail = {"code", "params", "message"}."""
 
     def __init__(self, status_code: int, code: str, *, headers: dict[str, str] | None = None, **params: Any):
         payload = error_payload(code, **params)
@@ -295,17 +296,17 @@ class ApiError(HTTPException):
 
 
 def validation_error(code: str, **params: Any) -> PydanticCustomError:
-    """Ошибка собственной проверки схемы: в ответе 422 её type — код реестра, params — параметры."""
-    error_payload(code, **params)  # проверка кода и параметров
-    # Шаблон {name} pydantic подставляет из context сам — тем же синтаксисом, что и у нас.
+    """An error of the schema's own check: in the 422 response its type is a registry code, params - parameters."""
+    error_payload(code, **params)  # check the code and parameters
+    # pydantic substitutes the {name} template from context itself - with the same syntax as ours.
     return PydanticCustomError(code, ERROR_MESSAGES[code], params or None)
 
 
 def validation_error_items(errors: Any) -> list[dict[str, Any]]:
     """
-    Ошибки валидации запроса для ответа 422: тип (для своих проверок — код реестра), путь к полю,
-    английский текст и параметры проверки (ограничения min_length, ge и т. п.). Присланное значение
-    (input) не возвращается.
+    Request validation errors for the 422 response: the type (for own checks - a registry code), the path to the field,
+    the English text and the check parameters (min_length, ge and similar constraints). The submitted value
+    (input) is not returned.
     """
     items = []
     for error in errors:

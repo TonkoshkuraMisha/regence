@@ -1,5 +1,5 @@
-// Ход в задаче настоящей мышью — перетаскиванием и двумя щелчками (задача дня и задача по рейтингу). Раньше
-// сценарии задач ходов не делали («Показать решение»), и доска, на которой фигура не сдвигалась, тест проходила.
+// A move in a puzzle with a real mouse — by dragging and by two clicks (the puzzle of the day and a rated puzzle). Earlier
+// the puzzle scenarios made no moves ("Show solution"), and a board where the piece did not move passed the test.
 
 import {expect, test} from '@playwright/test';
 import type {APIRequestContext, Page} from '@playwright/test';
@@ -10,7 +10,7 @@ async function login(page: Page, request: APIRequestContext, prefix: string) {
     await loginNewPlayer(page, request, prefix);
 }
 
-/** Любой легальный ход решающего — после первого хода соперника. */
+/** Any legal move of the solver — after the opponent's first move. */
 function anyLegalMove(view: { fen: string; first_move: string }) {
     const game = new Chess(view.fen);
     game.move({from: view.first_move.slice(0, 2), to: view.first_move.slice(2, 4), promotion: view.first_move[4]});
@@ -26,13 +26,13 @@ async function square(page: Page, name: string) {
 
 const answered = (page: Page) => page.locator('[data-testid="puzzle-mark-ok"], [data-testid="puzzle-mark-wrong"]');
 
-test('задача дня: фигура перетаскивается мышью, сервер отвечает на ход', async ({page, request}) => {
+test('puzzle of the day: a piece is dragged with the mouse, the server answers the move', async ({page, request}) => {
     await login(page, request, 'drag');
     await page.goto('/puzzles');
     const daily = page.waitForResponse((r) => r.url().includes('/api/v1/puzzles/daily'));
     await page.getByTestId('puzzle-mode-daily').click();
     const view = await (await daily).json();
-    await expect(page.getByTestId('puzzle-status')).toContainText('Ваш ход', {timeout: 10_000});
+    await expect(page.getByTestId('puzzle-status')).toContainText('Your move', {timeout: 10_000});
 
     const {from, to} = anyLegalMove(view);
     const start = await square(page, from);
@@ -47,13 +47,13 @@ test('задача дня: фигура перетаскивается мышь�
     await page.screenshot({path: 'test-results/puzzle-drag.png'});
 });
 
-test('задача по рейтингу: ход двумя щелчками', async ({page, request}) => {
+test('rated puzzle: a move by two clicks', async ({page, request}) => {
     await login(page, request, 'click');
     await page.goto('/puzzles');
     const next = page.waitForResponse((r) => r.url().includes('/api/v1/puzzles/next'));
     await page.getByTestId('puzzle-next').click();
     const view = await (await next).json();
-    await expect(page.getByTestId('puzzle-status')).toContainText('Ваш ход', {timeout: 10_000});
+    await expect(page.getByTestId('puzzle-status')).toContainText('Your move', {timeout: 10_000});
 
     const {from, to} = anyLegalMove(view);
     await page.locator(`[data-testid="puzzle-board"] [data-square="${from}"]`).click();
@@ -61,7 +61,7 @@ test('задача по рейтингу: ход двумя щелчками', a
     await expect(answered(page)).toBeVisible({timeout: 10_000});
 });
 
-test('приёмы: ход перетаскиванием в тренировке по теме', async ({page, request}) => {
+test('tactics: a drag move in a training session on a theme', async ({page, request}) => {
     await login(page, request, 'thm');
     await page.goto('/puzzles');
     await page.getByTestId('puzzle-mode-themes').click();
@@ -69,13 +69,13 @@ test('приёмы: ход перетаскиванием в тренировк�
     const train = page.waitForResponse((r) => r.url().includes('/api/v1/puzzles/train'));
     await page.getByTestId('theme-train').click();
     const view = await (await train).json();
-    await expect(page.getByTestId('puzzle-status')).toContainText('Ваш ход', {timeout: 10_000});
+    await expect(page.getByTestId('puzzle-status')).toContainText('Your move', {timeout: 10_000});
     const {from, to} = anyLegalMove(view);
     await page.locator(`[data-testid="puzzle-board"] [data-square="${from}"]`)
         .dragTo(page.locator(`[data-testid="puzzle-board"] [data-square="${to}"]`));
     await expect(answered(page)).toBeVisible({timeout: 10_000});
-    // Задача выбирается случайно, а ход — первый легальный: он может оказаться верным первым ходом многоходовой
-    // задачи, и тогда она продолжается без итога. В таком случае задача сдаётся — прогресс темы считается и так.
+    // The puzzle is chosen at random and the move is the first legal one: it may turn out to be the correct first move of a multi-move
+    // puzzle, and then it continues without a result. In that case the puzzle is given up — the theme progress counts anyway.
     const progress = page.getByTestId('training-progress');
     const giveUp = page.getByTestId('puzzle-give-up');
     await expect(progress.or(giveUp).first()).toBeVisible();
@@ -83,18 +83,18 @@ test('приёмы: ход перетаскиванием в тренировк�
     await expect(progress).toBeVisible();
 });
 
-test('ход по двум подсказкам засчитывается верным', async ({page, request}) => {
+test('a move by two hints is counted as correct', async ({page, request}) => {
     await login(page, request, 'hint');
     await page.goto('/puzzles');
     await page.getByTestId('puzzle-next').click();
-    await expect(page.getByTestId('puzzle-status')).toContainText('Ваш ход', {timeout: 10_000});
+    await expect(page.getByTestId('puzzle-status')).toContainText('Your move', {timeout: 10_000});
     const hint = page.waitForResponse((r) => r.url().includes('/hint'));
     await page.getByTestId('puzzle-hint').click();
     await hint;
     const second = page.waitForResponse((r) => r.url().includes('/hint'));
     await page.getByTestId('puzzle-hint').click();
     const {from, to} = await (await second).json();
-    // Превращение подсказка не называет — ходим, если это обычный ход, и выбираем ферзя, если спросят.
+    // The hint does not name the promotion — we move if it is a plain move, and pick the queen if asked.
     await page.locator(`[data-testid="puzzle-board"] [data-square="${from}"]`)
         .dragTo(page.locator(`[data-testid="puzzle-board"] [data-square="${to}"]`));
     const dialog = page.getByRole('dialog');
@@ -102,18 +102,18 @@ test('ход по двум подсказкам засчитывается ве�
     await expect(page.locator('[data-testid="puzzle-mark-ok"]')).toBeVisible({timeout: 10_000});
 });
 
-test('защита: «Что грозит?» — угроза, затем защита; «Не зевни» — выбор хода', async ({page, request}) => {
+test('defence: "What is threatened?" — the threat, then the defence; "Don\'t blunder" — choosing a move', async ({page, request}) => {
     await login(page, request, 'def');
     await page.goto('/puzzles');
     await page.getByTestId('puzzle-mode-defense').click();
     const next = page.waitForResponse((r) => r.url().includes('/defense/next'));
     await page.getByTestId('defense-next').click();
     const drill = await (await next).json();
-    await expect(page.getByTestId('defense-status')).toContainText('Что он сыграет?');
+    await expect(page.getByTestId('defense-status')).toContainText('What would they play?');
 
     await page.locator(`[data-testid="puzzle-board"] [data-square="e4"]`).click();
     await expect(page.getByTestId('defense-threat-result')).toBeVisible();
-    await expect(page.getByTestId('defense-status')).toContainText('Теперь защититесь');
+    await expect(page.getByTestId('defense-status')).toContainText('Now defend');
     const game = new Chess(drill.fen);
     const move = game.moves({verbose: true}).find((m) => !m.promotion)!;
     await page.locator(`[data-testid="puzzle-board"] [data-square="${move.from}"]`)
@@ -129,7 +129,7 @@ test('защита: «Что грозит?» — угроза, затем защ
     await page.screenshot({path: 'test-results/defense.png'});
 });
 
-test('упражнения-генераторы: «взять незащищённую» перетаскиванием и мат в 1 щелчками', async ({page, request}) => {
+test('generator exercises: "take the unprotected piece" by dragging and mate in 1 by clicks', async ({page, request}) => {
     await login(page, request, 'drl');
     await page.goto('/puzzles');
     await page.getByTestId('puzzle-mode-drills').click();
@@ -143,7 +143,7 @@ test('упражнения-генераторы: «взять незащищён
         && !game.isAttacked(m.to, enemy))!;
     await page.locator(`[data-testid="puzzle-board"] [data-square="${take.from}"]`)
         .dragTo(page.locator(`[data-testid="puzzle-board"] [data-square="${take.to}"]`));
-    await expect(page.getByTestId('drill-outcome')).toHaveText('Верно!', {timeout: 10_000});
+    await expect(page.getByTestId('drill-outcome')).toHaveText('Correct!', {timeout: 10_000});
 
     await page.getByTestId('drill-kind-mate1').click();
     const mate = page.waitForResponse((r) => r.url().includes('/drills/next'));
@@ -155,6 +155,6 @@ test('упражнения-генераторы: «взять незащищён
     await page.locator(`[data-testid="puzzle-board"] [data-square="${mating.to}"]`).click();
     const dialog = page.getByRole('dialog');
     if (await dialog.isVisible().catch(() => false)) await page.getByTestId(`puzzle-promote-${mating.promotion ?? 'q'}`).click();
-    await expect(page.getByTestId('drill-outcome')).toHaveText('Верно!', {timeout: 10_000});
+    await expect(page.getByTestId('drill-outcome')).toHaveText('Correct!', {timeout: 10_000});
     await page.screenshot({path: 'test-results/drills.png'});
 });

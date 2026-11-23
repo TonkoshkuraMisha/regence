@@ -1,8 +1,8 @@
 // --- FILE: frontend/src/components/chessboard/TimeControlPicker.tsx ---
-// Выбор контроля времени: готовые варианты по категориям (пуля, блиц, рапид, классика) и ручная настройка минут и
-// добавки. Варианты — config/timeControls.ts. Выбранный контроль действует и на вызов в лобби, и на ссылку-
-// приглашение, и на партию с ботом; хранит его Chessboard в памяти (после перезагрузки — контроль по умолчанию).
-// Ручная настройка: 1–240 минут и 0–180 секунд добавки.
+// Time control choice: ready-made options by category (bullet, blitz, rapid, classical) and manual setting of minutes and
+// increment. The options are in config/timeControls.ts. The chosen control applies to a lobby challenge, to an invitation
+// link and to a bot game; Chessboard keeps it in memory (after a reload, the default control).
+// Manual setting: 1-240 minutes and 0-180 seconds of increment.
 
 import type {RefObject} from 'react';
 import {Clock, ChevronDown, ChevronUp, Sliders} from 'lucide-react';
@@ -19,12 +19,12 @@ export interface TimeControlPickerProps {
     isOpen: boolean;
     onToggleOpen: () => void;
     onSelect: (option: TimeControlOption) => void;
-    /** Пока партия уже назначена/идёт, менять контроль времени нельзя. */
+    /** While a game is already assigned/in progress, the time control cannot be changed. */
     disabled: boolean;
     dropdownRef: RefObject<HTMLDivElement | null>;
 }
 
-/** Выбор контроля времени: предустановки по категориям + ручная настройка минут/бонуса. */
+/** Time control choice: presets by category + manual setting of minutes/bonus. */
 export function TimeControlPicker({
     selectedTimeControl, manualBaseMinutes, manualIncSeconds, onManualBaseMinutesChange,
     onManualIncSecondsChange, isOpen, onToggleOpen, onSelect, disabled, dropdownRef,

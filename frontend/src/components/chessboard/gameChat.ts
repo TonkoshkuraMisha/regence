@@ -1,30 +1,30 @@
 // --- FILE: frontend/src/components/chessboard/gameChat.ts ---
-// Чат партии: разбор события chat_message и отправка сообщения по общему WebSocket (services/gameSocket). Сервер
-// (src/api/websockets.py, действие chat_message) обрезает текст до CHAT_TEXT_MAX знаков и пускает писать только игроков
-// партии. Быстрая фраза уходит кодом (preset), и каждый видит её на своём языке. Общий для главной доски
-// (hooks/useGameSocket.ts) и партии Фишера с человеком (chess960/Chess960LiveGame.tsx, хук useGameChat).
+// Game chat: parsing the chat_message event and sending a message over the shared WebSocket (services/gameSocket). The server
+// (src/api/websockets.py, the chat_message action) truncates the text to CHAT_TEXT_MAX characters and lets only the game's players
+// write. A quick phrase is sent as a code (preset), and everyone sees it in their own language. Shared by the main board
+// (hooks/useGameSocket.ts) and the Fischer Random game against a human (chess960/Chess960LiveGame.tsx, the useGameChat hook).
 
 import {useEffect, useState} from 'react';
 import {gameSocket} from '../../services/gameSocket';
 import {isChatPreset} from './types';
 import type {ChatMessageItem, ChatPresetId} from './types';
 
-/** Длина своего сообщения — как обрезает сервер (raw_text[:140] в src/api/websockets.py). */
+/** Length of one's own message, as the server truncates it (raw_text[:140] in src/api/websockets.py). */
 export const CHAT_TEXT_MAX = 140;
-/** Сколько последних сообщений держится в памяти страницы. */
+/** How many of the latest messages are kept in page memory. */
 export const CHAT_HISTORY = 50;
 
-/** Сообщение из события chat_message; пустое или без отправителя — null. */
+/** Message from a chat_message event; empty or without a sender gives null. */
 export function chatItemFrom(data: { sender?: string; text?: string; preset?: unknown; timestamp?: number }): ChatMessageItem | null {
     const preset = isChatPreset(data.preset) ? data.preset : undefined;
     if (!data.sender || (!data.text && !preset)) return null;
     return {sender: data.sender, text: preset ? '' : data.text ?? '', ...(preset ? {preset} : {}), timestamp: data.timestamp || Date.now()};
 }
 
-/** Добавить сообщение в ленту, оставив последние CHAT_HISTORY. */
+/** Append a message to the feed, keeping the last CHAT_HISTORY. */
 export const appendChat = (list: ChatMessageItem[], item: ChatMessageItem) => [...list.slice(-(CHAT_HISTORY - 1)), item];
 
-/** Отправить свой текст в чат партии; пустой не уходит. Возвращает, ушло ли сообщение. */
+/** Send one's own text to the game chat; an empty one is not sent. Returns whether the message was sent. */
 export function sendChatText(gameId: number, text: string): boolean {
     const message = text.trim();
     if (!message) return false;
@@ -32,14 +32,14 @@ export function sendChatText(gameId: number, text: string): boolean {
     return true;
 }
 
-/** Отправить быструю фразу кодом. */
+/** Send a quick phrase by code. */
 export function sendChatPreset(gameId: number, preset: ChatPresetId): void {
     gameSocket.send('chat_message', {game_id: gameId, preset});
 }
 
 /**
- * Чат одной партии для страниц вне главной доски: подписка на chat_message этой партии, лента и поле ввода.
- * Смена партии (реванш) очищает ленту.
+ * Chat of a single game for pages outside the main board: subscription to this game's chat_message, the feed and the input field.
+ * Changing the game (a rematch) clears the feed.
  */
 export function useGameChat(gameId: number | null) {
     const [messages, setMessages] = useState<ChatMessageItem[]>([]);

@@ -1,49 +1,49 @@
-# Аннотации партий библиотеки — проект (таск 27.4)
+# Library game annotations - design (task 27.4)
 
-Рабочий документ разработки: модель данных, API, редактор и порядок работ, чтобы комментарии к партиям библиотеки
-(27.1) появились без переделки уже сделанного.
+Development working document: data model, API, editor and order of work, so that comments on library games
+(27.1) can be added without reworking what has already been built.
 
-**Состояние на 17.11.2026.** Сделаны этапы 1, 2 и 4: таблица `library_annotations` (миграция `5c657e5a912e`,
-статусы `auto / draft / review / approved`), аннотация в ответе `GET /library/games/{id}` (`auto` и `approved` видны
-всем, черновики — модераторам), панель «Комментарии наставника» в просмотре партии библиотеки
-(`frontend/src/components/library/LibraryAnnotationPanel.tsx`) и черновики наставника офлайн-скриптом
-`scripts/annotate_library.py`. Не сделаны: редактор и история версий (этап 3), свои тексты на трёх языках поверх
-комментариев наставника, импорт комментариев из PGN владельца (этап 5). Вопросы к владельцу в конце документа
-остаются открытыми.
+**State as of 17.11.2026.** Stages 1, 2 and 4 are done: the `library_annotations` table (migration `5c657e5a912e`,
+statuses `auto / draft / review / approved`), the annotation in the `GET /library/games/{id}` response (`auto` and `approved` are visible
+to everyone, drafts to moderators), the "Mentor comments" panel in the library game viewer
+(`frontend/src/components/library/LibraryAnnotationPanel.tsx`) and mentor drafts via the offline script
+`scripts/annotate_library.py`. Not done: the editor and version history (stage 3), own texts in three languages on top of the
+mentor comments, import of comments from the owner's PGN (stage 5). The questions to the owner at the end of the document
+remain open.
 
-Решение владельца (15.11): комментарии пишем мы (разработка), владелец потом их дорабатывает. Отсюда требования:
-статус «черновик / проверено владельцем», удобная правка прямо в просмотре партии и история правок.
+Owner decision (15.11): we (development) write the comments, and the owner refines them afterwards. Hence the requirements:
+a "draft / owner-verified" status, convenient editing right in the game viewer, and an edit history.
 
-## Что такое аннотация
+## What an annotation is
 
-Аннотация — набор заметок к ходам одной партии (`library_games.id`) на одном языке-оригинале с переводами:
+An annotation is a set of notes on the moves of one game (`library_games.id`) in one original language with translations:
 
-* **заметка к полуходу** (`ply` 0…N; 0 — до первого хода, «вступление»): текст, знак оценки хода (NAG), знак оценки
-  позиции, стрелки и подсвеченные поля;
-* **вариант**: последовательность ходов от позиции перед `ply` (альтернатива ходу партии), со своими заметками и
-  вложенными вариантами (глубина до 3 — как в просмотре классики 14.7);
-* **автор и статус** всей аннотации: `draft` (наш черновик) → `review` (передано владельцу) → `approved`
-  (проверено владельцем) → при правке после проверки снова `review`;
-* **история правок**: каждая сохранённая версия — снимок целиком (аннотации маленькие, ≤ 50 КБ), с автором и временем.
+* **ply note** (`ply` 0...N; 0 is before the first move, the "introduction"): text, a move-quality sign (NAG), a position-evaluation
+  sign, arrows and highlighted squares;
+* **variation**: a sequence of moves from the position before `ply` (an alternative to the game move), with its own notes and
+  nested variations (depth up to 3, as in the classics viewer 14.7);
+* **author and status** of the whole annotation: `draft` (our draft) -> `review` (handed to the owner) -> `approved`
+  (verified by the owner) -> back to `review` when edited after verification;
+* **edit history**: every saved version is a full snapshot (annotations are small, <= 50 KB), with the author and time.
 
-Тексты — на трёх языках (en / uk / ru, правило 1 проекта). Пишем на одном языке, остальные два — переводы с отметкой
-«перевод не проверен»; в просмотре показывается язык интерфейса, при отсутствии перевода — оригинал с пометкой.
+Texts are in three languages (en / uk / ru, project rule 1). We write in one language, the other two are translations marked
+"translation not verified"; the viewer shows the interface language and, when a translation is missing, the original with a note.
 
-## Модель данных (новые таблицы, одна миграция)
+## Data model (new tables, one migration)
 
 ```
 library_annotations
-  id, game_id → library_games (unique: одна аннотация на партию; несколько авторов — потом, отдельной таблицей)
+  id, game_id → library_games (unique: one annotation per game; several authors - later, in a separate table)
   status: draft | review | approved
   source_language: en | uk | ru
-  body: JSON  — документ аннотации (ниже)
-  author_id → users, updated_by → users, created_at, updated_at, version (int, оптимистичная блокировка)
+  body: JSON  — the annotation document (below)
+  author_id → users, updated_by → users, created_at, updated_at, version (int, optimistic locking)
 
 library_annotation_versions
   id, annotation_id, version, body JSON, status, edited_by, created_at
 ```
 
-Документ `body` (JSON, схема проверяется pydantic-моделью и тестом):
+The `body` document (JSON, the schema is checked by a pydantic model and a test):
 
 ```json
 {
@@ -56,51 +56,51 @@ library_annotation_versions
 }
 ```
 
-* `nag` — только из короткого списка: `!`, `?`, `!!`, `??`, `!?`, `?!`; `eval` — `=`, `+=`, `=+`, `±`, `∓`, `+-`, `-+`,
-  `∞` (символы, не текст — переводить не нужно).
-* Ходы вариантов — UCI, проверяются python-chess при сохранении; цвета стрелок — те же, что у стрелок доски.
-* Ограничения: ≤ 400 заметок, текст заметки ≤ 1 000 символов на язык, глубина вариантов ≤ 3.
+* `nag` - only from a short list: `!`, `?`, `!!`, `??`, `!?`, `?!`; `eval` - `=`, `+=`, `=+`, `±`, `∓`, `+-`, `-+`,
+  `∞` (symbols, not text - no translation needed).
+* Variation moves are UCI, checked by python-chess on save; arrow colors are the same as for the board arrows.
+* Limits: <= 400 notes, note text <= 1,000 characters per language, variation depth <= 3.
 
 ## API
 
-* `GET /library/games/{id}` — добавляет `annotation` (только `approved` — всем; `draft` / `review` — автору,
-  модераторам и владельцу проекта), без истории.
-* `PUT /library/games/{id}/annotation` — сохранить документ (модераторы); тело — `body` + `version`; при чужой более
-  новой версии — 409 с текущей версией (правило «не затирать чужое»).
-* `POST /library/games/{id}/annotation/status` — сменить статус (`review` — модераторы, `approved` — владелец).
-* `GET /library/games/{id}/annotation/versions` и `.../versions/{n}` — история и снимок.
-* `GET /library/annotations?status=review` — очередь владельца на проверку.
-* PGN (`/games/{id}/pgn`) отдаёт комментарии `{…}`, NAG `$1…$6` и варианты `( … )` на языке запроса.
+* `GET /library/games/{id}` - adds `annotation` (only `approved` to everyone; `draft` / `review` to the author,
+  moderators and the project owner), without history.
+* `PUT /library/games/{id}/annotation` - save the document (moderators); the body is `body` + `version`; if someone else has a newer
+  version, 409 with the current version (the "do not overwrite someone else's work" rule).
+* `POST /library/games/{id}/annotation/status` - change the status (`review` by moderators, `approved` by the owner).
+* `GET /library/games/{id}/annotation/versions` and `.../versions/{n}` - history and a snapshot.
+* `GET /library/annotations?status=review` - the owner's review queue.
+* PGN (`/games/{id}/pgn`) returns comments `{…}`, NAGs `$1…$6` and variations `( … )` in the requested language.
 
-Движок не вызывается (правило 2 не задето); черновик от наставника считается заранее, офлайн-скриптом.
+The engine is not called (rule 2 is not affected); the mentor draft is computed in advance by an offline script.
 
-## Редактор и просмотр
+## Editor and viewer
 
-* **Просмотр** — существующий `GameViewer` в режиме `library`: под доской текст заметки текущего хода, знак у хода
-  в списке ходов, варианты — вложенными строками в списке (как в классике 14.7), стрелки и поля — на доске.
-* **Правка** (модераторы) — кнопка «Комментировать» в том же просмотре: поле текста для текущего хода, выбор NAG и
-  оценки, стрелки рисуются правой кнопкой (как в анализе), «Добавить вариант» — следующий ход на доске уходит в вариант.
-  Сохранение — явной кнопкой, черновик в браузере не теряется (localStorage, как в редакторе репертуара).
-* **Очередь владельца** — список партий со статусом `review`, разница с прошлой проверенной версией по заметкам.
+* **Viewer** - the existing `GameViewer` in `library` mode: under the board the note text of the current move, the sign next to the move
+  in the move list, variations as nested lines in the list (as in the classics 14.7), arrows and squares on the board.
+* **Editing** (moderators) - a "Comment" button in the same viewer: a text field for the current move, a choice of NAG and
+  evaluation, arrows drawn with the right mouse button (as in analysis), "Add variation" - the next move on the board goes into a variation.
+  Saving is by an explicit button; the draft is not lost in the browser (localStorage, as in the repertoire editor).
+* **Owner queue** - a list of games with status `review`, the difference from the last verified version by notes.
 
-## Черновики от наставника
+## Mentor drafts
 
-Для каждой партии офлайн-скрипт (`scripts/draft_annotations.py`) строит черновик тем же путём, что объяснения
-классики 14.7: оценка движком по ходам (через `get_engine_pool`), мотивы детектора 11.1 и позиционные признаки, сборка
-текстов из ключей `coach.*` на трёх языках. В черновик попадают только «моменты»: ошибки (падение оценки ≥ 150 сп),
-лучший ход в критической позиции, тактика детектора, смена пешечной структуры (27.5). Такой черновик — `draft`,
-автор — служебный пользователь «Наставник»; дальше его правим мы и проверяет владелец.
+For each game an offline script (`scripts/draft_annotations.py`) builds a draft the same way as the classics explanations
+14.7: engine evaluation per move (through `get_engine_pool`), detector 11.1 motifs and positional features, texts assembled
+from the `coach.*` keys in three languages. Only "moments" go into the draft: mistakes (evaluation drop >= 150 cp),
+the best move in a critical position, detector tactics, a change of pawn structure (27.5). Such a draft is `draft`,
+the author is the service user "Mentor"; after that we edit it and the owner verifies it.
 
-## Порядок работ
+## Order of work
 
-1. Модель, миграция, pydantic-схема документа, `GET` с аннотацией и `PUT` с версией; тесты схемы и прав.
-2. Просмотр в `GameViewer`: заметки, NAG, варианты, стрелки; экспорт в PGN.
-3. Редактор в просмотре, история версий, статусы и очередь владельца.
-4. Скрипт черновиков наставника для коллекций «Красивые партии» и «Партии чемпионов», затем — остальные.
-5. Импорт комментариев из PGN владельца (если в файле есть `{…}` и варианты — сохранять их как черновик, а не
-   выбрасывать, как сейчас делает импорт 27.2).
+1. Model, migration, pydantic document schema, `GET` with the annotation and `PUT` with a version; schema and permission tests.
+2. Viewer in `GameViewer`: notes, NAGs, variations, arrows; PGN export.
+3. Editor in the viewer, version history, statuses and the owner queue.
+4. Mentor draft script for the "Beautiful games" and "Champions' games" collections, then the rest.
+5. Import of comments from the owner's PGN (if the file contains `{…}` and variations, save them as a draft instead of
+   discarding them, as the 27.2 import does now).
 
-## Вопросы к владельцу (не блокируют этапы 1–3)
+## Questions for the owner (they do not block stages 1-3)
 
-* Кто, кроме владельца, может ставить «проверено» (нужен ли ещё один рецензент)?
-* Нужны ли подписи авторов комментариев у читателя или достаточно «Комментарии regence»?
+* Besides the owner, who can mark "verified" (is another reviewer needed)?
+* Are comment author credits needed for the reader, or is "regence comments" enough?

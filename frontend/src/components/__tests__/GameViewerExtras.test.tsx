@@ -1,6 +1,6 @@
-// Студия разбора (GameViewer): звук, панель «Вид» (набор фигур и тема доски), изменение размера доски
-// перетаскиванием и двойным щелчком, «рентген» поверх доски, щелчок по ходу в записи партии и выгрузка
-// размеченного PGN. Сеть подменяется стабом fetch, как в GameViewer.test.tsx.
+// The review studio (GameViewer): sound, the "View" panel (piece set and board theme), resizing the board
+// by dragging and by double click, the "x-ray" over the board, a click on a move in the game record and the export of
+// the annotated PGN. The network is replaced by a fetch stub, as in GameViewer.test.tsx.
 
 import {act, fireEvent, render, screen, waitFor} from '@testing-library/react';
 import {MemoryRouter, Route, Routes} from 'react-router-dom';
@@ -69,19 +69,19 @@ afterEach(() => {
     vi.unstubAllGlobals();
 });
 
-describe('GameViewer: звук и внешний вид', () => {
-    it('включение звука проигрывает пробный ход', async () => {
+describe('GameViewer: sound and appearance', () => {
+    it('turning the sound on plays a trial move', async () => {
         stubApi(false);
         await renderViewer();
-        fireEvent.click(screen.getByTitle('Включить звук'));
+        fireEvent.click(screen.getByTitle('Turn sound on'));
         expect(soundEngine.toggleMute).toHaveBeenCalled();
         expect(soundEngine.play).toHaveBeenCalledWith('move');
     });
 
-    it('панель «Вид»: выбор набора фигур и темы доски запоминается, закрывается крестиком', async () => {
+    it('the "View" panel: the choice of piece set and board theme is remembered, it closes with the cross', async () => {
         stubApi(false);
         await renderViewer();
-        fireEvent.click(screen.getByRole('button', {name: 'Вид'}));
+        fireEvent.click(screen.getByRole('button', {name: 'Look'}));
         const panel = await screen.findByTestId('viewer-appearance');
         const options = panel.querySelectorAll<HTMLButtonElement>('button:not([aria-label])');
         const enabled = Array.from(options).filter((b) => !b.disabled);
@@ -89,16 +89,16 @@ describe('GameViewer: звук и внешний вид', () => {
         for (const option of enabled) fireEvent.click(option);
         expect(localStorage.getItem('regence_piece_set')).toBeTruthy();
         expect(localStorage.getItem('regence_board_theme')).toBeTruthy();
-        fireEvent.click(screen.getByRole('button', {name: 'Закрыть'}));
+        fireEvent.click(screen.getByRole('button', {name: 'Close'}));
         expect(screen.queryByTestId('viewer-appearance')).toBeNull();
     });
 });
 
-describe('GameViewer: размер доски', () => {
-    it('перетаскивание уголка меняет и запоминает размер, окончание жеста возвращает курсор', async () => {
+describe('GameViewer: board size', () => {
+    it('dragging the corner changes and remembers the size, the end of the gesture restores the cursor', async () => {
         stubApi(false);
         await renderViewer();
-        const handle = screen.getByTitle(/Потяните, чтобы изменить размер доски/);
+        const handle = screen.getByTitle(/Drag to resize the board/);
         fireEvent.pointerDown(handle, {clientX: 100, clientY: 100});
         expect(document.body.style.cursor).toBe('nwse-resize');
         act(() => {
@@ -110,17 +110,17 @@ describe('GameViewer: размер доски', () => {
             window.dispatchEvent(new PointerEvent('pointerup'));
         });
         await waitFor(() => expect(document.body.style.cursor).not.toBe('nwse-resize'));
-        // Движение после отпускания размер не трогает.
+        // Movement after release does not touch the size.
         act(() => {
             window.dispatchEvent(new PointerEvent('pointermove', {clientX: 500, clientY: 500}));
         });
         expect(Number(localStorage.getItem('regence_board_size'))).toBe(shrunk);
     });
 
-    it('двойной щелчок по уголку возвращает размер под экран; сужение окна не даёт доске выйти за него', async () => {
+    it('a double click on the corner returns the size to fit the screen; narrowing the window does not let the board go beyond it', async () => {
         stubApi(false);
         await renderViewer();
-        fireEvent.doubleClick(screen.getByTitle(/Потяните, чтобы изменить размер доски/));
+        fireEvent.doubleClick(screen.getByTitle(/Drag to resize the board/));
         expect(Number(localStorage.getItem('regence_board_size'))).toBeGreaterThan(0);
         act(() => {
             window.dispatchEvent(new Event('resize'));
@@ -129,8 +129,8 @@ describe('GameViewer: размер доски', () => {
     });
 });
 
-describe('GameViewer: разбор партии', () => {
-    it('щелчок по ходу в записи переходит к позиции и играет звук', async () => {
+describe('GameViewer: game review', () => {
+    it('a click on a move in the record goes to the position and plays a sound', async () => {
         stubApi(true);
         await renderViewer();
         await screen.findAllByText(/80/);
@@ -140,7 +140,7 @@ describe('GameViewer: разбор партии', () => {
         expect(soundEngine.play).toHaveBeenCalled();
     });
 
-    it('«рентген» поверх доски включается из панели разбора', async () => {
+    it('the "x-ray" over the board is turned on from the review panel', async () => {
         stubApi(true);
         await renderViewer();
         fireEvent.click(await screen.findByTestId('xray-mode-control'));
@@ -149,7 +149,7 @@ describe('GameViewer: разбор партии', () => {
         expect(screen.getByTestId('xray-for-opponent')).toBeChecked();
     });
 
-    it('кнопка выгрузки отдаёт PGN с разметкой разбора', async () => {
+    it('the export button gives a PGN with the review markup', async () => {
         stubApi(true);
         const blobs: Blob[] = [];
         const createUrl = vi.fn((blob: Blob) => {

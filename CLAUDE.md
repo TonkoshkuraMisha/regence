@@ -16,7 +16,7 @@
   (keep the English primary names of code, files and commands as they are).
 - **Player-facing text:** lessons, explanations, UI strings — `en` is the source, `uk` the translation, both always
   complete. No other language keys in lesson/content JSON.
-- **Guard:** `tests/test_language_policy.py` fails on Russian-only letters (`ыэъё`) anywhere in tracked text and on
+- **Guard:** `tests/test_language_policy.py` fails on Russian-only letters (yo, hard sign, yery, reversed e) anywhere in tracked text and on
   any Cyrillic in code files (`*.py`, `*.ts`, `*.tsx`, except the Ukrainian catalog and content).
 
 ## 0. Session protocol (save tokens — always follow)

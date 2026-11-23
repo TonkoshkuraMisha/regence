@@ -1,10 +1,10 @@
 // --- FILE: frontend/src/components/chessboard/MatchmakingPanel.tsx ---
-// Поиск соперника: тип партии (рейтинговая или товарищеская), кнопка вызова в лобби и приглашение по ссылке.
-// Контроль времени выбирается в TimeControlPicker. Только разметка: вызов в лобби и ссылку создаёт хук
-// useGameSocket (действия WebSocket join_queue и create_invite; код ссылки приходит событием invite_created).
-// Ссылка имеет вид /challenge/{код} — по ней соперник попадает на главную доску и принимает приглашение. В партии
-// по ссылке можно выбрать цвет, шахматы Фишера или фору; партия с форой рейтинг не меняет, а в шахматах Фишера
-// форы нет.
+// Opponent search: game type (rated or friendly), a button to challenge in the lobby, and an invitation by link.
+// The time control is chosen in TimeControlPicker. Markup only: the lobby challenge and the link are created by the
+// useGameSocket hook (WebSocket actions join_queue and create_invite; the link code arrives in the invite_created event).
+// The link looks like /challenge/{code}: through it the opponent lands on the main board and accepts the invitation. In a game
+// by link one can choose the colour, Fischer Random chess or a handicap; a handicap game does not change ratings, and Fischer Random chess has no
+// handicap.
 
 import {Loader2, Users, Link2, Check, Copy} from 'lucide-react';
 import {useI18n} from '../../i18n';
@@ -14,9 +14,9 @@ import type {OddsChoice, OddsGiver, OddsKind} from './odds';
 export interface MatchmakingPanelProps {
     gameId: number | null;
     gameOverResult: string | null;
-    /** Тип партии, которая сейчас на доске. */
+    /** Type of the game currently on the board. */
     isRatedGame: boolean;
-    /** Тип новых партий: вызов в лобби и приглашение по ссылке. */
+    /** Type of new games: a lobby challenge and an invitation by link. */
     ratedChoice: boolean;
     onRatedChoiceChange: (rated: boolean) => void;
     isSearching: boolean;
@@ -26,23 +26,23 @@ export interface MatchmakingPanelProps {
     onToggleInvitePanel: () => void;
     inviteColorPref: 'white' | 'black' | 'random';
     onInviteColorPrefChange: (pref: 'white' | 'black' | 'random') => void;
-    /** Фора в партии по ссылке (21.1); без этих пропсов выбора нет. */
+    /** Handicap in a game by link (21.1); without these props there is no choice. */
     inviteOdds?: OddsChoice;
     onInviteOddsChange?: (odds: OddsChoice) => void;
-    /** Вариант партии по ссылке (21.3): обычные шахматы или Фишера; без этих пропсов выбора нет. */
+    /** Variant of a game by link (21.3): ordinary chess or Fischer; without these props there is no choice. */
     inviteVariant?: 'standard' | 'chess960';
     onInviteVariantChange?: (variant: 'standard' | 'chess960') => void;
-    /** Код созданной ссылки (событие invite_created); null — ссылка ещё не создана или тип партии сменили. */
+    /** Code of the created link (invite_created event); null means the link is not created yet or the game type was changed. */
     createdInviteCode: string | null;
-    /** Ссылка только что скопирована в буфер обмена — на пару секунд меняет подпись кнопки. */
+    /** The link has just been copied to the clipboard: changes the button label for a couple of seconds. */
     inviteCopied: boolean;
     onCreatePrivateInvite: () => void;
     onCopyInviteLink: () => void;
 }
 
 /**
- * Строка идущей партии с человеком: «идёт рейтинговая / товарищеская партия» или итог. Игровой зал показывает её в
- * левой колонке, пока окно «Новая партия» закрыто.
+ * Line of a game in progress against a human: "a rated / friendly game is in progress" or the result. The game hall shows it in
+ * the left column while the "New game" window is closed.
  */
 export function PvpGameStatus({gameOverResult, isRatedGame}: { gameOverResult: string | null; isRatedGame: boolean }) {
     const {t} = useI18n();
@@ -57,8 +57,8 @@ export function PvpGameStatus({gameOverResult, isRatedGame}: { gameOverResult: s
 }
 
 /**
- * Поиск соперника в лобби (рейтинговая или товарищеская партия; повторное нажатие отменяет поиск) и создание
- * ссылки для игры с другом. Пока партия с человеком на доске, вместо кнопок — строка о её типе или итоге.
+ * Opponent search in the lobby (rated or friendly game; pressing again cancels the search) and creating a
+ * link to play with a friend. While a game against a human is on the board, a line about its type or result replaces the buttons.
  */
 export function MatchmakingPanel({
     gameId, gameOverResult, isRatedGame, ratedChoice, onRatedChoiceChange,

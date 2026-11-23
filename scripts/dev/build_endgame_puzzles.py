@@ -1,23 +1,23 @@
 """
-Задачи на эндшпильную технику из эндшпильных таблиц (таск 27.8) → data/puzzles/endgame_generated.csv.gz.
+Endgame technique puzzles from endgame tablebases (task 27.8) -> data/puzzles/endgame_generated.csv.gz.
 
-В открытой базе задач почти нет чистой техники (ключевые поля, оппозиция, обход, правило квадрата, «не тот» слон),
-поэтому позиции генерируются: случайная расстановка типа окончания → таблицы (settings.TABLEBASE_URL)
-→ задача берётся, только если верный ход ровно один (выигрыш или, в защите, единственная ничья), и он подходит под
-тему. Перед позицией ставится законный ход соперника (отход его короля), как в формате базы lichess: FEN — до хода
-соперника, первый ход в Moves — его. Рейтинг — по глубине результата (DTZ). Темы — тегами «regence:<код>»
-(идентификатор данных, не бренд).
-Детерминирован (--seed); нужна сеть; в CI не запускается. Загрузка в базу — scripts/import_puzzles.py (источник
-«regence», тема — из тега).
+The open puzzle database has almost no pure technique (key squares, opposition, outflanking, the rule of the square,
+the "wrong" bishop), so the positions are generated: a random setup of an ending type -> tablebases (settings.TABLEBASE_URL)
+-> a puzzle is taken only if exactly one move is correct (a win or, in defence, the only draw) and it fits the
+theme. A legal opponent move is put before the position (a retreat of his king), as in the lichess format: FEN is before the
+opponent's move, the first move in Moves is his. Rating - by the depth of the result (DTZ). Themes - tags "regence:<code>"
+(a data identifier, not a brand).
+Deterministic (--seed); needs network; not run in CI. Loading into the database - scripts/import_puzzles.py (source
+"regence", the theme comes from the tag).
 
-Лусены и Филидора здесь нет намеренно: в этих ладейных позициях верных ходов почти всегда несколько (замер 16.11.2026:
-из 70 позиций Лусены и 50 позиций Филидора — ни одной с единственным ходом), а задача засчитывает один. Эти приёмы
-отрабатываются в эндшпильном тренажёре (frontend/src/content/endgames.json: lucena, philidor), где годится любой ход,
-верный по таблицам.
+Lucena and Philidor are left out deliberately: in these rook positions there are almost always several correct moves
+(measured 16.11.2026: of 70 Lucena and 50 Philidor positions - none with a single move), while a puzzle accepts one.
+These techniques are practised in the endgame trainer (frontend/src/content/endgames.json: lucena, philidor), where any
+move that is correct per the tablebases is accepted.
 
-Вежливость к серверу таблиц: пауза между запросами, при ответе 429 — минута ожидания (так просит lichess).
+Politeness to the tablebase server: a pause between requests, on a 429 response - a minute of waiting (as lichess asks).
 
-    python -m scripts.dev.build_endgame_puzzles [--per-theme 90] [--output путь]
+    python -m scripts.dev.build_endgame_puzzles [--per-theme 90] [--output path]
 """
 
 import argparse
@@ -42,7 +42,7 @@ FIELDS = ("PuzzleId", "FEN", "Moves", "Rating", "RatingDeviation", "Popularity",
 
 
 def probe(fen: str) -> dict:
-    """Ответ сервера таблиц (settings.TABLEBASE_URL) по позиции; 429 — минута ожидания, иначе до пяти попыток."""
+    """Tablebase answer for a position (settings.TABLEBASE_URL); 429 - wait a minute, otherwise up to five attempts."""
     url = settings.TABLEBASE_URL + "?" + urllib.parse.urlencode({"fen": fen})
     request = urllib.request.Request(url, headers={"User-Agent": "regence-endgame-puzzles"})
     for attempt in range(5):
@@ -56,7 +56,7 @@ def probe(fen: str) -> dict:
 
 
 def place(pieces: dict[chess.Square, chess.Piece], turn: chess.Color) -> chess.Board | None:
-    """Доска из расстановки и очереди хода; невозможная позиция или шах ходящему — None."""
+    """A board from a setup and the side to move; an impossible position or a check against the mover - None."""
     board = chess.Board(None)
     for square, piece in pieces.items():
         board.set_piece_at(square, piece)
@@ -70,12 +70,12 @@ W, BL = chess.WHITE, chess.BLACK
 
 
 def sq(file: int, rank: int) -> chess.Square | None:
-    """Поле по вертикали и горизонтали (0–7); за краем доски — None."""
+    """A square by file and rank (0-7); off the board - None."""
     return chess.square(file, rank) if 0 <= file <= 7 and 0 <= rank <= 7 else None
 
 
 def gen_kpk(rng: random.Random) -> chess.Board | None:
-    """Король и пешка против короля, ход белых: короли рядом с пешкой — оппозиция, ключевые поля, обход."""
+    """King and pawn against king, White to move: kings near the pawn - opposition, key squares, outflanking."""
     pawn = sq(rng.randint(1, 6), rng.randint(1, 4))
     pf, pr = chess.square_file(pawn), chess.square_rank(pawn)
     wk = sq(pf + rng.randint(-2, 2), pr + rng.randint(-1, 2))
@@ -86,7 +86,7 @@ def gen_kpk(rng: random.Random) -> chess.Board | None:
 
 
 def gen_square(rng: random.Random) -> chess.Board | None:
-    """Правило квадрата, ход белых: чёрный король в 3–4 вертикалях от пешки, белый король далеко позади."""
+    """The rule of the square, White to move: the black king 3-4 files from the pawn, the white king far behind."""
     pawn = sq(rng.randint(0, 7), rng.randint(1, 4))
     pf, pr = chess.square_file(pawn), chess.square_rank(pawn)
     wk = sq(rng.randint(0, 7), rng.randint(0, 2))
@@ -97,7 +97,7 @@ def gen_square(rng: random.Random) -> chess.Board | None:
 
 
 def gen_wrong_bishop(rng: random.Random) -> chess.Board | None:
-    """Защита: король чёрных против слона и крайней пешки, ход чёрных."""
+    """Defence: the black king against a bishop and a rook pawn, Black to move."""
     pf = rng.choice([0, 7])
     pawn = sq(pf, rng.randint(3, 5))
     corner = sq(pf, 7)
@@ -112,27 +112,27 @@ def gen_wrong_bishop(rng: random.Random) -> chess.Board | None:
 
 
 def gen_opposite_bishops(rng: random.Random) -> chess.Board | None:
-    """Защита: у белых слон и пешка, у чёрных слон другого цвета; ход чёрных."""
+    """Defence: White has a bishop and a pawn, Black has a bishop of the other colour; Black to move."""
     pawn = sq(rng.randint(0, 7), rng.randint(3, 5))
     wk, bk, wb, bb = (sq(rng.randint(0, 7), rng.randint(0, 7)) for _ in range(4))
     if None in (pawn, wk, bk, wb, bb) or len({pawn, wk, bk, wb, bb}) < 5:
         return None
     same_colour = (chess.square_file(wb) + chess.square_rank(wb)) % 2 == (chess.square_file(bb) + chess.square_rank(bb)) % 2
-    if chess.square_distance(wk, bk) < 2 or same_colour:  # слоны должны быть разных цветов
+    if chess.square_distance(wk, bk) < 2 or same_colour:  # the bishops must be of different colours
         return None
     return place({pawn: chess.Piece(P, W), wk: chess.Piece(K, W), bk: chess.Piece(K, BL), wb: chess.Piece(B, W),
                   bb: chess.Piece(B, BL)}, BL)
 
 
 def key_squares(pawn: chess.Square) -> set[chess.Square]:
-    """Ключевые поля пешки: на две горизонтали впереди (с пятой горизонтали — на одну и две), три вертикали."""
+    """Key squares of a pawn: two ranks ahead (from the fifth rank - one and two), three files."""
     f, r = chess.square_file(pawn), chess.square_rank(pawn)
     ranks = [r + 2] if r <= 3 else [r + 1, r + 2]
     return {s for rank in ranks for file in (f - 1, f, f + 1) if (s := sq(file, rank)) is not None}
 
 
 def gen_rook_vs_minor(rng: random.Random) -> chess.Board | None:
-    """Защита: у белых ладья, у чёрных слон или конь (оба без пешек); ход чёрных."""
+    """Defence: White has a rook, Black has a bishop or a knight (both without pawns); Black to move."""
     wk, wr, bk, minor = (rng.randrange(64) for _ in range(4))
     if len({wk, wr, bk, minor}) < 4 or chess.square_distance(wk, bk) < 2:
         return None
@@ -141,7 +141,7 @@ def gen_rook_vs_minor(rng: random.Random) -> chess.Board | None:
 
 
 def classify(board: chess.Board, move: chess.Move, kind: str) -> str | None:
-    """Тема задачи по виду окончания и единственному ходу."""
+    """The puzzle theme from the ending kind and the only move."""
     after = board.copy(stack=False)
     after.push(move)
     piece = board.piece_type_at(move.from_square)
@@ -166,13 +166,13 @@ def classify(board: chess.Board, move: chess.Move, kind: str) -> str | None:
         return "wrong_bishop" if piece == K else None
     if kind == "opposite_bishops":
         return "opposite_bishops" if piece in (B, K) else None
-    if kind == "rook_vs_minor":  # взятие ладьи — не техника, а подарок: единственный ход «побей» задачей не считаем
+    if kind == "rook_vs_minor":  # capturing the rook is a gift, not technique: a single "capture" is not counted as a puzzle
         return None if board.is_capture(move) else "rook_vs_minor"
     return None
 
 
 def retreat(board: chess.Board, rng: random.Random) -> tuple[chess.Board, chess.Move] | None:
-    """Позиция до хода соперника: его король приходит на своё поле с соседнего (законно, без шаха до хода)."""
+    """The position before the opponent's move: his king arrives at its square from a neighbouring one (legal, no check)."""
     side = not board.turn
     king = board.king(side)
     options = []
@@ -194,8 +194,8 @@ MAX_SOLVER_MOVES = 5
 
 def extend(board: chess.Board, move: chess.Move, reply: str, limit: int) -> tuple[list[str], int]:
     """
-    Линия решения: первый единственный ход, затем лучший ответ соперника по таблицам и снова ход решающего — пока
-    он единственный (иначе задача «угадывается»). Возвращает ходы (UCI) и число запросов к таблицам.
+    Solution line: the first only move, then the opponent's best reply per the tablebases and again the solver's move - while
+    it is the only one (otherwise the puzzle can be "guessed"). Returns the moves (UCI) and the number of tablebase requests.
     """
     line = [move.uci()]
     probes = 0
@@ -209,7 +209,7 @@ def extend(board: chess.Board, move: chess.Move, reply: str, limit: int) -> tupl
         time.sleep(0.25)
         if not answer.get("moves"):
             break
-        best = chess.Move.from_uci(answer["moves"][0]["uci"])  # лучший ответ соперника — первый в списке
+        best = chess.Move.from_uci(answer["moves"][0]["uci"])  # the opponent's best reply is the first in the list
         current.push(best)
         if current.is_game_over():
             current.pop()
@@ -236,7 +236,7 @@ TAGS = {"kpk": "endgame pawnEndgame", "square": "endgame pawnEndgame", "wrong_bi
 
 
 def save(path: pathlib.Path, found: dict[str, list[dict]]) -> int:
-    """Записывает найденные задачи всех тем в сжатый CSV (формат базы lichess); возвращает их число."""
+    """Writes the found puzzles of all themes to a compressed CSV (lichess database format); returns their number."""
     rows = [row for rows in found.values() for row in rows]
     with gzip.open(path, "wt", encoding="utf-8", newline="") as target:
         writer = csv.DictWriter(target, fieldnames=FIELDS)
@@ -246,20 +246,20 @@ def save(path: pathlib.Path, found: dict[str, list[dict]]) -> int:
 
 
 def main() -> None:
-    """Генерирует задачи до --per-theme на тему или до --max-probes запросов к таблицам; сохраняет по ходу."""
+    """Generates puzzles up to --per-theme per theme or up to --max-probes tablebase requests; saves as it goes."""
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--per-theme", type=int, default=90)
     parser.add_argument("--seed", type=int, default=8)
     parser.add_argument("--max-probes", type=int, default=6000)
     parser.add_argument("--output", type=pathlib.Path, default=OUTPUT)
-    parser.add_argument("--themes", default="", help="только эти темы через запятую (по умолчанию — все)")
+    parser.add_argument("--themes", default="", help="only these themes, comma-separated (default - all)")
     args = parser.parse_args()
     rng = random.Random(args.seed)
     wanted = [t for t in args.themes.split(",") if t] or list(THEMES)
     found: dict[str, list[dict]] = {theme: [] for theme in wanted}
     seen: set[str] = set()
-    # Начальные позиции принятых задач: отступ (retreat) из разных проверенных позиций может привести в одну и ту же —
-    # такая задача отличалась бы лишь первым ходом соперника, для игрока это повтор.
+    # Starting positions of accepted puzzles: a retreat from different verified positions may lead to the same one -
+    # such a puzzle would differ only by the opponent's first move, which is a repeat for the player.
     starts: set[str] = set()
     probes = 0
     while probes < args.max_probes and any(len(v) < args.per_theme for v in found.values()):
@@ -304,7 +304,7 @@ def main() -> None:
         found[theme].append(row)
         starts.add(start.fen())
         total = sum(len(v) for v in found.values())
-        if total % 10 == 0:  # прогон долгий (запрос к таблицам — около секунды): найденное не теряется при обрыве
+        if total % 10 == 0:  # the run is long (a tablebase request takes ~1 s): what is found is not lost on interruption
             save(args.output, found)
             print(probes, {t: len(v) for t, v in found.items()}, flush=True)
     total = save(args.output, found)

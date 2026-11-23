@@ -14,7 +14,7 @@ from src.services.bots.philidor import normalize_fen_key
 
 
 def test_morphy_opening_repertoire_branches():
-    """Проверяем, что в дебютной книге Морфи есть стартовые ходы и они выбираются из книги."""
+    """Check that Morphy's opening book has starting moves and that they are chosen from the book."""
     bot = MorphyBot(stockfish_path=None)
     board = chess.Board()
     start_key = normalize_fen_key(board)
@@ -28,7 +28,7 @@ def test_morphy_opening_repertoire_branches():
 
 
 def test_morphy_plays_active_openings_from_book():
-    """Проверяем, что в итальянской позиции Морфи выбирает ход из своей дебютной книги."""
+    """Check that in an Italian position Morphy picks a move from his opening book."""
     bot = MorphyBot(stockfish_path=None)
     board = chess.Board()
     for san in ["e4", "e5", "Nf3", "Nc6", "Bc4", "Bc5"]:
@@ -43,7 +43,7 @@ def test_morphy_plays_active_openings_from_book():
 
 
 def test_morphy_style_rewards_castling_and_open_files():
-    """Проверяем, что стилевой фильтр Морфи поощряет рокировку, развитие и выход ладьи на центральную линию."""
+    """Check that Morphy's style filter rewards castling, development and a rook moving to a central file."""
     board = chess.Board("r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4")
 
     castle_bonus, _ = evaluate_morphy_style_bonus(board, chess.Move.from_uci("e1g1"))
@@ -55,9 +55,9 @@ def test_morphy_style_rewards_castling_and_open_files():
 
 
 def test_morphy_middlegame_move_generation():
-    """Проверяем генерацию хода Морфи в миттельшпиле вне дебютной книги (и мат в 1 ход 17. Rd8# из Оперной партии)."""
+    """Check Morphy's middlegame move generation outside the opening book (and the mate in 1, 17. Rd8#, of the Opera Game)."""
     bot = MorphyBot(stockfish_path=None)
-    # Точный финал Оперной партии Морфи (Париж, 1858) после 16. Qb8+! Nxb8 — ход 17. Rd8#
+    # The exact finish of Morphy's Opera Game (Paris, 1858) after 16. Qb8+! Nxb8: the move 17. Rd8#
     opera_board = chess.Board("1n2kb1r/p4ppp/4q3/4p1B1/4P3/8/PPP2PPP/2KR4 w k - 0 17")
 
     result = bot.choose_move(opera_board.fen())
@@ -68,7 +68,7 @@ def test_morphy_middlegame_move_generation():
 
 @pytest.mark.asyncio
 async def test_morphy_api_move_endpoint():
-    """Проверяем REST-эндпоинты /api/v1/bots/list и /api/v1/bots/move для игры с Полом Морфи."""
+    """Check the REST endpoints /api/v1/bots/list and /api/v1/bots/move for playing against Paul Morphy."""
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         list_resp = await client.get("/api/v1/bots/list")

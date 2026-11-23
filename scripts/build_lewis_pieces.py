@@ -1,8 +1,8 @@
 # --- FILE: scripts/build_lewis_pieces.py ---
 """
-Собственный набор фигур «Льюис» (таск 18.2): по мотивам льюисских шахмат XII века (общественное достояние) — сидящие
-на тронах король и ферзь, епископ в митре с посохом, всадник, воин со щитом, пешка-гранёный камень. Рисунок —
-собственная работа проекта (CC0), формы упрощены до читаемых силуэтов на клетке 45×45.
+The custom "Lewis" piece set (task 18.2): inspired by the 12th-century Lewis chessmen (public domain) - a seated
+king and queen on thrones, a bishop in a mitre with a crozier, a rider, a warrior with a shield, a faceted-stone pawn. The
+drawing is the project's own work (CC0), the shapes simplified to readable silhouettes on a 45x45 square.
 
     python scripts/build_lewis_pieces.py   → frontend/public/assets/pieces/lewis/{w,b}{K,Q,B,N,R,P}.svg
 """
@@ -11,13 +11,13 @@ from pathlib import Path
 
 OUT = Path(__file__).resolve().parents[1] / "frontend" / "public" / "assets" / "pieces" / "lewis"
 
-# Белые — моржовая кость, чёрные — кость, окрашенная в красное (как часть фигур находки).
+# White - walrus ivory, black - bone stained red (like part of the pieces of the find).
 COLORS = {
     "w": {"fill": "#F3E7CF", "shade": "#D9C29A", "line": "#3A2816"},
     "b": {"fill": "#7A2E24", "shade": "#5A1F18", "line": "#1C0B07"},
 }
 
-# Общие части: трон (спинка и сиденье) и основание.
+# Shared parts: the throne (back and seat) and the base.
 THRONE = """
   <path d="M10 39 V17 Q10 12 15 12 H30 Q35 12 35 17 V39 Z" fill="{shade}"/>
   <path d="M10 17 H35 M10 22 H35" stroke="{line}" stroke-width="1" fill="none" opacity="0.6"/>"""
@@ -25,7 +25,7 @@ BASE = """
   <rect x="8" y="38" width="29" height="4" rx="1.2" fill="{fill}"/>"""
 
 PIECES = {
-    # Король: сидит на троне, высокая зубчатая корона с крестом, меч поперёк колен.
+    # King: seated on a throne, a tall crenellated crown with a cross, a sword across the knees.
     "K": THRONE + """
   <path d="M15 37 V27 Q15 22 22.5 22 Q30 22 30 27 V37 Z" fill="{fill}"/>
   <circle cx="22.5" cy="16.5" r="4.6" fill="{fill}"/>
@@ -34,7 +34,7 @@ PIECES = {
   <path d="M20.3 16.8 h1 M23.7 16.8 h1 M21.5 19.2 h2" stroke-width="0.9"/>
   <path d="M13.5 33.5 L32 28" stroke-width="2.4" stroke-linecap="round"/>
   <path d="M16.6 31.4 l1.6 3.6" stroke-width="1.8" stroke-linecap="round"/>""" + BASE,
-    # Королева: на троне, покрывало до плеч, корона-обруч с шариками, ладонь у щеки.
+    # Queen: on a throne, a veil to the shoulders, a circlet crown with beads, a palm at the cheek.
     "Q": THRONE + """
   <path d="M15 37 V27 Q15 22 22.5 22 Q30 22 30 27 V37 Z" fill="{fill}"/>
   <path d="M15.8 24 Q15 12 22.5 10.5 Q30 12 29.2 24 Z" fill="{shade}"/>
@@ -45,7 +45,7 @@ PIECES = {
   <path d="M20.3 17 h1 M23.7 17 h1 M21.5 19.4 h2" stroke-width="0.9"/>
   <path d="M27.8 31 Q29 25 26.4 20.6" stroke-width="1.7" fill="none" stroke-linecap="round"/>
   <circle cx="26.2" cy="20.2" r="1.8" fill="{fill}"/>""" + BASE,
-    # Епископ: стоит, длинное облачение, высокая митра с прорезью, посох с завитком.
+    # Bishop: standing, a long robe, a tall mitre with a slit, a crozier with a curl.
     "B": """
   <path d="M12.5 39 L15.5 24 Q16.5 21 22.5 21 Q28.5 21 29.5 24 L32.5 39 Z" fill="{fill}"/>
   <path d="M22.5 22 V38" stroke-width="1" opacity="0.6"/>
@@ -55,7 +55,7 @@ PIECES = {
   <path d="M20.3 16.3 h1 M23.7 16.3 h1 M21.5 18.7 h2" stroke-width="0.9"/>
   <path d="M34 39 V11 Q34 5.5 38.5 6 Q41.5 7 40.2 10 Q39 12 36.8 10.6" stroke-width="2" fill="none" stroke-linecap="round"/>
   <path d="M17.5 30 V25 M19.3 30 V24.5 M21.1 30 V25" stroke-width="1.3" stroke-linecap="round"/>""" + BASE,
-    # Конь: голова и шея коня влево, за ней всадник в шлеме со щитом.
+    # Knight: the horse's head and neck to the left, behind it a rider in a helmet with a shield.
     "N": """
   <path d="M11 39 V32 Q11 26.5 15.5 23.5 L18.5 21.5 Q13.5 21.5 10.5 19.5 Q8.5 18 9.5 15.5 L14 9.5 Q15 7.5 17.5 7.2
            L19 4.2 L21 7.6 Q27 9 29.5 15.5 Q32 22 31 30 L30.5 39 Z" fill="{fill}"/>
@@ -66,7 +66,7 @@ PIECES = {
   <circle cx="34.2" cy="15.6" r="3" fill="{fill}"/>
   <path d="M29.5 19 H38.5 V26 Q34 31 29.5 26 Z" fill="{shade}"/>
   <path d="M34 19.5 V28.6 M30 22.4 H38" stroke-width="0.9"/>""" + BASE,
-    # Ладья: пеший воин — конический шлем с наносником, длинный щит в обеих руках.
+    # Rook: a foot warrior - a conical helmet with a nasal, a long shield in both hands.
     "R": """
   <path d="M13.5 39 V26 Q13.5 19.5 22.5 19.5 Q31.5 19.5 31.5 26 V39 Z" fill="{fill}"/>
   <path d="M17 13.5 L22.5 3 L28 13.5 Z" fill="{shade}"/>
@@ -76,7 +76,7 @@ PIECES = {
   <path d="M15 21 H30 V31.5 Q22.5 40 15 31.5 Z" fill="{shade}"/>
   <path d="M22.5 21.5 V36 M15.5 25.5 H29.5" stroke-width="1"/>
   <circle cx="22.5" cy="25.5" r="1.6" fill="{fill}"/>""" + BASE,
-    # Пешка: гранёный камень-столбик с поясом.
+    # Pawn: a faceted stone pillar with a belt.
     "P": """
   <path d="M14.5 39 L16 17.5 Q16.5 12.5 22.5 11.5 Q28.5 12.5 29 17.5 L30.5 39 Z" fill="{fill}"/>
   <path d="M19.5 13.5 L19 39 M25.5 13.5 L26 39" stroke-width="0.9" opacity="0.55"/>
@@ -85,7 +85,7 @@ PIECES = {
 }
 
 TEMPLATE = """<svg xmlns="http://www.w3.org/2000/svg" width="45" height="45" viewBox="4 0 37.5 43">
-  <!-- Набор «Льюис» по мотивам льюисских шахмат XII века: собственная работа проекта regence, CC0. -->
+  <!-- The "Lewis" set inspired by the 12th-century Lewis chessmen: the regence project's own work, CC0. -->
   <g stroke="{line}" stroke-width="1.5" stroke-linejoin="round">{body}
   </g>
 </svg>
@@ -93,7 +93,7 @@ TEMPLATE = """<svg xmlns="http://www.w3.org/2000/svg" width="45" height="45" vie
 
 
 def main() -> None:
-    """Генерирует SVG-файлы фигур собственного набора «Льюис» для обоих цветов."""
+    """Generates the SVG piece files of the custom "Lewis" set for both colours."""
     OUT.mkdir(parents=True, exist_ok=True)
     for color, palette in COLORS.items():
         for piece, body in PIECES.items():

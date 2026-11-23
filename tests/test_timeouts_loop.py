@@ -1,7 +1,7 @@
 # --- FILE: tests/test_timeouts_loop.py ---
 """
-Проверка таймаутов изолирует ошибки по партиям: одна «битая» партия не должна останавливать
-флаги и отмены во всех остальных (раньше весь проход шёл в одном try и обрывался на ней).
+The timeout check isolates errors per game: one "broken" game must not stop
+flags and cancellations in all the others (previously the whole pass ran in a single try and aborted on it).
 """
 
 import pytest
@@ -38,7 +38,7 @@ class _NoDbSession:
 
 @pytest.fixture
 def finished(monkeypatch) -> list[tuple[int, str, str]]:
-    """Подменяет запись итога в БД: тест проверяет цикл, а не finish_game."""
+    """Replaces writing the result to the DB: the test checks the loop, not finish_game."""
     calls: list[tuple[int, str, str]] = []
 
     async def fake_finish_game(db, game_id, result, termination="unknown", final_pgn=None):
@@ -52,13 +52,13 @@ def finished(monkeypatch) -> list[tuple[int, str, str]]:
 
 
 async def _flagged_game(game_id: int, white_id: int, black_id: int) -> None:
-    """Партия, где у белых (их ход) кончилось время."""
+    """A game where White (to move) has run out of time."""
     await state_manager.initialize_game(game_id, white_id, black_id, base_time_ms=60000, increment_ms=0)
     await state_manager.update_game_state(game_id, {
         "state_version": "4", "white_time_ms": "1000", "last_move_at": str(NOW - 5000),
     })
-    # update_game_state не трогает дедлайн (производственный код меняет им только draw/rematch
-    # offer) — тест правит время вручную, поэтому сам переставляет дедлайн на реальный флаг.
+    # update_game_state does not touch the deadline (production code changes it only for draw/rematch
+    # offers) - the test edits the time manually, so it moves the deadline to the real flag itself.
     await state_manager.redis.zadd(GAME_DEADLINES_KEY, {str(game_id): NOW - 4000})
 
 
@@ -87,13 +87,13 @@ async def test_failing_game_is_retried_with_backoff_and_recovers(finished):
     await state_manager.check_timeouts_once(manager, now_ms=NOW)
     assert state_manager._timeout_failures[93] == (1, NOW + TIMEOUT_RETRY_BASE_MS)
 
-    # Состояние починили (или сбой БД прошёл), и у белых тем временем упал флаг.
+    # The state was repaired (or the DB failure passed), and meanwhile White's flag fell.
     await state_manager.update_game_state(93, {
         "white_id": "1", "white_time_ms": "1000", "last_move_at": str(NOW - 5000),
     })
 
     await state_manager.check_timeouts_once(manager, now_ms=NOW + TIMEOUT_RETRY_BASE_MS // 2)
-    assert finished == []  # пауза ещё не прошла — партию не трогаем
+    assert finished == []  # the pause has not elapsed yet - leave the game alone
 
     await state_manager.check_timeouts_once(manager, now_ms=NOW + TIMEOUT_RETRY_BASE_MS)
     assert finished == [(93, "0-1", "timeout")]
@@ -109,7 +109,7 @@ async def test_backoff_grows_and_is_capped(finished):
 
 
 async def test_broken_game_stays_active_for_later_retries(finished):
-    """Партия с ошибкой не выбрасывается: при временном сбое БД иначе потерялись бы все партии."""
+    """A game with an error is not dropped: otherwise all games would be lost on a temporary DB failure."""
     await _broken_game(95)
     await state_manager.check_timeouts_once(DummyManager(), now_ms=NOW)
     assert "95" in await state_manager.redis.smembers("active_games")
@@ -126,17 +126,17 @@ async def test_malformed_active_game_id_is_removed(finished):
 
 
 async def test_failure_counters_of_finished_games_are_dropped(finished):
-    state_manager._timeout_failures[97] = (3, NOW + 5000)  # партии 97 среди активных уже нет
+    state_manager._timeout_failures[97] = (3, NOW + 5000)  # game 97 is no longer among the active ones
     await state_manager.check_timeouts_once(DummyManager(), now_ms=NOW)
     assert 97 not in state_manager._timeout_failures
 
 
 async def test_games_far_from_deadline_are_not_touched(finished):
     """
-    Партия с дедлайном далеко в будущем не должна обрабатываться — в этом и смысл перехода
-    с полного перебора active_games на ZRANGEBYSCORE по GAME_DEADLINES_KEY. Состояние этой
-    партии «битое» (упало бы при реальной попытке проверки) — если цикл её тронет, тест
-    это заметит по счётчику сбоев.
+    A game with a deadline far in the future must not be processed - that is the point of switching
+    from a full scan of active_games to ZRANGEBYSCORE over GAME_DEADLINES_KEY. The state of this
+    game is "broken" (it would fail on a real check attempt) - if the loop touches it, the test
+    will notice via the failure counter.
     """
     await state_manager.initialize_game(98, 1, 2, base_time_ms=600000, increment_ms=0)
     await state_manager.update_game_state(98, {"white_id": "broken"})

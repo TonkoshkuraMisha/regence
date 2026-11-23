@@ -1,19 +1,19 @@
 // --- FILE: frontend/src/services/gameDates.ts ---
-// Дата партии для списков и просмотра. Берётся из заголовка PGN Date: у исторических партий месяц и день часто
-// неизвестны, и «1860.??.??» показывается как «1860»; год неизвестен («????») — даты из PGN нет. Тогда — время
-// окончания партии на сервере (finished_at, ISO), в формате «d MMM yyyy» на языке игрока. Сеть не нужна.
-// Вызывают Profile.tsx, ChampionGames.tsx и GameViewer.tsx — у каждого свой текст на случай, когда даты нет.
+// Game date for lists and viewing. Taken from the PGN Date header: for historical games the month and day are often
+// unknown, and «1860.??.??» is shown as «1860»; an unknown year («????») — there is no date from the PGN. Then — the server's
+// game end time (finished_at, ISO), in the format «d MMM yyyy» in the player's language. No network needed.
+// Called by Profile.tsx, ChampionGames.tsx and GameViewer.tsx — each has its own text for the case when there is no date.
 
 import {format, parseISO} from 'date-fns';
 import type {Locale} from 'date-fns';
 
-/** Дата из заголовка PGN без неизвестных частей; null — даты нет или неизвестен год. */
+/** Date from the PGN header without unknown parts; null — there is no date or the year is unknown. */
 export function pgnDisplayDate(pgnDate: string | null | undefined): string | null {
     if (!pgnDate || pgnDate.includes('????')) return null;
     return pgnDate.replace(/\?/g, '').replace(/\.+$/, '');
 }
 
-/** Дата партии для показа: из PGN, иначе из finished_at; null — нет ни той, ни другой. */
+/** Game date for display: from the PGN, otherwise from finished_at; null — neither exists. */
 export function gameDisplayDate(pgnDate: string | null | undefined, finishedAt: string | null | undefined,
                                 locale: Locale): string | null {
     return pgnDisplayDate(pgnDate) ?? (finishedAt ? format(parseISO(finishedAt), 'd MMM yyyy', {locale}) : null);

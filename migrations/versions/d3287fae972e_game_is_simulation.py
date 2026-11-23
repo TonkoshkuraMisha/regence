@@ -2,8 +2,8 @@
 
 """game_is_simulation
 
-Пометка партий ботов между собой, сыгранных сервером в турнире (таск 15.2): такие партии не попадают в архив и
-статистику профилей; время, когда воркер забрал партию турнира (защита от двойного счёта).
+A mark for bot-vs-bot games played by the server in a tournament (task 15.2): such games do not go into the archive and
+profile statistics; the time the worker picked up a tournament game (protection against double counting).
 
 Revision ID: d3287fae972e
 Revises: a5db857ccde4

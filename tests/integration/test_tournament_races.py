@@ -1,13 +1,13 @@
 # --- FILE: tests/integration/test_tournament_races.py ---
 """
-Гонки арены и швейцарки на настоящем PostgreSQL (на SQLite SELECT ... FOR UPDATE молча игнорируется, поэтому эти
-проверки — здесь). Каждая конкурирующая «обработка» — своя сессия и своё соединение, как у разных запросов сервера:
-- одна партия арены завершается дважды одновременно — очки начисляются один раз;
-- последний тур швейцарки заканчивается на всех досках одновременно — следующий тур открывается ровно один раз;
-- страницу швейцарки открывают одновременно несколько игроков — тоже один новый тур;
-- турнир с ботами (tournaments.record_result): одна партия записана дважды одновременно — второй получает отказ;
-  последние партии тура (партия игрока и партия ботов из воркера) записаны одновременно — следующий тур открыт.
-Запуск партий тура подменён (без Redis и сокетов): проверяется правило продвижения, а не запуск партии.
+Arena and Swiss races on a real PostgreSQL (on SQLite SELECT ... FOR UPDATE is silently ignored, so these
+checks live here). Each competing "handler" has its own session and connection, like separate server requests:
+- one arena game finishes twice at the same time — points are awarded once;
+- the last Swiss round ends on all boards at once — the next round opens exactly once;
+- several players open the Swiss page at once — again exactly one new round;
+- a tournament with bots (tournaments.record_result): one game recorded twice at once — the second is rejected;
+  the last games of a round (a player game and a bot game from the worker) recorded at once — the next round is open.
+Starting the round's games is patched out (no Redis or sockets): the advancement rule is tested, not game start.
 """
 
 import asyncio
@@ -32,7 +32,7 @@ pytestmark = [
 
 
 async def _setup(pg, players: int, fmt: str, rounds: int = 0) -> tuple[int, list[int]]:
-    """Арена (начавшаяся час назад) и её участники; возвращает (id арены, id игроков)."""
+    """An arena (started an hour ago) and its participants; returns (arena id, player ids)."""
     now = datetime.now(UTC)
     async with pg() as db:
         users = [User(username=f"race_{i}", hashed_password="pw") for i in range(players)]
@@ -46,7 +46,7 @@ async def _setup(pg, players: int, fmt: str, rounds: int = 0) -> tuple[int, list
 
 
 async def _add_game(pg, arena_id: int, white: int, black: int, round_no: int = 0) -> int:
-    """Партия арены без результата; возвращает id партии в games."""
+    """An arena game without a result; returns the game id in games."""
     async with pg() as db:
         game = Game(white_player_id=white, black_player_id=black, status=GameStatus.IN_PROGRESS, is_rated=True)
         db.add(game)
@@ -58,7 +58,7 @@ async def _add_game(pg, arena_id: int, white: int, black: int, round_no: int = 0
 
 @pytest.fixture
 def fake_round_start(monkeypatch):
-    """Партия нового тура — просто запись без результата (вместо запуска PvP-партии через Redis и сокеты)."""
+    """A game of the new round — just a record without a result (instead of starting a PvP game via Redis and sockets)."""
 
     async def start(db, arena, white, black):
         game = Game(white_player_id=white, black_player_id=black, status=GameStatus.IN_PROGRESS, is_rated=True)
@@ -100,7 +100,7 @@ async def test_round_finishing_on_every_board_opens_the_next_round_once(pg, fake
     game_ids = [await _add_game(pg, arena_id, w, b, round_no=1) for w, b in pairs]
 
     async def finish_and_advance(game_id: int) -> None:
-        # Как game_state.finish_game: итог партии и очки — commit, затем продвижение тура.
+        # Like game_state.finish_game: game result and points — commit, then round advancement.
         async with pg() as db:
             await arena_service.on_game_finished(db, game_id, "1-0")
             await db.commit()
@@ -117,7 +117,7 @@ async def test_round_finishing_on_every_board_opens_the_next_round_once(pg, fake
 
 
 async def _round_robin(pg) -> tuple[int, list[int]]:
-    """Круговой турнир игрока с тремя ботами; возвращает (id турнира, id партий первого тура)."""
+    """A round-robin tournament of a player with three bots; returns (tournament id, ids of the first round games)."""
     async with pg() as db:
         owner = User(username="race_owner", hashed_password="pw")
         db.add(owner)
@@ -129,7 +129,7 @@ async def _round_robin(pg) -> tuple[int, list[int]]:
 
 
 async def _record(pg, tournament_id: int, tgame_id: int) -> str:
-    """Запись результата партии турнира в своей сессии; возвращает "ok" или код отказа."""
+    """Records a tournament game result in its own session; returns "ok" or a rejection code."""
     async with pg() as db:
         tournament = await db.get(Tournament, tournament_id)
         tgame = await db.get(TournamentGame, tgame_id)
@@ -147,7 +147,7 @@ async def test_tournament_game_recorded_twice_at_once_counts_once(pg):
 
 
 async def test_last_games_of_a_tournament_round_finishing_together_open_the_next_round(pg):
-    # Без блокировки каждая транзакция видит другую партию тура несыгранной — и тур не открывается никогда.
+    # Without locking each transaction sees the other round game as unplayed — and the round never opens.
     tournament_id, round_one = await _round_robin(pg)
     assert await asyncio.gather(*(_record(pg, tournament_id, gid) for gid in round_one)) == ["ok", "ok"]
     async with pg() as db:
@@ -158,7 +158,7 @@ async def test_simultaneous_page_views_open_one_round(pg, fake_round_start):
     arena_id, _ = await _setup(pg, 6, "swiss", rounds=5)
 
     async def view() -> None:
-        # Как GET /arenas/{id}: страница продвигает швейцарку.
+        # Like GET /arenas/{id}: the page advances the Swiss.
         async with pg() as db:
             arena = await db.get(Arena, arena_id)
             await arena_service.advance_swiss(db, arena)

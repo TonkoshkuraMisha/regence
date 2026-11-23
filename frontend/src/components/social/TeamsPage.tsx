@@ -1,8 +1,8 @@
 // --- FILE: frontend/src/components/social/TeamsPage.tsx ---
-// Команды и сезонная лига (таск 17.2): таблица лиги текущего месяца, своя команда (состав, очки, выйти), создание
-// команды и вход в чужую.
-// Данные: services/teams.ts — teamsApi (/api/v1/teams: league, mine, create, join, leave); очки и места считает сервер
-// (src/services/league.py), имя команды — от 3 до 30 знаков. Роут — App.tsx. В команду может вступить любой игрок.
+// Teams and the seasonal league (task 17.2): the current month's league table, one's own team (roster, points, leave), team
+// creation and joining someone else's.
+// Data: services/teams.ts - teamsApi (/api/v1/teams: league, mine, create, join, leave); points and places are computed by the server
+// (src/services/league.py), team name is 3 to 30 characters. Route - App.tsx. Any player can join a team.
 
 import {useCallback, useEffect, useState} from 'react';
 import {Shield} from 'lucide-react';
@@ -14,7 +14,7 @@ import {teamsApi} from '../../services/teams';
 import type {LeagueTable, TeamView} from '../../services/teams';
 import {TEAM_NAME_MAX} from '../../config/textLimits';
 
-/** Страница команд: своя команда (состав и очки), форма создания (если команды нет) и таблица лиги месяца со вступлением. */
+/** Teams page: own team (roster and points), creation form (if there is no team) and the month's league table with joining. */
 export function TeamsPage() {
     const {t} = useI18n();
     const [league, setLeague] = useState<LeagueTable | null>(null);

@@ -1,5 +1,5 @@
 # --- FILE: tests/test_social.py ---
-"""Игроки и уведомления (таск 17.1): поиск, подписки и «друзья», вызов через приглашение, центр уведомлений."""
+"""Players and notifications (task 17.1): search, follows and "friends", invitation challenge, notification centre."""
 
 from sqlalchemy import select
 
@@ -24,7 +24,7 @@ async def test_search_finds_real_players_only(client, token_user_1, test_user_2,
                         User(username="Player22", hashed_password="x")])
     await db_session.commit()
     found = client.get(f"{API}/search", params={"q": "PLAY"}, headers=auth(token_user_1)).json()["players"]
-    assert [p["username"] for p in found] == ["player2", "Player22"]   # сначала короче; без себя, ботов и архива
+    assert [p["username"] for p in found] == ["player2", "Player22"]   # shorter first; excluding self, bots and the archive
     assert found[0]["online"] is False
     assert client.get(f"{API}/search", params={"q": "p"}, headers=auth(token_user_1)).status_code == 422
 
@@ -32,7 +32,7 @@ async def test_search_finds_real_players_only(client, token_user_1, test_user_2,
 async def test_follow_unfollow_and_friends(client, token_user_1, token_user_2):
     first = client.post(f"{API}/follow/PLAYER2", headers=auth(token_user_1)).json()
     assert (first["following"], first["followed_by"], first["friends"]) == (True, False, False)
-    assert client.post(f"{API}/follow/player2", headers=auth(token_user_1)).status_code == 200   # повтор — не ошибка
+    assert client.post(f"{API}/follow/player2", headers=auth(token_user_1)).status_code == 200   # a repeat is not an error
     client.post(f"{API}/follow/player1", headers=auth(token_user_2))
     assert client.get(f"{API}/relation/player2", headers=auth(token_user_1)).json()["friends"] is True
     following = client.get(f"{API}/following", headers=auth(token_user_1)).json()["players"]
@@ -71,12 +71,12 @@ async def test_notifications_are_private_and_marked_selectively(client, token_us
     await notifications.record(db_session, test_user_1.id, "rematch", {"from": "y", "game_id": 2})
     read = client.post(f"{API}/notifications/read", json={"ids": [first["id"]]}, headers=auth(token_user_1)).json()
     assert read["unread"] == 1
-    assert [n["payload"]["from"] for n in read["items"]] == ["y", "x"]   # новые первыми
+    assert [n["payload"]["from"] for n in read["items"]] == ["y", "x"]   # newest first
 
 
 async def test_new_tournament_round_notifies_the_player(client, token_user_1, test_user_1, db_session):
     t = client.post("/api/v1/tournaments", headers=auth(token_user_1), json=body()).json()
-    # Сыгрываем первый тур: партии бота и игрока — тур закрыт, открылся второй с партией игрока.
+    # Play the first round: the bot's and the player's games - the round is closed, the second opened with the player's game.
     tournament = await db_session.get(Tournament, t["id"])
     for game in [g for g in await tournament_service.games_of(db_session, t["id"]) if g.round == 1]:
         await tournament_service.record_result(db_session, tournament, game, "1-0")

@@ -1,22 +1,22 @@
-// Проверка контента школы в CI (таск 14.1): каждый урок проходит validateLesson — ходы легальны, у каждого
-// вопроса есть верный ответ, тексты на трёх языках. Сам валидатор проверяется на заведомо испорченных уроках.
+// School content check in CI (task 14.1): every lesson passes validateLesson - moves are legal, every
+// question has a correct answer, texts in several languages. The validator itself is tested on deliberately broken lessons.
 
 import {describe, expect, it} from 'vitest';
 import {COURSES, LESSONS, lessonById, nextLesson} from '..';
 import type {Lesson} from '../format';
 import {validateLesson} from '../validate';
 
-describe('контент уроков', () => {
-    it('есть хотя бы один курс и урок', () => {
+describe('lesson content', () => {
+    it('has at least one course and lesson', () => {
         expect(COURSES.length).toBeGreaterThan(0);
         expect(LESSONS.length).toBeGreaterThan(0);
     });
 
-    it.each(LESSONS.map((lesson) => [lesson.id, lesson] as const))('урок %s корректен', (_id, lesson) => {
+    it.each(LESSONS.map((lesson) => [lesson.id, lesson] as const))('lesson %s is valid', (_id, lesson) => {
         expect(validateLesson(lesson, COURSES)).toEqual([]);
     });
 
-    it('id уроков уникальны, порядок в курсе без повторов', () => {
+    it('lesson ids are unique, order within a course has no repeats', () => {
         const ids = LESSONS.map((l) => l.id);
         expect(new Set(ids).size).toBe(ids.length);
         for (const course of COURSES) {
@@ -25,16 +25,16 @@ describe('контент уроков', () => {
         }
     });
 
-    it('реестр находит урок и следующий за ним', () => {
+    it('the registry finds a lesson and the next one', () => {
         const first = LESSONS[0];
         expect(lessonById(first.id)).toBe(first);
         expect(lessonById('no-such-lesson')).toBeUndefined();
-        // Уроки отсортированы по курсу и порядку: у последнего урока следующего нет.
+        // Lessons are sorted by course and order: the last lesson has no next one.
         expect(nextLesson(LESSONS[LESSONS.length - 1])).toBeUndefined();
     });
 });
 
-describe('валидатор ловит ошибки', () => {
+describe('validator catches errors', () => {
     const base = (): Lesson => structuredClone(lessonById('tactics-double-attack')!);
     const problemsOf = (mutate: (l: Lesson) => void) => {
         const lesson = base();
@@ -42,14 +42,14 @@ describe('валидатор ловит ошибки', () => {
         return validateLesson(lesson, COURSES).join('\n');
     };
 
-    it('нелегальный ход показа', () => {
+    it('illegal demo move', () => {
         expect(problemsOf((l) => {
             const demo = l.steps.find((s) => s.type === 'demo')!;
             if (demo.type === 'demo') demo.actions.unshift({do: 'move', uci: 'e1e5'});
         })).toMatch(/illegal move e1e5/);
     });
 
-    it('нелегальный или отсутствующий верный ответ', () => {
+    it('illegal or missing correct answer', () => {
         expect(problemsOf((l) => {
             const q = l.steps.find((s) => s.type === 'find_move')!;
             if (q.type === 'find_move') q.line[0].answers = ['a1a8'];
@@ -60,27 +60,27 @@ describe('валидатор ловит ошибки', () => {
         })).toMatch(/no correct answer/);
     });
 
-    it('отклик на нелегальный неверный ход и ход, который одновременно верный', () => {
+    it('reply to an illegal wrong move and a move that is both correct and wrong', () => {
         expect(problemsOf((l) => {
             const q = l.steps.find((s) => s.type === 'find_move')!;
-            if (q.type === 'find_move') q.line[0].wrong = {h1h8: {en: 'x', uk: 'x', ru: 'x'}, d5e7: {en: 'x', uk: 'x', ru: 'x'}};
+            if (q.type === 'find_move') q.line[0].wrong = {h1h8: {en: 'x', uk: 'x'}, d5e7: {en: 'x', uk: 'x'}};
         })).toMatch(/h1h8 is illegal[\s\S]*d5e7 is both correct and wrong/);
     });
 
-    it('вопрос с выбором без верного варианта', () => {
+    it('choice question without a correct option', () => {
         expect(problemsOf((l) => {
             const q = l.steps.find((s) => s.type === 'choice')!;
             if (q.type === 'choice') q.options.forEach((o) => delete o.correct);
         })).toMatch(/no correct option/);
     });
 
-    it('текст без одного из языков', () => {
+    it('text missing one of the languages', () => {
         expect(problemsOf((l) => {
             (l.steps[0].text as Record<string, string>).uk = '';
         })).toMatch(/missing uk text/);
     });
 
-    it('некорректный FEN, неизвестный курс, пустой экзамен', () => {
+    it('invalid FEN, unknown course, empty exam', () => {
         const problems = problemsOf((l) => {
             l.steps[0] = {...l.steps[0], fen: 'not a fen'} as Lesson['steps'][number];
             l.course = 'nope';
@@ -91,7 +91,7 @@ describe('валидатор ловит ошибки', () => {
         expect(problems).toMatch(/the exam needs 1..5 questions/);
     });
 
-    it('линия продолжается без ответа компьютера', () => {
+    it('line continues without a computer reply', () => {
         expect(problemsOf((l) => {
             const q = l.exam.find((s) => s.type === 'find_move')!;
             if (q.type === 'find_move') delete q.line[0].reply;

@@ -1,17 +1,17 @@
 // --- FILE: frontend/src/components/gameViewer/viewerModel.ts ---
-// Данные и чистые функции просмотра партии (вынесено из GameViewer.tsx, таск 17.6): типы отчёта разбора, оценка
-// позиции по материалу без движка, шкала оценки, критические моменты, точки графика. Форма отчёта
-// (FullGameAnalysisReport) повторяет ответ сервера GET /analysis/game/{id} (services/analysis.ts); без сети и состояния.
+// Data and pure functions of the game viewer (extracted from GameViewer.tsx, task 17.6): review report types, an evaluation
+// of the position by material without an engine, the evaluation scale, critical moments, graph points. The report shape
+// (FullGameAnalysisReport) repeats the server response of GET /analysis/game/{id} (services/analysis.ts); no network or state.
 
 import type {Chess} from 'chess.js';
 import type {CoachArrowKind, CoachComment} from '../../services/coach';
 import type {GameSummary} from '../../services/gameSummary';
 
-// Подписи вертикалей и горизонталей в порядке отрисовки доски со стороны белых (сверху вниз по рангам).
+// Labels of files and ranks in the drawing order of the board from White's side (ranks from top to bottom).
 export const FILES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
 export const RANKS = ['8', '7', '6', '5', '4', '3', '2', '1'];
 
-/** Оценка одного хода в отчёте разбора: оценка позиции после хода, потеря в сотых пешки, класс и символ хода. */
+/** Evaluation of one move in the review report: position evaluation after the move, loss in hundredths of a pawn, move class and symbol. */
 export interface MoveEvaluationItem {
     ply: number;
     move_number: number;
@@ -25,15 +25,15 @@ export interface MoveEvaluationItem {
     cp_loss: number;
     classification: string;
     symbol: string;
-    /** Комментарий наставника (формат разбора 2+); null — сказать нечего или движок был недоступен. */
+    /** Coach's comment (review format 2+); null means nothing to say or the engine was unavailable. */
     coach?: CoachComment | null;
 }
 
-// Фазы партии для точности по фазам.
+// Game phases for per-phase accuracy.
 export type GamePhase = 'opening' | 'middlegame' | 'endgame';
 export const GAME_PHASES: GamePhase[] = ['opening', 'middlegame', 'endgame'];
 
-/** Итоги разбора одной стороны: точность, счёт оценок ходов, средняя потеря. */
+/** Review totals of one side: accuracy, move evaluation counts, average loss. */
 export interface SideSummaryStats {
     accuracy: number;
     best: number;
@@ -42,32 +42,32 @@ export interface SideSummaryStats {
     mistakes: number;
     blunders: number;
     avg_cp_loss: number;
-    /** Точность по фазам (таск B.5); null — в этой фазе ходов не было; нет поля — старый разбор. */
+    /** Per-phase accuracy (task B.5); null means no moves in that phase; no field means an old review. */
     phases?: Partial<Record<GamePhase, number | null>>;
 }
 
-/** Полный отчёт разбора партии: итоги сторон, оценка каждого хода и итог партии (summary). */
+/** Full game review report: totals of the sides, the evaluation of each move and the game summary (summary). */
 export interface FullGameAnalysisReport {
     game_id: number;
     engine: string;
     white: SideSummaryStats;
     black: SideSummaryStats;
     moves: MoveEvaluationItem[];
-    /** Итог партии (таск 11.5): тип партии по графику оценки. */
+    /** Game summary (task 11.5): the game type by the evaluation graph. */
     summary?: GameSummary | null;
 }
 
-/** Цвета стрелок наставника: зелёная — лучший ход, красная — угроза соперника, синяя — идея. */
+/** Coach arrow colours: green is the best move, red is the opponent's threat, blue is an idea. */
 export const COACH_ARROW_COLORS: Record<CoachArrowKind, string> = {
     best: 'rgba(16, 185, 129, 0.88)',
     threat: 'rgba(244, 63, 94, 0.88)',
     idea: 'rgba(56, 189, 248, 0.88)',
 };
 
-// Материальная стоимость фигур в сотых пешки для статической оценки без движка (король не считается).
+// Material value of pieces in hundredths of a pawn for a static evaluation without an engine (the king is not counted).
 const PIECE_MAT_VALUES: Record<string, number> = {p: 100, n: 320, b: 330, r: 500, q: 900, k: 0};
 
-/** Оценка за белых по материалу — пока нет разбора движком. */
+/** Evaluation for White by material, while there is no engine review. */
 export function computeStaticWhiteEvalCp(gameInstance: Chess): { cp: number; display: string } {
     if (gameInstance.isCheckmate()) {
         const whiteMated = gameInstance.turn() === 'w';
@@ -87,14 +87,14 @@ export function computeStaticWhiteEvalCp(gameInstance: Chess): { cp: number; dis
     return {cp: score, display: `${sign}${pawns.toFixed(1)}`};
 }
 
-/** Доля белых на шкале оценки, 4–96%. */
+/** White's share on the evaluation bar, 4-96%. */
 export function evalCpToWhitePercentage(evalCp: number): number {
     const clamped = Math.max(-1000, Math.min(1000, evalCp));
     const pct = 50 + (clamped / 1000) * 46;
     return Math.max(4, Math.min(96, Math.round(pct)));
 }
 
-/** Цвет символа хода в записи партии по классу оценки; прочие классы — нейтральный. */
+/** Colour of a move symbol in the game record by evaluation class; other classes are neutral. */
 export function classificationBadgeClass(classification?: string): string {
     switch (classification) {
         case 'Best':
@@ -110,10 +110,10 @@ export function classificationBadgeClass(classification?: string): string {
     }
 }
 
-// Вид критического момента (ключ в каталоге viewer.moments.*).
+// Kind of a critical moment (a key in the viewer.moments.* catalog).
 export type MomentKey = 'turning' | 'worstWhite' | 'worstBlack' | 'missed';
 
-/** Критические моменты (таск B.5): перелом, худшие ходы сторон, упущенные удары — по одному на ход, по порядку. */
+/** Critical moments (task B.5): turning point, each side's worst moves, missed captures, one per move, in order. */
 export function criticalMoments(report: FullGameAnalysisReport): { ply: number; key: MomentKey }[] {
     const summary = report.summary;
     if (!summary) return [];
@@ -128,7 +128,7 @@ export function criticalMoments(report: FullGameAnalysisReport): { ply: number; 
         .sort((a, b) => a.ply - b.ply);
 }
 
-/** Точка графика оценки: индекс хода, подпись для подсказки и оценка в пешках. */
+/** Evaluation graph point: move index, tooltip label and evaluation in pawns. */
 export interface ChartPoint {
     idx: number;
     ply: number;
@@ -138,7 +138,7 @@ export interface ChartPoint {
     classification: string;
 }
 
-/** Точки графика оценки: пешки за белых, ±10. */
+/** Evaluation graph points: pawns for White, +/-10. */
 export function chartPoints(report: FullGameAnalysisReport | null): ChartPoint[] {
     if (!report) return [];
     return report.moves.map((m, idx) => ({
@@ -151,7 +151,7 @@ export function chartPoints(report: FullGameAnalysisReport | null): ChartPoint[]
     }));
 }
 
-/** Ходы для PGN с разбором: оценка в комментарии `[%eval …]`, текст наставника и символ хода («!» не пишется). */
+/** Moves for a PGN with review: the evaluation in a `[%eval ...]` comment, the coach's text and the move symbol ("!" is not written). */
 export function annotatedMoves(history: { san: string }[], report: FullGameAnalysisReport,
                                coachTextOf: (coach: CoachComment | null | undefined) => string | null):
     { san: string; symbol: string; comment: string | null }[] {

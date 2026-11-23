@@ -1,25 +1,25 @@
 // --- FILE: frontend/src/services/lessonProgress.ts ---
-// Прогресс уроков школы на сервере (таск 14.1): GET /api/v1/learn/progress и PUT /api/v1/learn/progress/{id урока}
-// (src/api/learn.py, таблица lesson_progress). Без входа прогресс не хранится. Сами уроки — данные клиента
-// (content/lessons/*.json), поэтому сервер принимает любой id урока и хранит по нему только числа.
-// Этим же хранилищем под своими id пользуются «Основы», «Классика», эндшпильный тренажёр, курс матов, Большой курс
-// и программы тренировок: у каждого раздела своя функция, строящая id записи (progressId, courseProgressId).
+// Server-side progress of school lessons (task 14.1): GET /api/v1/learn/progress and PUT /api/v1/learn/progress/{lesson id}
+// (src/api/learn.py, table lesson_progress). Without login progress is not stored. The lessons themselves are client data
+// (content/lessons/*.json), so the server accepts any lesson id and stores only numbers for it.
+// The same storage under their own ids is used by "Basics", "Classics", the endgame trainer, the mates course, the Big Course
+// and training programs: each section has its own function building the record id (progressId, courseProgressId).
 
 import {API_BASE_URL} from '../config/api';
 
-/** Прогресс одного урока, как его хранит сервер. Прогресс только растёт: повторное прохождение его не сбрасывает. */
+/** Progress of one lesson as stored by the server. Progress only grows: repeating a lesson does not reset it. */
 export interface LessonProgress {
     lesson_id: string;
-    /** Дальний пройденный шаг (с нуля) и число шагов урока. */
+    /** Furthest completed step (0-based) and the number of lesson steps. */
     step: number;
     steps_total: number;
     completed: boolean;
-    /** Лучший результат контрольных вопросов; null — урок без них или они ещё не пройдены. */
+    /** Best result of the control questions; null — the lesson has none or they are not passed yet. */
     exam_score: number | null;
     exam_total: number | null;
 }
 
-/** Тело PUT: то, что клиент сообщает после шага или завершения урока. */
+/** PUT body: what the client reports after a step or lesson completion. */
 export interface ProgressUpdate {
     step: number;
     steps_total: number;
@@ -30,14 +30,14 @@ export interface ProgressUpdate {
 
 const BASE = `${API_BASE_URL}/api/v1/learn/progress`;
 
-/** Все записи прогресса игрока. Ошибка — обычное исключение без текста для игрока: что с ней делать, решает раздел. */
+/** All progress records of the player. An error is a plain exception without player text: what to do with it is decided by the section. */
 export async function fetchLessonProgress(token: string): Promise<LessonProgress[]> {
     const res = await fetch(BASE, {headers: {Authorization: `Bearer ${token}`}});
     if (!res.ok) throw new Error(`progress ${res.status}`);
     return res.json();
 }
 
-/** Сохранить прогресс урока; в ответе — запись сервера после слияния с прежней (шаг и результат не уменьшаются). */
+/** Save lesson progress; the response is the server record after merging with the previous one (step and result do not decrease). */
 export async function saveLessonProgress(token: string, lessonId: string, update: ProgressUpdate): Promise<LessonProgress> {
     const res = await fetch(`${BASE}/${encodeURIComponent(lessonId)}`, {
         method: 'PUT',

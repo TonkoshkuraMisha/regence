@@ -1,13 +1,13 @@
 # --- FILE: src/services/bots/calibration.py ---
 """
-Измеренная сила ботов (таск 10.4): результат scripts/calibrate_bots.py в calibration.json рядом.
+Measured strength of the bots (task 10.4): the result of scripts/calibrate_bots.py in calibration.json next to it.
 
-Ключи: id исторического бота ("morphy") или "archetype:<имя>". Если бот ещё не калиброван,
-берётся заявленный рейтинг — и это видно по полю measured=False.
+Keys: id of a historical bot ("morphy") or "archetype:<name>". If a bot is not calibrated yet,
+the declared rating is taken — and this is visible in the field measured=False.
 
-Данные: calibration.json (поля meta и players: ключ → rating, games, ci95) и журналы прогонов в
-scripts/calibration_runs/. Читают их src/api/bots.py и src/api/public.py (страница «Как мы измеряем силу ботов») и
-memory.py (начальный рейтинг бота).
+Data: calibration.json (fields meta and players: key → rating, games, ci95) and the run logs in
+scripts/calibration_runs/. They are read by src/api/bots.py and src/api/public.py (the page "How we measure bot strength") and
+memory.py (the bot's initial rating).
 """
 
 import json
@@ -16,17 +16,18 @@ from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 
-# Результат последней калибровки (его пишет scripts/calibrate_bots.py).
+# The result of the latest calibration (written by scripts/calibrate_bots.py).
 CALIBRATION_PATH = Path(__file__).resolve().parent / "calibration.json"
-# Журналы прогонов калибровки (таск 24.3, страница «Как мы измеряем силу ботов»): что с чем играло и чем кончилось.
+# Calibration run logs (task 24.3, the page "How we measure bot strength"): who played whom and how it ended.
 RUNS_DIR = Path(__file__).resolve().parents[3] / "scripts" / "calibration_runs"
-# Допустимое имя журнала: ГГГГ-ММ-ДД_название.log (протокол) или .pgn (партии); других файлов страница не отдаёт.
+# Valid log name: YYYY-MM-DD_name.log (protocol) or .pgn (games); the page serves no other files.
 RUN_NAME = re.compile(r"^(\d{4}-\d{2}-\d{2})_([a-z0-9_]{1,60})\.(log|pgn)$")
 
 
 @dataclass(frozen=True)
 class Strength:
-    """Сила бота: рейтинг, измерен ли он матчами (measured), число партий и 95 %-й доверительный интервал (±)."""
+    """Bot strength: rating, whether it was measured by matches (measured), number of games and the 95 % confidence interval
+    (+-)."""
 
     rating: int
     measured: bool
@@ -36,7 +37,7 @@ class Strength:
 
 @lru_cache(maxsize=1)
 def load_calibration() -> dict:
-    """Содержимое calibration.json, кэш на процесс; нет файла или он испорчен — пустой набор {meta: None, players: {}}."""
+    """Contents of calibration.json, cached per process; file missing or corrupt — an empty set {meta: None, players: {}}."""
     try:
         return json.loads(CALIBRATION_PATH.read_text(encoding="utf-8"))
     except (OSError, ValueError):
@@ -44,7 +45,7 @@ def load_calibration() -> dict:
 
 
 def strength_of(key: str, declared: int) -> Strength:
-    """Сила бота по ключу: измеренная из калибровки или, если её нет, заявленная declared (measured=False)."""
+    """Bot strength by key: measured from calibration or, if there is none, the declared one (measured=False)."""
     entry = load_calibration().get("players", {}).get(key)
     if not entry:
         return Strength(rating=declared, measured=False)
@@ -54,7 +55,7 @@ def strength_of(key: str, declared: int) -> Strength:
 
 
 def runs() -> list[dict]:
-    """Журналы прогонов, от новых к старым: имя файла, дата, вид (log — протокол, pgn — партии) и размер."""
+    """Run logs, newest to oldest: file name, date, kind (log — protocol, pgn — games) and size."""
     if not RUNS_DIR.is_dir():
         return []
     found = []
@@ -67,7 +68,7 @@ def runs() -> list[dict]:
 
 
 def read_run(name: str) -> str | None:
-    """Текст журнала по имени из runs(); имя сверяется с шаблоном — путь наружу папки не уводит."""
+    """Log text by a name from runs(); the name is checked against a pattern — the path cannot leave the folder."""
     if not RUN_NAME.match(name):
         return None
     path = RUNS_DIR / name

@@ -1,7 +1,7 @@
 # --- FILE: tests/test_assets_licensing.py ---
 """
-Ассеты в репозитории совпадают с записями о лицензиях: набор фигур, портрет или звук нельзя
-добавить, не вписав автора и лицензию (ATTRIBUTION.md, конфиг интерфейса, манифест портретов).
+Assets in the repository match the license records: a piece set, a portrait or a sound cannot be
+added without recording the author and license (ATTRIBUTION.md, the interface config, the portrait manifest).
 """
 
 import importlib.util
@@ -32,7 +32,7 @@ LICENSED_SETS = {**piece_script.PIECE_SETS, **piece_script.DERIVED_SETS, **piece
 
 def test_only_licensed_piece_sets_are_shipped():
     on_disk = {path.name for path in (ASSETS / "pieces").iterdir()}
-    assert on_disk == set(LICENSED_SETS), "в pieces/ есть набор без записи о лицензии (или запись без набора)"
+    assert on_disk == set(LICENSED_SETS), "pieces/ has a set without a license record (or a record without a set)"
 
 
 @pytest.mark.parametrize("set_name", sorted(LICENSED_SETS))
@@ -59,7 +59,7 @@ def test_every_portrait_has_a_free_license_record():
     credits = json.loads((ROOT / "frontend" / "src" / "config" / "portraitCredits.json").read_text(encoding="utf-8"))
     portraits = {path.stem for path in (ASSETS / "champions").iterdir()}
 
-    assert portraits == set(credits), "портрет без записи об источнике (или запись без файла)"
+    assert portraits == set(credits), "a portrait without a source record (or a record without a file)"
     for player_id, credit in credits.items():
         assert portrait_script.is_free_license(credit["license"]), f"{player_id}: {credit['license']}"
         assert credit["author"] and credit["source_url"].startswith("https://commons.wikimedia.org/")
@@ -73,14 +73,14 @@ def test_bundled_bot_portraits_are_copies_of_the_licensed_ones():
 
 
 def test_no_recorded_audio_or_unlisted_textures():
-    """Звуки синтезируются; записи (у прежних не было свободной лицензии) в проект не возвращаются."""
+    """Sounds are synthesized; recordings (the previous ones had no free license) do not come back into the project."""
     frontend = ROOT / "frontend"
     audio = [
         path for folder in ("public", "src") for path in (frontend / folder).rglob("*")
         if path.suffix.lower() in {".mp3", ".ogg", ".wav", ".m4a", ".flac"}
     ]
     assert audio == []
-    # Текстуры — только собственные процедурные SVG (таск 18.1), каждая записана в ATTRIBUTION.md.
+    # Textures — only our own procedural SVGs (task 18.1), each recorded in ATTRIBUTION.md.
     textures = sorted((ASSETS / "textures").iterdir()) + sorted((ASSETS / "patterns").iterdir())
     assert textures and all(path.suffix == ".svg" for path in textures)
     for path in textures:
@@ -104,7 +104,7 @@ def test_free_license_filter(license_name, is_free):
 
 
 def test_portraits_are_real_jpeg_files():
-    """Расширение совпадает с содержимым: Викисклад отдаёт PNG для PNG-оригиналов, скрипт перекодирует."""
+    """The extension matches the content: Wikimedia Commons serves PNG for PNG originals, the script re-encodes."""
     for portrait in (ASSETS / "champions").iterdir():
         assert portrait.read_bytes().startswith(portrait_script.JPEG_MAGIC), portrait.name
 
@@ -120,5 +120,5 @@ def test_non_jpeg_download_is_converted():
     converted = portrait_script.as_jpeg(png.getvalue())
 
     assert converted.startswith(portrait_script.JPEG_MAGIC)
-    assert Image.open(BytesIO(converted)).getpixel((0, 0)) == (255, 255, 255)  # прозрачность -> белый фон
-    assert portrait_script.as_jpeg(converted) is converted  # JPEG не трогаем
+    assert Image.open(BytesIO(converted)).getpixel((0, 0)) == (255, 255, 255)  # transparency -> white background
+    assert portrait_script.as_jpeg(converted) is converted  # do not touch JPEG

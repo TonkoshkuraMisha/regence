@@ -1,216 +1,216 @@
-# Каталог тактических приёмов и тем упражнений
+# Catalog of tactical techniques and exercise themes
 
-Рабочий документ разработки (на русском). Это **реестр тем**, по которым строятся задачи, уроки, тренажёры,
-«карта слабых мест» игрока и подбор упражнений. Каталог расширяемый: новые темы и задачи добавляются по ходу
-разработки, не ломая уже сделанного (порядок — в конце документа).
+Development working document (in English). This is the **registry of themes** from which puzzles, lessons, trainers,
+the player's "weak spots map" and the selection of exercises are built. The catalog is extensible: new themes and puzzles are added as
+development proceeds, without breaking what is already done (the procedure is at the end of the document).
 
-## Как устроена тема
+## How a theme is structured
 
-У каждой темы:
+Each theme has:
 
-* **код** (`snake_case`, английский) — неизменный ключ в базе, API и каталогах сообщений;
-* **название и объяснение** на трёх языках — в каталогах (`themes.<код>.name`, `.short`, `.explain`), не в коде;
-* **раздел** (A–L ниже) и **родитель** (например, «вилка конём» → «вилка»);
-* **источник разметки**: детектор мотивов (таск 11.1) — `D`; тег открытой базы задач lichess — `L` (соответствие
-  тегов проверяется при импорте, таск 13.1); только ручная разметка — `M`;
-* **цель** (таск 27.8): `mate`, `material`, `promotion`, `invasion`, `draw`, `tempo` — классификация «приём × цель».
-  У темы цель задана, если приём служит одной цели (маты, «спасите партию», проходные); у остальных её задаёт задача:
-  цель задачи выводится из её тем (мат > ничья > превращение > материал), тренировка по приёмам принимает `goal`;
-* **ступени**: 1 — знакомство (приём в чистом виде, 1 ход), 2 — закрепление (2–3 хода, одна помеха),
-  3 — в сочетании с другим приёмом, 4 — мастер (длинный расчёт, тихий ход, защита соперника);
-* **минимум задач** на каждую ступень для запуска темы (по умолчанию 25 / 25 / 20 / 15; тема без минимума
-  в выдачу «по теме» не попадает, но её задачи участвуют в смешанных подборках).
+* a **code** (`snake_case`, English) - an immutable key in the database, API and message catalogs;
+* a **name and explanation** in three languages - in the catalogs (`themes.<code>.name`, `.short`, `.explain`), not in code;
+* a **section** (A-L below) and a **parent** (for example, "knight fork" → "fork");
+* a **tagging source**: the motif detector (task 11.1) - `D`; a tag of the open lichess puzzle database - `L` (the correspondence of
+  tags is checked at import, task 13.1); manual tagging only - `M`;
+* a **goal** (task 27.8): `mate`, `material`, `promotion`, `invasion`, `draw`, `tempo` - the "technique × goal" classification.
+  A theme has a goal set when the technique serves a single goal (mates, "save the game", passed pawns); for the others the puzzle sets it:
+  the puzzle's goal is derived from its themes (mate > draw > promotion > material), and training by technique accepts `goal`;
+* **steps**: 1 - introduction (the technique in pure form, 1 move), 2 - consolidation (2-3 moves, one obstacle),
+  3 - combined with another technique, 4 - master (long calculation, a quiet move, the opponent's defense);
+* a **minimum of puzzles** for each step to launch the theme (by default 25 / 25 / 20 / 15; a theme without the minimum
+  does not appear in the "by theme" selection, but its puzzles take part in mixed selections).
 
-## A. Двойной удар
+## A. Double attack
 
-| Код | Приём | Разметка |
+| Code | Technique | Tagging |
 |---|---|---|
-| `fork` | Вилка — одна фигура нападает на две цели | D, L |
-| `fork_knight` | Вилка конём (в т. ч. «семейная» — король, ферзь, ладья) | D |
-| `fork_pawn` | Вилка пешкой | D |
-| `fork_bishop` | Вилка слоном | D |
-| `fork_rook` | Вилка ладьёй | D |
-| `fork_queen` | Вилка ферзём (в т. ч. угроза мата + фигура) | D |
-| `fork_king` | Вилка королём | D |
-| `double_attack` | Двойная угроза разными средствами (ход создаёт две угрозы, не обязательно одной фигурой) | D, M |
-| `double_check` | Двойной шах | D, L |
+| `fork` | Fork - one piece attacks two targets | D, L |
+| `fork_knight` | Knight fork (including the "family" fork - king, queen, rook) | D |
+| `fork_pawn` | Pawn fork | D |
+| `fork_bishop` | Bishop fork | D |
+| `fork_rook` | Rook fork | D |
+| `fork_queen` | Queen fork (including a mate threat + a piece) | D |
+| `fork_king` | King fork | D |
+| `double_attack` | A double threat by different means (a move creates two threats, not necessarily with one piece) | D, M |
+| `double_check` | Double check | D, L |
 
-## B. Линейные удары
+## B. Line strikes
 
-| Код | Приём | Разметка |
+| Code | Technique | Tagging |
 |---|---|---|
-| `pin` | Связка: абсолютная (на короля) и относительная | D, L |
-| `pin_exploit` | Использование связки — нападение на связанную фигуру | D |
-| `skewer` | Сквозной удар (линейный удар) | D, L |
-| `x_ray` | Рентген — действие сквозь фигуру | D, L |
-| `discovered_attack` | Вскрытое нападение | D, L |
-| `discovered_check` | Вскрытый шах | D |
-| `windmill` | «Мельница» — серия вскрытых шахов | M |
-| `battery` | Батарея: ферзь + ладья / ферзь + слон, сдвоение ладей | D |
+| `pin` | Pin: absolute (against the king) and relative | D, L |
+| `pin_exploit` | Exploiting a pin - attacking the pinned piece | D |
+| `skewer` | Skewer (a line strike through a piece) | D, L |
+| `x_ray` | X-ray - acting through a piece | D, L |
+| `discovered_attack` | Discovered attack | D, L |
+| `discovered_check` | Discovered check | D |
+| `windmill` | "Windmill" - a series of discovered checks | M |
+| `battery` | Battery: queen + rook / queen + bishop, doubling rooks | D |
 
-## C. Устранение защиты
+## C. Removing the defense
 
-| Код | Приём | Разметка |
+| Code | Technique | Tagging |
 |---|---|---|
-| `remove_defender` | Уничтожение защитника | D, L |
-| `deflection` | Отвлечение — защитник уводится с поста | D, L |
-| `decoy` | Завлечение — фигура соперника вынуждена встать на роковое поле | D, L |
-| `overload` | Перегрузка — одна фигура защищает две вещи | D |
-| `undermining` | Подрыв — удар по основанию защиты (часто пешкой) | M |
-| `interference` | Перекрытие линии защиты | D, L |
-| `clearance` | Освобождение поля или линии (жертвой или темпом) | L, M |
-| `intermezzo` | Промежуточный ход | L |
-| `quiet_move` | Тихий ход в комбинации | L |
-| `desperado` | Отчаянная фигура — продаёт себя подороже | M |
-| `hanging_piece` | Незащищённая фигура — взять или защитить | D, L |
+| `remove_defender` | Destroying the defender | D, L |
+| `deflection` | Deflection - the defender is led away from its post | D, L |
+| `decoy` | Decoy - the opponent's piece is forced onto a fatal square | D, L |
+| `overload` | Overload - one piece defends two things | D |
+| `undermining` | Undermining - a strike at the base of the defense (often with a pawn) | M |
+| `interference` | Interference with the line of defense | D, L |
+| `clearance` | Clearing a square or a line (by a sacrifice or a tempo) | L, M |
+| `intermezzo` | Intermediate move | L |
+| `quiet_move` | A quiet move in a combination | L |
+| `desperado` | Desperado piece - sells itself as dearly as possible | M |
+| `hanging_piece` | Hanging piece - capture it or defend it | D, L |
 
-## D. Ловля, ограничение, особые позиции
+## D. Trapping, restriction, special positions
 
-| Код | Приём | Разметка |
+| Code | Technique | Tagging |
 |---|---|---|
-| `trapped_piece` | Ловля фигуры | D, L |
-| `domination` | Доминация — фигуре некуда пойти | M |
-| `zugzwang` | Цугцванг | L |
-| `perpetual_check` | Вечный шах (спасение) | M |
-| `stalemate_trick` | Патовая спасительная комбинация | M |
-| `fortress` | Крепость | M |
-| `en_passant` | Взятие на проходе в тактике | L |
-| `castling_tactic` | Тактика с рокировкой (длинная рокировка с шахом, запрет рокировки) | L, M |
-| `perpetual_attack` | Вечное нападение на фигуру (спасение, цель — ничья) | M |
+| `trapped_piece` | Trapping a piece | D, L |
+| `domination` | Domination - the piece has nowhere to go | M |
+| `zugzwang` | Zugzwang | L |
+| `perpetual_check` | Perpetual check (a rescue) | M |
+| `stalemate_trick` | A stalemate rescue combination | M |
+| `fortress` | Fortress | M |
+| `en_passant` | En passant capture in tactics | L |
+| `castling_tactic` | Tactics with castling (long castling with check, a ban on castling) | L, M |
+| `perpetual_attack` | Perpetual attack on a piece (a rescue, the goal is a draw) | M |
 
-## E. Пешки
+## E. Pawns
 
-| Код | Приём | Разметка |
+| Code | Technique | Tagging |
 |---|---|---|
-| `promotion` | Превращение | L |
-| `underpromotion` | Слабое превращение (в коня — с шахом/вилкой, в ладью/слона — избегая пата) | L |
-| `pawn_breakthrough` | Пешечный прорыв | M |
-| `pawn_race` | Гонка пешек | M |
-| `advanced_pawn` | Далеко продвинутая пешка как сила атаки | L |
-| `passed_pawn_support` | Поддержка/остановка проходной | M |
+| `promotion` | Promotion | L |
+| `underpromotion` | Underpromotion (to a knight - with check/fork, to a rook/bishop - avoiding stalemate) | L |
+| `pawn_breakthrough` | Pawn breakthrough | M |
+| `pawn_race` | Pawn race | M |
+| `advanced_pawn` | A far-advanced pawn as an attacking force | L |
+| `passed_pawn_support` | Supporting/stopping a passed pawn | M |
 
-## F. Матовые конструкции
+## F. Mating patterns
 
-| Код | Конструкция | Разметка |
+| Code | Pattern | Tagging |
 |---|---|---|
-| `mate_in_1` … `mate_in_5` | Мат в N ходов (общая тренировка расчёта; `mate_in_5` — 5 и более, как тег `mateIn5` базы) | L, D |
-| `back_rank_mate` | Мат по последней горизонтали | D, L |
-| `smothered_mate` | Спёртый мат | L |
-| `anastasia_mate` | Мат Анастасии (конь + ладья по краю) | L |
-| `arabian_mate` | Арабский мат (ладья + конь в углу) | L |
-| `boden_mate` | Мат Бодена (два слона крест-накрест) | L |
-| `double_bishop_mate` | Мат двумя слонами в атаке | L |
-| `dovetail_mate` | «Ласточкин хвост» | L |
-| `epaulette_mate` | «Эполетный» мат | M |
-| `hook_mate` | Мат «крюком» (ладья + конь + пешка) | L |
-| `opera_mate` | Мат «как в опере» (ладья + слон по краю) | M |
-| `legal_mate` | Мат Легаля | M |
-| `greco_mate` | Мат Греко | M |
-| `damiano_mate` | Мат Дамиано | M |
-| `lolli_mate` | Мат Лолли | M |
-| `pillsbury_mate` | Мат Пильсбери | M |
-| `morphy_mate` | Мат Морфи (слон + ладья) | M |
-| `blackburne_mate` | Мат Блэкберна | M |
-| `corridor_mate` | Мат «в коридоре» | M |
-| `queen_kiss_mate` | «Поцелуй ферзя» — мат ферзём вплотную при поддержке | M |
-| `vukovic_mate` | Мат Вуковича (ладья + конь) | L |
+| `mate_in_1` … `mate_in_5` | Mate in N moves (general calculation training; `mate_in_5` - 5 or more, like the database tag `mateIn5`) | L, D |
+| `back_rank_mate` | Back-rank mate | D, L |
+| `smothered_mate` | Smothered mate | L |
+| `anastasia_mate` | Anastasia's mate (knight + rook on the edge) | L |
+| `arabian_mate` | Arabian mate (rook + knight in the corner) | L |
+| `boden_mate` | Boden's mate (two bishops crossing) | L |
+| `double_bishop_mate` | Double bishop mate in an attack | L |
+| `dovetail_mate` | Dovetail mate | L |
+| `epaulette_mate` | Epaulette mate | M |
+| `hook_mate` | Hook mate (rook + knight + pawn) | L |
+| `opera_mate` | Opera mate (rook + bishop on the edge) | M |
+| `legal_mate` | Légal's mate | M |
+| `greco_mate` | Greco's mate | M |
+| `damiano_mate` | Damiano's mate | M |
+| `lolli_mate` | Lolli's mate | M |
+| `pillsbury_mate` | Pillsbury's mate | M |
+| `morphy_mate` | Morphy's mate (bishop + rook) | M |
+| `blackburne_mate` | Blackburne's mate | M |
+| `corridor_mate` | Corridor mate | M |
+| `queen_kiss_mate` | "Queen's kiss" - a mate by the queen right next to the king with support | M |
+| `vukovic_mate` | Vuković's mate (rook + knight) | L |
 
-## G. Атака на короля
+## G. Attack on the king
 
-| Код | Приём | Разметка |
+| Code | Technique | Tagging |
 |---|---|---|
-| `greek_gift` | Жертва слона на h7/h2 | M |
-| `double_bishop_sacrifice` | Жертва двух слонов на h7 и g7 | M |
-| `f7_f2_attack` | Атака на f7/f2 (в т. ч. ранняя) | L |
-| `exposed_king` | Атака на открытого/нерокированного короля | L |
-| `kingside_attack` / `queenside_attack` | Атака на рокировку | L |
-| `rook_lift` | Подключение ладьи по горизонтали | M |
-| `pawn_storm` | Пешечный штурм при разносторонних рокировках | M |
-| `sacrifice` | Жертва вообще (материал за атаку) | L |
+| `greek_gift` | Bishop sacrifice on h7/h2 | M |
+| `double_bishop_sacrifice` | Sacrifice of two bishops on h7 and g7 | M |
+| `f7_f2_attack` | Attack on f7/f2 (including early) | L |
+| `exposed_king` | Attack on an exposed/uncastled king | L |
+| `kingside_attack` / `queenside_attack` | Attack on the castled position | L |
+| `rook_lift` | Bringing a rook in along the rank | M |
+| `pawn_storm` | Pawn storm with opposite-side castling | M |
+| `sacrifice` | Sacrifice in general (material for an attack) | L |
 
-## H. Дебютные ловушки и ошибки
+## H. Opening traps and mistakes
 
-| Код | Приём | Разметка |
+| Code | Technique | Tagging |
 |---|---|---|
-| `opening_trap` | Ловушка в дебюте (общая тема) | M |
-| `early_queen` | Наказание раннего выхода ферзя | M |
-| `trap_noahs_ark` | «Ноев ковчег» — ловля слона пешками | M |
-| `trap_fishing_pole` | «Удочка» | M |
-| `trap_elephant` | «Слоновья ловушка» | M |
-| `trap_lasker` | Ловушка Ласкера | M |
-| `trap_scholars_mate` | Детский мат и защита от него | M |
-| `development_lag` | Наказание отставания в развитии | D, M |
+| `opening_trap` | A trap in the opening (general theme) | M |
+| `early_queen` | Punishing an early queen development | M |
+| `trap_noahs_ark` | "Noah's Ark" - trapping a bishop with pawns | M |
+| `trap_fishing_pole` | "Fishing pole" | M |
+| `trap_elephant` | "Elephant trap" | M |
+| `trap_lasker` | Lasker's trap | M |
+| `trap_scholars_mate` | Scholar's mate and the defense against it | M |
+| `development_lag` | Punishing a lag in development | D, M |
 
-## I. Защита (задачи «за обороняющегося»)
+## I. Defense (puzzles "for the defender")
 
-| Код | Приём | Разметка |
+| Code | Technique | Tagging |
 |---|---|---|
-| `find_the_threat` | Найди угрозу соперника (что он хочет?) | D |
-| `defensive_move` | Единственная защита | L |
-| `counterattack` | Защита контратакой | M |
-| `save_by_perpetual` | Спасение вечным шахом | M |
-| `save_by_stalemate` | Спасение патом | M |
-| `blunder_check` | «Не зевни»: из трёх естественных ходов только один не проигрывает | D |
+| `find_the_threat` | Find the opponent's threat (what does he want?) | D |
+| `defensive_move` | The only defense | L |
+| `counterattack` | Defense by counterattack | M |
+| `save_by_perpetual` | Rescue by perpetual check | M |
+| `save_by_stalemate` | Rescue by stalemate | M |
+| `blunder_check` | "Don't blunder": of three natural moves only one does not lose | D |
 
-## J. Эндшпильная техника
+## J. Endgame technique
 
-| Код | Приём | Разметка |
+| Code | Technique | Tagging |
 |---|---|---|
-| `opposition` | Оппозиция (прямая, дальняя, диагональная) | M |
-| `triangulation` | Треугольник | M |
-| `square_rule` | Правило квадрата | M |
-| `key_squares` | Ключевые поля | M |
-| `outflanking` / `shouldering` | Обход, отталкивание плечом | M |
-| `lucena` | Позиция Лусены | M |
-| `philidor_position` | Позиция Филидора | M |
-| `rook_behind_passer` | Ладья позади проходной | M |
-| `wrong_bishop` | «Не тот» слон | M |
-| `opposite_bishops` | Разноцветные слоны (защита) | M |
-| `rook_vs_minor` | Ладья против слона или коня (защита) | M |
-| `basic_mates` | Мат ферзём, ладьёй, двумя слонами, слоном и конём | M |
+| `opposition` | Opposition (direct, distant, diagonal) | M |
+| `triangulation` | Triangulation | M |
+| `square_rule` | The rule of the square | M |
+| `key_squares` | Key squares | M |
+| `outflanking` / `shouldering` | Outflanking, shouldering | M |
+| `lucena` | Lucena position | M |
+| `philidor_position` | Philidor position | M |
+| `rook_behind_passer` | Rook behind the passed pawn | M |
+| `wrong_bishop` | The "wrong" bishop | M |
+| `opposite_bishops` | Opposite-colored bishops (defense) | M |
+| `rook_vs_minor` | Rook against bishop or knight (defense) | M |
+| `basic_mates` | Mate with the queen, rook, two bishops, bishop and knight | M |
 
-## K. Расчёт и сочетание приёмов
+## K. Calculation and combining techniques
 
-| Код | Приём | Разметка |
+| Code | Technique | Tagging |
 |---|---|---|
-| `combination` | Комбинация из двух и более приёмов (у задачи — несколько тем) | L, D |
-| `long_calculation` | Длинный форсированный вариант (5+ ходов) | L |
-| `equality` | Задача «спастись»: лучший ход ведёт к равенству | L |
-| `candidate_moves` | Найти все сильные ходы-кандидаты | M |
-| `tempo_gain` | Выигрыш темпа: полезный ход с угрозой | M |
-| `unstoppable_threat` | Неотвратимая угроза (тихий ход без защиты) | M |
-| `critical_position` | Критическая позиция: момент, где решается партия | M |
+| `combination` | A combination of two or more techniques (a puzzle has several themes) | L, D |
+| `long_calculation` | A long forcing variation (5+ moves) | L |
+| `equality` | A "save yourself" puzzle: the best move leads to equality | L |
+| `candidate_moves` | Find all strong candidate moves | M |
+| `tempo_gain` | Gaining a tempo: a useful move with a threat | M |
+| `unstoppable_threat` | Unstoppable threat (a quiet move with no defense) | M |
+| `critical_position` | Critical position: the moment where the game is decided | M |
 
-## L. Позиционные темы (упражнения «выбери план»)
+## L. Positional themes ("choose a plan" exercises)
 
-| Код | Тема | Разметка |
+| Code | Theme | Tagging |
 |---|---|---|
-| `outpost` | Опорный пункт для коня | M |
-| `open_file` | Захват открытой линии | D |
-| `seventh_rank` | Ладья на 7-й горизонтали | D |
-| `bad_bishop` | Плохой слон, размен «хорошего на плохого» | M |
-| `weak_squares` | Слабые поля, «дыры» | M |
-| `isolated_pawn` | Игра против изолированной пешки / с ней | M |
-| `minority_attack` | Атака меньшинства | M |
-| `piece_improvement` | Улучшение худшей фигуры | M |
-| `prophylaxis` | Профилактика | M |
-| `exchange_choice` | Какой размен правильный | M |
-| `blockade` | Блокада проходной или изолированной пешки | M |
-| `overprotection` | Сверхзащита ключевого пункта | M |
-| `centralization` | Централизация фигур | M |
-| `pawn_chain` | Пешечная цепь и атака её основания | M |
-| `restriction` | Ограничение фигур и пешечных прорывов соперника | M |
-| `bishop_pair` | Преимущество двух слонов | M |
+| `outpost` | An outpost for a knight | M |
+| `open_file` | Seizing an open file | D |
+| `seventh_rank` | Rook on the 7th rank | D |
+| `bad_bishop` | Bad bishop, exchanging "good for bad" | M |
+| `weak_squares` | Weak squares, "holes" | M |
+| `isolated_pawn` | Playing against / with an isolated pawn | M |
+| `minority_attack` | Minority attack | M |
+| `piece_improvement` | Improving the worst piece | M |
+| `prophylaxis` | Prophylaxis | M |
+| `exchange_choice` | Which exchange is correct | M |
+| `blockade` | Blockade of a passed or isolated pawn | M |
+| `overprotection` | Overprotection of a key point | M |
+| `centralization` | Centralization of pieces | M |
+| `pawn_chain` | Pawn chain and attack on its base | M |
+| `restriction` | Restricting the opponent's pieces and pawn breaks | M |
+| `bishop_pair` | Advantage of the two bishops | M |
 
-## Как добавлять
+## How to add
 
-1. **Новая тема**: запись в реестре `src/services/themes.py` (код, раздел, родитель, источники разметки, теги
-   lichess, коды детектора) + ключи `themes.<код>.name / .short / .explain` во всех трёх каталогах
-   (`frontend/src/i18n/messages/*.ts`; объяснение — 2–4 предложения, как тренер ученику) + строка в этом документе.
-   `tests/test_themes.py` проверяет коды, разделы, родителей, тексты на трёх языках и то, что тема есть здесь.
-   Клиент получает реестр через `GET /api/v1/themes`; тема без текстов у старого клиента просто не показывается.
-2. **Новые задачи**: импорт из открытой базы по тегу (`L`), автоматическая разметка детектором (`D`) или файл
-   ручных задач в репозитории (`M`: FEN, решение, темы, ступень, источник). Скрипт проверки (в CI): ходы легальны,
-   решение единственно (движок офлайн: лучший ход опережает второй на ≥ 200 сп или единственный ведёт к мату),
-   заявленная тема подтверждается детектором там, где он умеет её видеть.
-3. Тема попадает в выдачу «по теме», когда набран минимум задач на ступень; до того — только в смешанные подборки.
+1. **A new theme**: an entry in the registry `src/services/themes.py` (code, section, parent, tagging sources, lichess
+   tags, detector codes) + the keys `themes.<code>.name / .short / .explain` in all three catalogs
+   (`frontend/src/i18n/messages/*.ts`; the explanation is 2-4 sentences, as a coach to a student) + a row in this document.
+   `tests/test_themes.py` checks the codes, sections, parents, texts in three languages and that the theme is present here.
+   The client receives the registry through `GET /api/v1/themes`; a theme without texts is simply not shown by an old client.
+2. **New puzzles**: import from the open database by tag (`L`), automatic tagging by the detector (`D`) or a file
+   of manual puzzles in the repository (`M`: FEN, solution, themes, step, source). A check script (in CI): the moves are legal,
+   the solution is unique (the engine offline: the best move leads the second by >= 200 cp or is the only one leading to mate),
+   the stated theme is confirmed by the detector where it can see it.
+3. A theme enters the "by theme" selection when the minimum of puzzles per step is reached; until then, only in mixed selections.

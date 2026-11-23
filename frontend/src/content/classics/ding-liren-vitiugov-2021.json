@@ -1202,12 +1202,10 @@
   }
  ],
  "intro": {
-  "ru": "Староиндийская защита. Больше 35 ходов позиция держится в равновесии, пока чёрные не ошибаются ходом 37...Rd8.",
   "uk": "Староіндійський захист. Понад 35 ходів позиція тримається в рівновазі, доки чорні не помиляються ходом 37...Rd8.",
   "en": "A King's Indian Defence. For more than 35 moves the position stays balanced — until Black errs with 37...Rd8."
  },
  "summary": {
-  "ru": "Белые сразу переходят к активным действиям: проходная 39.c7, шахи ферзём 42.Qd5+ и 43.Qxe5+ — и партия заканчивается матом двумя ферзями (57.Qexf7#). Урок: в равной позиции терпение окупается — но одну неточность соперника нужно использовать сразу.",
   "uk": "Білі одразу переходять до активних дій: прохідний 39.c7, шахи ферзем 42.Qd5+ і 43.Qxe5+ — і партія закінчується матом двома ферзями (57.Qexf7#). Урок: у рівній позиції терпіння окупається — але одну неточність суперника треба використати одразу.",
   "en": "White switches to action at once: the passed pawn 39.c7, queen checks 42.Qd5+ and 43.Qxe5+ — and the game ends in mate with two queens (57.Qexf7#). Lesson: patience pays off in a level position — but a single inaccuracy by the opponent must be punished immediately."
  }

@@ -1,11 +1,11 @@
 """
-«Миниатюры» (таск 27.9): короткие партии библиотеки, закончившиеся матом на доске. Упражнение — позиция перед
-последним ходом: найти мат (засчитывается любой матующий ход). Движок не нужен: мат проверяет python-chess.
+"Miniatures" (task 27.9): short library games that ended in mate on the board. The exercise is the position before
+the last move: find the mate (any mating move is accepted). No engine is needed: python-chess verifies the mate.
 
-Данные: таблица library_games. Отбор делает маршрут GET /library/miniatures (src/api/library.py): публичные партии
-с обычной начальной позиции, с признаком mate_finish и не длиннее MAX_PLIES полуходов, в случайном порядке; этот
-модуль перепроверяет каждую по ходам и строит задание. Ответ (ход партии) уходит клиенту — упражнение без рейтинга,
-проверка на клиенте.
+Data: the library_games table. Selection is done by the route GET /library/miniatures (src/api/library.py): public games
+from the ordinary starting position, with the mate_finish flag and no longer than MAX_PLIES plies, in random order; this
+module re-checks each one by its moves and builds the task. The answer (the game's move) goes to the client - the exercise
+has no rating, verification is on the client.
 """
 
 import random
@@ -13,21 +13,22 @@ from dataclasses import dataclass
 
 import chess
 
-MAX_PLIES = 50  # до 25 ходов
+MAX_PLIES = 50  # up to 25 moves
 
 
 @dataclass(frozen=True)
 class Miniature:
     game_id: int
     fen: str
-    moves: list[str]  # ходы партии до позиции задания
-    answer: str  # ход партии (UCI)
+    moves: list[str]  # moves of the game up to the task position
+    answer: str  # the game's move (UCI)
 
 
 def miniature(game_id: int, moves_text: str) -> Miniature | None:
     """
-    Партия — миниатюра, если последний ход дал мат. moves_text — ходы партии в UCI через пробел (library_games.moves).
-    None — партия длиннее MAX_PLIES, короче двух полуходов, с нечитаемым или нелегальным ходом либо без мата в конце.
+    A game is a miniature if the last move gave mate. moves_text is the game's moves in UCI separated by spaces
+    (library_games.moves). None - the game is longer than MAX_PLIES, shorter than two plies, has an unreadable or
+    illegal move, or has no mate at the end.
     """
     moves = moves_text.split()
     if not 2 <= len(moves) <= MAX_PLIES:
@@ -49,7 +50,7 @@ def miniature(game_id: int, moves_text: str) -> Miniature | None:
 
 
 def pick(rows: list[tuple[int, str]], count: int, rng: random.Random) -> list[Miniature]:
-    """Не больше count миниатюр из строк (id партии, ходы) в случайном порядке; rng с seed делает набор повторяемым."""
+    """At most count miniatures from rows (game id, moves) in random order; an rng with a seed makes the set reproducible."""
     found = [m for m in (miniature(game_id, moves) for game_id, moves in rows) if m is not None]
     rng.shuffle(found)
     return found[:count]

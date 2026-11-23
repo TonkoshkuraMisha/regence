@@ -1,21 +1,21 @@
 // --- FILE: frontend/src/services/conferences.ts ---
-// Конференции (таск 33.6): Кубок конференций за сезон и страна игрока в профиле. Правила и таблица стран — на
-// сервере (src/services/conferences.py); клиент получает таблицу «страна → конференция» вместе со страницей.
-// Названия стран не хранятся в каталогах переводов: их даёт браузер (Intl.DisplayNames) на языке интерфейса.
-// Эндпоинты (src/api/conferences.py): GET /api/v1/conferences — страница, PUT /api/v1/conferences/me — страна.
+// Conferences (task 33.6): the Conference Cup for the season and the player's country in the profile. The rules and the country table are on
+// the server (src/services/conferences.py); the client gets the «country → conference» table together with the page.
+// Country names are not stored in the translation catalogs: the browser provides them (Intl.DisplayNames) in the UI language.
+// Endpoints (src/api/conferences.py): GET /api/v1/conferences — the page, PUT /api/v1/conferences/me — the country.
 
 import type {ConferenceKey} from './arenas';
 import {apiRequest} from './http';
 
-/** Строка Кубка конференций: сумма зачётов конференции по аренам сезона. */
+/** Conference Cup row: the sum of the conference's standings across the season's arenas. */
 export interface CupRow {
     conference: ConferenceKey;
     score: number;
-    /** В скольких аренах сезона конференция набрала очки. */
+    /** In how many of the season's arenas the conference scored points. */
     arenas: number;
 }
 
-/** Матч конференций в списке страницы (conferences.matches на сервере): счёт — победа 1, ничья ½. */
+/** Conference match in the page list (conferences.matches on the server): score — win 1, draw ½. */
 export interface MatchRow {
     arena_id: number;
     home: ConferenceKey;
@@ -24,49 +24,49 @@ export interface MatchRow {
     status: 'scheduled' | 'running' | 'closing' | 'finished';
     home_score: number;
     guest_score: number;
-    /** Сколько игроков обеих конференций записалось. */
+    /** How many players of both conferences signed up. */
     players: number;
 }
 
-/** Страна и конференция вошедшего игрока (users.country на сервере; конференцию определяет страна). */
+/** Country and conference of the joined player (users.country on the server; the conference is determined by the country). */
 export interface Membership {
-    /** Код страны ISO 3166-1 alpha-2 из профиля; null — не указана. */
+    /** ISO 3166-1 alpha-2 country code from the profile; null — not specified. */
     country: string | null;
     conference: ConferenceKey | null;
-    /** Можно ли в этом сезоне сменить конференцию (одна смена за сезон). */
+    /** Whether the conference can be changed this season (one change per season). */
     can_change: boolean;
 }
 
-/** Ответ GET /api/v1/conferences: Кубок за сезон, справочники для выбора страны и данные вошедшего игрока. */
+/** Response of GET /api/v1/conferences: the season's Cup, reference data for choosing a country and the joined player's data. */
 export interface ConferencesData {
-    /** Сезон «ГГГГ-ММ» — календарный месяц. */
+    /** Season «YYYY-MM» — a calendar month. */
     season: string;
-    /** Сколько лучших игроков конференции идёт в зачёт арены. */
+    /** How many of a conference's best players count toward the arena standings. */
     top_players: number;
     table: CupRow[];
-    /** Матчи конференций сезона и ближайшие. */
+    /** Conference matches of the season and the nearest ones. */
     matches?: MatchRow[];
-    /** Пять конференций и зона времени (IANA), по местному времени которой составлено расписание её арен. */
+    /** The five conferences and the time zone (IANA) by whose local time the schedule of their arenas is built. */
     conferences: { key: ConferenceKey; timezone: string }[];
-    /** Код страны → конференция: все страны, которые можно выбрать. */
+    /** Country code → conference: all countries that can be chosen. */
     countries: Record<string, ConferenceKey>;
-    /** Страна, которую назвал прокси перед сервером, — только подсказка. */
+    /** Country named by the proxy in front of the server — only a hint. */
     suggested_country: string | null;
-    /** null — запрос без входа. */
+    /** null — request without login. */
     me: Membership | null;
 }
 
-/** Запрос к /api/v1/conferences через общую обёртку http.ts (токен, JSON, ошибки). */
+/** Request to /api/v1/conferences through the shared http.ts wrapper (token, JSON, errors). */
 const call = <T>(path: string, init: RequestInit = {}) => apiRequest<T>(`/conferences${path}`, init);
 
 export const conferencesApi = {
-    /** Страница конференций за текущий сезон (параметр season сервер принимает, но клиент его не передаёт). */
+    /** Conferences page for the current season (the server accepts a season parameter but the client does not pass it). */
     page: () => call<ConferencesData>(''),
-    /** null — убрать страну из профиля. */
+    /** null — remove the country from the profile. */
     setCountry: (country: string | null) => call<Membership>('/me', {method: 'PUT', body: JSON.stringify({country})}),
 };
 
-/** Название страны на языке интерфейса; если браузер его не знает — сам код. */
+/** Country name in the UI language; if the browser does not know it — the code itself. */
 export function countryName(code: string, language: string): string {
     try {
         return new Intl.DisplayNames([language], {type: 'region'}).of(code) ?? code;
@@ -75,7 +75,7 @@ export function countryName(code: string, language: string): string {
     }
 }
 
-/** Страна из языка браузера («uk-UA» → UA) — запасная подсказка, когда сервер страну не назвал. */
+/** Country from the browser language («uk-UA» → UA) — a fallback hint when the server did not name a country. */
 export function localeCountry(languages: readonly string[] = navigator.languages ?? [navigator.language ?? '']): string | null {
     for (const tag of languages) {
         const region = /^[a-z]{2,3}[-_]([A-Za-z]{2})\b/.exec(tag)?.[1];

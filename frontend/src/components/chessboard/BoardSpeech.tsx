@@ -1,8 +1,8 @@
 // --- FILE: frontend/src/components/chessboard/BoardSpeech.tsx ---
-// Доступность доски (таск 26.3): последний ход объявляется словами в живой области (aria-live) — программа чтения
-// экрана произносит каждый ход, свой и соперника; кнопка «Позиция словами» показывает расстановку текстом. Слова —
-// services/a11y/speech.ts. В игре вслепую (blind) описание позиции недоступно: оно раскрыло бы скрытые фигуры, а ходы
-// объявляются — их и так называют вслух при игре вслепую.
+// Board accessibility (task 26.3): the last move is announced in words in a live region (aria-live), so a screen reader
+// speaks every move, the player's and the opponent's; the "Position in words" button shows the setup as text. The words are in
+// services/a11y/speech.ts. In blindfold play (blind) the position description is unavailable: it would reveal hidden pieces, while moves
+// are announced, as they are spoken aloud in blindfold play anyway.
 
 import {useState} from 'react';
 import {Volume2} from 'lucide-react';
@@ -11,11 +11,11 @@ import {moveWords, positionWords} from '../../services/a11y/speech';
 import type {BoardPiece, Translate, VerboseMove} from '../../services/a11y/speech';
 
 interface Props {
-    /** Последний ход партии (chess.js verbose); null — ходов ещё нет. */
+    /** Last move of the game (chess.js verbose); null means no moves yet. */
     lastMove: VerboseMove | null;
-    /** Показываемая позиция (chess.js board()). */
+    /** Displayed position (chess.js board()). */
     board: (BoardPiece | null)[][];
-    /** Идёт игра вслепую: позицию словами не показывать. */
+    /** Blindfold play is on: do not show the position in words. */
     blind: boolean;
 }
 

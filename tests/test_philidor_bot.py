@@ -14,7 +14,7 @@ from src.services.bots.philidor import (
 
 
 def test_philidor_plays_philidor_defense_as_black():
-    """Проверяем, что на 1. e4 e5 2. Nf3 Филидор всегда отвечает своей защитой 2... d6."""
+    """Check that after 1. e4 e5 2. Nf3 Philidor always answers with his own defence, 2... d6."""
     bot = PhilidorBot(stockfish_path=None)
     board = chess.Board()
     for san in ["e4", "e5", "Nf3"]:
@@ -26,7 +26,7 @@ def test_philidor_plays_philidor_defense_as_black():
 
 
 def test_philidor_dislikes_blocking_c_pawn_with_knight():
-    """Проверяем, что стилевой фильтр штрафует ход Nc3 при пешке на c2 и поощряет c2-c3."""
+    """Check that the style filter penalises Nc3 with a pawn on c2 and rewards c2-c3."""
     board = chess.Board()
     for san in ["e4", "e5", "Bc4", "Bc5"]:
         board.push_san(san)
@@ -40,7 +40,7 @@ def test_philidor_dislikes_blocking_c_pawn_with_knight():
 
 
 def test_philidor_middlegame_move_generation():
-    """Проверяем генерацию хода Филидора в миттельшпиле вне дебютной книги."""
+    """Check Philidor move generation in the middlegame, outside the opening book."""
     bot = PhilidorBot(stockfish_path=None)
     board = chess.Board("r1bqk2r/ppp2ppp/2np1n2/2b1p3/2B1P3/2PP1N2/PP3PPP/RNBQK2R w KQkq - 1 6")
 
@@ -51,7 +51,7 @@ def test_philidor_middlegame_move_generation():
 
 @pytest.mark.asyncio
 async def test_philidor_api_move_endpoint():
-    """Проверяем REST-эндпоинт /api/v1/bots/move для игры с Филидором."""
+    """Check the REST endpoint /api/v1/bots/move for a game against Philidor."""
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         list_resp = await client.get("/api/v1/bots/list")

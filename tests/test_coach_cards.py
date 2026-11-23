@@ -1,8 +1,9 @@
 # --- FILE: tests/test_coach_cards.py ---
 """
-«Клубный тренер» после партии (задача 5 плана 18.11, src/services/coach_cards.py): через настоящий запрос
-GET /learn/after-game/{id} — самая дорогая личная задача партии без решения, отклонение от репертуара, темы ошибки
-для урока; чужая и незаконченная партия — 404. Плюс чистое правило выбора отклонения.
+"Club coach" after a game (task 5 of the 18.11 plan, src/services/coach_cards.py): through a real request
+GET /learn/after-game/{id} - the most expensive personal puzzle of the game without a solution,
+repertoire deviation, mistake themes
+for the lesson; someone else's or an unfinished game gives 404. Plus the pure deviation-selection rule.
 """
 
 import pytest
@@ -41,13 +42,13 @@ async def test_cards_after_a_finished_game(client, games, token_user_1, token_us
 
     body = client.get(f"{API}/{games['done']}", headers=auth(token_user_1)).json()
     assert body["game_id"] == games["done"] and body["analysed"] is True
-    # Самая дорогая ошибка (потеря 420) — и задача, и темы урока; решение не уходит клиенту.
+    # Most expensive mistake (loss of 420) - both the puzzle and the lesson themes; the solution is not sent to the client.
     assert body["puzzle"]["ply"] == 9 and "solution" not in body["puzzle"]
     assert body["lesson_themes"] == ["pin", "hanging_piece"]
     assert (body["deviation"]["kind"], body["deviation"]["played"], body["deviation"]["expected"]) == \
         ("you_left", "Bc4", ["Bb5"])
 
-    # Соперник: своих задач и репертуаров нет — пустые карточки, но партия своя.
+    # Opponent: no puzzles or repertoires of their own - empty cards, but the game is theirs.
     other = client.get(f"{API}/{games['done']}", headers=auth(token_user_2)).json()
     assert (other["puzzle"], other["deviation"], other["lesson_themes"]) == (None, None, [])
 

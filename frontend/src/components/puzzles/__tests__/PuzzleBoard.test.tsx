@@ -1,6 +1,6 @@
-// Доска задач: все способы сделать ход — перетаскиванием и двумя щелчками; особые ходы (рокировка, взятие на проходе,
-// превращение с выбором фигуры, со взятием), запреты (чужая фигура, связка, шах, не своя очередь, неинтерактивная
-// доска), отмена и перевыбор, смена позиции посреди хода, ориентация за чёрных, режим выбора поля (13.6).
+// The puzzle board: every way to make a move — by dragging and by two clicks; special moves (castling, en passant,
+// promotion with a piece choice, with a capture), prohibitions (an opponent's piece, a pin, check, not your turn, a non-interactive
+// board), cancelling and re-selecting, a position change mid-move, Black's orientation, the square-pick mode (13.6).
 
 import {act, fireEvent, render, screen} from '@testing-library/react';
 import {afterEach, describe, expect, it, vi} from 'vitest';
@@ -32,7 +32,7 @@ const click = (name: string) => act(() => {
     fireEvent.click(cell(name));
 });
 
-/** Перетаскивание: нажатие на поле from, движение указателя, отпускание над полем to (или вне доски — null). */
+/** Dragging: press on square from, pointer movement, release over square to (or off the board — null). */
 function drag(from: string, to: string | null, {button = 0, pointerType = 'mouse', cancel = false} = {}) {
     const target = to ? cell(to) : null;
     document.elementsFromPoint = vi.fn(() => (target ? [target.firstElementChild ?? target, target] : [document.body]));
@@ -55,8 +55,8 @@ afterEach(() => {
     vi.restoreAllMocks();
 });
 
-describe('ход двумя щелчками', () => {
-    it('фигура, затем поле', () => {
+describe('move by two clicks', () => {
+    it('a piece, then a square', () => {
         const {onMove} = setup();
         click('e2');
         expect(targets()).toEqual(['e3', 'e4']);
@@ -65,7 +65,7 @@ describe('ход двумя щелчками', () => {
         expect(targets()).toEqual([]);
     });
 
-    it('конь: два поля в начальной позиции', () => {
+    it('knight: two squares in the starting position', () => {
         const {onMove} = setup();
         click('g1');
         expect(targets()).toEqual(['f3', 'h3']);
@@ -73,7 +73,7 @@ describe('ход двумя щелчками', () => {
         expect(onMove).toHaveBeenCalledWith('g1h3');
     });
 
-    it('другая своя фигура — выбор переключается; пустое поле — снимает выбор', () => {
+    it('another own piece — the selection switches; an empty square — clears the selection', () => {
         const {onMove} = setup();
         click('e2');
         click('d2');
@@ -83,20 +83,20 @@ describe('ход двумя щелчками', () => {
         expect(onMove).not.toHaveBeenCalled();
     });
 
-    it('чужая фигура не выбирается', () => {
+    it('an opponent\'s piece is not selected', () => {
         setup();
         click('e7');
         expect(targets()).toEqual([]);
     });
 
-    it('недопустимое поле не ходит и не снимает лишнего: выбор пропадает', () => {
+    it('an illegal square neither moves nor clears anything extra: the selection disappears', () => {
         const {onMove} = setup();
         click('e2');
         click('e5');
         expect(onMove).not.toHaveBeenCalled();
     });
 
-    it('взятие щелчком', () => {
+    it('capture by click', () => {
         const {onMove} = setup({fen: CAPTURE});
         click('e4');
         expect(targets()).toEqual(['d5', 'e5']);
@@ -105,14 +105,14 @@ describe('ход двумя щелчками', () => {
     });
 });
 
-describe('ход перетаскиванием', () => {
-    it('пешка на два поля', () => {
+describe('move by dragging', () => {
+    it('a pawn two squares', () => {
         const {onMove} = setup();
         drag('e2', 'e4');
         expect(onMove).toHaveBeenCalledWith('e2e4');
     });
 
-    it('конь и взятие', () => {
+    it('knight and a capture', () => {
         const {onMove} = setup({fen: CAPTURE});
         drag('g1', 'f3');
         expect(onMove).toHaveBeenLastCalledWith('g1f3');
@@ -120,14 +120,14 @@ describe('ход перетаскиванием', () => {
         expect(onMove).toHaveBeenLastCalledWith('e4d5');
     });
 
-    it('касание пальцем и перо работают так же, как мышь', () => {
+    it('touch and pen work the same as the mouse', () => {
         const {onMove} = setup();
         drag('e2', 'e4', {pointerType: 'touch'});
         drag('d2', 'd4', {pointerType: 'pen'});
         expect(onMove.mock.calls).toEqual([['e2e4'], ['d2d4']]);
     });
 
-    it('отпустили на том же поле — фигура выбрана, ход заканчивается щелчком', () => {
+    it('released on the same square — the piece is selected, the move is finished by a click', () => {
         const {onMove} = setup();
         drag('e2', 'e2');
         expect(onMove).not.toHaveBeenCalled();
@@ -136,35 +136,35 @@ describe('ход перетаскиванием', () => {
         expect(onMove).toHaveBeenCalledWith('e2e3');
     });
 
-    it('на недопустимое поле — хода нет', () => {
+    it('onto an illegal square — no move', () => {
         const {onMove} = setup();
         drag('e2', 'e5');
         drag('g1', 'g3');
         expect(onMove).not.toHaveBeenCalled();
     });
 
-    it('мимо доски и отмена жеста — хода нет', () => {
+    it('off the board and cancelling the gesture — no move', () => {
         const {onMove} = setup();
         drag('e2', null);
         drag('e2', 'e4', {cancel: true});
         expect(onMove).not.toHaveBeenCalled();
     });
 
-    it('правая кнопка мыши и чужая фигура перетаскивание не начинают', () => {
+    it('the right mouse button and an opponent\'s piece do not start dragging', () => {
         const {onMove} = setup();
         drag('e2', 'e4', {button: 2});
         drag('e7', 'e5');
-        drag('e4', 'e5');  // пустое поле
+        drag('e4', 'e5');  // an empty square
         expect(onMove).not.toHaveBeenCalled();
     });
 
-    it('фигура «прилипает» к указателю, исходное поле приглушено; после хода — пропадает', () => {
+    it('the piece "sticks" to the pointer, the source square is dimmed; after the move — it disappears', () => {
         setup();
         document.elementsFromPoint = vi.fn(() => [cell('e4')]);
         act(() => {
             fireEvent.pointerDown(cell('e2'), {button: 0, pointerType: 'mouse', clientX: 10, clientY: 10});
         });
-        expect(screen.queryByTestId('puzzle-drag-piece')).toBeNull();  // ещё не сдвинули — это может быть щелчок
+        expect(screen.queryByTestId('puzzle-drag-piece')).toBeNull();  // not moved yet — it may be a click
         act(() => {
             fireEvent.pointerMove(window, {clientX: 60, clientY: 70});
         });
@@ -179,11 +179,11 @@ describe('ход перетаскиванием', () => {
     });
 });
 
-describe('особые ходы', () => {
+describe('special moves', () => {
     it.each([
         ['e1', 'g1', 'e1g1'],
         ['e1', 'c1', 'e1c1'],
-    ])('рокировка %s→%s щелчками и перетаскиванием', (from, to, uci) => {
+    ])('castling %s→%s by clicks and by dragging', (from, to, uci) => {
         const {onMove, unmount} = setup({fen: CASTLING});
         click(from);
         expect(targets()).toContain(to);
@@ -195,7 +195,7 @@ describe('особые ходы', () => {
         expect(second.onMove).toHaveBeenLastCalledWith(uci);
     });
 
-    it('взятие на проходе', () => {
+    it('en passant', () => {
         const {onMove} = setup({fen: EN_PASSANT});
         click('e5');
         expect(targets()).toEqual(['d6', 'e6']);
@@ -203,11 +203,11 @@ describe('особые ходы', () => {
         expect(onMove).toHaveBeenCalledWith('e5d6');
     });
 
-    it.each(['q', 'r', 'b', 'n'])('превращение щелчками: выбор фигуры %s', (piece) => {
+    it.each(['q', 'r', 'b', 'n'])('promotion by clicks: piece choice %s', (piece) => {
         const {onMove} = setup({fen: PROMOTION});
         click('a7');
         click('a8');
-        expect(onMove).not.toHaveBeenCalled();  // сначала — выбор фигуры
+        expect(onMove).not.toHaveBeenCalled();  // first — the piece choice
         expect(screen.getByRole('dialog')).toBeTruthy();
         act(() => {
             fireEvent.click(screen.getByTestId(`puzzle-promote-${piece}`));
@@ -216,7 +216,7 @@ describe('особые ходы', () => {
         expect(screen.queryByRole('dialog')).toBeNull();
     });
 
-    it('превращение со взятием перетаскиванием', () => {
+    it('promotion with a capture by dragging', () => {
         const {onMove} = setup({fen: PROMOTION});
         drag('a7', 'b8');
         act(() => {
@@ -225,7 +225,7 @@ describe('особые ходы', () => {
         expect(onMove).toHaveBeenCalledWith('a7b8n');
     });
 
-    it('пока открыт выбор фигуры, доска не принимает других ходов', () => {
+    it('while the piece choice is open, the board accepts no other moves', () => {
         const {onMove} = setup({fen: PROMOTION});
         drag('a7', 'a8');
         click('e1');
@@ -234,24 +234,24 @@ describe('особые ходы', () => {
     });
 });
 
-describe('правила на доске', () => {
-    it('связанная фигура ходит только вдоль связки', () => {
+describe('rules on the board', () => {
+    it('a pinned piece moves only along the pin', () => {
         setup({fen: PINNED});
         click('e2');
-        expect(targets()).toEqual([]);  // слон на e2 связан ладьёй e7 — ходов нет
+        expect(targets()).toEqual([]);  // the bishop on e2 is pinned by the rook on e7 — no moves
     });
 
-    it('под шахом — только ходы, которые от него спасают', () => {
+    it('in check — only moves that save from it', () => {
         const {onMove} = setup({fen: IN_CHECK});
         click('h1');
-        expect(targets()).toEqual([]);  // конь не закрывает шах
+        expect(targets()).toEqual([]);  // the knight does not block the check
         drag('h1', 'g3');
         expect(onMove).not.toHaveBeenCalled();
         click('e1');
         expect(targets()).toEqual(['d2', 'e2', 'f2']);
     });
 
-    it('неинтерактивная доска: ни выбора, ни перетаскивания', () => {
+    it('a non-interactive board: no selection, no dragging', () => {
         const {onMove} = setup({interactive: false});
         click('e2');
         drag('e2', 'e4');
@@ -259,7 +259,7 @@ describe('правила на доске', () => {
         expect(onMove).not.toHaveBeenCalled();
     });
 
-    it('не своя очередь: фигуры другого цвета не двигаются', () => {
+    it('not your turn: pieces of the other colour do not move', () => {
         const {onMove} = setup({fen: BLACK_TO_MOVE});
         drag('d2', 'd4');
         expect(onMove).not.toHaveBeenCalled();
@@ -268,8 +268,8 @@ describe('правила на доске', () => {
     });
 });
 
-describe('смена позиции', () => {
-    it('выбор из прошлой позиции не действует в новой', () => {
+describe('position change', () => {
+    it('a selection from the previous position does not apply in the new one', () => {
         const {onMove, rerender} = setup();
         click('e2');
         rerender(<PuzzleBoard fen={BLACK_TO_MOVE} orientation="white" interactive onMove={onMove}/>);
@@ -278,7 +278,7 @@ describe('смена позиции', () => {
         expect(onMove).not.toHaveBeenCalled();
     });
 
-    it('позиция сменилась посреди перетаскивания — хода нет', () => {
+    it('the position changed mid-drag — no move', () => {
         const {onMove, rerender} = setup();
         document.elementsFromPoint = vi.fn(() => [cell('e4')]);
         act(() => {
@@ -295,8 +295,8 @@ describe('смена позиции', () => {
     });
 });
 
-describe('ориентация и отметки', () => {
-    it('за чёрных доска перевёрнута, ход работает', () => {
+describe('orientation and marks', () => {
+    it('for Black the board is flipped, the move works', () => {
         const {onMove} = setup({fen: BLACK_TO_MOVE, orientation: 'black'});
         const order = Array.from(document.querySelectorAll('[data-square]')).map((el) => el.getAttribute('data-square'));
         expect(order[0]).toBe('h1');
@@ -305,7 +305,7 @@ describe('ориентация и отметки', () => {
         expect(onMove).toHaveBeenCalledWith('g8f6');
     });
 
-    it('последний ход, подсказка и отметка ✓/✗', () => {
+    it('the last move, a hint and the ✓/✗ mark', () => {
         setup({lastMove: {from: 'e2', to: 'e4'}, hint: {from: 'g1', to: 'f3'}, mark: {square: 'f3', ok: false}});
         expect(screen.getByTestId('puzzle-hint-g1')).toBeTruthy();
         expect(screen.getByTestId('puzzle-hint-f3')).toBeTruthy();
@@ -313,14 +313,14 @@ describe('ориентация и отметки', () => {
     });
 });
 
-describe('выбор поля (защитные упражнения)', () => {
-    it('щелчок сообщает поле; перетаскивания и ходов нет', () => {
+describe('square pick (defence exercises)', () => {
+    it('a click reports the square; no dragging and no moves', () => {
         const onSquare = vi.fn();
         const {onMove} = setup({onSquare});
         click('f2');
         click('e7');
         drag('e2', 'e4');
-        // Жест перетаскивания здесь — не ход и не выбор поля (щелчок браузер пришлёт отдельно, если он был).
+        // The drag gesture here is neither a move nor a square pick (the browser will send the click separately, if there was one).
         expect(onSquare.mock.calls.map((c) => c[0])).toEqual(['f2', 'e7']);
         expect(screen.queryByTestId('puzzle-drag-piece')).toBeNull();
         expect(onMove).not.toHaveBeenCalled();
@@ -328,8 +328,8 @@ describe('выбор поля (защитные упражнения)', () => {
     });
 });
 
-describe('PuzzleBoard: звуки', () => {
-    it('ход из прошлой позиции — звук по нотации, новая позиция без хода и пример без звука — тишина', async () => {
+describe('PuzzleBoard: sounds', () => {
+    it('a move from the previous position — a sound by notation, a new position without a move and an example without sound — silence', async () => {
         const {soundEngine} = await import('../../../services/soundEngine');
         const play = vi.spyOn(soundEngine, 'play').mockImplementation(() => undefined);
         const onMove = vi.fn();
@@ -340,7 +340,7 @@ describe('PuzzleBoard: звуки', () => {
 
         rerender(<PuzzleBoard fen="4k3/8/8/8/8/8/8/4K2R w K - 0 1" orientation="white" interactive onMove={onMove}
                               lastMove={{from: 'e2', to: 'e4'}}/>);
-        expect(play).toHaveBeenCalledTimes(1);  // другая задача, а не ход
+        expect(play).toHaveBeenCalledTimes(1);  // a different puzzle, not a move
 
         rerender(<PuzzleBoard fen="4k3/8/8/8/8/8/8/4K2R w K - 0 1" orientation="white" interactive onMove={onMove}
                               mark={{square: 'h1', ok: false}}/>);
@@ -353,14 +353,14 @@ describe('PuzzleBoard: звуки', () => {
     });
 });
 
-describe('доска с клавиатуры (таск 26.3)', () => {
-    it('клетки — кнопки с подписью; Tab входит в одну клетку; стрелки переводят фокус; Enter — как щелчок', () => {
+describe('board from the keyboard (task 26.3)', () => {
+    it('squares are buttons with a label; Tab enters one square; arrows move the focus; Enter — like a click', () => {
         setLanguage('en', {persist: false});
         const {onMove} = setup();
         expect(cell('e2')).toHaveAttribute('role', 'button');
         expect(cell('e2')).toHaveAttribute('aria-label', 'e2, white pawn');
         expect(cell('e4')).toHaveAttribute('aria-label', 'e4, empty');
-        // В порядок Tab входит одна клетка — левая верхняя на экране (a8 у белых).
+        // One square enters the Tab order — the top left one on screen (a8 for White).
         expect(document.querySelectorAll('[data-square][tabindex="0"]')).toHaveLength(1);
         expect(cell('a8')).toHaveAttribute('tabindex', '0');
 
@@ -375,15 +375,15 @@ describe('доска с клавиатуры (таск 26.3)', () => {
         expect(onMove).toHaveBeenCalledWith('e2e4');
     });
 
-    it('за чёрных: Tab входит в левую верхнюю клетку экрана, стрелки идут по экрану', () => {
+    it('for Black: Tab enters the top-left square of the screen, arrows follow the screen', () => {
         setup({fen: BLACK_TO_MOVE, orientation: 'black'});
-        expect(cell('h1')).toHaveAttribute('tabindex', '0');  // левая верхняя у перевёрнутой доски
+        expect(cell('h1')).toHaveAttribute('tabindex', '0');  // top left for a flipped board
         act(() => cell('e7').focus());
-        fireEvent.keyDown(cell('e7'), {key: 'ArrowDown'});  // вниз по экрану — к восьмой горизонтали
+        fireEvent.keyDown(cell('e7'), {key: 'ArrowDown'});  // down the screen — towards the eighth rank
         expect(document.activeElement).toBe(cell('e8'));
     });
 
-    it('неинтерактивная доска: подписи есть, кнопок и фокуса нет', () => {
+    it('a non-interactive board: labels are present, buttons and focus are not', () => {
         setup({interactive: false});
         expect(cell('e2')).toHaveAttribute('aria-label');
         expect(cell('e2')).not.toHaveAttribute('role');

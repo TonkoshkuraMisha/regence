@@ -1,11 +1,11 @@
 # --- FILE: docker-compose.prod.yml ---
-# Продакшен: docker compose -f docker-compose.prod.yml up -d --build
-# Настройки и секреты — в .env (шаблон .env.example, инструкция — DEPLOY.md).
+# Production: docker compose -f docker-compose.prod.yml up -d --build
+# Settings and secrets are in .env (template .env.example, instructions - DEPLOY.md).
 #
-# Наружу открыт только web (nginx, порт 80): API, БД и Redis доступны лишь внутри сети compose.
-# Поэтому API может доверять X-Forwarded-For от любого адреса этой сети (FORWARDED_ALLOW_IPS).
+# Only web (nginx, port 80) is exposed outside: the API, DB and Redis are reachable only inside the compose network.
+# So the API may trust X-Forwarded-For from any address of this network (FORWARDED_ALLOW_IPS).
 
-# Имя проекта задано явно: тома и сеть называются regence_*, а не по имени папки.
+# The project name is set explicitly: volumes and the network are named regence_*, not after the folder name.
 name: regence
 
 x-backend: &backend
@@ -19,7 +19,7 @@ x-backend: &backend
     REDIS_HOST: redis
     REDIS_PORT: "6379"
   restart: unless-stopped
-  # Консоль контейнера — json-строки src/core/logging_setup.py; драйвер хранит 5 файлов по 20 МБ и ротирует их сам.
+  # Container console - json lines from src/core/logging_setup.py; the driver keeps 5 files of 20 MB and rotates them itself.
   logging:
     driver: json-file
     options:
@@ -44,7 +44,7 @@ services:
 
   redis:
     image: redis:7.4-alpine
-    # AOF: состояние идущих партий и очередь Celery переживают перезапуск Redis.
+    # AOF: the state of running games and the Celery queue survive a Redis restart.
     command: ["redis-server", "--appendonly", "yes"]
     volumes:
       - redis_data:/data
@@ -55,7 +55,7 @@ services:
       retries: 20
     restart: unless-stopped
 
-  # Одноразовый сервис: применяет миграции до старта API и воркера и загружает базу задач (повторно — безопасно).
+  # One-off service: applies migrations before the API and workers start and loads the puzzle database (re-running is safe).
   migrate:
     <<: *backend
     command: ["sh", "-c", "alembic upgrade head && python -m scripts.import_puzzles"]
@@ -74,8 +74,8 @@ services:
       REDIS_PORT: "6379"
       WEB_CONCURRENCY: ${WEB_CONCURRENCY:-2}
       FORWARDED_ALLOW_IPS: "*"
-      # Метрики Prometheus суммируются по всем процессам uvicorn через файлы в этом каталоге.
-      # tmpfs очищается при каждом старте контейнера — значения умерших процессов не копятся.
+      # Prometheus metrics are summed over all uvicorn processes through files in this directory.
+      # tmpfs is cleared on every container start - values of dead processes do not accumulate.
       PROMETHEUS_MULTIPROC_DIR: /tmp/prometheus
     tmpfs:
       - /tmp/prometheus:mode=1777
@@ -91,22 +91,22 @@ services:
       retries: 6
       start_period: 20s
 
-  # Фоновый анализ завершённых партий (Stockfish).
+  # Background analysis of finished games (Stockfish).
   worker:
     <<: *backend
     command: ["celery", "-A", "src.worker.celery_app", "worker", "--loglevel=INFO",
               "--concurrency=${CELERY_CONCURRENCY:-2}", "-Q", "analysis", "-n", "analysis@%h"]
-    # Метрики фонового анализа (время движка) — на worker:9101/metrics; свой tmpfs, а не общий с api: номера
-    # процессов в контейнерах совпадают (src/core/observability.start_worker_metrics_server).
-    # environment сервиса заменяет общий целиком (слияние YAML неглубокое), поэтому общий подмешан явно.
+    # Background analysis metrics (engine time) - on worker:9101/metrics; its own tmpfs, not shared with api: process
+    # numbers in containers coincide (src/core/observability.start_worker_metrics_server).
+    # The service environment replaces the shared one entirely (YAML merge is shallow), so the shared one is mixed in explicitly.
     environment: &worker-metrics
       <<: *backend-env
       WORKER_METRICS_PORT: "9101"
       PROMETHEUS_MULTIPROC_DIR: /tmp/prometheus
     tmpfs:
       - /tmp/prometheus:mode=1777
-    # Stockfish занимает все доступные ядра; без предела анализ партий отбирает CPU у API, и при
-    # массовом завершении партий p95 задержки хода вырастал с ~70 до ~230 мс (scripts/loadtest).
+    # Stockfish takes all available cores; without a limit, game analysis takes CPU from the API, and on
+    # mass game completion the move-latency p95 grew from ~70 to ~230 ms (scripts/loadtest).
     cpus: ${WORKER_CPUS:-1.0}
     depends_on:
       migrate:
@@ -114,8 +114,8 @@ services:
       redis:
         condition: service_healthy
 
-  # Партии ботов между собой в турнирах (таск 15.2) — отдельная очередь и отдельный воркер (таск A.4): турнир на 8
-  # (до 28 партий) не задерживает разбор партий игроков. Одна партия за раз и свой предел CPU.
+  # Bot-vs-bot games in tournaments (task 15.2) - a separate queue and a separate worker (task A.4): a tournament of 8
+  # (up to 28 games) does not delay the analysis of player games. One game at a time and its own CPU limit.
   worker-simulation:
     <<: *backend
     command: ["celery", "-A", "src.worker.celery_app", "worker", "--loglevel=INFO",
@@ -130,8 +130,8 @@ services:
       redis:
         condition: service_healthy
 
-  # Плановые задачи Celery (DEPLOY.md, раздел 8в): напоминание о разминке раз в день, самоигра ботов каждые
-  # 6 часов, напоминания о начале арен каждую минуту. Один процесс beat на весь стек.
+  # Celery scheduled tasks (DEPLOY.md, section 8c): a daily warm-up reminder, bot self-play every
+  # 6 hours, arena start reminders every minute. One beat process for the whole stack.
   beat:
     <<: *backend
     command: ["celery", "-A", "src.worker.celery_app", "beat", "--loglevel=INFO", "--schedule=/tmp/celerybeat-schedule"]
@@ -142,8 +142,8 @@ services:
       redis:
         condition: service_healthy
 
-  # Резервные копии БД: pg_dump сразу при старте и затем каждые BACKUP_INTERVAL_HOURS часов
-  # в папку хоста BACKUP_DIR; копии старше BACKUP_KEEP_DAYS дней удаляются (DEPLOY.md, раздел 5).
+  # Database backups: pg_dump right at start and then every BACKUP_INTERVAL_HOURS hours
+  # into the host folder BACKUP_DIR; copies older than BACKUP_KEEP_DAYS days are deleted (DEPLOY.md, section 5).
   backup:
     image: postgres:16-alpine
     entrypoint: ["sh", "/usr/local/bin/pg_backup.sh"]
@@ -165,10 +165,10 @@ services:
         condition: service_completed_successfully
     restart: unless-stopped
 
-  # Копия снимков вне сервера (rclone: S3, Backblaze B2, Google Drive, SFTP и др.). Включается профилем:
+  # Off-server copy of snapshots (rclone: S3, Backblaze B2, Google Drive, SFTP, etc.). Enabled by a profile:
   #   docker compose -f docker-compose.prod.yml --profile offsite up -d
-  # Хранилище `offsite` описывается переменными RCLONE_CONFIG_OFFSITE_* в .env (DEPLOY, раздел 5); пока их нет,
-  # сервис не нужен. Копируются только готовые regence_*.dump: `.partial` и служебные файлы не попадают.
+  # The `offsite` remote is described by RCLONE_CONFIG_OFFSITE_* variables in .env (DEPLOY, section 5); until they exist,
+  # the service is not needed. Only finished regence_*.dump files are copied: `.partial` and service files are skipped.
   backup-offsite:
     image: rclone/rclone:1.68.2
     profiles: ["offsite"]
@@ -190,9 +190,9 @@ services:
     build:
       context: ./frontend
       args:
-        VITE_SENTRY_DSN: ${VITE_SENTRY_DSN:-}  # Sentry страницы (проект regence-web); пусто — выключен
+        VITE_SENTRY_DSN: ${VITE_SENTRY_DSN:-}  # page Sentry (project regence-web); empty - disabled
       secrets:
-        - sentry_auth_token  # source maps в Sentry при сборке; файл с токеном — SENTRY_AUTH_TOKEN_FILE, по умолчанию пустой
+        - sentry_auth_token  # source maps to Sentry at build time; the token file is SENTRY_AUTH_TOKEN_FILE, empty by default
     image: regence-web:latest
     ports:
       - "${HTTP_PORT:-80}:80"
@@ -201,8 +201,8 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-# Токен загрузки source maps (Sentry → Settings → Auth Tokens, права project:releases и org:read) лежит в файле вне
-# репозитория: SENTRY_AUTH_TOKEN_FILE=/путь/к/файлу. Не задан — пустой файл, карты не создаются.
+# The source-map upload token (Sentry -> Settings -> Auth Tokens, scopes project:releases and org:read) lives in a file outside
+# the repository: SENTRY_AUTH_TOKEN_FILE=/path/to/file. If unset - an empty file, source maps are not produced.
 secrets:
   sentry_auth_token:
     file: ${SENTRY_AUTH_TOKEN_FILE:-./frontend/sentry_token.empty}

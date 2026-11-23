@@ -1,16 +1,16 @@
 """
-Калибровка силы ботов матчами с настоящим Stockfish (таск 10.4). Не для CI: долго и нужен движок.
+Calibration of bot strength by matches against real Stockfish (task 10.4). Not for CI: it is slow and needs the engine.
 
-Каждый бот (7 исторических и 10 архетипов мастерской) играет:
-* с «якорями» — Stockfish с UCI_LimitStrength и фиксированным UCI_Elo (ближайшие к заявленному рейтингу);
-* с соседями по заявленной силе — так слабые боты, которых не с кем сравнить среди якорей (Stockfish
-  слабее 1320 не играет), получают рейтинг по цепочке.
-Каждая пара играет дебютную позицию за обе стороны. Рейтинги подбираются по всем партиям сразу
-(максимум правдоподобия по Эло, якоря зафиксированы — как в Ordo/BayesElo) с лёгким априорным
-«одним ничейным результатом» против заявленного рейтинга, чтобы 0 из N не давало минус бесконечности.
+Each bot (7 historical ones and 10 workshop archetypes) plays:
+* against "anchors" - Stockfish with UCI_LimitStrength and a fixed UCI_Elo (the closest to the declared rating);
+* against neighbours by declared strength - so that weak bots with nobody to compare against among the anchors (Stockfish
+  does not play below 1320) get a rating through the chain.
+Each pair plays the opening position with both colours. Ratings are fitted over all games at once
+(Elo maximum likelihood, anchors fixed - as in Ordo/BayesElo) with a light prior of
+"one drawn result" against the declared rating, so that 0 out of N does not give minus infinity.
 
-Шкала — шкала UCI_Elo Stockfish при нашем контроле времени, а не FIDE: сравнивать с ней можно ботов
-между собой и с якорями. Результат: src/services/bots/calibration.json (рейтинг, партии, ±95 %).
+The scale is the Stockfish UCI_Elo scale at our time control, not FIDE: bots can be compared with it
+among themselves and with the anchors. Result: src/services/bots/calibration.json (rating, games, ±95 %).
 
     python scripts/calibrate_bots.py --rounds 1 --workers 3
     python scripts/calibrate_bots.py --only morphy --rounds 2
@@ -37,12 +37,12 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 ANCHOR_ELOS = (1350, 1600, 1850, 2100, 2400)
-# UCI_Elo в Stockfish откалиброван при контроле 60 с + 0,6 с (≈2 с на ход). При 0,1 с на ход якорь играет
-# заметно слабее своего номинала, и вся шкала уезжает вверх (первый прогон 12.11 — на 250–650 пунктов).
+# UCI_Elo in Stockfish is calibrated at a 60 s + 0.6 s control (≈2 s per move). At 0.1 s per move an anchor plays
+# noticeably weaker than its nominal, and the whole scale drifts upward (the first run on 12.11 - by 250-650 points).
 ANCHOR_MOVETIME_S = 1.0
 MAX_PLIES = 180
 ADJUDICATE_CP = 400
-# Короткие уравновешенные дебюты — чтобы партии одной пары не повторялись ход в ход.
+# Short balanced openings - so that games of one pair do not repeat move for move.
 OPENINGS = (
     "e4 e5 Nf3 Nc6",
     "d4 d5 c4 e6",
@@ -65,7 +65,7 @@ class Spec:
 
 
 def declared_ratings() -> dict[str, int]:
-    """Возвращает словарь заявленных рейтингов исторических ботов и архетипов."""
+    """Returns a dict of declared ratings of the historical bots and archetypes."""
     from src.api.bots import AVAILABLE_BOTS
     from src.services.bots.archetypes import ARCHETYPES
 
@@ -74,19 +74,19 @@ def declared_ratings() -> dict[str, int]:
     return ratings
 
 
-# --- Игроки (создаются в процессе-работнике) ---------------------------------------------------
+# --- Players (created in the worker process) ---------------------------------------------------
 
 _ENGINES: dict[str, chess.engine.SimpleEngine] = {}
 
 
 def _engine(name: str, options: dict) -> chess.engine.SimpleEngine:
-    """Возвращает или запускает экземпляр Stockfish в воркере с нужными опциями."""
+    """Returns or starts a Stockfish instance in the worker with the required options."""
     from src.services.bots.base import resolve_stockfish_path
 
     if name not in _ENGINES:
         path = resolve_stockfish_path()
         if not path:
-            raise SystemExit("Stockfish не найден: python scripts/setup_stockfish.py")
+            raise SystemExit("Stockfish not found: python scripts/setup_stockfish.py")
         engine = chess.engine.SimpleEngine.popen_uci(path)
         engine.configure({"Threads": 1, "Hash": 16, **options})
         _ENGINES[name] = engine
@@ -94,7 +94,7 @@ def _engine(name: str, options: dict) -> chess.engine.SimpleEngine:
 
 
 def _bot(key: str):
-    """Возвращает экземпляр исторического бота или архетипа по его ключу."""
+    """Returns an instance of a historical bot or archetype by its key."""
     from src.services.bots import BOT_INSTANCES
     from src.services.bots.archetypes import ARCHETYPES_BY_KEY
     from src.services.bots.personality import PersonalityBot
@@ -105,7 +105,7 @@ def _bot(key: str):
 
 
 def _move(player: str, board: chess.Board, anchor_movetime: float = ANCHOR_MOVETIME_S) -> chess.Move:
-    """Выбирает ход в калибровочной партии для бота или якоря Stockfish."""
+    """Chooses a move in a calibration game for a bot or a Stockfish anchor."""
     if player.startswith("anchor:"):
         elo = int(player.split(":")[1])
         engine = _engine(player, {"UCI_LimitStrength": True, "UCI_Elo": elo})
@@ -114,7 +114,7 @@ def _move(player: str, board: chess.Board, anchor_movetime: float = ANCHOR_MOVET
 
 
 def _adjudicate(board: chess.Board) -> str:
-    """Незавершённая к MAX_PLIES партия: решает полный Stockfish (перевес больше 4 пешек), иначе ничья."""
+    """A game unfinished by MAX_PLIES: full Stockfish decides (an advantage of more than 4 pawns), otherwise a draw."""
     judge = _engine("judge", {})
     score = judge.analyse(board, chess.engine.Limit(time=0.2))["score"].white().score(mate_score=100000)
     if score is not None and score > ADJUDICATE_CP:
@@ -125,7 +125,7 @@ def _adjudicate(board: chess.Board) -> str:
 
 
 def game_pgn(spec: Spec, board: chess.Board, result: str) -> str:
-    """Партия калибровки в PGN — для метрик стиля (scripts/style_metrics.py)."""
+    """A calibration game in PGN - for style metrics (scripts/style_metrics.py)."""
     game = chess.pgn.Game.from_board(board)
     game.headers.update({
         "Event": "regence calibration", "White": spec.white, "Black": spec.black, "Result": result,
@@ -137,7 +137,7 @@ def game_pgn(spec: Spec, board: chess.Board, result: str) -> str:
 
 
 def play_game(spec: Spec) -> tuple[Spec, str, int, str]:
-    """Разыгрывает одну калибровочную партию между двумя участниками."""
+    """Plays one calibration game between two participants."""
     board = chess.Board()
     for san in OPENINGS[spec.opening % len(OPENINGS)].split():
         board.push_san(san)
@@ -148,13 +148,13 @@ def play_game(spec: Spec) -> tuple[Spec, str, int, str]:
     return spec, result, board.ply(), game_pgn(spec, board, result)
 
 
-# --- Расписание и подбор рейтингов ------------------------------------------------------------
+# --- Schedule and rating fitting ------------------------------------------------------------
 
 def schedule(
         declared: dict[str, int], rounds: int, only: set[str] | None,
         anchors_only: bool = False, anchor_movetime: float = ANCHOR_MOVETIME_S,
 ) -> list[Spec]:
-    """Составляет расписание матчей ботов с якорями Stockfish и соседями по силе."""
+    """Builds the schedule of bot matches against Stockfish anchors and neighbours by strength."""
     bots = sorted(declared, key=lambda k: declared[k])
     specs: list[Spec] = []
     pairs: set[tuple[str, str]] = set()
@@ -164,7 +164,7 @@ def schedule(
         anchors = sorted(ANCHOR_ELOS, key=lambda e: abs(e - declared[bot]))[:3]
         opponents = [f"anchor:{e}" for e in anchors]
         if not anchors_only:
-            opponents += [b for b in bots[max(0, i - 2):i + 3] if b != bot]  # соседи по заявленной силе
+            opponents += [b for b in bots[max(0, i - 2):i + 3] if b != bot]  # neighbours by declared strength
         for opp in opponents:
             pair = tuple(sorted((bot, opp)))
             if pair in pairs:
@@ -180,32 +180,17 @@ SCORES = {"1-0": 1.0, "0-1": 0.0, "1/2-1/2": 0.5}
 _LOG_LINE = re.compile(r"^\[\d+/\d+\] (\S+) — (\S+): (1-0|0-1|1/2-1/2) ")
 
 
-# Первый прогон (12.11) шёл, когда архетипы назывались по-русски, — их ключи в логах переводятся в id.
-LEGACY_ARCHETYPE_KEYS = {
-    "archetype:Торопыга": "archetype:rusher",
-    "archetype:Тихоня": "archetype:quiet",
-    "archetype:Пешечник": "archetype:pawn_keeper",
-    "archetype:Кавалерист": "archetype:cavalier",
-    "archetype:Центровик": "archetype:centralist",
-    "archetype:Крепость": "archetype:fortress",
-    "archetype:Авантюрист": "archetype:adventurer",
-    "archetype:Стратег": "archetype:strategist",
-    "archetype:Охотник": "archetype:hunter",
-    "archetype:Комбинатор": "archetype:combinator",
-}
-
-
 def games_from_log(path: Path, without_anchors: bool = False) -> list[tuple[str, str, float]]:
     """
-    Партии из вывода прошлого прогона: «[n/N] белые — чёрные: результат (… пл.)».
-    without_anchors — только партии ботов между собой: они не зависят от времени якорей.
+    Games from the output of a previous run: "[n/N] white — black: result (… plies)".
+    without_anchors - only bot-vs-bot games: they do not depend on the anchors' time.
     """
     games = []
     for line in path.read_text(encoding="utf-8").splitlines():
         match = _LOG_LINE.match(line)
         if not match:
             continue
-        white, black = (LEGACY_ARCHETYPE_KEYS.get(k, k) for k in (match.group(1), match.group(2)))
+        white, black = match.group(1), match.group(2)
         if without_anchors and (white.startswith("anchor:") or black.startswith("anchor:")):
             continue
         games.append((white, black, SCORES[match.group(3)]))
@@ -213,12 +198,12 @@ def games_from_log(path: Path, without_anchors: bool = False) -> list[tuple[str,
 
 
 def expected(ra: float, rb: float) -> float:
-    """Вычисляет ожидаемую долю очков в партии по классической формуле Эло."""
+    """Computes the expected score share in a game by the classical Elo formula."""
     return 1.0 / (1.0 + 10 ** ((rb - ra) / 400.0))
 
 
 def fit(games: list[tuple[str, str, float]], declared: dict[str, int]) -> dict[str, dict]:
-    """Рейтинги ботов по всем партиям; якоря фиксированы. games: (белые, чёрные, очки белых)."""
+    """Ratings of the bots over all games; anchors are fixed. games: (white, black, white's score)."""
     fixed = {f"anchor:{e}": float(e) for e in ANCHOR_ELOS}
     players = {p for w, b, _ in games for p in (w, b) if p not in fixed}
     rating = {p: float(declared.get(p, 1500)) for p in players}
@@ -234,7 +219,7 @@ def fit(games: list[tuple[str, str, float]], declared: dict[str, int]) -> dict[s
             if b in grad:
                 grad[b] += (1 - s) - (1 - e)
         for p in players:
-            # Априор: одна «ничья» против заявленного рейтинга.
+            # Prior: one "draw" against the declared rating.
             grad[p] += 0.5 - expected(rating[p], declared.get(p, 1500))
             rating[p] += lr * grad[p] / max(1, sum(1 for w, b, _ in games if p in (w, b)))
 
@@ -255,19 +240,19 @@ def fit(games: list[tuple[str, str, float]], declared: dict[str, int]) -> dict[s
 
 
 def main() -> None:
-    """Запускает калибровку силы ботов и сохраняет результат в calibration.json."""
+    """Runs the bot strength calibration and saves the result to calibration.json."""
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--rounds", type=int, default=1, help="Партий каждой пары за каждый цвет")
+    parser.add_argument("--rounds", type=int, default=1, help="Games of each pair per colour")
     parser.add_argument("--workers", type=int, default=3)
-    parser.add_argument("--only", nargs="*", help="Калибровать только этих (id или archetype:<id>)")
+    parser.add_argument("--only", nargs="*", help="Calibrate only these (id or archetype:<id>)")
     parser.add_argument("--out", type=Path, default=OUT)
-    parser.add_argument("--from-log", type=Path, help="Пересчитать рейтинги по логу прошлого прогона, без партий")
-    parser.add_argument("--anchors-only", action="store_true", help="Играть только партии с якорями")
+    parser.add_argument("--from-log", type=Path, help="Recompute ratings from the log of a previous run, without games")
+    parser.add_argument("--anchors-only", action="store_true", help="Play only games against anchors")
     parser.add_argument("--reuse-log", type=Path,
-                        help="Добавить партии ботов между собой из лога прошлого прогона (без его якорей)")
-    parser.add_argument("--anchor-movetime", type=float, default=ANCHOR_MOVETIME_S, help="Секунд на ход якоря")
+                        help="Add bot-vs-bot games from the log of a previous run (without its anchors)")
+    parser.add_argument("--anchor-movetime", type=float, default=ANCHOR_MOVETIME_S, help="Seconds per anchor move")
     parser.add_argument("--pgn", type=Path,
-                        help="Дописывать партии в этот PGN (метрики стиля: scripts/style_metrics.py)")
+                        help="Append games to this PGN (style metrics: scripts/style_metrics.py)")
     args = parser.parse_args()
 
     random.seed(20261112)
@@ -277,32 +262,32 @@ def main() -> None:
     pool = None
     if args.from_log:
         games = games_from_log(args.from_log)
-        print(f"{len(games)} партий из {args.from_log}", flush=True)
+        print(f"{len(games)} games from {args.from_log}", flush=True)
     else:
         specs = schedule(
             declared, args.rounds, set(args.only) if args.only else None,
             anchors_only=args.anchors_only, anchor_movetime=args.anchor_movetime,
         )
-        print(f"{len(specs)} партий, {args.workers} процесса", flush=True)
+        print(f"{len(specs)} games, {args.workers} processes", flush=True)
         games = []
         pool = ProcessPoolExecutor(max_workers=args.workers)
         futures = [pool.submit(play_game, spec) for spec in specs]
         for done, future in enumerate(as_completed(futures), 1):
             spec, result, plies, pgn = future.result()
             games.append((spec.white, spec.black, SCORES[result]))
-            print(f"[{done}/{len(specs)}] {spec.white} — {spec.black}: {result} ({plies} пл.)", flush=True)
+            print(f"[{done}/{len(specs)}] {spec.white} — {spec.black}: {result} ({plies} plies)", flush=True)
             if args.pgn:
                 with args.pgn.open("a", encoding="utf-8") as handle:
                     handle.write(pgn + "\n\n")
 
     if args.reuse_log:
         reused = games_from_log(args.reuse_log, without_anchors=True)
-        print(f"+ {len(reused)} партий ботов между собой из {args.reuse_log}", flush=True)
+        print(f"+ {len(reused)} bot-vs-bot games from {args.reuse_log}", flush=True)
         games += reused
 
     fitted = fit(games, declared)
     if args.only:
-        # Соседи по силе сыграли с выбранными лишь несколько партий — их прежняя оценка точнее, её не трогаем.
+        # Neighbours by strength played only a few games with the selected ones - their earlier estimate is more accurate.
         fitted = {key: entry for key, entry in fitted.items() if key in set(args.only)}
     previous = {}
     if args.out.exists():
@@ -320,12 +305,12 @@ def main() -> None:
     }
     args.out.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     for key, entry in sorted(fitted.items(), key=lambda kv: kv[1]["rating"]):
-        print(f"{key:28} {entry['rating']:5} ±{entry['ci95']}  (заявлено {entry['declared']}, "
+        print(f"{key:28} {entry['rating']:5} ±{entry['ci95']}  (declared {entry['declared']}, "
               f"{entry['score']}/{entry['games']})", flush=True)
 
     if pool is not None:
-        # Работники держат открытые процессы Stockfish (и их потоки) — штатный shutdown пула ждал бы
-        # их вечно. Результат уже записан, поэтому работников просто завершаем.
+        # Workers hold open Stockfish processes (and their threads) - a regular pool shutdown would wait
+        # for them forever. The result is already written, so we simply terminate the workers.
         for process in list(getattr(pool, "_processes", {}).values()):
             process.terminate()
         pool.shutdown(wait=False, cancel_futures=True)

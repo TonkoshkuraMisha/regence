@@ -724,12 +724,10 @@
   }
  ],
  "intro": {
-  "ru": "Сицилианская защита, система с ...a6 и ...Qc7. К 20-му ходу у белых большой перевес, но Таль защищается изобретательно.",
   "uk": "Сицилійський захист, система з ...a6 і ...Qc7. До 20-го ходу в білих велика перевага, але Таль захищається винахідливо.",
   "en": "A Sicilian Defence with ...a6 and ...Qc7. By move 20 White has a big advantage, but Tal defends resourcefully."
  },
  "summary": {
-  "ru": "Ошибка 26.Nc5 переворачивает партию: конь чёрных забирает пешку e5 (26...Nxe5), а затем и слона (28...Nxd3), и уже белым приходится защищаться. Урок: не сдавайтесь в трудной позиции — ищите ходы, которые ставят сопернику задачи, и ошибка может последовать.",
   "uk": "Помилка 26.Nc5 перевертає партію: кінь чорних забирає пішака e5 (26...Nxe5), а потім і слона (28...Nxd3), і вже білим доводиться захищатися. Урок: не здавайтеся у важкій позиції — шукайте ходи, що ставлять суперникові задачі, і помилка може статися.",
   "en": "The mistake 26.Nc5 turns the game around: Black's knight takes the e5-pawn (26...Nxe5) and then a bishop (28...Nxd3), and now White has to defend. Lesson: do not give up in a difficult position — look for moves that set your opponent problems, and a mistake may follow."
  }

@@ -1,7 +1,7 @@
 // --- FILE: frontend/src/services/__tests__/clientErrors.test.ts ---
-// Отчёты об ошибках страницы и след событий (breadcrumbs.ts, clientErrors.ts, номер запроса в http.ts): крошки
-// переживают перезагрузку (sessionStorage), запрос несёт X-Request-ID, отчёт уходит на /client-errors со следом, без
-// повторов и сверх предела, а собственные запросы отчёта в след не попадают.
+// Page error reports and the event trail (breadcrumbs.ts, clientErrors.ts, the request id in http.ts): breadcrumbs
+// survive a reload (sessionStorage), a request carries X-Request-ID, a report goes to /client-errors with the trail, without
+// repeats and beyond the limit, and the report's own requests do not get into the trail.
 
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {addBreadcrumb, clearBreadcrumbs, getBreadcrumbs, newRequestId} from '../breadcrumbs';
@@ -25,7 +25,7 @@ afterEach(() => {
 });
 
 describe('breadcrumbs', () => {
-    it('хранит не больше 30 последних событий и сохраняет их в sessionStorage', () => {
+    it('keeps no more than the last 30 events and saves them in sessionStorage', () => {
         for (let i = 0; i < 35; i += 1) addBreadcrumb('route', `/page${i}`);
         const crumbs = getBreadcrumbs();
         expect(crumbs).toHaveLength(30);
@@ -33,14 +33,14 @@ describe('breadcrumbs', () => {
         expect(JSON.parse(sessionStorage.getItem('regence_breadcrumbs') ?? '[]')).toHaveLength(30);
     });
 
-    it('номер запроса — 16 безопасных символов (подходит под правило сервера)', () => {
+    it('the request id — 16 safe characters (fits the server rule)', () => {
         expect(newRequestId()).toMatch(/^[a-z0-9]{16}$/);
         expect(newRequestId()).not.toBe(newRequestId());
     });
 });
 
-describe('номер запроса в http.ts', () => {
-    it('каждый запрос несёт X-Request-ID и оставляет крошку с методом, путём без параметров и статусом', async () => {
+describe('the request id in http.ts', () => {
+    it('every request carries X-Request-ID and leaves a breadcrumb with the method, the path without parameters and the status', async () => {
         const fetchMock = stubFetch();
         await apiRequest('/tournaments/2?full=1');
         const init = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
@@ -51,7 +51,7 @@ describe('номер запроса в http.ts', () => {
         })]);
     });
 
-    it('обрыв сети тоже оставляет след', async () => {
+    it('a network failure also leaves a trail', async () => {
         vi.stubGlobal('fetch', vi.fn(async () => { throw new TypeError('offline'); }));
         await expect(apiRequest('/profile/me')).rejects.toBeTruthy();
         expect(getBreadcrumbs()[0].name).toBe('GET /profile/me (no connection)');
@@ -59,7 +59,7 @@ describe('номер запроса в http.ts', () => {
 });
 
 describe('reportClientError', () => {
-    it('шлёт отчёт на /client-errors со следом, а свой запрос в след не пишет', async () => {
+    it('sends a report to /client-errors with the trail, and does not write its own request into the trail', async () => {
         addBreadcrumb('socket', 'event move_made');
         const fetchMock = stubFetch(204);
         expect(await reportClientError('error', 'boom', 'stack-line')).toBe(true);
@@ -71,7 +71,7 @@ describe('reportClientError', () => {
         expect(getBreadcrumbs()).toHaveLength(1);
     });
 
-    it('не повторяет одно и то же сообщение и не шлёт больше десяти отчётов', async () => {
+    it('does not repeat the same message and does not send more than ten reports', async () => {
         const fetchMock = stubFetch(204);
         await reportClientError('error', 'same');
         expect(await reportClientError('error', 'same')).toBe(false);
@@ -79,14 +79,14 @@ describe('reportClientError', () => {
         expect(fetchMock).toHaveBeenCalledTimes(10);
     });
 
-    it('сбой отправки отчёта не бросает исключение', async () => {
+    it('a report sending failure does not throw an exception', async () => {
         vi.stubGlobal('fetch', vi.fn(async () => { throw new TypeError('offline'); }));
         await expect(reportClientError('render', 'x')).resolves.toBe(false);
     });
 });
 
 describe('installClientErrorReporting', () => {
-    it('пишет вход на страницу в крошки, а window error и unhandledrejection уходят отчётами', async () => {
+    it('writes a page visit into the breadcrumbs, and window error and unhandledrejection go out as reports', async () => {
         const {installClientErrorReporting} = await import('../clientErrors');
         const fetchMock = stubFetch(204);
         installClientErrorReporting();
@@ -97,14 +97,14 @@ describe('installClientErrorReporting', () => {
         rejection.reason = new Error('rejected');
         window.dispatchEvent(rejection);
         const plain = new Event('unhandledrejection') as Event & {reason: unknown};
-        plain.reason = 'строка';
+        plain.reason = 'a string';
         window.dispatchEvent(plain);
         await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
         const kinds = fetchMock.mock.calls.map((c) => JSON.parse(String((c as unknown as [string, RequestInit])[1].body)).kind);
         expect(kinds).toEqual(['error', 'unhandledrejection', 'unhandledrejection']);
     });
 
-    it('после обновления страницы с непустым следом уходит отчёт reload', async () => {
+    it('after a page refresh with a non-empty trail a reload report goes out', async () => {
         const {installClientErrorReporting} = await import('../clientErrors');
         addBreadcrumb('route', '/before');
         vi.spyOn(performance, 'getEntriesByType').mockReturnValue([{type: 'reload'}] as unknown as PerformanceEntryList);

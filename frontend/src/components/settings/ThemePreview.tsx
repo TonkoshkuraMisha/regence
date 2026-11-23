@@ -1,7 +1,7 @@
 // --- FILE: frontend/src/components/settings/ThemePreview.tsx ---
-// Предпросмотр темы-комплекта (таск 18.3): живая позиция из партии на доске, фигурах и фоне комплекта.
-// Данные — комплект из config/themePresets.ts (доска, фигуры, фон зала); рисуется упрощённая доска без игровой
-// логики. Используется в Settings.tsx в списке комплектов.
+// Preview of a theme set (task 18.3): a live position from a game on the set's board, pieces and background.
+// Data is a set from config/themePresets.ts (board, pieces, hall background); a simplified board is drawn without game
+// logic. Used in Settings.tsx in the list of sets.
 
 import {Chess} from 'chess.js';
 import {useMemo} from 'react';
@@ -10,13 +10,13 @@ import {pageBackgroundStyle} from '../../config/pageBackground';
 import type {ThemePreset} from '../../config/themePresets';
 import {BoardTextureLayer} from '../chessboard/BoardTextureLayer';
 
-// Позиция предпросмотра.
-// Итальянская партия после 4.c3: фигуры всех видов в игре, последний ход подсвечен.
+// Preview position.
+// An Italian Game after 4.c3: pieces of all kinds in play, the last move highlighted.
 const PREVIEW_FEN = 'r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P3/2P2N2/PP1P1PPP/RNBQK2R b KQkq - 0 4';
-// Поля подсвеченного последнего хода (c2–c3).
+// Squares of the highlighted last move (c2-c3).
 const LAST_MOVE = ['c2', 'c3'];
 
-/** Мини-доска комплекта preset; size — сторона доски в пикселях (без рамки). Неизвестная тема доски заменяется ореховой. */
+/** Mini-board of the set preset; size is the board side in pixels (without the frame). An unknown board theme is replaced with walnut. */
 export function ThemePreview({preset, size = 168}: { preset: ThemePreset; size?: number }) {
     const theme = BOARD_THEMES[preset.board] ?? BOARD_THEMES.walnut;
     const board = useMemo(() => new Chess(PREVIEW_FEN).board(), []);

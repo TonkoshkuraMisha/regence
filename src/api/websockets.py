@@ -1,26 +1,27 @@
 # --- FILE: src/api/websockets.py ---
 """
-WebSocket партий и лобби (/ws/matchmaking): все действия игрока во время игры и доставка событий в его вкладки.
+The WebSocket of games and the lobby (/ws/matchmaking): all player actions during a game and delivery of events to their tabs.
 
-Вход — по одноразовому тикету (src/api/deps.get_current_user_ws). При подключении игрок получает снимок своей
-идущей партии, если она есть (_send_active_game_snapshot_if_exists).
+Login - by a one-time ticket (src/api/deps.get_current_user_ws). On connection the player receives a snapshot of their
+game in progress, if there is one (_send_active_game_snapshot_if_exists).
 
-Каждое сообщение клиента — {"action": имя, ...}; обработчик действия зарегистрирован в ACTION_HANDLERS:
+Each client message is {"action": name, ...}; the action handler is registered in ACTION_HANDLERS:
 
-* лобби — join_queue, leave_queue, accept_challenge, create_invite, accept_invite;
-* зрители и чат — spectate_game, leave_spectate, chat_message;
-* партия — make_move, abort_game, resign, offer_draw, accept_draw, decline_draw, berserk;
-* реванш — offer_rematch, accept_rematch, decline_rematch.
+* lobby - join_queue, leave_queue, accept_challenge, create_invite, accept_invite;
+* spectators and chat - spectate_game, leave_spectate, chat_message;
+* game - make_move, abort_game, resign, offer_draw, accept_draw, decline_draw, berserk;
+* rematch - offer_rematch, accept_rematch, decline_rematch.
 
-Общие правила: действие над партией принимается только от её участника и только в подходящем статусе
-(_participant_game), иначе молча игнорируется; отказ с объяснением уходит кодом ошибки (src/core/errors.py).
-Сессия базы открывается на одно действие и освобождается до отправки в сеть (ActionContext.release_db) — иначе
-медленный клиент держал бы соединение пула. Частота сообщений ограничена по группам (WS_RATE_LIMITS: ходы, чат,
-предложения, лобби, прочее), размер — WS_MAX_MESSAGE_CHARS; за поток отклонённых сообщений (WS_MAX_STRIKES за
-WS_STRIKE_WINDOW_S секунд) соединение закрывается кодом 1013.
+General rules: an action on a game is accepted only from its participant and only in a suitable status
+(_participant_game), otherwise it is silently ignored; a refusal with an explanation goes as an error code
+(src/core/errors.py).
+The database session is opened for one action and released before sending to the network (ActionContext.release_db) - otherwise
+a slow client would hold a pool connection. Message frequency is limited by group (WS_RATE_LIMITS: moves, chat,
+offers, lobby, other), size - WS_MAX_MESSAGE_CHARS; for a stream of rejected messages (WS_MAX_STRIKES per
+WS_STRIKE_WINDOW_S seconds) the connection is closed with code 1013.
 
-Состояние партии и часы — src/services/game_state.py, старт партий — src/services/matchmaker.py, рассылка в
-несколько процессов и вкладок — src/services/connection_manager.py.
+Game state and clocks - src/services/game_state.py, game start - src/services/matchmaker.py, broadcast across
+several processes and tabs - src/services/connection_manager.py.
 """
 
 import json
@@ -71,9 +72,9 @@ router = APIRouter(prefix="/ws", tags=["WebSockets"])
 
 def _compute_live_clocks(state: dict) -> tuple[int, int]:
     """
-    Часы обеих сторон на текущий момент (мс): в состоянии партии хранится остаток на момент последнего хода,
-    поэтому у стороны, которая думает, вычитается время, прошедшее с last_move_at (в «песочных часах» оно же
-    прибавляется ждущей стороне — game_state.live_clock_ms). Квота лага здесь не учитывается.
+    The clocks of both sides at the current moment (ms): the game state stores the remainder at the moment of the last move,
+    so for the side that is thinking the time elapsed since last_move_at is subtracted (in an "hourglass" game it is also
+    added to the waiting side - game_state.live_clock_ms). The lag quota is not taken into account here.
     """
     now_ms = int(time.time() * 1000)
     return max(0, live_clock_ms(state, "white", now_ms)), max(0, live_clock_ms(state, "black", now_ms))
@@ -81,8 +82,8 @@ def _compute_live_clocks(state: dict) -> tuple[int, int]:
 
 async def _send_active_game_snapshot_if_exists(db: AsyncSession, user: User):
     """
-    Если игрок переподключился во время идущей партии, восстанавливаем ему доску и часы: событие match_found с
-    полным состоянием партии из Redis (ключ user:{id}:current_game → состояние партии).
+    If the player reconnected during a game in progress, we restore their board and clocks: a match_found event with
+    the full game state from Redis (key user:{id}:current_game -> the game state).
     """
     game_id_str = await state_manager.redis.get(f"user:{user.id}:current_game")
     if not game_id_str:
@@ -118,7 +119,7 @@ async def _send_active_game_snapshot_if_exists(db: AsyncSession, user: User):
         "pgn": state.get("pgn", ""),
         "variant": game_variant(state.get("board_fen"), state.get("pgn", "")),
         "state_version": int(state.get("state_version", 0)),
-        # Предложение ничьей, сделанное до переподключения, иначе пропадало бы с экрана.
+        # A draw offer made before the reconnection would otherwise vanish from the screen.
         "draw_offer_from": pending_draw_offer(state),
         "hourglass": is_hourglass(state),
         **berserk_fields(state),
@@ -130,11 +131,12 @@ async def _send_active_game_snapshot_if_exists(db: AsyncSession, user: User):
 
 async def create_rematch_game(db: AsyncSession, prev_state: dict, connection_manager=None) -> dict:
     """
-    Создаёт партию-реванш со сменой цветов (white_id <-> black_id), с тем же контролем времени
-    и того же типа (рейтинговая / товарищеская). Реванш партии Фишера — тоже партия 960 с той же расстановкой (цвета
-    меняются — так реванш честный; решение по умолчанию 20.11); расстановка берётся из заголовка FEN в PGN партии.
-    Реванш «песочных часов» — тоже «песочные часы»: фора общая, от цветов не зависит.
-    Проверки занятости игроков и старт партии — в matchmaker.start_pvp_game.
+    Creates a rematch game with swapped colours (white_id <-> black_id), with the same time control
+    and of the same type (rated / casual). A rematch of a Fischer game is also a 960 game with the same setup (colours
+    are swapped - that is how the rematch is fair; the default decision 20.11); the setup is taken from the FEN header in the
+    game's PGN.
+    A rematch of an "hourglass" game is also an "hourglass": the handicap is shared and does not depend on colours.
+    The checks of player availability and the game start are in matchmaker.start_pvp_game.
     """
     odds = None
     base_ms = int(prev_state.get("base_time_ms", 180000))
@@ -157,8 +159,8 @@ async def create_rematch_game(db: AsyncSession, prev_state: dict, connection_man
 
 async def _fresh_current_user(db: AsyncSession, user: User) -> User:
     """
-    Объект пользователя из аутентификации загружен при подключении и не видит изменения
-    рейтинга после сыгранных партий — перечитываем его в сессии текущего действия.
+    The user object from authentication is loaded at connection time and does not see changes in the
+    rating after games played - we re-read it in the session of the current action.
     """
     return await db.get(User, user.id, populate_existing=True) or user
 
@@ -169,58 +171,60 @@ async def broadcast_to_game_participants_and_spectators(
         black_id: int,
         payload: dict,
 ) -> None:
-    """Отправляет событие обоим игрокам и всем зрителям, наблюдающим за партией."""
+    """Sends an event to both players and to all spectators watching the game."""
     await manager.send_personal_message(payload, white_id)
     await manager.send_personal_message(payload, black_id)
     await manager.broadcast_to_spectators(game_id, payload)
 
 
 # ---------------------------------------------------------------------------------------
-# Обработчики действий WebSocket. Каждое действие клиента ("action") — отдельная функция,
-# зарегистрированная в ACTION_HANDLERS; общие проверки (id партии, её статус, участие
-# игрока) собраны в _participant_game.
+# WebSocket action handlers. Each client action ("action") is a separate function
+# registered in ACTION_HANDLERS; the common checks (the game id, its status, the player's
+# participation) are collected in _participant_game.
 # ---------------------------------------------------------------------------------------
 
 
 class _Ignore(Exception):
-    """Действие молча игнорируется: некорректный ввод, чужая или неподходящая по статусу партия."""
+    """The action is silently ignored: invalid input, someone else's game or a game of an unsuitable status."""
 
 
 @dataclass
 class ActionContext:
     """
-    Контекст одного действия WebSocket: игрок и короткая сессия базы. send и error сначала освобождают сессию, затем
-    отправляют ответ.
+    The context of one WebSocket action: the player and a short database session. send and error first release the session,
+    then
+    send the response.
     """
     user: User
     db: AsyncSession
 
     async def send(self, payload: dict) -> None:
-        """Ответ самому игроку (во все его вкладки); соединение с базой освобождается до отправки."""
+        """A response to the player themselves (to all their tabs); the database connection is released before sending."""
         await self.release_db()
         await manager.send_personal_message(payload, self.user.id)
 
     async def release_db(self) -> None:
         """
-        Завершает транзакцию сессии и возвращает соединение в пул до сетевого ввода-вывода.
+        Ends the session transaction and returns the connection to the pool before network I/O.
 
-        Любое чтение открывает транзакцию, которая держит соединение пула до конца действия, —
-        в том числе пока ответ уходит медленному клиенту. Записи в сервисах (finish_game,
-        abort_game, ...) коммитятся сами, поэтому здесь закрывается только транзакция чтения;
-        expire_on_commit=False оставляет уже загруженные объекты доступными. Если сессии
-        понадобится снова, она откроет новую транзакцию сама.
+        Any read opens a transaction that holds the pool connection until the end of the action -
+        including while the response goes to a slow client. Writes in services (finish_game,
+        abort_game, ...) commit on their own, so only the read transaction is closed here;
+        expire_on_commit=False keeps already loaded objects accessible. If the session
+        is needed again, it opens a new transaction by itself.
         """
         if self.db.in_transaction():
             await self.db.commit()
 
     async def error(self, code: str, **params) -> None:
-        """Отказ действия: код из реестра src/core/errors.py и параметры — текст соберёт клиент."""
+        """An action refusal: a code from the registry src/core/errors.py and parameters - the text is assembled by the
+        client."""
         await self.send({"event": "error", **error_payload(code, **params)})
 
     async def reject_move(self, res: dict) -> None:
         """
-        Отказ в ходе (illegal_move, not_your_turn, version_mismatch, game_inactive) вместе с
-        актуальной позицией: клиент возвращает её на доску. Текста игроку не показывается.
+        A refusal of a move (illegal_move, not_your_turn, version_mismatch, game_inactive) together with
+        the current position: the client returns it to the board. No text is shown to the player.
         """
         await self.send({
             "event": "error", "reason": res["reason"], "message": res["reason"],
@@ -231,8 +235,8 @@ class ActionContext:
 @dataclass
 class GameRef:
     """
-    Партия, над которой выполняется действие: id, состояние и игроки; broadcast рассылает событие обоим игрокам и
-    зрителям.
+    The game the action is performed on: id, state and players; broadcast sends an event to both players and
+    spectators.
     """
     game_id: int
     state: dict
@@ -247,7 +251,7 @@ class GameRef:
 
 
 def _int_field(data: dict, key: str, default: int | None = None) -> int:
-    """Целое поле сообщения; мусор вместо числа — не «внутренняя ошибка», а игнорируемый ввод."""
+    """An integer message field; garbage instead of a number is not an "internal error" but ignored input."""
     value = data.get(key, default)
     if value is None or isinstance(value, bool):
         raise _Ignore
@@ -258,12 +262,12 @@ def _int_field(data: dict, key: str, default: int | None = None) -> int:
 
 
 def _rated_flag(data: dict) -> bool:
-    """Тип партии из сообщения: товарищеская — только при явном rated: false."""
+    """The game type from the message: casual only with an explicit rated: false."""
     return data.get("rated") is not False
 
 
 def _required_game_id(data: dict) -> int:
-    """id партии из сообщения; без него действие игнорируется."""
+    """The game id from the message; without it the action is ignored."""
     if not data.get("game_id"):
         raise _Ignore
     return _int_field(data, "game_id")
@@ -271,8 +275,8 @@ def _required_game_id(data: dict) -> int:
 
 async def _load_game(data: dict) -> GameRef:
     """
-    Партия из data["game_id"] по состоянию в Redis (пропавшее состояние восстанавливается из базы); неизвестная
-    партия — действие игнорируется. Участие игрока здесь не проверяется — см. _participant_game.
+    The game from data["game_id"] by the state in Redis (a lost state is restored from the database); an unknown
+    game - the action is ignored. The player's participation is not checked here - see _participant_game.
     """
     gid = _required_game_id(data)
     state = await state_manager.get_game_state(gid)
@@ -283,8 +287,8 @@ async def _load_game(data: dict) -> GameRef:
 
 async def _participant_game(ctx: ActionContext, data: dict, *, in_progress: bool | None) -> GameRef:
     """
-    Партия из data["game_id"], в которой текущий пользователь — игрок.
-    in_progress=True — только идущая, False — только завершённая, None — любая.
+    The game from data["game_id"] in which the current user is a player.
+    in_progress=True - only one in progress, False - only a finished one, None - any.
     """
     game = await _load_game(data)
     is_active = game.state.get("status") == "in_progress"
@@ -300,21 +304,22 @@ ACTION_HANDLERS: dict[str, ActionHandler] = {}
 
 
 def action(name: str):
-    """Декоратор: регистрирует функцию обработчиком действия name в ACTION_HANDLERS."""
+    """Decorator: registers the function as the handler of action name in ACTION_HANDLERS."""
     def register(handler: ActionHandler) -> ActionHandler:
         ACTION_HANDLERS[name] = handler
         return handler
     return register
 
 
-# --- Лобби и приглашения ---------------------------------------------------------------
+# --- Lobby and invitations ---------------------------------------------------------------
 
 @action("join_queue")
 async def _join_queue(ctx: ActionContext, data: dict) -> None:
     """
-    Вызов в лобби: контроль времени (по умолчанию 3+0), границы рейтинга соперника и тип партии. Рейтинг игрока
-    берётся свежий из базы, в категории этого контроля. Если подходящий вызов уже ждал, партия стартует сразу
-    (match_found обоим рассылает matchmaker); иначе игрок получает queue_joined.
+    A lobby challenge: the time control (3+0 by default), the opponent rating bounds and the game type. The player's rating
+    is taken fresh from the database, in the category of this control. If a suitable challenge was already waiting, the game
+    starts at once
+    (match_found is sent to both by matchmaker); otherwise the player gets queue_joined.
     """
     fresh_user = await _fresh_current_user(ctx.db, ctx.user)
     base_time_ms = _int_field(data, "base_time_ms", 180000)
@@ -335,14 +340,15 @@ async def _join_queue(ctx: ActionContext, data: dict) -> None:
 
 @action("leave_queue")
 async def _leave_queue(ctx: ActionContext, data: dict) -> None:
-    """Снять свой вызов из лобби."""
+    """Withdraw one's own challenge from the lobby."""
     await matchmaker.leave_queue(ctx.user.id)
     await ctx.send({"event": "queue_left"})
 
 
 @action("accept_challenge")
 async def _accept_challenge(ctx: ActionContext, data: dict) -> None:
-    """Принять вызов игрока target_user_id из лобби; партию создаёт и оповещает обоих matchmaker."""
+    """Accept the challenge of player target_user_id from the lobby; the game is created and both are notified by
+    matchmaker."""
     if not data.get("target_user_id"):
         raise _Ignore
     await matchmaker.accept_challenge(_int_field(data, "target_user_id"), ctx.user.id, manager, state_manager, db=ctx.db)
@@ -351,9 +357,9 @@ async def _accept_challenge(ctx: ActionContext, data: dict) -> None:
 @action("create_invite")
 async def _create_invite(ctx: ActionContext, data: dict) -> None:
     """
-    Приватное приглашение по ссылке: контроль (по умолчанию 3+2), цвет, тип партии, фора (odds_kind, кто её даёт)
-    и вариант (standard или шахматы Фишера). Код приглашения возвращается событием invite_created; само
-    приглашение хранит matchmaker в Redis.
+    A private invitation by link: the control (3+2 by default), colour, game type, handicap (odds_kind, who gives it)
+    and variant (standard or Fischer chess). The invitation code is returned by the invite_created event; the
+    invitation itself is stored by matchmaker in Redis.
     """
     fresh_user = await _fresh_current_user(ctx.db, ctx.user)
     base_time_ms = _int_field(data, "base_time_ms", 180000)
@@ -375,20 +381,21 @@ async def _create_invite(ctx: ActionContext, data: dict) -> None:
 
 @action("accept_invite")
 async def _accept_invite(ctx: ActionContext, data: dict) -> None:
-    """Принять приватное приглашение по коду: партию начинает matchmaker.start_game_from_invite."""
+    """Accept a private invitation by code: the game is started by matchmaker.start_game_from_invite."""
     code = str(data.get("code", "")).strip()
     if not code:
         raise _Ignore
     await matchmaker.start_game_from_invite(code, ctx.user.id, manager, db=ctx.db)
 
 
-# --- Зрители и чат ----------------------------------------------------------------------
+# --- Spectators and chat ----------------------------------------------------------------------
 
 @action("spectate_game")
 async def _spectate_game(ctx: ActionContext, data: dict) -> None:
     """
-    Стать зрителем идущей партии: игрок добавляется в список зрителей и получает spectate_started с текущей
-    позицией и часами; дальше ему приходят ходы, чат и итог партии. Законченная партия — отказ.
+    Become a spectator of a game in progress: the player is added to the spectator list and gets spectate_started with the
+    current
+    position and clocks; afterwards moves, chat and the game result come to them. A finished game - refusal.
     """
     game = await _load_game(data)
     if game.state.get("status") != "in_progress":
@@ -425,7 +432,7 @@ async def _spectate_game(ctx: ActionContext, data: dict) -> None:
 
 @action("leave_spectate")
 async def _leave_spectate(ctx: ActionContext, data: dict) -> None:
-    """Перестать смотреть партию game_id; без id — все партии, которые игрок смотрит."""
+    """Stop watching the game game_id; without an id - all games the player is watching."""
     if data.get("game_id"):
         await manager.remove_spectator(_int_field(data, "game_id"), ctx.user.id)
     else:
@@ -433,18 +440,19 @@ async def _leave_spectate(ctx: ActionContext, data: dict) -> None:
     await ctx.send({"event": "spectate_left"})
 
 
-# Быстрые фразы чата пересылаются кодом, а не текстом: каждый участник видит фразу на своём языке
-# (тексты — в каталогах клиента). Неизвестный код игнорируется, как пустое сообщение.
+# Quick chat phrases are forwarded as a code, not as text: each participant sees the phrase in their own language
+# (the texts are in the client catalogues). An unknown code is ignored, like an empty message.
 CHAT_PRESETS = frozenset({"good_luck", "thanks", "nice_move", "time_trouble"})
 
 
 @action("chat_message")
 async def _chat_message(ctx: ActionContext, data: dict) -> None:
     """
-    Сообщение в чат партии: свой текст (обрезается до 140 знаков) или код быстрой фразы (preset). Писать могут
-    только игроки партии; сообщение получают оба игрока и зрители. В базе чат не хранится, фильтр оскорблений
-    (src/services/civility.py) к нему не применяется — на сообщение можно пожаловаться модератору. Игрок, которому
-    модератор отключил чат, получает отказ chat_banned.
+    A message to the game chat: own text (truncated to 140 characters) or a quick phrase code (preset). Only the players of the
+    game
+    can write; both players and spectators receive the message. The chat is not stored in the database, the insult filter
+    (src/services/civility.py) is not applied to it - a message can be reported to a moderator. A player whose chat
+    was disabled by a moderator gets the refusal chat_banned.
     """
     preset = data.get("preset")
     raw_text = str(data.get("text", "")).strip()
@@ -455,13 +463,13 @@ async def _chat_message(ctx: ActionContext, data: dict) -> None:
     elif not raw_text:
         raise _Ignore
     if moderation.chat_banned(await _fresh_current_user(ctx.db, ctx.user)):
-        # Модератор отключил чат игроку (таск 17.4).
+        # A moderator disabled chat for the player (task 17.4).
         await ctx.error("chat_banned")
         return
     game = await _load_game(data)
     if ctx.user.id not in (game.white_id, game.black_id):
-        # Писать в чат партии могут только игроки: зрители (и кто угодно, знающий id партии)
-        # не должны спамить или подсказывать ходы.
+        # Only players can write to the game chat: spectators (and anyone who knows the game id)
+        # must not spam or suggest moves.
         await ctx.error("chat_forbidden")
         return
 
@@ -476,17 +484,17 @@ async def _chat_message(ctx: ActionContext, data: dict) -> None:
     })
 
 
-# --- Завершение партии: отмена, сдача, ничья --------------------------------------------
+# --- Ending a game: abort, resignation, draw --------------------------------------------
 
 @action("abort_game")
 async def _abort_game(ctx: ActionContext, data: dict) -> None:
     """
-    Отмена партии без изменения рейтинга — пока сделано меньше двух полуходов (state_manager.abort_game), иначе
-    отказ abort_too_late. Партию арены отменить нельзя.
+    Aborting a game without a rating change - while fewer than two plies have been made (state_manager.abort_game), otherwise
+    the refusal abort_too_late. An arena game cannot be aborted.
     """
     game = await _participant_game(ctx, data, in_progress=True)
-    # Партия арены не отменяется по желанию (33.1): иначе неудобного соперника можно было бы «пропустить»;
-    # неявку засчитывает таймаут первого хода.
+    # An arena game is not aborted at will (33.1): otherwise an inconvenient opponent could be "skipped";
+    # a no-show is counted by the first-move timeout.
     from src.services import arena as arena_service
     if await arena_service.is_arena_game(ctx.db, game.game_id):
         await ctx.error("arena_no_abort")
@@ -510,7 +518,7 @@ async def _abort_game(ctx: ActionContext, data: dict) -> None:
 
 @action("berserk")
 async def _berserk(ctx: ActionContext, data: dict) -> None:
-    """«Берсерк» в партии арены (33.3): половина времени без добавки ради лишнего очка — до своего первого хода."""
+    """"Berserk" in an arena game (33.3): half the time without increment for an extra point - before one's own first move."""
     game = await _participant_game(ctx, data, in_progress=True)
     from src.services import arena as arena_service
     try:
@@ -535,13 +543,13 @@ async def _berserk(ctx: ActionContext, data: dict) -> None:
 @action("resign")
 async def _resign(ctx: ActionContext, data: dict) -> None:
     """
-    Сдача: победа соперника. Завершить партию может только один претендент (claim_game_end) — если её в тот же
-    момент закончил мат, флаг или ничья, сдача ничего не меняет. Итог и рейтинг пишет finish_game.
+    Resignation: a win for the opponent. Only one claimant can end the game (claim_game_end) - if mate, a flag or a draw
+    ended it at the same moment, the resignation changes nothing. The result and rating are written by finish_game.
     """
     game = await _participant_game(ctx, data, in_progress=True)
     game_result = "0-1" if ctx.user.id == game.white_id else "1-0"
     if not await state_manager.claim_game_end(game.game_id, game_result, "resignation"):
-        return  # партию уже завершил другой обработчик (мат, флаг, ничья) — итог разослан им
+        return  # the game has already been ended by another handler (mate, flag, draw) - it broadcast the result
 
     rating_updates = await state_manager.finish_game(ctx.db, game.game_id, game_result, termination="resignation")
     await game.broadcast({
@@ -556,17 +564,17 @@ async def _resign(ctx: ActionContext, data: dict) -> None:
 
 @action("offer_draw")
 async def _offer_draw(ctx: ActionContext, data: dict) -> None:
-    """Предложить ничью: предложение записывается в состояние партии (поле draw_offer) и уходит сопернику."""
+    """Offer a draw: the offer is written to the game state (the draw_offer field) and goes to the opponent."""
     game = await _participant_game(ctx, data, in_progress=True)
-    # Одно предложение на позицию: повторное (или после отказа) — только после следующего хода.
-    # Иначе предложения ничьей превращаются в способ дёргать соперника в цейтноте.
+    # One offer per position: a repeat (or one after a refusal) - only after the next move.
+    # Otherwise draw offers turn into a way of harassing the opponent in time trouble.
     version = str(game.state.get("state_version", 0))
     offered_key = f"draw_offered_at_{ctx.user.id}"
     if str(game.state.get(offered_key, "")) == version:
         await ctx.error("draw_offer_too_soon")
         return
-    # Атомарно и только пока партия идёт: обычный hset после завершения воссоздал бы
-    # в Redis «огрызок» состояния без игроков.
+    # Atomically and only while the game is in progress: an ordinary hset after the end would recreate
+    # a stub of the state in Redis without players.
     if await state_manager.update_if_in_progress(
             game.game_id, {"draw_offer": str(ctx.user.id), offered_key: version},
     ) is None:
@@ -580,9 +588,9 @@ async def _offer_draw(ctx: ActionContext, data: dict) -> None:
 @action("accept_draw")
 async def _accept_draw(ctx: ActionContext, data: dict) -> None:
     """
-    Принять ничью, предложенную соперником. Наличие предложения перепроверяется атомарно при завершении партии
-    (guard в claim_game_end): если предложения к этому моменту уже нет (его снимают ответный ход и отказ),
-    партия продолжается.
+    Accept a draw offered by the opponent. The presence of the offer is re-checked atomically when the game ends
+    (the guard in claim_game_end): if by that moment there is no offer any more (a reply move and a refusal remove it),
+    the game continues.
     """
     game = await _participant_game(ctx, data, in_progress=True)
     draw_offer = str(game.state.get("draw_offer") or "")
@@ -610,10 +618,10 @@ async def _accept_draw(ctx: ActionContext, data: dict) -> None:
 
 @action("decline_draw")
 async def _decline_draw(ctx: ActionContext, data: dict) -> None:
-    """Отклонить ничью соперника: предложение стирается из состояния партии, соперник получает draw_declined."""
+    """Decline the opponent's draw: the offer is erased from the game state, the opponent gets draw_declined."""
     game = await _participant_game(ctx, data, in_progress=True)
     if pending_draw_offer(game.state) in (None, ctx.user.id):
-        raise _Ignore  # отклонять нечего: предложения нет или оно своё
+        raise _Ignore  # nothing to decline: there is no offer or it is one's own
     if await state_manager.update_if_in_progress(game.game_id, {"draw_offer": ""}) is None:
         raise _Ignore
     await manager.send_personal_message(
@@ -622,15 +630,15 @@ async def _decline_draw(ctx: ActionContext, data: dict) -> None:
     )
 
 
-# --- Реванш -----------------------------------------------------------------------------
+# --- Rematch -----------------------------------------------------------------------------
 
 @action("offer_rematch")
 async def _offer_rematch(ctx: ActionContext, data: dict) -> None:
-    """Предложить реванш после законченной партии: отметка в её состоянии, событие и уведомление сопернику."""
+    """Offer a rematch after a finished game: a mark in its state, an event and a notification to the opponent."""
     game = await _participant_game(ctx, data, in_progress=False)
     await state_manager.update_game_state(game.game_id, {"rematch_offer": str(ctx.user.id)})
     opponent = game.opponent_of(ctx.user.id)
-    # Центр уведомлений (17.1): соперник мог уйти со страницы партии — реванш останется в колокольчике.
+    # The notification centre (17.1): the opponent may have left the game page - the rematch will remain in the bell.
     notification = await notifications.record(ctx.db, opponent, "rematch",
                                               {"from": ctx.user.username, "game_id": game.game_id})
     await ctx.release_db()
@@ -642,22 +650,22 @@ async def _offer_rematch(ctx: ActionContext, data: dict) -> None:
 
 @action("accept_rematch")
 async def _accept_rematch(ctx: ActionContext, data: dict) -> None:
-    """Принять реванш соперника: новая партия с переменой цветов, тем же контролем и типом (create_rematch_game)."""
+    """Accept the opponent's rematch: a new game with swapped colours, the same control and type (create_rematch_game)."""
     game = await _participant_game(ctx, data, in_progress=False)
     rematch_offer = str(game.state.get("rematch_offer") or "")
     if not rematch_offer.isdigit() or int(rematch_offer) == ctx.user.id:
         await ctx.error("no_rematch_offer")
         return
 
-    # Оповещение обоих игроков — внутри start_pvp_game. Если кто-то уже начал другую партию,
-    # придёт MatchmakingError, и предложение реванша останется в силе.
+    # Both players are notified inside start_pvp_game. If someone has already started another game,
+    # MatchmakingError is raised, and the rematch offer remains valid.
     await create_rematch_game(ctx.db, game.state, connection_manager=manager)
     await state_manager.update_game_state(game.game_id, {"rematch_offer": ""})
 
 
 @action("decline_rematch")
 async def _decline_rematch(ctx: ActionContext, data: dict) -> None:
-    """Отклонить (или отозвать своё) предложение реванша: отметка стирается, соперник получает rematch_declined."""
+    """Decline (or withdraw one's own) rematch offer: the mark is erased, the opponent gets rematch_declined."""
     game = await _participant_game(ctx, data, in_progress=None)
     await state_manager.update_game_state(game.game_id, {"rematch_offer": ""})
     await manager.send_personal_message(
@@ -666,10 +674,11 @@ async def _decline_rematch(ctx: ActionContext, data: dict) -> None:
     )
 
 
-# --- Ход ----------------------------------------------------------------------------------
+# --- Move ----------------------------------------------------------------------------------
 
 def _move_payload(ctx: ActionContext, gid: int, command_id: str, res: dict, move_data: dict, game_over: bool) -> dict:
-    """Событие move_made для игроков и зрителей: ход, новая позиция и запись партии, часы, версия состояния."""
+    """The move_made event for players and spectators: the move, the new position and the game record, clocks, the state
+    version."""
     return {
         "event": "move_made",
         "game_id": gid,
@@ -690,15 +699,15 @@ async def _record_applied_move(
         ctx: ActionContext, gid: int, data: dict, res: dict, move_data: dict, move_str: str,
 ) -> None:
     """
-    Телеметрия и копия состояния в БД для уже применённого хода.
+    Telemetry and the copy of the state in the DB for an already applied move.
 
-    Ход к этому моменту зафиксирован в Redis и отменить его нельзя, поэтому сбой здесь не должен
-    мешать рассылке move_made: иначе соперник не узнал бы о ходе, а сходивший получил бы
-    «внутреннюю ошибку» при том, что ход засчитан.
+    By this point the move is fixed in Redis and cannot be undone, so a failure here must not
+    interfere with broadcasting move_made: otherwise the opponent would not learn about the move, and the mover would get
+    an "internal error" although the move is counted.
 
-    Телеметрия копится в списке Redis game:{id}:moves и переносится в таблицу moves при завершении партии. Время
-    на ход — по часам сервера; время, названное клиентом, идёт только в оценку задержки сети (network_lag_ms).
-    В поле move_number записывается номер хода партии (fullmove), а не номер полухода.
+    Telemetry accumulates in the Redis list game:{id}:moves and is moved to the moves table when the game ends. The time
+    per move is by the server clock; the time named by the client goes only into the network delay estimate (network_lag_ms).
+    The move_number field records the game's move number (fullmove), not the ply number.
     """
     server_elapsed_ms = res.get("elapsed_ms", 0)
     try:
@@ -732,11 +741,12 @@ async def _record_applied_move(
 @action("make_move")
 async def _make_move(ctx: ActionContext, data: dict) -> None:
     """
-    Ход в партии. Очередь хода, версию состояния, легальность и часы проверяет и атомарно применяет
-    state_manager.process_atomic_move (Redis); повтор того же command_id применяется один раз. Отказ возвращает
-    игроку актуальную позицию. Применённый ход рассылается обоим игрокам и зрителям (move_made); если он закончил
-    партию (мат, пат, ничья по правилам) или при попытке хода обнаружен упавший флаг — итог пишет finish_game и
-    рассылается game_over.
+    A move in a game. The turn order, the state version, legality and clocks are checked and applied atomically by
+    state_manager.process_atomic_move (Redis); a repeat of the same command_id is applied once. A refusal returns
+    the current position to the player. The applied move is broadcast to both players and spectators (move_made); if it ended
+    the game (mate, stalemate, a draw by the rules) or a fallen flag was found on a move attempt - the result is written by
+    finish_game and
+    broadcast as game_over.
     """
     move_str = data.get("move")
     if not move_str or not isinstance(move_str, str) or len(move_str) > 10:
@@ -747,7 +757,7 @@ async def _make_move(ctx: ActionContext, data: dict) -> None:
     if isinstance(expected_version, bool) or not isinstance(expected_version, int):
         expected_version = None
 
-    # Время обдумывания по часам клиента — для квоты лага (33.3); мусор вместо числа — возврата времени нет.
+    # Thinking time by the client's clock - for the lag quota (33.3); garbage instead of a number - no time is returned.
     client_elapsed_ms = data.get("time_taken_ms")
     if isinstance(client_elapsed_ms, bool) or not isinstance(client_elapsed_ms, int | float) or client_elapsed_ms < 0:
         client_elapsed_ms = None
@@ -776,7 +786,7 @@ async def _make_move(ctx: ActionContext, data: dict) -> None:
         await game.broadcast(_move_payload(ctx, gid, command_id, res, move_data, game_over=False))
         return
 
-    # game_over: мат/пат/ничья по правилам — или флаг, обнаруженный при попытке хода.
+    # game_over: mate/stalemate/a draw by the rules - or a flag detected on a move attempt.
     game_result, termination = res["result"], res["termination"]
     try:
         rating_updates = await state_manager.finish_game(
@@ -784,8 +794,8 @@ async def _make_move(ctx: ActionContext, data: dict) -> None:
             final_pgn=move_data["new_pgn"] if move_data else None,
         )
     except Exception:
-        # Итог допишет сверка (reconcile_unfinished_games) и сама разошлёт game_over, но
-        # последний ход уже сделан — соперник должен увидеть его сейчас, а не «зависшую» доску.
+        # The result will be added by the reconciliation (reconcile_unfinished_games), which will also broadcast game_over, but
+        # the last move has already been made - the opponent must see it now, not a "stuck" board.
         if move_data:
             await game.broadcast(_move_payload(ctx, gid, command_id, res, move_data, game_over=False))
         raise
@@ -817,15 +827,15 @@ async def _dispatch_action(
         data: dict,
 ) -> None:
     """
-    Выполняет одно действие в собственной короткой сессии БД.
+    Performs one action in its own short DB session.
 
-    Сессия закрывается сразу после действия, и соединение возвращается в пул. Одна сессия на
-    всё WebSocket-соединение держала бы транзакцию открытой, пока игрок подключён: при паре
-    десятков игроков в лобби пул бы кончился и все запросы к БД вставали бы по таймауту.
+    The session is closed right after the action and the connection returns to the pool. One session for
+    the whole WebSocket connection would keep a transaction open while the player is connected: with a couple of
+    dozen players in the lobby the pool would run out and all DB requests would time out.
     """
     start = time.perf_counter()
     outcome = obs.OUTCOME_OK
-    # Контекст журнала: партия, к которой относится действие (game_id в сообщении), — все строки действия её несут.
+    # Log context: the game the action refers to (game_id in the message) - all lines of the action carry it.
     game_id = data.get("game_id")
     bind_log_context(game_id=game_id if isinstance(game_id, int) else None, action=action_name)
     async with session_factory() as db:
@@ -841,21 +851,21 @@ async def _dispatch_action(
             outcome = obs.OUTCOME_ERROR
             logger.exception("Error processing WS action '%s' for user %s", action_name, user.id)
             await ctx.error("internal_error")
-    # action_name — ключ из ACTION_HANDLERS, то есть конечный набор значений метки.
+    # action_name is a key from ACTION_HANDLERS, i.e. a finite set of label values.
     obs.WS_ACTIONS.labels(action_name, outcome).inc()
     elapsed = time.perf_counter() - start
     obs.WS_ACTION_SECONDS.labels(action_name).observe(elapsed)
-    # Каждое действие игрока оставляет след: по нему видно, что было с партией до сбоя (ход, отказ, ошибка).
+    # Each player action leaves a trace: it shows what happened to the game before a failure (a move, a refusal, an error).
     logger.log(logging.WARNING if outcome == obs.OUTCOME_ERROR else logging.INFO, "ws_action",
                extra={"outcome": outcome, "duration_ms": round(elapsed * 1000, 1)})
     unbind_log_context("game_id", "action")
 
 
-# --- Ограничение частоты сообщений ------------------------------------------------------
+# --- Message rate limiting ------------------------------------------------------
 #
-# Лимиты считаются на пользователя (все его вкладки и воркеры вместе) в Redis, по группам
-# действий: (сообщений, окно в секундах). Ходы ограничены щедро — пуля с премувами не должна
-# упираться в лимит, — а чат и предложения строго, чтобы их нельзя было использовать для спама.
+# Limits are counted per user (all their tabs and workers together) in Redis, by groups of
+# actions: (messages, window in seconds). Moves are limited generously - bullet with premoves must not
+# run into the limit - while chat and offers are strict, so that they cannot be used for spam.
 
 WS_MAX_MESSAGE_CHARS = 4096
 WS_RATE_LIMITS: dict[str, tuple[int, int]] = {
@@ -872,20 +882,20 @@ _ACTION_GROUPS = {
     "join_queue": "lobby", "leave_queue": "lobby", "accept_challenge": "lobby",
     "create_invite": "lobby", "accept_invite": "lobby",
 }
-# Соединение, которое продолжает слать сообщения сверх лимита, закрывается: столько
-# отклонённых сообщений за WS_STRIKE_WINDOW_S честный клиент не набирает.
+# A connection that keeps sending messages over the limit is closed: an honest client
+# does not accumulate that many rejected messages within WS_STRIKE_WINDOW_S.
 WS_MAX_STRIKES = 30
 WS_STRIKE_WINDOW_S = 10.0
-# Константа здесь не используется: кодом 1008 соединение закрывают отзыв сессии
-# (connection_manager.WS_CLOSE_SESSION_REVOKED) и неверный тикет (src/api/deps.py).
+# The constant is not used here: code 1008 closes a connection on session revocation
+# (connection_manager.WS_CLOSE_SESSION_REVOKED) and on a wrong ticket (src/api/deps.py).
 WS_CLOSE_POLICY_VIOLATION = 1008
-# Флуд закрывается кодом 1013 (try again later), а не 1008: 1008 клиент понимает как
-# «сессия отозвана» и разлогинивает игрока, хотя его токен в порядке.
+# Flood is closed with code 1013 (try again later), not 1008: the client understands 1008 as
+# "session revoked" and logs the player out although their token is fine.
 WS_CLOSE_FLOOD = 1013
 
 
 class _StrikeCounter:
-    """Счётчик отклонённых сообщений одного соединения за последние WS_STRIKE_WINDOW_S секунд (в памяти процесса)."""
+    """The counter of rejected messages of one connection over the last WS_STRIKE_WINDOW_S seconds (in process memory)."""
 
     def __init__(self):
         self._times: list[float] = []
@@ -898,17 +908,18 @@ class _StrikeCounter:
 
 
 async def _within_rate_limit(user_id: int, action_name: str) -> bool:
-    """Укладывается ли действие в лимит своей группы (счётчик в Redis: ratelimit:ws:<группа>:user:<id>:<окно>)."""
+    """Whether the action fits the limit of its group (the counter in Redis: ratelimit:ws:<group>:user:<id>:<window>)."""
     group = _ACTION_GROUPS.get(action_name, "other")
     limit, window_s = WS_RATE_LIMITS[group]
     return await try_consume(f"ws:{group}", f"user:{user_id}", limit, window_s)
 
 
 async def _reject_rate_limited(user: User, action_name: str, data: dict) -> None:
-    """Отказ rate_limited игроку; для хода — вместе с актуальной позицией, чтобы клиент вернул её на доску."""
+    """The rate_limited refusal to the player; for a move - together with the current position so that the client returns it to
+    the board."""
     payload: dict[str, Any] = {"event": "error", "action": action_name, **error_payload("rate_limited")}
     if action_name == "make_move" and data.get("game_id"):
-        # Клиент уже показал ход на доске — возвращаем ему актуальную позицию.
+        # The client has already shown the move on the board - we return the current position to it.
         try:
             state = await state_manager.get_game_state(int(data["game_id"]))
         except (TypeError, ValueError):
@@ -924,7 +935,7 @@ async def _reject_rate_limited(user: User, action_name: str, data: dict) -> None
 async def _handle_message(
         session_factory: async_sessionmaker[AsyncSession], user: User, raw: str,
 ) -> bool:
-    """Разбирает и выполняет одно сообщение. False — сообщение отклонено (засчитывается в флуд)."""
+    """Parses and executes one message. False - the message was rejected (counted towards flood)."""
     if len(raw) > WS_MAX_MESSAGE_CHARS:
         await manager.send_personal_message(
             {"event": "error", **error_payload("message_too_large")}, user.id,
@@ -933,14 +944,14 @@ async def _handle_message(
     try:
         data = json.loads(raw)
     except ValueError:
-        return False  # мусор: ответа не шлём, но засчитываем
+        return False  # garbage: we send no reply, but count it
     if not isinstance(data, dict):
         return False
 
     action_name = str(data.get("action") or "")
     handler = ACTION_HANDLERS.get(action_name)
     if handler is None:
-        return True  # неизвестное действие (например, от более новой версии клиента) — пропускаем
+        return True  # an unknown action (for example, from a newer client version) - we skip it
 
     if not await _within_rate_limit(user.id, action_name):
         obs.WS_ACTIONS.labels(action_name, obs.OUTCOME_RATE_LIMITED).inc()
@@ -958,15 +969,16 @@ async def matchmaking_endpoint(
         session_factory: async_sessionmaker[AsyncSession] = Depends(get_session_factory),
 ):
     """
-    Соединение игрока: регистрирует его, запоминает адрес (для правила честной игры), отправляет снимок идущей партии
-    и затем обрабатывает сообщения одно за другим, пока соединение открыто. За поток отклонённых сообщений соединение
-    закрывается.
+    A player's connection: registers it, remembers the address (for the fair-play rule), sends a snapshot of the game in
+    progress
+    and then processes messages one by one while the connection is open. For a stream of rejected messages the connection
+    is closed.
     """
     log_token = start_log_context(user_id=current_user.id, channel="ws", ws_id=new_request_id())
     await manager.connect(websocket, current_user.id)
     logger.info("ws_connected")
-    # Адрес игрока нужен правилу честной игры: запрос движка без токена с этого же адреса
-    # во время его партии отклоняется.
+    # The player's address is needed by the fair-play rule: an engine request without a token from the same address
+    # during their game is rejected.
     ws_client = getattr(websocket, "client", None)
     await remember_player_ip(current_user.id, ws_client.host if ws_client else None)
     obs.WS_CONNECTIONS.inc()
@@ -987,12 +999,12 @@ async def matchmaking_endpoint(
                 break
 
     except WebSocketDisconnect as closed:
-        # Код закрытия отличает перезагрузку страницы / закрытие вкладки (1001, 1005) от обрыва сети (1006).
+        # The close code distinguishes a page reload / tab close (1001, 1005) from a network drop (1006).
         logger.info("ws_disconnected", extra={"close_code": closed.code})
     except Exception:
         logger.exception("WebSocket unexpected error for user %s", current_user.id)
     finally:
         obs.WS_CONNECTIONS.dec()
-        # Закрываем только это соединение: другие вкладки пользователя остаются онлайн.
+        # We close only this connection: the user's other tabs stay online.
         await manager.disconnect(current_user.id, websocket)
         end_log_context(log_token)

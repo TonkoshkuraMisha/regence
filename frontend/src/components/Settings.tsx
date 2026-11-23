@@ -1,9 +1,9 @@
 // --- FILE: frontend/src/components/Settings.tsx ---
-// Настройки: оформление (темы-комплекты, доска, фигуры, фон страницы, звук), аватар, язык, режим «помощник
-// перевода», e-mail для сброса пароля, смена пароля с завершением сессий на других устройствах, выгрузка и удаление
-// своих данных. Оформление хранится в localStorage (config/boardAppearance.ts, pageBackground.ts, boardPrefs.ts);
-// аватар, тема-комплект и режим перевода — в профиле на сервере (services/profileSettings.ts, GET /profile/me);
-// пароль, e-mail и удаление — /auth/change-password и /account/*. Маршрут — App.tsx.
+// Settings: appearance (theme sets, board, pieces, page background, sound), avatar, language, the "translation
+// helper" mode, e-mail for password reset, password change with ending sessions on other devices, export and deletion of
+// one's own data. Appearance is stored in localStorage (config/boardAppearance.ts, pageBackground.ts, boardPrefs.ts);
+// the avatar, theme set and translation mode are in the profile on the server (services/profileSettings.ts, GET /profile/me);
+// password, e-mail and deletion are /auth/change-password and /account/*. Route is App.tsx.
 
 import {useEffect, useState} from 'react';
 import {Link} from 'react-router-dom';
@@ -45,18 +45,18 @@ import {saveProfileSettings, setTranslationHelper} from '../services/profileSett
 import {clearToken, setToken} from '../services/authToken';
 
 
-/** token и username пусты у гостя: тогда доступно только локальное оформление. */
+/** token and username are empty for a guest: then only local appearance is available. */
 interface SettingsProps {
     token: string | null;
     username: string | null;
-    /** Сервер выдал новый токен (после смены пароля прежние отозваны). */
+    /** The server issued a new token (after a password change the previous ones are revoked). */
     onTokenChange: (token: string) => void;
     onLogoutEverywhere: () => void | Promise<void>;
-    /** Аккаунт удалён (таск 17.5): токен уже недействителен — выйти. */
+    /** Account deleted (task 17.5): the token is already invalid, so sign out. */
     onAccountDeleted?: () => void;
 }
 
-// Общие классы оформления секций, заголовков, полей и вариантов выбора.
+// Shared styling classes of sections, headings, fields and choice options.
 const sectionClass = 'bg-acacia-dark border border-amber-900/40 p-5 rounded shadow-heavy';
 const headingClass = 'text-lg font-bold text-amber-200 mb-3 flex items-center gap-2';
 const inputClass =
@@ -68,11 +68,11 @@ const optionClass = (active: boolean) =>
             : 'bg-black/35 border-amber-900/40 text-boxwood/85 hover:border-amber-600/60'
     }`;
 
-/** Страница настроек; серверные разделы показываются только со входом. */
+/** Settings page; server sections are shown only when signed in. */
 export default function Settings({token, username, onTokenChange, onLogoutEverywhere, onAccountDeleted}: SettingsProps) {
     const {t, language} = useI18n();
     const [boardThemeKey, setBoardThemeKey] = useState(() => getSavedBoardThemeKey());
-    // Фон страницы (таск 18.1): узор и палитра.
+    // Page background (task 18.1): a pattern and a palette.
     const [pagePattern, setPagePattern] = useState<PagePattern>(() => getSavedPagePattern());
     const [pagePalette, setPagePalette] = useState<PagePalette>(() => getSavedPagePalette());
     const selectPageBackground = (pattern: PagePattern, palette: PagePalette) => {
@@ -81,7 +81,7 @@ export default function Settings({token, username, onTokenChange, onLogoutEveryw
         applyPageBackground(pattern, palette, true);
     };
     const [pieceSetKey, setPieceSetKey] = useState(() => getSavedPieceSetKey());
-    // Отдельная тема для разбора партий (таск 18.3): комплект (доска и фигуры) или «как в игре».
+    // A separate theme for game review (task 18.3): a set (board and pieces) or "as in the game".
     const [analysisPreset, setAnalysisPreset] = useState<string>(() => (hasAnalysisAppearance()
         ? THEME_PRESETS.find((p) => p.board === getAnalysisBoardThemeKey())?.id ?? 'custom' : 'same'));
     const chooseAnalysisPreset = (id: string) => {
@@ -90,12 +90,12 @@ export default function Settings({token, username, onTokenChange, onLogoutEveryw
         setAnalysisAppearance(preset?.board ?? null, preset?.pieces ?? null);
     };
     const [isMuted, setIsMuted] = useState(() => soundEngine.isMuted());
-    // Настройки доски (таск 18.4).
+    // Board settings (task 18.4).
     const boardPrefs = useBoardPrefs();
-    // Открываемое оформление (таск 18.4): закрытое видно с замком и условием, выбрать нельзя.
+    // Unlockable appearance (task 18.4): a locked one is shown with a lock and a condition, it cannot be chosen.
     const lockOf = useUnlocks();
     const presetLock = (preset: ThemePreset) => lockOf('board', preset.board) ?? lockOf('pieces', preset.pieces);
-    // Темы-комплекты (таск 18.3): комплект «выбран», пока все его части совпадают с текущими настройками.
+    // Theme sets (task 18.3): a set is "selected" while all its parts match the current settings.
     const [soundSet, setSoundSetState] = useState<SoundSetId>(() => soundEngine.getSoundSet());
     const activePreset = THEME_PRESETS.find((p) => p.board === boardThemeKey && p.pieces === pieceSetKey
         && p.pattern === pagePattern && p.palette === pagePalette && p.sound === soundSet);
@@ -120,19 +120,19 @@ export default function Settings({token, username, onTokenChange, onLogoutEveryw
     const [passwordError, setPasswordError] = useState<UiMessage | null>(null);
     const [passwordSaved, setPasswordSaved] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
-    // Мои данные (таски 17.5, 23.1): выгрузка и удаление аккаунта.
+    // My data (tasks 17.5, 23.1): export and deletion of the account.
     const [dataError, setDataError] = useState<UiMessage | null>(null);
     const [deletePassword, setDeletePassword] = useState('');
     const [isDeleting, setIsDeleting] = useState(false);
-    // E-mail (таск 17.5): необязателен, нужен для сброса пароля; привязывается по ссылке из письма.
+    // E-mail (task 17.5): optional, needed for password reset; linked by a link from an email.
     const [email, setEmail] = useState<string | null>(null);
     const [emailInput, setEmailInput] = useState('');
     const [emailPassword, setEmailPassword] = useState('');
     const [emailNotice, setEmailNotice] = useState<UiMessage | null>(null);
     const [emailError, setEmailError] = useState<UiMessage | null>(null);
-    // Режим «помощник перевода» (таск 17.7) — хранится в профиле.
+    // The "translation helper" mode (task 17.7) is stored in the profile.
     const [helper, setHelper] = useState(false);
-    // Аватар из собственного набора (таск 18.4) — хранится в профиле.
+    // Avatar from the own set (task 18.4) is stored in the profile.
     const [avatar, setAvatar] = useState<string | null>(null);
 
     useEffect(() => {
@@ -144,12 +144,12 @@ export default function Settings({token, username, onTokenChange, onLogoutEveryw
                 setHelper(!!me?.translation_helper);
                 setAvatar(me?.avatar ?? null);
             } catch {
-                // Не удалось узнать адрес — раздел покажет «не привязан», привязать можно всё равно.
+                // The address could not be learned: the section will show "not linked", one can still link it.
             }
         })();
     }, [token]);
 
-    /** Привязка или снятие почты: запрос, затем onOk; отказ — сообщение под полем. */
+    /** Linking or unlinking the e-mail: a request, then onOk; a refusal is a message under the field. */
     const emailRequest = async (request: () => Promise<unknown>, onOk: () => void) => {
         if (!token) return;
         setEmailError(null);
@@ -242,12 +242,12 @@ export default function Settings({token, username, onTokenChange, onLogoutEveryw
 
         setPasswordError(null);
         setIsSaving(true);
-        // Смена пароля отзывает все токены, и сервер закрывает WebSocket с кодом «сессия отозвана»
-        // раньше, чем придёт ответ с новым токеном. Отключаемся сами, иначе это закрытие
-        // разлогинило бы игрока, только что сменившего пароль.
+        // A password change revokes all tokens, and the server closes the WebSocket with the code "session revoked"
+        // before the response with the new token arrives. We disconnect ourselves, otherwise this closing
+        // would sign out the player who has just changed the password.
         gameSocket.disconnect();
         try {
-            // Новая refresh-cookie: прежние сессии отозваны (таск 17.5).
+            // New refresh cookie: the previous sessions are revoked (task 17.5).
             const accessToken = await accountApi.changePassword(currentPassword, newPassword);
             setToken(accessToken);
             onTokenChange(accessToken);

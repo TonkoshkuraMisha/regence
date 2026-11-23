@@ -1,7 +1,7 @@
 # --- FILE: tests/test_game_end_atomicity.py ---
 """
-Атомарность завершения партии: из конкурентных претендентов (сдача, ничья, флаг, отмена)
-партию завершает ровно один, а рейтинг начисляется ровно один раз.
+Atomicity of game completion: of the competing claimants (resignation, draw, flag, abort)
+exactly one finishes the game, and rating is applied exactly once.
 """
 
 import asyncio
@@ -18,7 +18,7 @@ from src.services.game_state import ABANDON_TIMEOUT_MS, evaluate_clock_expiry, s
 
 @pytest.fixture
 def real_redis(monkeypatch):
-    """fakeredis с настоящей семантикой WATCH/MULTI (самодельный мок её не эмулирует)."""
+    """fakeredis with real WATCH/MULTI semantics (a hand-made mock does not emulate it)."""
     client = fakeredis.aioredis.FakeRedis(decode_responses=True)
     monkeypatch.setattr(state_manager, "redis", client)
     return client
@@ -74,7 +74,7 @@ async def test_claim_guard_is_rechecked(real_redis, db_session):
 
 
 async def test_flag_inside_move_blocks_second_finisher(real_redis, db_session):
-    """Флаг при попытке хода сразу фиксируется в Redis: цикл таймаутов и сдача уже не завершат партию."""
+    """A flag on a move attempt is recorded in Redis at once: the timeout loop and resignation can no longer end the game."""
     game, white, _ = await _make_game(db_session)
     await state_manager.update_game_state(game.id, {"last_move_at": int(time.time() * 1000) - 200_000})
 
@@ -89,16 +89,16 @@ async def test_flag_inside_move_blocks_second_finisher(real_redis, db_session):
 
 async def test_finish_game_with_stale_session_does_not_double_rate(real_redis, db_session):
     """
-    Сессия WS-обработчика долгоживущая (expire_on_commit=False) и может держать устаревший
-    объект Game со статусом IN_PROGRESS. finish_game обязан перечитать строку из БД.
+    The WS handler session is long-lived (expire_on_commit=False) and may hold a stale
+    Game object with status IN_PROGRESS. finish_game must re-read the row from the DB.
     """
     game, white, black = await _make_game(db_session)
-    # Фабрика на том же тестовом движке (импортировать conftest напрямую нельзя: это создаст его копию).
+    # Factory on the same test engine (conftest cannot be imported directly: that would create a copy of it).
     TestSessionLocal = async_sessionmaker(db_session.bind, expire_on_commit=False)
 
     async with TestSessionLocal() as stale_session:
         stale_game = await stale_session.get(Game, game.id)
-        assert stale_game.status == GameStatus.IN_PROGRESS  # объект закэширован в identity map
+        assert stale_game.status == GameStatus.IN_PROGRESS  # object is cached in the identity map
 
         async with TestSessionLocal() as other_session:
             first = await state_manager.finish_game(other_session, game.id, "1-0", termination="resignation")

@@ -1,58 +1,58 @@
 // --- FILE: frontend/src/services/feed.ts ---
-// Лента и публикации (таск 30.2): лента подписок, публикации игрока, одна публикация с комментариями, «нравится».
-// Все запросы — к /api/v1/feed (маршруты src/api/feed.py, правила — src/services/feed.py). Лента игрока
-// (/feed/user/{имя}) видна и гостю, остальное требует входа.
+// Feed and posts (task 30.2): the subscription feed, a player's posts, a single post with comments, «like».
+// All requests go to /api/v1/feed (routes in src/api/feed.py, rules — src/services/feed.py). A player's feed
+// (/feed/user/{name}) is visible to a guest too; the rest requires login.
 
 import type {Attachment, AttachmentKind} from './messages';
 import {apiRequest} from './http';
 
-/** Публикация, как её отдаёт сервер. */
+/** Post as the server returns it. */
 export interface Post {
     id: number;
     author: string | null;
     avatar: string | null;
     body: string;
-    /** Карточка-вложение (партия, позиция, задача…): снимок данных, сохранённый сервером при публикации. */
+    /** Attachment card (game, position, puzzle…): a data snapshot saved by the server at publication. */
     attachment: Attachment | null;
     created_at: string | null;
     likes: number;
-    /** Отметил ли публикацию тот, кто смотрит. */
+    /** Whether the viewer liked the post. */
     liked: boolean;
     comments: number;
     mine: boolean;
-    /** Скрыта модератором: такую публикацию сервер отдаёт только автору. */
+    /** Hidden by a moderator: the server returns such a post only to its author. */
     hidden: boolean;
-    /** Придержана фильтром уважительного общения (30.3): ждёт решения модератора. */
+    /** Held by the civility filter (30.3): awaiting a moderator's decision. */
     held?: boolean;
 }
 
-/** Комментарий к публикации. */
+/** Comment on a post. */
 export interface PostComment {
     id: number;
     author: string | null;
     body: string;
     created_at: string | null;
     mine: boolean;
-    /** Право удалить решает сервер (src/services/feed.py). */
+    /** The right to delete is decided by the server (src/services/feed.py). */
     can_delete: boolean;
     held?: boolean;
 }
 
-/** Страница ленты. page — размер страницы сервера (feed.PAGE): пришло меньше — дальше публикаций нет. */
+/** Feed page. page — the server page size (feed.PAGE): fewer arrived — there are no more posts. */
 export interface FeedPage {
     posts: Post[];
     page: number;
 }
 
-/** Запрос к /api/v1/feed через общую обёртку http.ts (токен, JSON, ошибки). */
+/** Request to /api/v1/feed through the shared http.ts wrapper (token, JSON, errors). */
 const call = <T>(path: string, init: RequestInit = {}) => apiRequest<T>(`/feed${path}`, init);
 
-/** Параметр подгрузки: публикации старше той, чей id передан (лента листается назад по id). */
+/** Load-more parameter: posts older than the one whose id is passed (the feed scrolls back by id). */
 const before = (id?: number) => (id ? `?before_id=${id}` : '');
 
 /**
- * Эндпоинты ленты. sendAnyway (send_anyway): фильтр уважительного общения отклонил текст (код text_flagged), игрок
- * настаивает — текст уходит на проверку модератору и до его решения остаётся придержанным (held).
+ * Feed endpoints. sendAnyway (send_anyway): the civility filter rejected the text (code text_flagged), the player
+ * insists — the text goes to moderator review and stays held (held) until the decision.
  */
 export const feedApi = {
     following: (beforeId?: number) => call<FeedPage>(before(beforeId)),

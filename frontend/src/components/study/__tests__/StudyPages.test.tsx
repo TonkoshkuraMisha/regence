@@ -1,4 +1,4 @@
-// Совместный разбор (таск 17.3): стрелки ведущего, вопрос, ответ ученика ходом, шаг урока в формате школы.
+// Joint review (task 17.3): the host's arrows, a question, the student's answer with a move, a lesson step in the school format.
 
 import {act, fireEvent, render, screen, waitFor} from '@testing-library/react';
 import {MemoryRouter, Route, Routes} from 'react-router-dom';
@@ -33,47 +33,47 @@ afterEach(() => {
     vi.unstubAllGlobals();
 });
 
-describe('совместный разбор', () => {
-    it('ведущий: стрелка двумя щелчками выбранным цветом и вопрос с вариантами', async () => {
+describe('joint review', () => {
+    it('the host: an arrow by two clicks in the chosen colour and a question with options', async () => {
         const fetchMock = stub(room());
         open();
         await screen.findByTestId('study-tools');
         fireEvent.click(screen.getByTestId('tool-arrow'));
-        fireEvent.click(screen.getByRole('button', {name: 'Красная'}));
+        fireEvent.click(screen.getByRole('button', {name: 'Red'}));
         fireEvent.click(cell('e2'));
         await act(async () => fireEvent.click(cell('e4')));
         expect(JSON.parse(String(calls(fetchMock, 'PUT')[0][1].body)).arrows).toEqual([{from: 'e2', to: 'e4', color: 'red'}]);
 
-        fireEvent.change(screen.getByTestId('question-prompt'), {target: {value: 'Какой план?'}});
-        fireEvent.change(screen.getByTestId('question-options'), {target: {value: 'Атака\nЗащита'}});
+        fireEvent.change(screen.getByTestId('question-prompt'), {target: {value: 'Which plan?'}});
+        fireEvent.change(screen.getByTestId('question-options'), {target: {value: 'Attack\nDefence'}});
         fireEvent.change(screen.getByTestId('question-correct'), {target: {value: '2'}});
         await act(async () => fireEvent.click(screen.getByTestId('question-ask')));
         expect(JSON.parse(String(calls(fetchMock, 'POST').at(-1)![1].body))).toMatchObject({
-            kind: 'choice', prompt: 'Какой план?', options: ['Атака', 'Защита'], correct: 1,
+            kind: 'choice', prompt: 'Which plan?', options: ['Attack', 'Defence'], correct: 1,
         });
-        expect(screen.getByTestId('study-lesson')).toHaveTextContent('шагов 1');
+        expect(screen.getByTestId('study-lesson')).toHaveTextContent('1 steps');
     });
 
-    it('ученик: ответ на вопрос «найти ход» — ходом на своей доске', async () => {
-        const fetchMock = stub(room({is_host: false, question: {id: 'q', kind: 'move', prompt: 'Ваш ход', deadline: Date.now() / 1000 + 60, revealed: false}}));
+    it('the student: an answer to a "find the move" question — by a move on their own board', async () => {
+        const fetchMock = stub(room({is_host: false, question: {id: 'q', kind: 'move', prompt: 'Your move', deadline: Date.now() / 1000 + 60, revealed: false}}));
         open();
-        expect(await screen.findByTestId('study-question')).toHaveTextContent('Ваш ход');
-        // Ход двумя щелчками: перетаскивание проверяют тесты PuzzleBoard, а здесь под полной нагрузкой оно изредка терялось.
+        expect(await screen.findByTestId('study-question')).toHaveTextContent('Your move');
+        // A move with two clicks: dragging is checked by the PuzzleBoard tests, and here under full load it was occasionally lost.
         await act(async () => {
             fireEvent.click(cell('e2'));
         });
         await act(async () => {
             fireEvent.click(cell('e4'));
         });
-        // Ответ уходит асинхронно — под нагрузкой CI запроса ещё могло не быть: дождаться его.
+        // The answer goes out asynchronously — under CI load the request might not have been sent yet: wait for it.
         await waitFor(() => expect(calls(fetchMock, 'POST')).toHaveLength(1));
         expect(JSON.parse(String(calls(fetchMock, 'POST')[0][1].body))).toEqual({answer: 'e2e4'});
     });
 
-    it('урок из занятия: без вопроса — не готов; с вопросом — проходит проверку формата школы', () => {
-        const step = lessonStep({...BOARD, arrows: [{from: 'e2', to: 'e4', color: 'green'}], highlights: [{square: 'e4', tone: 'light'}]}, 'Центр');
-        expect(lessonProblems(sessionLesson('abc', 'Разбор', [step]))).not.toEqual([]);
-        const question = {type: 'find_move', fen: START, text: {en: 'Ход?', uk: 'Ход?', ru: 'Ход?'}, line: [{answers: ['e2e4']}]};
-        expect(lessonProblems(sessionLesson('abc', 'Разбор', [step, question]))).toEqual([]);
+    it('a lesson from a session: without a question — not ready; with a question — it passes the school format check', () => {
+        const step = lessonStep({...BOARD, arrows: [{from: 'e2', to: 'e4', color: 'green'}], highlights: [{square: 'e4', tone: 'light'}]}, 'Center');
+        expect(lessonProblems(sessionLesson('abc', 'Review', [step]))).not.toEqual([]);
+        const question = {type: 'find_move', fen: START, text: {en: 'Move?', uk: 'Move?'}, line: [{answers: ['e2e4']}]};
+        expect(lessonProblems(sessionLesson('abc', 'Review', [step, question]))).toEqual([]);
     });
 });

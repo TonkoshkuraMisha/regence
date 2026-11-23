@@ -1,5 +1,5 @@
 # --- FILE: tests/test_learn_progress.py ---
-"""Прогресс уроков школы (таск 14.1): только растёт, лучший результат экзамена, чужой прогресс не виден."""
+"""School lesson progress (task 14.1): only grows, best exam result, other players' progress is not visible."""
 
 import pytest
 
@@ -29,14 +29,14 @@ def test_progress_round_trip(client, token_user_1):
 
 def test_step_never_goes_back_and_completion_sticks(client, token_user_1):
     put(client, token_user_1, step=6, completed=True, exam_score=2, exam_total=3)
-    again = put(client, token_user_1, step=1).json()  # повторное прохождение с начала
+    again = put(client, token_user_1, step=1).json()  # replaying from the start
     assert again["step"] == 6 and again["completed"] is True and again["exam_score"] == 2
 
 
 def test_best_exam_score_is_kept_until_the_exam_changes(client, token_user_1):
     put(client, token_user_1, step=7, completed=True, exam_score=3, exam_total=3)
     assert put(client, token_user_1, step=7, exam_score=1, exam_total=3).json()["exam_score"] == 3
-    # Экзамен переписали (стало 4 вопроса) — старый результат к нему не относится.
+    # The exam was rewritten (now 4 questions): the old result does not apply to it.
     changed = put(client, token_user_1, step=7, exam_score=1, exam_total=4).json()
     assert (changed["exam_score"], changed["exam_total"]) == (1, 4)
 
@@ -58,11 +58,11 @@ def test_requires_login(client):
 
 
 @pytest.mark.parametrize("lesson, body", [
-    ("Bad_ID", {}),  # не слаг
-    ("x", {}),  # слишком короткий
-    ("tactics-fork", {"step": 8}),  # шаг за пределами урока
-    ("tactics-fork", {"exam_score": 2}),  # счёт без числа вопросов
-    ("tactics-fork", {"exam_score": 4, "exam_total": 3}),  # больше, чем вопросов
+    ("Bad_ID", {}),  # not a slug
+    ("x", {}),  # too short
+    ("tactics-fork", {"step": 8}),  # step beyond the lesson
+    ("tactics-fork", {"exam_score": 2}),  # score without a question count
+    ("tactics-fork", {"exam_score": 4, "exam_total": 3}),  # more than the number of questions
     ("tactics-fork", {"steps_total": 500}),
 ])
 def test_validation(client, token_user_1, lesson, body):
@@ -77,5 +77,5 @@ def test_progress_records_are_capped(client, token_user_1, monkeypatch):
     assert put(client, token_user_1, lesson="lesson-two").status_code == 200
     over = put(client, token_user_1, lesson="lesson-three")
     assert over.status_code == 409 and over.json()["detail"]["code"] == "lesson_progress_limit"
-    # Уже начатые уроки по-прежнему сохраняются.
+    # Already started lessons are still saved.
     assert put(client, token_user_1, lesson="lesson-one", step=3).status_code == 200

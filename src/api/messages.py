@@ -1,7 +1,8 @@
 # --- FILE: src/api/messages.py ---
 """
-Личные сообщения (таск 30.1): список переписок, переписка с игроком, отправка (текст и/или карточка партии, позиции,
-задачи, урока, турнира), прочитано, настройка «кто может мне писать» и чёрный список.
+Direct messages (task 30.1): the list of conversations, a conversation with a player, sending (text and/or a card of a game,
+position,
+puzzle, lesson, tournament), read marks, the "who can write to me" setting and the block list.
 """
 
 from fastapi import APIRouter, Depends, Query, status
@@ -35,7 +36,7 @@ class AttachmentIn(BaseModel):
 class MessageIn(BaseModel):
     body: str = Field("", max_length=dm.BODY_MAX * 2)
     attachment: AttachmentIn | None = None
-    # Фильтр оскорблений сработал, а игрок всё равно отправляет: сообщение придерживается до модератора (30.3).
+    # The insult filter triggered but the player sends anyway: the message is held for a moderator (30.3).
     send_anyway: bool = False
 
 
@@ -56,7 +57,7 @@ async def unread(db: AsyncSession = Depends(get_db), user: User = Depends(get_cu
 @router.get("/with/{username}")
 async def conversation(username: str, before_id: int | None = Query(None, ge=1), db: AsyncSession = Depends(get_db),
                        user: User = Depends(get_current_user)):
-    """Переписка (старые сообщения — первыми) и можно ли сейчас писать (иначе — код причины)."""
+    """A conversation (older messages first) and whether one can write now (otherwise - the reason code)."""
     other = await _player(db, username)
     reason = await dm.write_refusal(db, user, other)
     return {"username": other.username, "avatar": other.avatar,
@@ -69,8 +70,8 @@ async def conversation(username: str, before_id: int | None = Query(None, ge=1),
 async def send_message(username: str, payload: MessageIn, db: AsyncSession = Depends(get_db),
                        user: User = Depends(get_current_user)):
     """
-    Отправка личного сообщения: текст и/или карточка-вложение; после записи сообщение доставляется в открытые вкладки
-    собеседника.
+    Sending a direct message: text and/or a card attachment; after saving the message is delivered to the open tabs of the
+    interlocutor.
     """
     other = await _player(db, username)
     attachment = (payload.attachment.kind, payload.attachment.ref) if payload.attachment else None
@@ -91,7 +92,7 @@ async def read(username: str, db: AsyncSession = Depends(get_db), user: User = D
 
 @router.post("/with/{username}/hide")
 async def hide(username: str, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
-    """Скрыть собеседника: переписка уходит из списка до его нового сообщения (без блокировки)."""
+    """Hide an interlocutor: the conversation leaves the list until their next message (without blocking)."""
     other = await _player(db, username)
     await dm.hide_conversation(db, user, other)
     return {"unread": await dm.unread_total(db, user.id)}

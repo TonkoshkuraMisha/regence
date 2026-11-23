@@ -1,10 +1,10 @@
 // --- FILE: frontend/src/components/watch/WatchPage.tsx ---
-// «Просмотр» (таск 16.3): «Партия дня», идущие сейчас партии (смотреть — режим зрителя на главной доске), архив
-// мастеров с фильтрами по игроку, годам, дебюту и результату, «забавные подборки».
-// Данные — services/watch.ts (/api/v1/watch/* и /profile/games/live; открыто без входа). Маршрут /watch (App.tsx);
-// кнопка «Смотреть» открывает главную доску со state.spectate = id партии.
-// Внутренние блоки: Live — идущие партии (грузятся один раз), Archive — форма фильтров (draft применяется кнопкой в
-// filters) с листанием по PAGE_SIZE, Collections — подборки (пустые не показываются).
+// "Watch" (task 16.3): "Game of the day", games in progress (watch - spectator mode on the main board), masters'
+// archive with filters by player, years, opening and result, "fun collections".
+// Data - services/watch.ts (/api/v1/watch/* and /profile/games/live; open without sign-in). Route /watch (App.tsx);
+// the "Watch" button opens the main board with state.spectate = the game id.
+// Internal blocks: Live - games in progress (loaded once), Archive - a filter form (draft is applied by the button into
+// filters) with PAGE_SIZE paging, Collections - collections (empty ones are not shown).
 
 import {useEffect, useState} from 'react';
 import {Link, useNavigate} from 'react-router-dom';
@@ -16,10 +16,10 @@ import {COLLECTIONS, PAGE_SIZE, watchApi} from '../../services/watch';
 import type {ArchiveFilters, ArchiveGame, CollectionKey} from '../../services/watch';
 import type {LiveGameItem} from '../chessboard/types';
 
-/** Вкладки страницы: идущие партии, архив мастеров, подборки. */
+/** Page tabs: games in progress, masters' archive, collections. */
 type Tab = 'live' | 'archive' | 'collections';
 
-/** Строка партии архива со ссылкой на просмотр: игроки справа от них — результат, ECO, год и extra. */
+/** Archive game row with a link to view it: players, to the right of them the result, ECO, year and extra. */
 function GameLine({game, extra}: { game: ArchiveGame; extra?: string }) {
     return (
         <Link to={`/game/${game.id}`} className="flex justify-between gap-3 px-2 py-1.5 rounded hover:bg-black/30 text-sm">

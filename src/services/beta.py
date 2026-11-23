@@ -1,14 +1,15 @@
 # --- FILE: src/services/beta.py ---
 """
-Программа беты (таск 24.4).
+Beta programme (task 24.4).
 
-* Приглашения. Код создаёт модератор: с лимитом использований и сроком действия (оба необязательны), отзыв —
-  в любой момент. Код принимается, пока он не отозван, не истёк и не исчерпан. Списание — одним UPDATE с условием,
-  в той же транзакции, что и создание аккаунта: два одновременных запроса не превысят лимит, а несостоявшаяся
-  регистрация код не тратит.
-* «Сообщить о проблеме». Текст игрока (или гостя) с контекстом: страница, версия приложения, язык, размер экрана.
-  Очередь модератора со статусами new → in_progress → done | rejected.
-* Сводка за период (scripts/feedback_digest.py): сколько пришло, как разобрано, на каких страницах, список.
+* Invitations. A code is created by a moderator: with a usage limit and an expiry (both optional), revocation —
+  at any moment. A code is accepted while it is not revoked, not expired and not used up. The deduction is a single UPDATE with
+  a condition,
+  in the same transaction as account creation: two simultaneous requests cannot exceed the limit, and a failed
+  registration does not spend the code.
+* "Report a problem". The text of a player (or guest) with context: page, app version, language, screen size.
+  A moderator queue with statuses new → in_progress → done | rejected.
+* Summary for a period (scripts/feedback_digest.py): how many arrived, how they were handled, on which pages, a list.
 """
 
 import secrets
@@ -24,29 +25,31 @@ from src.core.errors import DomainError
 from src.models.beta import Feedback, Invite
 from src.models.user import User
 
-# Без похожих знаков (0/O, 1/I/L): код диктуют и переписывают вручную.
+# Without lookalike characters (0/O, 1/I/L): the code is dictated and retyped by hand.
 CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
-# Длина создаваемого кода и наибольшая длина кода, принимаемая на входе (лишнее отбрасывается в normalize_code).
+# Length of a generated code and the maximum code length accepted on input (the excess is dropped in normalize_code).
 CODE_LENGTH = 10
 MAX_CODE_LENGTH = 32
-# Личное приглашение игрока («пригласить друга», таск 26.2): пометка кода и предел регистраций по нему — защита от
-# раздачи одного кода тысячам аккаунтов (больше — только код модератора).
+# A player's personal invitation ("invite a friend", task 26.2): a code mark and a cap on registrations through it — protection
+# against
+# handing one code to thousands of accounts (more — only a moderator code).
 FRIEND_NOTE = "friend"
 FRIEND_MAX_USES = 50
-# Верхние границы лимита использований и срока действия кода; их проверяет схема запроса в src/api/beta.py.
+# Upper bounds of the usage limit and the code's lifetime; they are checked by the request schema in src/api/beta.py.
 MAX_USES = 100_000
 MAX_EXPIRES_DAYS = 365
 
-# Статусы сообщения о проблеме; OPEN_STATUSES — неразобранные (очередь модератора по умолчанию и остаток в сводке).
+# Statuses of a problem report; OPEN_STATUSES are the unhandled ones (the default moderator queue and the remainder in the
+# summary).
 FEEDBACK_STATUSES = ("new", "in_progress", "done", "rejected")
 OPEN_STATUSES = ("new", "in_progress")
-# Длина текста сообщения в знаках: длиннее — обрезается, короче — отказ feedback_invalid.
+# Report text length in characters: longer is truncated, shorter is refused with feedback_invalid.
 MESSAGE_MAX = 2000
 MESSAGE_MIN = 5
-# Сколько сообщений отдаёт очередь модератора за один запрос.
+# How many reports the moderator queue returns per request.
 FEEDBACK_PAGE_SIZE = 100
-# Языки интерфейса; другое значение языка в сообщении не сохраняется.
-LANGUAGES = ("en", "uk", "ru")
+# Interface languages; any other language value is not stored in a report.
+LANGUAGES = ("en", "uk")
 
 
 def _now() -> datetime:
@@ -68,20 +71,20 @@ def _moderator(user: User) -> None:
 
 
 def community_url() -> str | None:
-    """Ссылка на канал сообщества из настроек сервера; что-либо, кроме адреса http(s), ссылкой не считается."""
+    """Community channel link from the server settings; anything other than an http(s) address does not count as a link."""
     url = settings.COMMUNITY_URL.strip()
     return url if url.startswith(("https://", "http://")) else None
 
 
-# --- приглашения ---------------------------------------------------------------------------------------------------
+# --- invitations ---------------------------------------------------------------------------------------------------
 
 def normalize_code(raw: str | None) -> str:
-    """Код в том виде, в каком он хранится: без пробелов, в верхнем регистре, не длиннее MAX_CODE_LENGTH знаков."""
+    """The code as stored: without spaces, upper case, no longer than MAX_CODE_LENGTH characters."""
     return "".join((raw or "").split()).upper()[:MAX_CODE_LENGTH]
 
 
 def invite_state(invite: Invite, now: datetime | None = None) -> str:
-    """active | revoked | expired | used_up; при нескольких причинах сразу — первая из них в этом порядке проверки."""
+    """active | revoked | expired | used_up; with several reasons at once — the first of them in this check order."""
     now = now or _now()
     if invite.revoked_at is not None:
         return "revoked"
@@ -104,8 +107,9 @@ def _invite_view(invite: Invite, now: datetime) -> dict:
 async def create_invite(db: AsyncSession, moderator: User, note: str | None, max_uses: int | None,
                         expires_in_days: int | None) -> dict:
     """
-    Новый код: CODE_LENGTH случайных знаков из CODE_ALPHABET. Границы max_uses и expires_in_days проверяет схема
-    запроса (src/api/beta.py); пустое значение — без лимита или без срока. Пометка note — до 100 знаков.
+    New code: CODE_LENGTH random characters from CODE_ALPHABET. The bounds of max_uses and expires_in_days are checked by the
+    request
+    schema (src/api/beta.py); an empty value means no limit or no expiry. The note mark is up to 100 characters.
     """
     _moderator(moderator)
     now = _now()
@@ -122,8 +126,8 @@ async def create_invite(db: AsyncSession, moderator: User, note: str | None, max
 
 async def my_invite(db: AsyncSession, user: User) -> dict:
     """
-    Личный код игрока для приглашения друзей (создаётся при первом обращении, дальше тот же): код, сколько человек
-    зарегистрировалось по нему и состояние. Тот же Invite, что и у модератора — регистрация и счётчик общие.
+    The player's personal code for inviting friends (created on first access, the same afterwards): the code, how many people
+    registered through it and its state. The same Invite as the moderator's — registration and the counter are shared.
     """
     invite = await db.scalar(select(Invite).where(Invite.created_by == user.id, Invite.note == FRIEND_NOTE))
     if invite is None:
@@ -138,7 +142,7 @@ async def my_invite(db: AsyncSession, user: User) -> dict:
 
 
 async def list_invites(db: AsyncSession, moderator: User) -> list[dict]:
-    """Все приглашения, новые первыми: сколько человек пришло по каждому и действует ли оно."""
+    """All invitations, newest first: how many people came through each and whether it is valid."""
     _moderator(moderator)
     now = _now()
     rows = (await db.execute(select(Invite).order_by(Invite.created_at.desc(), Invite.id.desc()))).scalars().all()
@@ -146,7 +150,7 @@ async def list_invites(db: AsyncSession, moderator: User) -> list[dict]:
 
 
 async def revoke_invite(db: AsyncSession, moderator: User, invite_id: int) -> dict:
-    """Отзыв кода-приглашения модератором: код перестаёт приниматься. Повторный отзыв ничего не меняет."""
+    """Revocation of an invitation code by a moderator: the code stops being accepted. Revoking again changes nothing."""
     _moderator(moderator)
     invite = await db.get(Invite, invite_id)
     if invite is None:
@@ -159,7 +163,7 @@ async def revoke_invite(db: AsyncSession, moderator: User, invite_id: int) -> di
 
 
 def _usable(now: datetime) -> tuple:
-    """Условия SQL «код действует»: не отозван, не истёк, не исчерпан — то же, что invite_state == "active"."""
+    """SQL condition "the code is valid": not revoked, not expired, not used up — the same as invite_state == "active"."""
     return (
         Invite.revoked_at.is_(None),
         or_(Invite.expires_at.is_(None), Invite.expires_at > now),
@@ -168,7 +172,7 @@ def _usable(now: datetime) -> tuple:
 
 
 async def invite_usable(db: AsyncSession, code: str | None) -> bool:
-    """Примет ли регистрация этот код прямо сейчас (для подсказки в форме; списание — consume_invite)."""
+    """Whether registration will accept this code right now (for a hint in the form; the deduction is consume_invite)."""
     code = normalize_code(code)
     if not code:
         return False
@@ -177,8 +181,8 @@ async def invite_usable(db: AsyncSession, code: str | None) -> bool:
 
 async def consume_invite(db: AsyncSession, code: str | None) -> bool:
     """
-    Одно использование кода: True — списано. Без commit: вызывающий фиксирует вместе с созданием аккаунта, а при
-    откате списание отменяется.
+    One use of a code: True — deducted. Without commit: the caller commits together with account creation, and on
+    rollback the deduction is undone.
     """
     code = normalize_code(code)
     if not code:
@@ -189,7 +193,7 @@ async def consume_invite(db: AsyncSession, code: str | None) -> bool:
     return used.scalar_one_or_none() is not None
 
 
-# --- сообщения о проблемах -----------------------------------------------------------------------------------------
+# --- problem reports -----------------------------------------------------------------------------------------
 
 def _clip(value: str | None, limit: int) -> str | None:
     return " ".join((value or "").split())[:limit] or None
@@ -198,11 +202,11 @@ def _clip(value: str | None, limit: int) -> str | None:
 async def submit_feedback(db: AsyncSession, user_id: int | None, message: str, page: str | None,
                           language: str | None, screen: str | None) -> Feedback:
     """
-    Сообщение «Сообщить о проблеме»: текст короче MESSAGE_MIN — отказ, длиннее MESSAGE_MAX — обрезается; к тексту
-    прикладываются страница, версия приложения, язык и размер экрана. user_id пуст — сообщение от гостя. Версию
-    приложения сервер берёт из своих настроек (settings.VERSION), а не от клиента.
+    A "Report a problem" message: text shorter than MESSAGE_MIN — refused, longer than MESSAGE_MAX — truncated; the page,
+    app version, language and screen size are attached to the text. user_id empty — a message from a guest. The app
+    version is taken by the server from its own settings (settings.VERSION), not from the client.
     """
-    # Переводы строк в тексте сохраняются (шаги воспроизведения), лишние пробелы по краям — нет.
+    # Line breaks in the text are kept (reproduction steps), extra spaces at the edges are not.
     text = "\n".join(line.rstrip() for line in message.strip().splitlines())[:MESSAGE_MAX]
     if len(text) < MESSAGE_MIN:
         raise DomainError("feedback_invalid")
@@ -226,8 +230,8 @@ def _feedback_view(item: Feedback, username: str | None) -> dict:
 
 async def feedback_queue(db: AsyncSession, moderator: User, status: str | None = None) -> dict:
     """
-    Сообщения для модератора: без status — неразобранные (new и in_progress), старые первыми; со status — только
-    он, новые первыми. Не больше FEEDBACK_PAGE_SIZE сообщений. counts — сколько всего сообщений в каждом статусе.
+    Reports for the moderator: without status — the unhandled ones (new and in_progress), oldest first; with status — only
+    that one, newest first. At most FEEDBACK_PAGE_SIZE reports. counts is how many reports there are in total in each status.
     """
     _moderator(moderator)
     if status is not None and status not in FEEDBACK_STATUSES:
@@ -247,8 +251,8 @@ async def feedback_queue(db: AsyncSession, moderator: User, status: str | None =
 
 async def set_feedback_status(db: AsyncSession, moderator: User, feedback_id: int, status: str) -> Feedback:
     """
-    Статус сообщения о проблеме меняет модератор (значения — FEEDBACK_STATUSES); запоминается, кто и когда его
-    поставил.
+    A problem report's status is changed by a moderator (values — FEEDBACK_STATUSES); the reviewer and the time are
+    remembered.
     """
     _moderator(moderator)
     if status not in FEEDBACK_STATUSES:
@@ -261,11 +265,11 @@ async def set_feedback_status(db: AsyncSession, moderator: User, feedback_id: in
     return item
 
 
-# --- сводка за период ----------------------------------------------------------------------------------------------
+# --- summary for a period ----------------------------------------------------------------------------------------------
 
 @dataclass
 class DigestItem:
-    """Одно сообщение в сводке отзывов."""
+    """One report in the feedback summary."""
     id: int
     created_at: datetime
     status: str
@@ -280,24 +284,24 @@ class DigestItem:
 @dataclass
 class Digest:
     """
-    Сводка отзывов за период: сообщения, счёт по статусам и по разделам сайта, остаток неразобранных и сведения о
-    приглашениях.
+    Feedback summary for a period: reports, counts by status and by site section, the unhandled remainder and information on
+    invitations.
     """
     since: datetime
     until: datetime
     items: list[DigestItem] = field(default_factory=list)
     by_status: dict[str, int] = field(default_factory=dict)
     by_page: list[tuple[str, int]] = field(default_factory=list)
-    # Всего неразобранных на конец периода (включая пришедшие раньше).
+    # Total unhandled at the end of the period (including those that arrived earlier).
     backlog: int = 0
-    # Приглашения: сколько человек зарегистрировалось по кодам за всё время (сумма invites.uses) и сколько кодов
-    # действует на момент сборки сводки.
+    # Invitations: how many people registered through codes over all time (sum of invites.uses) and how many codes
+    # are valid at the time the summary is built.
     invited: int = 0
     active_invites: int = 0
 
 
 def page_section(page: str | None) -> str:
-    """Раздел сайта по пути страницы: «/puzzles/123?x=1» → «/puzzles»."""
+    """Site section by page path: "/puzzles/123?x=1" → "/puzzles"."""
     path = (page or "").split("?")[0].split("#")[0].strip()
     if not path.startswith("/"):
         return "?"
@@ -306,7 +310,7 @@ def page_section(page: str | None) -> str:
 
 
 async def build_digest(db: AsyncSession, since: datetime, until: datetime) -> Digest:
-    """Собирает сводку отзывов за период [since, until) — для scripts/feedback_digest.py."""
+    """Builds the feedback summary for the period [since, until) — for scripts/feedback_digest.py."""
     rows = (await db.execute(
         select(Feedback, User.username).outerjoin(User, Feedback.user_id == User.id)
         .where(Feedback.created_at >= since, Feedback.created_at < until).order_by(Feedback.created_at, Feedback.id)
@@ -317,7 +321,7 @@ async def build_digest(db: AsyncSession, since: datetime, until: datetime) -> Di
         digest.items.append(DigestItem(item.id, created, item.status, username, item.message, item.page,
                                        item.app_version, item.language, item.screen))
     digest.by_status = {name: sum(1 for item in digest.items if item.status == name) for name in FEEDBACK_STATUSES}
-    # Чаще упомянутые разделы — первыми; сообщения без страницы («?») — в конце своей группы.
+    # More frequently mentioned sections first; reports without a page ("?") at the end of their group.
     pages = Counter(page_section(item.page) for item in digest.items)
     digest.by_page = sorted(pages.items(), key=lambda pair: (-pair[1], pair[0] == "?", pair[0]))
     digest.backlog = int(await db.scalar(

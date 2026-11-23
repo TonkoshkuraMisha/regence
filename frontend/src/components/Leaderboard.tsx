@@ -1,7 +1,7 @@
 // --- FILE: frontend/src/components/Leaderboard.tsx ---
-// Таблица лидеров (/leaderboard): лучшие игроки по каждой категории контроля времени — пуля, блиц, рапид, классика.
-// Данные — GET /api/v1/profile/leaderboard (src/api/profile.py): 50 лучших по текущему рейтингу категории; ботов,
-// архивных игроков, удалённых аккаунтов и игроков с флагом нечестной игры в ней нет. Маршрут — App.tsx.
+// Leaderboard (/leaderboard): the best players in each time control category: bullet, blitz, rapid, classical.
+// Data is GET /api/v1/profile/leaderboard (src/api/profile.py): the top 50 by the category's current rating; bots,
+// archive players, deleted accounts and players with the unfair play flag are not in it. Route is App.tsx.
 
 import {useState, useEffect} from 'react';
 import {PlayerAvatar} from './PlayerAvatar';
@@ -13,14 +13,14 @@ import {errorMessage} from '../services/apiErrors';
 import {profileApi} from '../services/profile';
 import type {LeaderboardEntry, RatingCategory} from '../services/profile';
 
-/** Сколько первых игроков показывает таблица. */
+/** How many top players the table shows. */
 const LEADERBOARD_SIZE = 50;
 
 
-// Порядок вкладок категорий в интерфейсе.
+// Order of category tabs in the interface.
 const CATEGORY_TABS: RatingCategory[] = ['bullet', 'blitz', 'rapid', 'classical'];
 
-/** Страница таблицы лидеров с переключателем категории; строка ведёт в профиль игрока. */
+/** Leaderboard page with a category switcher; a row leads to the player's profile. */
 export default function Leaderboard() {
     const {t} = useI18n();
     const navigate = useNavigate();

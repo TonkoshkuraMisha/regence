@@ -1060,12 +1060,10 @@
   }
  ],
  "intro": {
-  "ru": "Отказанный ферзевый гамбит с ранним Bf4. К 15-му ходу у белых заметный перевес, но чёрные долго держатся — до ошибки 32...Qg4.",
   "uk": "Відхилений ферзевий гамбіт із раннім Bf4. До 15-го ходу в білих помітна перевага, але чорні довго тримаються — до помилки 32...Qg4.",
   "en": "A Queen's Gambit Declined with an early Bf4. By move 15 White is clearly better, but Black holds on for a long time — until the mistake 32...Qg4."
  },
  "summary": {
-  "ru": "Большой перевес сам по себе партию не выигрывает: белые терпеливо улучшали фигуры (38.Bxe6, 51.Qc4), а решила проходная пешка, дошедшая до a7 (52.a7). Урок: имея перевес, ищите, где создать проходную, — она доводит дело до победы.",
   "uk": "Велика перевага сама по собі партію не виграє: білі терпляче покращували фігури (38.Bxe6, 51.Qc4), а вирішив прохідний пішак, що дійшов до a7 (52.a7). Урок: маючи перевагу, шукайте, де створити прохідного, — він доводить справу до перемоги.",
   "en": "A big advantage does not win the game by itself: White patiently improved the pieces (38.Bxe6, 51.Qc4), and the decisive factor was the passed pawn that reached a7 (52.a7). Lesson: when you are better, look for a way to create a passed pawn — it brings the game home."
  }

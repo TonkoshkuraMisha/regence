@@ -1,8 +1,8 @@
 # --- FILE: tests/test_fair_play.py ---
 """
-Честная игра: оценка позиции и ход бота недоступны, пока у игрока идёт рейтинговая партия, —
-ни с его токеном, ни без токена с его адреса. Чужой аккаунт с того же адреса не блокируется,
-но оставляет сигнал античиту.
+Fair play: position evaluation and bot moves are unavailable while the player has a rated game in progress,
+neither with his token nor without a token from his address. Another account from the same address is not blocked,
+but leaves a signal for the anti-cheat.
 """
 
 import pytest
@@ -18,7 +18,7 @@ from src.services.game_state import state_manager
 POSITION_URL = "/api/v1/analysis/position"
 BOT_MOVE_URL = "/api/v1/bots/move"
 START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
-TEST_CLIENT_IP = "testclient"  # адрес, под которым TestClient виден серверу
+TEST_CLIENT_IP = "testclient"  # address under which the server sees TestClient
 
 
 def _auth(token: str) -> dict:
@@ -60,7 +60,7 @@ async def test_user_without_a_game_is_not_affected(client, token_user_1):
 
 
 async def test_dropping_the_token_does_not_bypass_the_ban(client, rated_game, test_user_1):
-    """Игрок подключён с адреса X — запрос без токена с адреса X во время его партии отклоняется."""
+    """The player is connected from address X: a tokenless request from X during his game is rejected."""
     await fair_play.remember_player_ip(test_user_1.id, TEST_CLIENT_IP)
 
     response = client.post(POSITION_URL, json={"moves": ["e4"]})
@@ -70,14 +70,14 @@ async def test_dropping_the_token_does_not_bypass_the_ban(client, rated_game, te
 
 
 async def test_guest_from_an_idle_address_is_allowed(client, test_user_1):
-    await fair_play.remember_player_ip(test_user_1.id, TEST_CLIENT_IP)  # игрок есть, партии нет
+    await fair_play.remember_player_ip(test_user_1.id, TEST_CLIENT_IP)  # player exists, no game
     assert client.post(POSITION_URL, json={"moves": []}).status_code == 200
 
 
 async def test_other_account_on_the_same_address_is_allowed_but_recorded(
         client, db_session, rated_game, test_user_1, test_user_2, token_user_1,
 ):
-    """Третий игрок в той же сети пользуется анализом — ему не мешаем, но играющему ставим отметку."""
+    """A third player on the same network uses analysis: not blocked, but the playing user gets a flag."""
     from src.core.security import create_user_token
     from src.models.user import User
 
@@ -118,7 +118,7 @@ async def test_signal_is_reported_by_anticheat_without_penalty(db_session, test_
 
     assert report[test_user_1.id]["engine_requests_same_ip"] == 1
     assert report[test_user_2.id]["engine_requests_same_ip"] == 0
-    assert report[test_user_1.id]["trust_factor"] == 100  # сигнал сам по себе не штрафует
+    assert report[test_user_1.id]["trust_factor"] == 100  # the signal alone does not penalize
 
 
 async def test_guests_have_a_stricter_rate_limit(client, monkeypatch, token_user_1, freeze_rate_limit_window):
@@ -127,7 +127,7 @@ async def test_guests_have_a_stricter_rate_limit(client, monkeypatch, token_user
 
     assert client.post(POSITION_URL, json={"moves": []}).status_code == 200
     assert client.post(POSITION_URL, json={"moves": []}).status_code == 429
-    # У вошедшего пользователя свой, более щедрый лимит.
+    # A logged-in user has their own, more generous limit.
     codes = [client.post(POSITION_URL, json={"moves": []}, headers=_auth(token_user_1)).status_code for _ in range(5)]
     assert codes == [200] * 5
 

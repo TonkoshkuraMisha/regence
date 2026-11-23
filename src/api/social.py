@@ -1,8 +1,10 @@
 # --- FILE: src/api/social.py ---
 """
-Игроки и уведомления (таск 17.1): поиск игрока, подписки (взаимные — «друзья»), кто в сети, прямой вызов и центр
-уведомлений. Вызов: на главной доске игрок создаёт приватное приглашение (WebSocket create_invite), а здесь оно
-превращается в уведомление для соперника — тот принимает его по ссылке /challenge/<код>.
+Players and notifications (task 17.1): player search, follows (mutual ones are "friends"), who is online, a direct challenge
+and the
+notification centre. Challenge: on the main board the player creates a private invitation (WebSocket create_invite), and here
+it
+turns into a notification for the opponent - who accepts it by the link /challenge/<code>.
 """
 
 from fastapi import APIRouter, Depends, Query
@@ -27,7 +29,7 @@ SEARCH_LIMIT = 10
 
 
 def _real_players():
-    """Живые игроки: не боты, не архив мастеров, не удалённые."""
+    """Live players: not bots, not the masters archive, not deleted."""
     return (User.is_bot.is_(False), User.hashed_password != ARCHIVE_PASSWORD, User.deleted_at.is_(None))
 
 
@@ -47,7 +49,7 @@ async def _card(user: User) -> dict:
 @router.get("/search")
 async def search(q: str = Query(..., min_length=2, max_length=30), db: AsyncSession = Depends(get_db),
                  user: User = Depends(get_current_user)):
-    """Игроки, чьё имя начинается с q (без учёта регистра); сначала точное совпадение."""
+    """Players whose name starts with q (case-insensitively); an exact match first."""
     prefix = q.strip().lower()
     rows = (await db.execute(
         select(User).where(func.lower(User.username).like(f"{prefix}%"), User.id != user.id, *_real_players())
@@ -59,7 +61,8 @@ async def search(q: str = Query(..., min_length=2, max_length=30), db: AsyncSess
 @router.post("/follow/{username}")
 async def follow(username: str, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
     """
-    Подписка на игрока; повторная ничего не меняет, на себя — отказ. Возвращает отношение (подписан ли, друзья ли).
+    Following a player; a repeat changes nothing, following oneself - a refusal. Returns the relation (followed or not, friends
+    or not).
     """
     target = await _player(db, username)
     if target.id == user.id:
@@ -81,7 +84,7 @@ async def unfollow(username: str, db: AsyncSession = Depends(get_db), user: User
 
 @router.get("/relation/{username}")
 async def relation(username: str, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
-    """Подписан ли я, подписан ли он на меня (вместе — «друзья») и в сети ли он."""
+    """Whether I follow them, whether they follow me (together - "friends") and whether they are online."""
     target = await _player(db, username)
     following = await db.scalar(select(Follow.id).where(Follow.follower_id == user.id, Follow.followee_id == target.id))
     followed_by = await db.scalar(select(Follow.id).where(Follow.follower_id == target.id, Follow.followee_id == user.id))
@@ -93,7 +96,7 @@ async def relation(username: str, db: AsyncSession = Depends(get_db), user: User
 
 @router.get("/following")
 async def following_list(db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
-    """На кого я подписан — с отметкой «в сети» и «друг»; сначала те, кто в сети."""
+    """Whom I follow - with the "online" and "friend" marks; those online first."""
     rows = (await db.execute(
         select(User).join(Follow, Follow.followee_id == User.id).where(Follow.follower_id == user.id).order_by(User.username)
     )).scalars().all()
@@ -112,7 +115,7 @@ class ChallengeIn(BaseModel):
 @router.post("/challenge/{username}")
 async def challenge(username: str, payload: ChallengeIn, db: AsyncSession = Depends(get_db),
                     user: User = Depends(get_current_user)):
-    """Прямой вызов: своё приватное приглашение (код) уходит сопернику уведомлением."""
+    """A direct challenge: one's own private invitation (code) goes to the opponent as a notification."""
     target = await _player(db, username)
     if target.id == user.id:
         raise ApiError(400, "cannot_challenge_self")
@@ -132,7 +135,7 @@ async def list_notifications(db: AsyncSession = Depends(get_db), user: User = De
 
 
 class ReadIn(BaseModel):
-    ids: list[int] | None = Field(None, max_length=100, description="Пусто — прочитать все")
+    ids: list[int] | None = Field(None, max_length=100, description="Empty - read all")
 
 
 @router.post("/notifications/read")

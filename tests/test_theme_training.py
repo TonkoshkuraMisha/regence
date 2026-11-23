@@ -1,5 +1,5 @@
 # --- FILE: tests/test_theme_training.py ---
-"""Тренировка по приёмам (таск 13.4): ступени задач, выдача по теме и разделу, прогресс 8 из 10, «без названия»."""
+"""Training by tactical motifs (task 13.4): puzzle stages, delivery by theme and section, progress 8 of 10, "unnamed"."""
 
 import pytest
 
@@ -34,7 +34,7 @@ def test_stage_formula():
     assert stage_for(1300, ["a", "b"]) == 2
     assert stage_for(1700, ["a", "b"]) == 3
     assert stage_for(2100, ["a", "b"]) == 4
-    # Приём с продолжением (два хода решающего) — ещё знакомство; длинное решение поднимает ступень.
+    # A motif with a continuation (two moves by the solver) is still an introduction; a long solution raises the stage.
     assert stage_for(900, ["a"] * 4) == 1
     assert stage_for(900, ["a"] * 6) == 2
     assert stage_for(900, ["a"] * 8) == 3
@@ -52,14 +52,14 @@ def _solve(client, token, clean: bool = True) -> dict:
 async def test_stage_advances_after_eight_clean_of_ten(client, token_user_1, fork_puzzles):
     first = _solve(client, token_user_1)
     assert first["view"]["stage"] == 1 and first["training"]["stage"] == 1 and first["training"]["recent"] == "1"
-    _solve(client, token_user_1, clean=False)  # с подсказкой — не чисто
+    _solve(client, token_user_1, clean=False)  # with a hint - not clean
     _solve(client, token_user_1, clean=False)
     for _ in range(6):
         last = _solve(client, token_user_1)
     assert last["training"]["stage"] == 1 and last["training"]["recent"].count("1") == 7
     advanced = _solve(client, token_user_1)
     assert advanced["training"]["advanced"] and advanced["training"]["stage"] == 2
-    # Следующая задача — уже со второй ступени.
+    # The next puzzle is already from the second stage.
     nxt = client.get(f"{API}/train", params={"theme": "fork_knight"}, headers=_auth(token_user_1)).json()
     assert nxt["stage"] == 2 and nxt["rating"] >= 1300
 
@@ -79,7 +79,7 @@ async def test_mixed_section_and_blind_mode(client, token_user_1, fork_puzzles):
     view = client.get(f"{API}/train", params={"section": "B", "blind": True}, headers=_auth(token_user_1)).json()
     assert view["themes"] == [] and view["stage"] is None
     body = client.post(f"{API}/{view['id']}/move", json={"move": "e2b5"}, headers=_auth(token_user_1)).json()
-    # Тема показывается в итоге; прогресс отдельной темы смешанная подборка не трогает.
+    # The theme is shown in the result; a mixed selection does not touch the progress of an individual theme.
     assert "pin" in body["result"]["themes"] and body["result"]["training"] is None
 
 
@@ -89,7 +89,7 @@ async def test_mixed_section_and_blind_mode(client, token_user_1, fork_puzzles):
     ({"theme": "nope"}, "unknown_theme"),
     ({"section": "Z"}, "unknown_section"),
     ({"theme": "fork", "stage": 7}, "invalid_stage"),
-    ({"theme": "fork", "goal": "tempo"}, "unknown_goal"),  # у задачи цель — итог решения (27.8)
+    ({"theme": "fork", "goal": "tempo"}, "unknown_goal"),  # a puzzle's goal is the outcome of the solution (27.8)
 ])
 async def test_bad_training_requests(client, token_user_1, fork_puzzles, params, code):
     response = client.get(f"{API}/train", params=params, headers=_auth(token_user_1))
@@ -97,7 +97,7 @@ async def test_bad_training_requests(client, token_user_1, fork_puzzles, params,
 
 
 async def test_save_the_game_is_a_mix_by_goal(client, token_user_1, db_session, fork_puzzles):
-    """«Спасите партию» (27.9): только цель draw — задачи на ничью из любых тем, задачи других целей не попадают."""
+    """"Save the game" (27.9): only the draw goal - draw puzzles from any theme, puzzles with other goals are excluded."""
     await import_rows(db_session, [_row("DRAW1", 950, tags="equality defensiveMove short")])
     for _ in range(3):
         view = client.get(f"{API}/train", params={"goal": "draw"}, headers=_auth(token_user_1)).json()
@@ -115,7 +115,7 @@ async def test_import_skips_nothing_here(db_session, fork_puzzles):
 
     from src.models.puzzle import Puzzle
 
-    # Все тестовые задачи корректны: опечатка в позиции не должна молча оставлять раздел пустым.
+    # All test puzzles are valid: a typo in a position must not silently leave a section empty.
     assert await db_session.scalar(select(func.count()).select_from(Puzzle)) == 16
 
 
@@ -132,7 +132,7 @@ async def test_demo_shows_solutions_without_an_attempt(client, token_user_1, for
 
 
 async def test_training_by_goal(client, token_user_1, db_session, fork_puzzles):
-    """«Вилка с целью мата» (27.8): цель задачи — по её темам, мат старше материала."""
+    """"Fork with a mate goal" (27.8): the puzzle's goal follows its themes, mate outranks material."""
     await import_rows(db_session, [_row("MATE1", 950, tags="fork mateIn2 short")])
     view = client.get(f"{API}/train", params={"theme": "fork", "stage": 1, "goal": "mate"}, headers=_auth(token_user_1)).json()
     assert view["goal"] == "mate" and "mate_in_2" in view["themes"]

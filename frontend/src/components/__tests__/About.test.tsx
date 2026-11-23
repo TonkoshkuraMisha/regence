@@ -1,6 +1,6 @@
 // --- FILE: frontend/src/components/__tests__/About.test.tsx ---
-// Страница «О проекте»: каждый набор фигур и каждый портрет показан с автором и лицензией;
-// сохранённый выбор убранного (несвободного) набора фигур переводится на свободный.
+// The "About" page: every piece set and every portrait is shown with its author and licence;
+// a saved choice of a removed (non-free) piece set is switched to a free one.
 
 import {render, screen, within} from '@testing-library/react';
 import {MemoryRouter} from 'react-router-dom';
@@ -29,27 +29,27 @@ afterEach(() => {
 });
 
 describe('About', () => {
-    it('называет движок, его лицензию и ссылку на исходный код', () => {
+    it('names the engine, its licence and a link to the source code', () => {
         renderAbout();
-        expect(screen.getByText(/GNU GPL версии 3/)).toBeInTheDocument();
+        expect(screen.getByText(/GNU GPL version 3/)).toBeInTheDocument();
         expect(screen.getByRole('link', {name: /github\.com\/official-stockfish\/Stockfish/})).toBeInTheDocument();
     });
 
-    it('версия движка этой установки и исходники именно её (GPL)', async () => {
+    it('the engine version of this installation and the sources of exactly that version (GPL)', async () => {
         renderAbout();
         const line = await screen.findByTestId('engine-version');
-        expect(line).toHaveTextContent('В этой установке работает Stockfish 17.1');
-        expect(within(line).getByRole('link', {name: 'на GitHub'})).toHaveAttribute('href', ENGINE.source_url);
+        expect(line).toHaveTextContent('This installation runs Stockfish 17.1');
+        expect(within(line).getByRole('link', {name: 'on GitHub'})).toHaveAttribute('href', ENGINE.source_url);
     });
 
-    it('без сведений о движке строки о версии нет', async () => {
+    it('without engine information there is no version line', async () => {
         vi.stubGlobal('fetch', vi.fn(async () => ({ok: false, json: async () => ({})}) as Response));
         renderAbout();
         await Promise.resolve();
         expect(screen.queryByTestId('engine-version')).toBeNull();
     });
 
-    it('показывает автора и лицензию каждого набора фигур из интерфейса', () => {
+    it('shows the author and licence of each piece set from the interface', () => {
         renderAbout();
         const table = screen.getAllByRole('table')[0];
         for (const set of Object.values(PIECE_SETS)) {
@@ -59,19 +59,19 @@ describe('About', () => {
         }
     });
 
-    it('показывает запись об источнике для каждого портрета', () => {
+    it('shows a source record for every portrait', () => {
         renderAbout();
         const table = screen.getAllByRole('table')[1];
         const rows = within(table).getAllByRole('row');
         expect(rows).toHaveLength(Object.keys(portraitCredits).length + 1);
-        // Имя шахматиста ведёт на страницу файла на Викискладе.
-        const carlsen = within(table).getByRole('link', {name: 'Магнус Карлсен'});
+        // The chess player's name leads to the file page on Wikimedia Commons.
+        const carlsen = within(table).getByRole('link', {name: 'Magnus Carlsen'});
         expect(carlsen.getAttribute('href')).toContain('commons.wikimedia.org');
     });
 });
 
-describe('наборы фигур', () => {
-    it('в интерфейсе нет наборов с некоммерческой лицензией', () => {
+describe('piece sets', () => {
+    it('the interface has no sets with a non-commercial licence', () => {
         for (const set of Object.values(PIECE_SETS)) {
             expect(set.license).not.toMatch(/NC/i);
             expect(set.author).not.toBe('');
@@ -83,7 +83,7 @@ describe('наборы фигур', () => {
         ['alpha', 'merida'],
         ['cardinal', 'outline'],
         ['unknown-set', 'merida'],
-    ])('сохранённый набор %s заменяется на %s', (saved, expected) => {
+    ])('the saved set %s is replaced by %s', (saved, expected) => {
         localStorage.setItem('regence_piece_set', saved);
         expect(getSavedPieceSetKey()).toBe(expected);
     });

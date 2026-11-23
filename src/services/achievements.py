@@ -1,10 +1,10 @@
 # --- FILE: src/services/achievements.py ---
 """
-Достижения и звания клуба (таск 17.6) — только за реальные результаты. Условия считаются по данным, которые уже есть
-(партии, попытки задач, прогресс уроков, турниры, арены, рейтинги, команды); открытое достижение запоминается с
-датой (user_achievements) и больше не теряется. Тексты — в каталогах клиента (achievements.<код>).
+Club achievements and titles (task 17.6) — only for real results. Conditions are computed from data that already exists
+(games, puzzle attempts, lesson progress, tournaments, arenas, ratings, teams); an unlocked achievement is remembered with
+its date (user_achievements) and is never lost afterwards. Texts live in the client catalogs (achievements.<code>).
 
-Звание клуба — по лучшему рейтингу в категориях, после TITLE_MIN_GAMES рейтинговых партий (иначе «новичок клуба»).
+The club title is based on the best rating across categories, after TITLE_MIN_GAMES rated games (otherwise "club newcomer").
 """
 
 from dataclasses import dataclass
@@ -23,23 +23,25 @@ from src.models.trainer import TrainerResult
 from src.models.user import RatingCategory, User
 from src.services import arena_awards
 
-# Категории рейтинга партий с людьми; звание и достижения rating_* берут лучший рейтинг из четырёх.
+# Rating categories for games against humans; the title and the rating_* achievements take the best rating of the four.
 CATEGORIES: tuple[RatingCategory, ...] = ("bullet", "blitz", "rapid", "classical")
-# Сколько партий (сумма счётчиков *_games_played по четырём категориям) нужно сыграть, чтобы получить звание.
+# How many games (sum of the *_games_played counters over the four categories) must be played to earn a title.
 TITLE_MIN_GAMES = 10
-# Звания клуба: (нижняя граница лучшего рейтинга, код звания), от старшего к младшему — берётся первое подходящее.
+# Club titles: (lower bound of the best rating, title code), from highest to lowest — the first match is taken.
 TITLES = ((2000, "club_master"), (1700, "candidate"), (1400, "first_class"), (1000, "amateur"), (0, "beginner"))
-# Число разделов азбуки (записи lesson_progress с кодом basics-<раздел>); все пройдены — достижение basics_done.
+# Number of alphabet sections (lesson_progress records with code basics-<section>); all completed — the basics_done
+# achievement.
 BASICS_SECTIONS = 8
-# Обход конём: за открытый — до 100 очков (OPEN_TOUR_SCORE минус подсказки), за замкнутый — от 110 (CLOSED_TOUR_SCORE
-# = 200 минус не больше 90 за подсказки); константы — frontend/src/trainers/boardPuzzles.ts. Очки считает клиент,
-# сервер хранит присланный результат (trainer_results).
+# Knight's tour: up to 100 points for an open one (OPEN_TOUR_SCORE minus hints), from 110 for a closed one (CLOSED_TOUR_SCORE
+# = 200 minus at most 90 for hints); the constants are in frontend/src/trainers/boardPuzzles.ts. The client computes the
+# points,
+# the server stores the submitted result (trainer_results).
 CLOSED_TOUR_MIN = 100
 
 
 @dataclass(frozen=True)
 class Rule:
-    """Достижение: код (ключ текста achievements.<код> на клиенте), имя счётчика из _metrics и порог открытия."""
+    """Achievement: code (client text key achievements.<code>), counter name from _metrics and unlock threshold."""
     code: str
     metric: str
     target: int
@@ -72,12 +74,12 @@ RULES = (
 
 async def _metrics(db: AsyncSession, user: User) -> dict[str, int]:
     """
-    Счётчики игрока, с которыми сравниваются пороги RULES. Источники: games (законченные партии без симуляций
-    турниров; human_wins — победы, где оба игрока не боты), puzzle_attempts (решённые), lesson_progress (пройденные
-    записи, делятся по началу кода: basics-, endgame-, остальное — уроки), tournament_players (место в законченном
-    турнире, из которого игрок не вышел; приглашение — турнир карьеры со ступенью invitational*), arena_players
-    (сумма партий в аренах), arena_awards (призовые места в аренах, arena_awards.trophies), team_members,
-    trainer_results (обход конём) и рейтинги из users.
+    Player counters compared against the RULES thresholds. Sources: games (finished games without tournament
+    simulations; human_wins are wins where neither player is a bot), puzzle_attempts (solved), lesson_progress (completed
+    records, split by code prefix: basics-, endgame-, the rest — lessons), tournament_players (place in a finished
+    tournament the player did not leave; invitational — a career tournament of the invitational* tier), arena_players
+    (sum of games in arenas), arena_awards (podium places in arenas, arena_awards.trophies), team_members,
+    trainer_results (knight's tour) and ratings from users.
     """
     finished =(Game.status == GameStatus.COMPLETED) & Game.is_simulation.is_(False)
     mine = (Game.white_player_id == user.id) | (Game.black_player_id == user.id)
@@ -89,8 +91,9 @@ async def _metrics(db: AsyncSession, user: User) -> dict[str, int]:
     puzzles = await db.scalar(select(func.count()).select_from(PuzzleAttempt).where(
         PuzzleAttempt.user_id == user.id, PuzzleAttempt.solved.is_(True))) or 0
     completed = (LessonProgress.user_id == user.id) & LessonProgress.completed_at.is_not(None)
-    # Уроки — без упражнений азбуки и эндшпиля (у них свои достижения). Отбор — по началу кода записи: всё, что не
-    # basics-* и не endgame-*, считается уроком.
+    # Lessons exclude the alphabet and endgame exercises (they have their own achievements). Selection is by record code
+    # prefix: anything that is not
+    # basics-* and not endgame-* counts as a lesson.
     lessons = await db.scalar(select(func.count()).select_from(LessonProgress).where(
         completed, LessonProgress.lesson_id.not_like("basics-%"), LessonProgress.lesson_id.not_like("endgame-%"))) or 0
     basics = await db.scalar(select(func.count()).select_from(LessonProgress).where(
@@ -106,7 +109,7 @@ async def _metrics(db: AsyncSession, user: User) -> dict[str, int]:
         select(func.coalesce(func.sum(ArenaPlayer.games), 0)).where(ArenaPlayer.user_id == user.id)) or 0
     awards = await arena_awards.trophies(db, user.id)
     team = await db.scalar(select(func.count()).select_from(TeamMember).where(TeamMember.user_id == user.id)) or 0
-    # Замкнутый обход конём 8×8 (таск 19.4, уровень 3 тренажёра): за замкнутый обход записано больше 100 очков.
+    # Closed knight's tour 8x8 (task 19.4, trainer level 3): more than 100 points are recorded for a closed tour.
     closed_tours = await db.scalar(select(func.count()).select_from(TrainerResult).where(
         TrainerResult.user_id == user.id, TrainerResult.trainer == "knight_tour", TrainerResult.level == 3,
         TrainerResult.score > CLOSED_TOUR_MIN)) or 0
@@ -129,8 +132,9 @@ def _best_rating(user: User) -> int:
 
 def title(user: User) -> str:
     """
-    Код звания клуба: newcomer, пока в четырёх категориях вместе сыграно меньше TITLE_MIN_GAMES партий; дальше — по
-    лучшему из четырёх рейтингов (таблица TITLES).
+    Club title code: newcomer while fewer than TITLE_MIN_GAMES games are played across the four categories combined; after
+    that, by
+    the best of the four ratings (the TITLES table).
     """
     rated = 0
     for c in CATEGORIES:
@@ -147,8 +151,8 @@ def _earned_at(item: UserAchievement | None) -> str | None:
 
 async def evaluate(db: AsyncSession, user: User) -> dict:
     """
-    Звание и все достижения с прогрессом (не больше порога) и датой открытия. Достижения, условие которых выполнено
-    впервые, записываются в user_achievements (commit) и в этом ответе помечаются "new".
+    The title and all achievements with progress (capped at the threshold) and unlock date. Achievements whose condition is met
+    for the first time are written to user_achievements (commit) and marked "new" in this response.
     """
     metrics = await _metrics(db, user)
     earned = {a.code: a for a in (await db.execute(

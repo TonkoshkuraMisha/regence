@@ -1,24 +1,24 @@
 // --- FILE: frontend/src/services/library.ts ---
-// Библиотека партий (таск 27.1): /api/v1/library — дерево коллекций, партии коллекции, поиск и PGN для просмотра.
-// Без входа видны публичные коллекции; с токеном — ещё свои закрытые (и служебные у модераторов).
-// Маршруты — src/api/library.py, правила видимости и поиск — src/services/library.py. Отсюда же берутся данные
-// тренажёров «Миниатюры» и «Узнай структуру» (/library/miniatures, /library/structure-quiz).
+// Game library (task 27.1): /api/v1/library — collection tree, collection games, search and PGN for the viewer.
+// Without login public collections are visible; with a token — also one's own private ones (and service ones for moderators).
+// Routes — src/api/library.py, visibility rules and search — src/services/library.py. The data of the "Miniatures"
+// and "Recognise the structure" trainers (/library/miniatures, /library/structure-quiz) also comes from here.
 
 import type {CoachComment} from './coach';
 import {apiRequest} from './http';
 
-/** Коллекция библиотеки. Сервер отдаёт их плоским списком; дерево клиент собирает по parent_id (childrenOf). */
+/** Library collection. The server returns them as a flat list; the client builds the tree by parent_id (childrenOf). */
 export interface LibraryCollection {
     id: number;
     parent_id: number | null;
     name: string;
-    /** public — видна всем, owner — только владельцу, staff — служебная, только модераторам. */
+    /** public — visible to all, owner — only to the owner, staff — service, only for moderators. */
     visibility: 'public' | 'owner' | 'staff';
-    /** Партий непосредственно в этой коллекции, без вложенных (с вложенными — totalGames). */
+    /** Games directly in this collection, without nested ones (with nested — totalGames). */
     games: number;
 }
 
-/** Строка списка партий: заголовки PGN и длина партии в полуходах. */
+/** Game list row: PGN headers and game length in plies. */
 export interface LibraryGameRow {
     id: number;
     white: string;
@@ -31,23 +31,23 @@ export interface LibraryGameRow {
     eco: string;
     opening: string;
     plies: number;
-    /** Пешечная структура (таск 27.5) — код из STRUCTURES. */
+    /** Pawn structure (task 27.5) — a code from STRUCTURES. */
     structure?: string | null;
 }
 
-/** Коды пешечных структур — те же, что размечает сервер (src/services/pawn_structures.py); названия — в каталоге. */
+/** Pawn structure codes — the same as the server tags (src/services/pawn_structures.py); names — in the catalog. */
 export const STRUCTURES = ['hedgehog', 'maroczy', 'wedge', 'kid_chain', 'modern_benoni', 'stonewall', 'saw', 'french_chain',
     'french_exchange', 'carlsbad', 'hanging_pawns', 'isolated_pawn', 'spanish', 'symmetry'] as const;
 export type StructureCode = typeof STRUCTURES[number];
 
-/** «Миниатюра» (27.9): партия, закончившаяся матом; fen — позиция перед матом, answer — ход партии. */
+/** "Miniature" (27.9): a game that ended in mate; fen — position before the mate, answer — the game move. */
 export interface LibraryMiniature extends LibraryGameRow {
     fen: string;
     moves: string[];
     answer: string;
 }
 
-/** Вопрос «Узнай структуру» (27.9): game_id = null — учебный скелет. */
+/** "Recognise the structure" question (27.9): game_id = null — a teaching skeleton. */
 export interface StructureQuestion {
     fen: string;
     answer: StructureCode;
@@ -56,50 +56,50 @@ export interface StructureQuestion {
     ply: number | null;
 }
 
-/** Страница списка партий: total — всего найдено, games — не больше LIBRARY_PAGE строк. */
+/** Game list page: total — total found, games — no more than LIBRARY_PAGE rows. */
 export interface LibraryPage {
     total: number;
     games: LibraryGameRow[];
 }
 
-/** Фильтры поиска (GET /library/games); пустые и незаданные в запрос не попадают (searchQuery). */
+/** Search filters (GET /library/games); empty and unset ones do not go into the request (searchQuery). */
 export interface LibrarySearch {
-    /** Часть имени игрока. */
+    /** Part of a player name. */
     player?: string;
-    /** Начало кода дебюта: «B9» найдёт B90–B99. */
+    /** Start of an opening code: "B9" will find B90–B99. */
     eco?: string;
     year_from?: number;
     year_to?: number;
     result?: string;
     max_plies?: number;
     structure?: string;
-    /** Метка «миниатюра» (27.5): только решающие партии до 25 ходов. */
+    /** "Miniature" tag (27.5): only decisive games up to 25 moves. */
     miniature?: boolean;
-    /** Метка «красивая» (27.5): жертва материала и мат победителя. */
+    /** "Beautiful" tag (27.5): material sacrifice and the winner's mate. */
     beautiful?: boolean;
-    /** Начало партии в UCI через пробел (узел репертуара, 27.10). */
+    /** Game start in UCI separated by spaces (repertoire node, 27.10). */
     moves?: string;
     offset?: number;
 }
 
-/** Аннотация партии (таск 27.4): комментарии наставника кодами coach.* по полуходам. */
+/** Game annotation (task 27.4): mentor comments as coach.* codes by plies. */
 export interface LibraryAnnotation {
-    /** auto и approved сервер показывает всем, draft и review — только модераторам. */
+    /** The server shows auto and approved to everyone, draft and review — only to moderators. */
     status: 'auto' | 'draft' | 'review' | 'approved';
     version: number;
-    /** Ключ — номер полухода строкой. */
+    /** Key — the ply number as a string. */
     comments: Record<string, CoachComment>;
-    /** Оценки позиций по ходу партии, сохранённые вместе с аннотацией. */
+    /** Position evaluations along the game, saved together with the annotation. */
     evals: number[];
 }
 
-/** Размер страницы списка партий (параметр limit запросов). */
+/** Game list page size (limit parameter of requests). */
 export const LIBRARY_PAGE = 50;
 
-/** Запрос к /api/v1/library через общую обёртку http.ts (токен, JSON, ошибки). */
+/** Request to /api/v1/library via the common http.ts wrapper (token, JSON, errors). */
 const call = <T>(path: string) => apiRequest<T>(`/library${path}`);
 
-/** Строка запроса поиска: заданные фильтры плюс limit = LIBRARY_PAGE. */
+/** Search query string: set filters plus limit = LIBRARY_PAGE. */
 export function searchQuery(search: LibrarySearch): string {
     const params = new URLSearchParams();
     for (const [key, value] of Object.entries(search)) {
@@ -114,22 +114,22 @@ export const libraryApi = {
     collectionGames: (id: number, offset = 0) =>
         call<LibraryPage & { id: number; name: string }>(`/collections/${id}/games?offset=${offset}&limit=${LIBRARY_PAGE}`),
     search: (search: LibrarySearch) => call<LibraryPage>(`/games?${searchQuery(search)}`),
-    /** Аннотация партии из ответа GET /library/games/{id}; null — её нет или она не для этого посетителя. */
+    /** Game annotation from the GET /library/games/{id} response; null — there is none or it is not for this visitor. */
     annotation: (id: number | string) =>
         call<{ annotation: LibraryAnnotation | null }>(`/games/${id}`).then((body) => body.annotation ?? null),
-    /** seed делает набор воспроизводимым: тот же seed — те же партии и вопросы. */
+    /** seed makes the set reproducible: same seed — same games and questions. */
     miniatures: (count: number, seed: number) =>
         call<{ miniatures: LibraryMiniature[] }>(`/miniatures?count=${count}&seed=${seed}`),
     structureQuiz: (count: number, seed: number) =>
         call<{ questions: StructureQuestion[] }>(`/structure-quiz?count=${count}&seed=${seed}`),
 };
 
-/** Дети коллекции по порядку сервера; корни — parent_id = null. */
+/** Collection children in server order; roots — parent_id = null. */
 export function childrenOf(list: LibraryCollection[], parent: number | null): LibraryCollection[] {
     return list.filter((c) => c.parent_id === parent);
 }
 
-/** Партий в коллекции вместе со всеми вложенными (для подписи узла дерева). */
+/** Games in a collection including all nested ones (for the tree node label). */
 export function totalGames(list: LibraryCollection[], id: number): number {
     const own = list.find((c) => c.id === id)?.games ?? 0;
     return own + childrenOf(list, id).reduce((sum, child) => sum + totalGames(list, child.id), 0);

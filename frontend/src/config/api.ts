@@ -1,12 +1,12 @@
 // --- FILE: frontend/src/config/api.ts ---
 
 /**
- * Адреса API и WebSocket.
+ * API and WebSocket addresses.
  *
- * Разработка: Vite (порт 3000) и uvicorn (порт 8000) — разные адреса, по умолчанию 127.0.0.1:8000.
- * Продакшен (сборка за nginx): фронтенд и API на одном домене, поэтому по умолчанию API —
- * относительный путь, а WebSocket — тот же хост с ws/wss по протоколу страницы.
- * VITE_API_URL / VITE_WS_URL переопределяют оба варианта.
+ * Development: Vite (port 3000) and uvicorn (port 8000) are different origins, default 127.0.0.1:8000.
+ * Production (build behind nginx): frontend and API share one domain, so the API default is
+ * a relative path, and the WebSocket is the same host with ws/wss by the page protocol.
+ * VITE_API_URL / VITE_WS_URL override both variants.
  */
 
 const DEV_API_URL = 'http://127.0.0.1:8000';

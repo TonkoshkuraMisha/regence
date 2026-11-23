@@ -1,7 +1,7 @@
 # --- FILE: tests/test_engine_pool.py ---
 """
-Пул процессов Stockfish (src/services/engine_pool.py) на поддельных движках: запуск, возврат в пул, отказы,
-настройка опций, аренда EngineLease и реестр пулов. Настоящий бинарник не используется.
+Stockfish process pool (src/services/engine_pool.py) on fake engines: startup, return to the pool, failures,
+option configuration, EngineLease rental and the pool registry. The real binary is not used.
 """
 
 import chess.engine
@@ -32,7 +32,7 @@ class FakeReturncode:
 
 
 class FakeEngine:
-    """Подобие SimpleEngine: опции, настройка, завершение."""
+    """A SimpleEngine lookalike: options, configuration, shutdown."""
 
     def __init__(self, alive=True, quit_fails=False, close_fails=False):
         self.options = {"Skill Level": FakeOption("spin", 0, 20), "UCI_Elo": FakeOption("spin", 1320, 3190)}
@@ -113,7 +113,7 @@ def test_configure_clamps_numeric_and_skips_unknown():
     e2 = FakeEngine()
     e2.options = {}
     EnginePool._configure(e2, {"Skill Level": 3})  # type: ignore[arg-type]
-    assert e2.configured == []  # настраивать нечего
+    assert e2.configured == []  # nothing to configure
 
 
 def test_engine_is_reused_after_healthy_release(pool):
@@ -171,8 +171,8 @@ def test_lease_holds_one_engine_across_uses(monkeypatch, pool):
             pass
         assert a is b
     assert len(pool.spawned) == 1
-    assert pool.spawned[0].configured[-1]["Skill Level"] == 7  # второй use() перенастроил движок
-    # после закрытия аренды движок свободен
+    assert pool.spawned[0].configured[-1]["Skill Level"] == 7  # the second use() reconfigured the engine
+    # after the lease is closed the engine is free
     with pool.acquire():
         pass
 
@@ -196,6 +196,6 @@ def test_get_engine_pool_registry(monkeypatch):
     p1 = get_engine_pool("some/path/sf")
     assert get_engine_pool("some/path/sf") is p1
     p1.close()
-    assert get_engine_pool("some/path/sf") is not p1  # закрытый пул заменяется
+    assert get_engine_pool("some/path/sf") is not p1  # a closed pool is replaced
     close_all_engine_pools()
     assert engine_pool._pools == {}

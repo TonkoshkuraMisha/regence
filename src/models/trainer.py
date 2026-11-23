@@ -1,7 +1,7 @@
 # --- FILE: src/models/trainer.py ---
 """
-Результаты тренажёров (таск 19.1): тренажёр → уровень → попытка → результат (очки, время, ошибки). Личные рекорды и
-график строятся по этой таблице (src/api/trainers.py). Сами тренажёры работают на клиенте.
+Trainer results (task 19.1): trainer -> level -> attempt -> result (points, time, mistakes). Personal records and
+the chart are built from this table (src/api/trainers.py). The trainers themselves run on the client.
 """
 
 from datetime import datetime
@@ -13,7 +13,7 @@ from src.models.base import Base
 
 
 class TrainerResult(Base):
-    """Результат одной попытки в тренажёре: тренажёр, уровень, очки, время, ошибки."""
+    """The result of one attempt in a trainer: the trainer, level, points, time, mistakes."""
     __tablename__ = "trainer_results"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -28,8 +28,9 @@ class TrainerResult(Base):
 
 class ExamResult(Base):
     """
-    Итог диагностического экзамена (таск 22.0): раздел каталога тем (или «endgame» — эндшпильный экзамен), верных
-    ответов из скольких, оценка силы по ответам. Стартовые данные карты навыков (22.1); игровой рейтинг не меняет.
+    The result of a diagnostic exam (task 22.0): a theme catalogue section (or "endgame" - the endgame exam), correct
+    answers out of how many, the strength estimate from the answers. The starting data of the skill map (22.1); it does not
+    change the game rating.
     """
 
     __tablename__ = "exam_results"

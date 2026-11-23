@@ -1,4 +1,4 @@
-// Игра вслепую (таск 19.5): видимость по ступеням, ход нотацией, подсмотр; на доске — партия с ботом вслепую.
+// Blindfold play (task 19.5): visibility by stages, a move by notation, a peek; on the board — a blindfold game with a bot.
 
 import {act, fireEvent, render, screen} from '@testing-library/react';
 import {MemoryRouter} from 'react-router-dom';
@@ -28,23 +28,23 @@ afterEach(() => {
     setToken(null);
 });
 
-describe('вслепую: правила', () => {
+describe('blindfold: rules', () => {
     const game = new Chess();
     for (const san of ['e4', 'e5', 'Nf3', 'Nc6', 'Bb5', 'a6']) game.move(san);
     const board = game.board();
     const history = game.history({verbose: true});
 
-    it('ступени: свои фигуры / последние ходы / пешки / ничего', () => {
+    it('stages: own pieces / last moves / pawns / nothing', () => {
         const own = visibleSquares(1, board, history, 'w');
         expect(own.has('e1') && own.has('f3') && !own.has('e8')).toBe(true);
-        expect([...visibleSquares(2, board, history, 'w')].sort()).toEqual(['a6', 'b5', 'c6', 'f3']);   // 4 последних полухода
+        expect([...visibleSquares(2, board, history, 'w')].sort()).toEqual(['a6', 'b5', 'c6', 'f3']);   // the last 4 half-moves
         const pawns = visibleSquares(3, board, history, 'w');
         expect(pawns.has('e4') && pawns.has('a6') && !pawns.has('b5')).toBe(true);
         expect(visibleSquares(4, board, history, 'w').size).toBe(0);
         expect(visibleSquares(0, board, history, 'w').size).toBe(32);
     });
 
-    it('ход нотацией: SAN, рокировка нулями, UCI, превращение; нелегальный — null', () => {
+    it('a move by notation: SAN, castling with zeros, UCI, promotion; an illegal one — null', () => {
         const moves = new Chess().moves({verbose: true});
         expect(parseMoveInput(moves, 'Nf3')).toEqual({from: 'g1', to: 'f3', promotion: undefined});
         expect(parseMoveInput(moves, 'nf3')).toEqual({from: 'g1', to: 'f3', promotion: undefined});
@@ -59,7 +59,7 @@ describe('вслепую: правила', () => {
         expect(parseMoveInput(promo, 'a7a8')).toEqual({from: 'a7', to: 'a8', promotion: 'q'});
     });
 
-    it('подсмотр считается, повторный во время подсмотра — нет; без рейтинга не включается', () => {
+    it('a peek is counted, a repeated one during a peek — no; without a rating it is not enabled', () => {
         armBlindfold(2);
         startBlindfold(false);
         expect(getBlindfold().level).toBe(0);
@@ -73,8 +73,8 @@ describe('вслепую: правила', () => {
     });
 });
 
-describe('вслепую: партия с ботом', () => {
-    it('фигуры скрыты, ход нотацией, подсмотр открывает доску, в архив — ступень и подсмотры', async () => {
+describe('blindfold: a game with a bot', () => {
+    it('pieces are hidden, a move by notation, a peek opens the board, the archive gets the stage and the peeks', async () => {
         vi.useFakeTimers({shouldAdvanceTime: true});
         resetBotCatalogCache();
         setToken('test-token');
@@ -90,7 +90,7 @@ describe('вслепую: партия с ботом', () => {
         armBlindfold(4);
         render(<MemoryRouter><Chessboard/></MemoryRouter>);
         await openBots();
-        const start = await screen.findByRole('button', {name: /Белыми/});
+        const start = await screen.findByRole('button', {name: /White/});
         await act(async () => fireEvent.click(start));
         expect(screen.getByTestId('blindfold-panel')).toBeInTheDocument();
         expect(document.querySelectorAll('[data-hidden="true"]').length).toBe(32);
@@ -100,13 +100,13 @@ describe('вслепую: партия с ботом', () => {
         expect(screen.getByText('e4')).toBeInTheDocument();
         await act(async () => fireEvent.click(screen.getByTestId('blindfold-peek')));
         expect(document.querySelectorAll('[data-hidden="true"]').length).toBe(0);
-        expect(screen.getByTestId('blindfold-peeks')).toHaveTextContent('Подсмотров: 1');
+        expect(screen.getByTestId('blindfold-peeks')).toHaveTextContent('Peeks: 1');
         fireEvent.click(screen.getByTestId('blindfold-hide-moves'));
         expect(screen.queryByText('e4')).toBeNull();
 
-        // Сдача — партия сохраняется с пометкой «вслепую».
+        // Resigning — the game is saved with a "blindfold" mark.
         vi.spyOn(window, 'confirm').mockReturnValue(true);
-        await act(async () => fireEvent.click(screen.getByRole('button', {name: /Сдаться/})));
+        await act(async () => fireEvent.click(screen.getByRole('button', {name: /Resign/})));
         const save = (fetchMock.mock.calls as unknown as [string, RequestInit][]).find(([url]) => String(url).includes('/bots/save-game'));
         expect(JSON.parse(String(save![1].body))).toMatchObject({blindfold: 4, peeks: 1});
     });

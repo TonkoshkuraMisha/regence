@@ -1,15 +1,15 @@
 // --- FILE: frontend/src/components/arena/ArenaPages.tsx ---
-// Арены (таск 17.2): /arenas — идущие и ближайшие арены; /arenas/:id — таблица, вход и «Играть». Пока игрок ждёт
-// пару, страница повторяет «Играть» раз в WAIT_POLL_MS; как только партия создана — переход на главную доску (она
-// сама подхватывает идущую партию). ArenaBanner — анонс в лобби главной доски. Арены идут по расписанию конференций
-// (33.4): в названии — конференция; у ещё не начавшейся арены — «напомнить перед началом». Зачёт конференций
-// (33.6): у игрока в таблице — его конференция, под таблицей — очки конференций в этой арене. Под списком арен —
-// месячная лига арен (33.5, ArenaLeague.tsx). Призёру арены (место из наград сервера, me.podium_place) страница один
-// раз показывает праздник призёра — тот же, что после турниров (TournamentCelebration). Матч конференций (format
-// 'match', ConferenceMatches.tsx): вместо таблицы — счёт и доски; «Играть» нет — партии туров начинаются сами.
-// Данные: services/arenas.ts — arenasApi (GET /api/v1/arenas, /arenas/current, /arenas/{id}; POST join, ready, remind,
-// leave-waiting); состояние арены целиком считает сервер (src/services/arena.py), клиент только показывает и опрашивает.
-// Роуты — App.tsx; ArenaBanner рисует LobbyPanel.tsx. Вход открыт любому зарегистрированному игроку, без порогов по силе.
+// Arenas (task 17.2): /arenas shows current and upcoming arenas; /arenas/:id shows the table, joining and "Play". While the player waits for
+// a pair, the page repeats "Play" every WAIT_POLL_MS; as soon as a game is created, a jump to the main board (it
+// picks up the game in progress by itself). ArenaBanner is an announcement in the main board lobby. Arenas run on the conference
+// schedule (33.4): the name includes the conference; for an arena that has not started, "remind before the start". Conference standings
+// (33.6): the player's conference is in the table, under the table are the conference points in this arena. Under the arena list is the
+// monthly arena league (33.5, ArenaLeague.tsx). To an arena prize winner (the place from the server awards, me.podium_place) the page shows once
+// the prize winner's celebration, the same as after tournaments (TournamentCelebration). A conference match (format
+// 'match', ConferenceMatches.tsx): instead of a table, the score and boards; there is no "Play": the round games start by themselves.
+// Data: services/arenas.ts, arenasApi (GET /api/v1/arenas, /arenas/current, /arenas/{id}; POST join, ready, remind,
+// leave-waiting); the whole arena state is computed by the server (src/services/arena.py), the client only shows and polls.
+// Routes are App.tsx; ArenaBanner is rendered by LobbyPanel.tsx. Entry is open to any registered player, with no strength thresholds.
 
 import {useCallback, useEffect, useRef, useState} from 'react';
 import {Link, useNavigate, useParams} from 'react-router-dom';
@@ -25,12 +25,12 @@ import {conferenceName, MatchBoards} from './ConferenceMatches';
 import {arenaRows} from '../../services/tournamentResults';
 import {markCelebrated, shouldCelebrate, TournamentCelebration} from '../tournaments/TournamentCelebration';
 
-// Период опроса «есть ли партия» (мс), пока игрок нажал «Играть» и ждёт пару.
+// Polling period for "is there a game" (ms) while the player pressed "Play" and waits for a pair.
 export const WAIT_POLL_MS = 2000;
-// Период обновления страницы арены (мс): таблица, часы и статус.
+// Refresh period of the arena page (ms): the table, the clock and the status.
 const REFRESH_MS = 5000;
 
-/** Текущее время в мс, обновляется раз в intervalMs — для обратных отсчётов. */
+/** Current time in ms, refreshed every intervalMs, for countdowns. */
 function useNow(intervalMs = 1000): number {
     const [now, setNow] = useState(() => Date.now());
     useEffect(() => {
@@ -40,7 +40,7 @@ function useNow(intervalMs = 1000): number {
     return now;
 }
 
-/** Название арены; withConference: false — короткое, для узкого анонса в лобби. */
+/** Arena name; withConference: false is the short one, for a narrow announcement in the lobby. */
 function arenaName(a: ArenaInfo, t: ReturnType<typeof useI18n>['t'], withConference = true): string {
     if (a.format === 'match') {
         return t('arenas.matchName', {home: conferenceName(a.conference, t), guest: conferenceName(a.opponent_conference, t)});
@@ -48,15 +48,15 @@ function arenaName(a: ArenaInfo, t: ReturnType<typeof useI18n>['t'], withConfere
     const base = a.format === 'swiss'
         ? t('arenas.swissName', {control: controlLabel(a), rounds: a.rounds ?? 0})
         : t(a.evening ? 'arenas.eveningName' : 'arenas.name', {control: controlLabel(a)});
-    // Конференция, по расписанию которой идёт арена (33.4).
+    // The conference whose schedule the arena runs on (33.4).
     const key = withConference ? conferenceKey(a.conference) : null;
     const conference = key ? ` · ${t(`arenas.conferences.${key}`)}` : '';
-    // Деление переполненной арены (33.2).
+    // Splitting an overfull arena (33.2).
     const division = (a.division ?? 1) > 1 ? ` · ${t('arenas.division', {n: a.division ?? 1})}` : '';
     return `${base}${conference}${division}`;
 }
 
-/** Строка про время арены по статусу: старт, раунд, последний старт и конец, доигрывание партий. */
+/** Arena time line by status: the start, a round, the last start and the end, finishing games. */
 function timing(a: ArenaInfo, now: number, t: ReturnType<typeof useI18n>['t']): string {
     if (a.status === 'scheduled') return t('arenas.startsIn', {time: clock(secondsUntil(a.starts_at, now))});
     if (a.status === 'running' && (a.format === 'swiss' || a.format === 'match')) return t('arenas.round', {round: a.current_round ?? 0, total: a.rounds ?? 0});
@@ -64,13 +64,13 @@ function timing(a: ArenaInfo, now: number, t: ReturnType<typeof useI18n>['t']): 
         return t('arenas.lastStartIn', {time: clock(secondsUntil(a.last_start_at, now)), end: clock(secondsUntil(a.ends_at, now))});
     }
     if (a.status === 'running') return t('arenas.endsIn', {time: clock(secondsUntil(a.ends_at, now))});
-    // Честный конец (33.1): после последнего старта — доигрывание; итоги окончательные, когда все партии сыграны.
+    // Fair end (33.1): after the last start, games are finished; the results are final when all games are played.
     if (a.status === 'closing' && (a.open_games ?? 0) > 0) return t('arenas.closingGames', {n: a.open_games ?? 0});
     if (a.status === 'closing') return t('arenas.closingTime', {time: clock(secondsUntil(a.ends_at, now))});
     return t('arenas.finished');
 }
 
-/** Список идущих и ближайших арен и под ним месячная лига. */
+/** List of current and upcoming arenas and the monthly league under it. */
 export function ArenasPage() {
     const {t} = useI18n();
     const now = useNow();
@@ -104,7 +104,7 @@ export function ArenasPage() {
     );
 }
 
-/** Страница одной арены: вход, «Играть» (поиск пары опросом), напоминание, таблица или матч, зачёт конференций, праздник призёру. */
+/** Single arena page: joining, "Play" (pair search by polling), a reminder, the table or a match, conference standings, the prize winner's celebration. */
 export function ArenaPage() {
     const {t} = useI18n();
     const navigate = useNavigate();
@@ -120,13 +120,13 @@ export function ArenaPage() {
 
     const load = useCallback(() => {
         arenasApi.get(id).then((data) => {
-            // Игрок в другом делении этой арены (33.2) — его таблица и кнопка «Играть» там.
+            // The player is in another split of this arena (33.2): their table and the "Play" button are there.
             if (data.me?.division_arena_id) {
                 navigate(`/arenas/${data.me.division_arena_id}`, {replace: true});
                 return;
             }
             setArena(data);
-            // Партия уже идёт (началась в другой вкладке или пока страница ждала) — на доску.
+            // A game is already in progress (started in another tab or while the page waited): to the board.
             if (data.me?.current_game_id) navigate('/');
         }).catch((err) => setError(errorMessage(err, 'common.networkError')));
     }, [id, navigate]);
@@ -154,8 +154,8 @@ export function ArenaPage() {
         };
     }, [searching, id, navigate]);
 
-    // Экран итогов (33.5, таблица — 21.11): итоги окончательные и игрок сыграл хотя бы партию — один раз на арену.
-    // Место призёра — из наград сервера; остальным — строка их имени в таблице итогов.
+    // Results screen (33.5, the table is 21.11): the results are final and the player played at least one game: once per arena.
+    // The prize winner's place is from the server awards; for the others, the row with their name in the results table.
     const myName = arena?.me?.username;
     const myRow = arena?.standings.find((s) => s.username === myName && s.games > 0);
     const podium = arena?.status === 'finished' ? arena.me?.podium_place ?? myRow?.place ?? null : null;
@@ -180,7 +180,7 @@ export function ArenaPage() {
     const remind = (on: boolean) => (on ? arenasApi.remind(id) : arenasApi.forgetReminder(id))
         .then(load).catch((err) => setError(errorMessage(err, 'common.networkError')));
 
-    // Арена «по времени» (формат не указан — тоже она): «Играть» и доигрывание; швейцарка и матч идут турами.
+    // A "timed" arena (an unspecified format is it too): "Play" and finishing games; a Swiss event and a match run in rounds.
     const byTime = (arena.format ?? 'arena') === 'arena';
 
     return (
@@ -304,7 +304,7 @@ export function ArenaPage() {
     );
 }
 
-/** Анонс в лобби: идущая (или ближайшая) арена. */
+/** Lobby announcement: the current (or nearest) arena. */
 export function ArenaBanner() {
     const {t} = useI18n();
     const now = useNow();

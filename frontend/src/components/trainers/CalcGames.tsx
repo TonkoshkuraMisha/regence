@@ -1,9 +1,9 @@
 // --- FILE: frontend/src/components/trainers/CalcGames.tsx ---
-// Счёт и внимание (таск 19.7). QuizGame — QUIZ_ROUNDS быстрых вопросов с ответом кнопкой и разбором после каждого
-// («Кто выиграет размен?», «Сколько ходов до поля?», «Успевает ли король?», «Оцени позицию»); после ответа доска
-// свободна — позицию можно разыграть (usePositionExplorer). ChecksGame — «Шахи и
-// взятия»: отметить на доске все шахи и взятия за обе стороны (поле «откуда», поле «куда»), затем «Готово».
-// Данные: партии классики (content/classics) и чистые правила trainers/calculation.ts (без сети). Запускается из TrainersPage.tsx; уровней у этих тренажёров нет.
+// Calculation and attention (task 19.7). QuizGame - QUIZ_ROUNDS quick questions answered by a button with an explanation after each
+// ("Who wins the exchange?", "How many moves to the square?", "Does the king make it?", "Evaluate the position"); after the answer the board
+// is free - the position can be played out (usePositionExplorer). ChecksGame - "Checks and
+// captures": mark on the board all checks and captures for both sides (the "from" square, the "to" square), then "Done".
+// Data: classic games (content/classics) and pure rules trainers/calculation.ts (no network). Launched from TrainersPage.tsx; these trainers have no levels.
 
 import {useMemo, useState} from 'react';
 import {useI18n} from '../../i18n';
@@ -20,14 +20,14 @@ import {
 import {useClassics} from './trainerGame';
 import type {TrainerGameProps} from './trainerGame';
 
-/** Вопросов в одной попытке QuizGame; 10 очков за верный ответ. */
+/** Questions in one QuizGame attempt; 10 points for a correct answer. */
 export const QUIZ_ROUNDS = 10;
-/** Позиций в одной попытке ChecksGame. */
+/** Positions in one ChecksGame attempt. */
 export const CHECKS_ROUNDS = 3;
-/** Виды викторин — коды тренажёров calc_* (кроме calc_checks, у него своя игра). */
+/** Quiz kinds - calc_* trainer codes (except calc_checks, which has its own game). */
 export type QuizKind = 'calc_exchange' | 'calc_distance' | 'calc_square' | 'calc_eval' | 'calc_compare';
 
-/** Готовый вопрос: позиция, подсветка, ключ текста вопроса с параметрами, варианты ответа (label — ключ каталога или готовая подпись хода) и id верного. */
+/** A ready question: position, highlight, the question text key with parameters, answer options (label - a catalogue key or a ready move label) and the id of the correct one. */
 interface Quiz {
     fen: string;
     orientation: 'white' | 'black';
@@ -36,17 +36,17 @@ interface Quiz {
     params?: Record<string, string | number>;
     options: { id: string; label: MessageKey | string }[];
     answer: string;
-    /** Разбор после ответа (например, оценки обоих ходов). */
+    /** Explanation after the answer (for example, evaluations of both moves). */
     explain?: { key: MessageKey; params: Record<string, string | number> };
 }
 
-/** Оценка в сотых пешки → «+1.5»; знак «+» только у положительных. */
+/** Evaluation in hundredths of a pawn -> "+1.5"; the "+" sign only for positive ones. */
 const pawns = (cp: number) => `${cp > 0 ? '+' : ''}${(cp / 100).toFixed(1)}`;
 
-/** Пустая доска (FEN): основа вопросов, где позиция строится из одной фигуры. */
+/** Empty board (FEN): the basis of questions where the position is built from a single piece. */
 const EMPTY = '8/8/8/8/8/8/8/8 w - - 0 1';
 
-/** Строит вопрос выбранного вида детерминированно по seed и номеру; null — в пуле не нашлось подходящей позиции. */
+/** Builds a question of the chosen kind deterministically by seed and number; null - no suitable position was found in the pool. */
 function makeQuiz(kind: QuizKind, games: ClassicGame[], pool: string[], seed: number, index: number): Quiz | null {
     if (kind === 'calc_exchange') {
         const q = exchangeQuestion(pool, seed * 97 + index);
@@ -95,7 +95,7 @@ function makeQuiz(kind: QuizKind, games: ClassicGame[], pool: string[], seed: nu
     };
 }
 
-/** Расстановка FEN с одной фигурой на поле. */
+/** FEN placement with a single piece on a square. */
 function placementWith(square: string, piece: string): string {
     const rows: string[] = [];
     for (let rank = 8; rank >= 1; rank--) {
@@ -109,7 +109,7 @@ function placementWith(square: string, piece: string): string {
     return rows.join('/');
 }
 
-/** Серия быстрых вопросов; после ответа доска свободна — позицию можно разыграть самому. */
+/** A series of quick questions; after the answer the board is free - the position can be played out by oneself. */
 export function QuizGame({kind, seed, onFinish}: Omit<TrainerGameProps, 'level'> & { kind: QuizKind }) {
     const {t} = useI18n();
     const games = useClassics();
@@ -127,7 +127,7 @@ export function QuizGame({kind, seed, onFinish}: Omit<TrainerGameProps, 'level'>
         if (picked) return;
         setPicked(id);
         setScore((s) => (id === quiz.answer ? {...s, correct: s.correct + 1} : {...s, wrong: s.wrong + 1}));
-        // После ответа позицию можно разыграть самому (например, гонку пешки и короля) — usePositionExplorer.
+        // After the answer the position can be played out by oneself (for example, a pawn and king race) - usePositionExplorer.
         explorer.start(quiz.fen);
     };
     const next = () => {
@@ -175,8 +175,8 @@ export function QuizGame({kind, seed, onFinish}: Omit<TrainerGameProps, 'level'>
 }
 
 /**
- * Очки раунда: процент найденных шахов и взятий минус 10 за каждую лишнюю отметку (не ниже 0). Стрелки разбора: зелёная — найден,
- * жёлтая — пропущен, красная — лишний; до проверки отмеченное — синее.
+ * Round score: the percentage of checks and captures found minus 10 for each extra mark (not below 0). Review arrows: green - found,
+ * yellow - missed, red - extra; before checking, what is marked is blue.
  */
 export function ChecksGame({seed, onFinish}: Omit<TrainerGameProps, 'level'>) {
     const {t} = useI18n();

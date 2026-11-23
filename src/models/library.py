@@ -1,12 +1,13 @@
 """
-Библиотека партий (таск 27.1): отдельная от партий игроков и ботов (`games`) база — подборки владельца, партии
-мастеров, примерные партии пешечных структур и дебютного репертуара. В library_games — только заголовки и главная
-линия ходов; комментарии к ходам лежат отдельно, в library_annotations (27.4). Импорт — scripts/import_library.py
-(27.2), правила импорта — src/services/library.py.
+The game library (task 27.1): a database separate from the games of players and bots (`games`) - the owner's collections,
+masters'
+games, model games of pawn structures and of the opening repertoire. library_games holds only the headers and the main
+line of moves; move comments lie separately, in library_annotations (27.4). Import - scripts/import_library.py
+(27.2), import rules - src/services/library.py.
 
-Коллекции — дерево (папка → подпапка). Партия может лежать в нескольких коллекциях; одинаковые партии из разных
-файлов сливаются по `moves_hash` (SHA-256 от имён игроков, года, начальной позиции и ходов).
-Видимость задаёт коллекция: public — всем, owner — только владельцу коллекции, staff — модераторам.
+Collections are a tree (folder -> subfolder). A game can lie in several collections; identical games from different
+files are merged by `moves_hash` (SHA-256 of the player names, year, initial position and moves).
+Visibility is set by the collection: public - to everyone, owner - only to the collection owner, staff - to moderators.
 """
 
 from datetime import datetime
@@ -16,23 +17,23 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from src.models.base import Base, one_of
 
-# Итог партии библиотеки (src/services/library.py, RESULTS: прочее при импорте становится «*»).
+# The library game result (src/services/library.py, RESULTS: anything else becomes "*" on import).
 LIBRARY_RESULTS = ("1-0", "0-1", "1/2-1/2", "*")
-# Статусы аннотации (src/services/library.py, ANNOTATION_STATUSES).
+# Annotation statuses (src/services/library.py, ANNOTATION_STATUSES).
 ANNOTATION_STATUSES = ("auto", "draft", "review", "approved")
 
 VISIBILITIES = ("public", "owner", "staff")
 
 
 class LibraryCollection(Base):
-    """Коллекция библиотеки — узел дерева папок, со своей видимостью: публичная, только владельцу или служебная."""
+    """A library collection - a node of the folder tree, with its own visibility: public, owner-only or staff."""
     __tablename__ = "library_collections"
     __table_args__ = (one_of("library_collections", "visibility", VISIBILITIES),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     parent_id: Mapped[int | None] = mapped_column(ForeignKey("library_collections.id", ondelete="CASCADE"),
                                                   nullable=True, index=True)
-    # Полный путь «Пешечные структуры/Изолированная пешка» — ключ повторного импорта.
+    # The full path "Pawn structures/Isolated pawn" - the key of a repeated import.
     path: Mapped[str] = mapped_column(String(500), unique=True)
     name: Mapped[str] = mapped_column(String(200))
     visibility: Mapped[str] = mapped_column(String(8), default="public", server_default="public")
@@ -44,8 +45,8 @@ class LibraryCollection(Base):
 
 class LibraryGame(Base):
     """
-    Партия библиотеки: заголовки и главная линия ходов; метки для поиска (пешечная структура, «закончилась матом»)
-    ставит разметка.
+    A library game: headers and the main line of moves; labels for search (pawn structure, "ended in mate")
+    are set by the markup.
     """
     __tablename__ = "library_games"
     __table_args__ = (one_of("library_games", "result", LIBRARY_RESULTS),)
@@ -66,20 +67,20 @@ class LibraryGame(Base):
     opening: Mapped[str] = mapped_column(String(200), default="", server_default="")
     start_fen: Mapped[str | None] = mapped_column(String(100), nullable=True)
     plies: Mapped[int] = mapped_column(Integer, default=0, server_default="0", index=True)
-    # Пешечная структура партии (таск 27.5, src/services/pawn_structures.py); None — не определена.
+    # The pawn structure of the game (task 27.5, src/services/pawn_structures.py); None - not determined.
     structure: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
-    # Партия закончилась матом на доске (миниатюры 27.9 выбираются по этой метке).
+    # The game ended in mate on the board (miniatures 27.9 are chosen by this label).
     mate_finish: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", index=True)
-    # Жертва материала и мат победителя (src/services/beauty.py, таск 27.5).
+    # A material sacrifice and the winner's mate (src/services/beauty.py, task 27.5).
     beautiful: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", index=True)
-    moves: Mapped[str] = mapped_column(Text, default="", server_default="")  # UCI через пробел
-    # Партия разложена в индекс позиций библиотеки (position_library_games, src/services/position_index.py).
+    moves: Mapped[str] = mapped_column(Text, default="", server_default="")  # UCI separated by spaces
+    # The game is laid out into the library position index (position_library_games, src/services/position_index.py).
     positions_indexed: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class LibraryGameCollection(Base):
-    """Связь «партия — коллекция»: одна партия может лежать в нескольких коллекциях."""
+    """The "game - collection" link: one game can lie in several collections."""
     __tablename__ = "library_game_collections"
     __table_args__ = (UniqueConstraint("collection_id", "game_id", name="uq_library_game_collection"),)
 
@@ -91,10 +92,10 @@ class LibraryGameCollection(Base):
 
 class LibraryAnnotation(Base):
     """
-    Аннотация партии библиотеки (таск 27.4, docs/research/library-annotations.md): одна на партию. body — документ
-    {"evals": [...], "comments": {ply: {"comment": [{key, params}], "arrows": [...]}}, "notes": {...}} — комментарии
-    наставника кодами coach.* (как в «Классике» 14.7) и, позже, свои тексты на трёх языках. Статус: auto — черновик
-    наставника (виден всем с пометкой), draft / review — у авторов, approved — проверено владельцем.
+    A library game annotation (task 27.4, docs/research/library-annotations.md): one per game. body is the document
+    {"evals": [...], "comments": {ply: {"comment": [{key, params}], "arrows": [...]}}, "notes": {...}} - mentor
+    comments as coach.* codes (as in the "Classic" 14.7) and, later, own texts in three languages. Status: auto - the mentor's
+    draft (visible to everyone with a mark), draft / review - with authors, approved - checked by the owner.
     """
 
     __tablename__ = "library_annotations"

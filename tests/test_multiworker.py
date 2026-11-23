@@ -1,7 +1,7 @@
 # --- FILE: tests/test_multiworker.py ---
 """
-Несколько воркеров и вкладок: присутствие, доставка сообщений и зрители через Redis,
-лидерство цикла таймаутов, атомарное принятие вызова. Плюс флаг по правилу ФИДЕ 6.9.
+Several workers and tabs: presence, message delivery and spectators through Redis,
+timeout-loop leadership, atomic challenge acceptance. Plus the flag rule from FIDE 6.9.
 """
 
 import asyncio
@@ -28,20 +28,20 @@ class RecordingSocket:
         self.received.append(json.loads(text))
 
 
-# --- Флаг по правилу ФИДЕ 6.9 -----------------------------------------------------------
+# --- Flag rule from FIDE 6.9 ------------------------------------------------------------
 
 @pytest.mark.parametrize(
     "fen, flagged, expected",
     [
-        # У чёрных (победителя по флагу) только конь против голого короля — мат невозможен.
+        # Black (the winner on the flag) has only a knight against a bare king: mate is impossible.
         ("8/8/8/4k3/8/8/2n5/K7 w - - 0 60", "white", ("1/2-1/2", FLAG_DRAW_TERMINATION)),
-        # Голый король у победителя.
+        # The winner has a bare king.
         ("8/8/8/4k3/8/8/2q5/K7 b - - 0 60", "black", ("1/2-1/2", FLAG_DRAW_TERMINATION)),
-        # Ладья у победителя — обычное поражение по времени.
+        # The winner has a rook: an ordinary loss on time.
         ("8/8/8/4k3/8/8/2r5/K7 w - - 0 60", "white", ("0-1", "timeout")),
-        # Конь против ладьи: кооперативный мат существует, значит, победа.
+        # Knight against rook: a cooperative mate exists, so it is a win.
         ("8/8/8/4k3/8/8/2n5/KR6 w - - 0 60", "white", ("0-1", "timeout")),
-        # Одноцветные слоны у обоих: мат невозможен.
+        # Same-coloured bishops on both sides: mate is impossible.
         ("8/8/8/4k3/2b5/8/8/K2B4 w - - 0 60", "white", ("1/2-1/2", FLAG_DRAW_TERMINATION)),
     ],
 )
@@ -73,7 +73,7 @@ async def test_flag_during_move_attempt_is_draw_vs_insufficient_material():
     assert res["termination"] == FLAG_DRAW_TERMINATION
 
 
-# --- Два воркера на общем Redis ---------------------------------------------------------
+# --- Two workers on a shared Redis ------------------------------------------------------
 
 @pytest.fixture
 def shared_redis(monkeypatch):
@@ -141,7 +141,7 @@ async def test_message_reaches_tabs_on_all_workers_without_duplicates(shared_red
         await worker_a.send_personal_message({"event": "move_made", "san": "e4"}, 77)
 
         assert await _wait_for(lambda: tab_b.received)
-        await asyncio.sleep(0.2)  # даём шанс прийти дублю, если он есть
+        await asyncio.sleep(0.2)  # give a duplicate a chance to arrive, if there is one
         assert [m["san"] for m in tab_a.received] == ["e4"]
         assert [m["san"] for m in tab_b.received] == ["e4"]
     finally:
@@ -163,7 +163,7 @@ async def test_spectators_are_shared_between_workers():
     await worker_a.add_spectator(500, 33)
     assert await worker_b.get_spectator_ids(500) == {33}
 
-    await worker_b.add_spectator(501, 33)  # перешёл смотреть другую партию
+    await worker_b.add_spectator(501, 33)  # moved on to watch another game
     assert await worker_a.get_spectator_ids(500) == set()
     assert await worker_a.get_spectator_ids(501) == {33}
 
@@ -174,12 +174,12 @@ async def test_spectators_are_shared_between_workers():
 async def test_only_one_worker_runs_timeouts_loop(monkeypatch):
     monkeypatch.setattr(game_state_module, "WORKER_ID", "A")
     assert await state_manager._hold_timeouts_leadership() is True
-    assert await state_manager._hold_timeouts_leadership() is True  # лидер продлевает
+    assert await state_manager._hold_timeouts_leadership() is True  # the leader renews
 
     monkeypatch.setattr(game_state_module, "WORKER_ID", "B")
     assert await state_manager._hold_timeouts_leadership() is False
 
-    await state_manager.redis.delete(game_state_module.TIMEOUTS_LEADER_KEY)  # лидер упал, TTL истёк
+    await state_manager.redis.delete(game_state_module.TIMEOUTS_LEADER_KEY)  # the leader died, the TTL expired
     assert await state_manager._hold_timeouts_leadership() is True
 
 

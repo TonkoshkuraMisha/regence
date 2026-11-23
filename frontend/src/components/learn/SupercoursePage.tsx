@@ -1,15 +1,15 @@
 // --- FILE: frontend/src/components/learn/SupercoursePage.tsx ---
-// Большой курс (таск 27.6): /learn/course — уровни 0–5 по разрядам, модули по ветвям (тактика, мат, эндшпиль,
-// стратегия, дебют, расчёт, партии). Шаги модуля ведут в готовые разделы; модуль без шагов — место в каркасе под
-// наполнение: игроку не показывается, виден в режиме «каркас курса». В каркасе для автора — шаги в работе (draft) с
-// пометкой и таблица покрытия: сколько модулей готово, в работе и пусто по уровням и ветвям. Модуль закрывается сам,
-// когда выполнены все его проверяемые шаги (автозачёт — services/courseProgress.ts, нормативы на сервере),
-// выполненный шаг помечен галочкой;
-// модуль из непроверяемых шагов (библиотека, репертуар…) игрок отмечает сам — запись урока course-<код>.
-// Ссылка ?level=N&module=КОД (карточка «Урок по теме ошибки» в итоге партии) открывает уровень N и подсвечивает
-// модуль, прокручивая к нему.
-// Данные: content/supercourse.ts (COURSE, BRANCHES, пороги экзаменов уровней), content/programs.ts (ссылки шагов); экзамены уровней (модули X<n>) —
-// fetchExamSummary из ExamPage.tsx; темы без задач — puzzlesApi.training(). Подключено в App.tsx.
+// Great Course (task 27.6): /learn/course has levels 0-5 by rank, modules by branch (tactics, mate, endgame,
+// strategy, opening, calculation, games). Module steps lead to ready sections; a module without steps is a slot in the skeleton to be
+// filled: not shown to the player, visible in the "course skeleton" mode. In the skeleton for the author, steps in progress (draft) are
+// marked, and a coverage table shows how many modules are ready, in progress and empty by level and branch. A module closes by itself
+// when all its verifiable steps are done (auto-credit is services/courseProgress.ts, norms on the server),
+// a completed step is marked with a checkmark;
+// a module of unverifiable steps (library, repertoire...) is marked by the player themselves: a course-<code> lesson record.
+// The link ?level=N&module=CODE (the "Lesson on the mistake's theme" card in the game result) opens level N and highlights
+// the module, scrolling to it.
+// Data: content/supercourse.ts (COURSE, BRANCHES, level exam thresholds), content/programs.ts (step links); level exams (modules X<n>) are
+// fetchExamSummary from ExamPage.tsx; topics without puzzles are puzzlesApi.training(). Wired in App.tsx.
 
 import {useEffect, useMemo, useState} from 'react';
 import {useNavigate, useSearchParams} from 'react-router-dom';
@@ -28,8 +28,8 @@ import {activityLink} from '../../content/programs';
 import {activityLabel} from '../ProgramsPage';
 
 /**
- * Большой курс: вкладки уровней, модули по ветвям. Множество done складывается из четырёх источников: записи уроков, автозачёт
- * по фактам, пройденные экзамены уровней и ручная отметка непроверяемых модулей (markDone).
+ * Great Course: level tabs, modules by branch. The done set is composed of four sources: lesson records, auto-credit
+ * by facts, passed level exams and a manual mark of unverifiable modules (markDone).
  */
 export function SupercoursePage() {
     const {t, language} = useI18n();
@@ -43,9 +43,9 @@ export function SupercoursePage() {
     const [skeleton, setSkeleton] = useState(false);
     const [done, setDone] = useState<Set<string>>(new Set());
     const [examPassed, setExamPassed] = useState<Set<number>>(new Set());
-    // Темы, в которых пока нет ни одной задачи: шаг не ведёт в пустую тренировку, а помечен «задач пока нет».
+    // Topics that have no puzzles yet: the step does not lead to an empty training but is marked "no puzzles yet".
     const [emptyThemes, setEmptyThemes] = useState<Set<string>>(new Set());
-    // Выполненное игроком по видам упражнений (автозачёт): модуль закрывается сам, когда сделаны все его проверяемые шаги.
+    // What the player has done by exercise kinds (auto-credit): a module closes by itself when all its verifiable steps are done.
     const [facts, setFacts] = useState<CourseFacts | null>(null);
     const logged = Boolean(getToken());
 
@@ -71,7 +71,7 @@ export function SupercoursePage() {
         }).catch(() => undefined);
     }, []);
 
-    // Модуль из ссылки — в видимую часть страницы (scrollIntoView есть не везде, например в jsdom тестов).
+    // The module from the link goes into the visible part of the page (scrollIntoView is not available everywhere, for example in test jsdom).
     useEffect(() => {
         if (focusModule) document.querySelector(`[data-testid="course-module-${focusModule}"]`)?.scrollIntoView?.({block: 'center'});
     }, [focusModule]);
@@ -179,8 +179,8 @@ export function SupercoursePage() {
 }
 
 /**
- * Покрытие курса для автора (режим «каркас»): строки — уровни, столбцы — ветви, в ячейке — сколько модулей готово, в
- * работе и пусто (content/supercourse.ts, coverage). Ячейка без модулей — прочерк.
+ * Course coverage for the author ("skeleton" mode): rows are levels, columns are branches, a cell shows how many modules are ready, in
+ * progress and empty (content/supercourse.ts, coverage). A cell without modules shows a dash.
  */
 function CoverageTable() {
     const {t} = useI18n();

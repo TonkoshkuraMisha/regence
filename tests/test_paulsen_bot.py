@@ -14,7 +14,7 @@ from src.services.bots.philidor import normalize_fen_key
 
 
 def test_paulsen_opening_repertoire():
-    """Проверяем, что Паульсен выбирает ход из своей дебютной книги."""
+    """Check that Paulsen picks a move from his opening book."""
     bot = PaulsenBot(stockfish_path=None)
     board = chess.Board()
     start_key = normalize_fen_key(board)
@@ -26,7 +26,7 @@ def test_paulsen_opening_repertoire():
 
 
 def test_paulsen_style_rewards_flexible_pawn_shield_and_bishops():
-    """Проверяем, что стилевой фильтр Паульсена поощряет сицилианские построения (c5/e6/a6) и фианкетто слона."""
+    """Check that the Paulsen style filter rewards Sicilian set-ups (c5/e6/a6) and bishop fianchetto."""
     board = chess.Board("rnbqkbnr/pp1ppppp/8/2p5/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2")
 
     e6_bonus, _ = evaluate_paulsen_style_bonus(board, chess.Move.from_uci("e7e6"))
@@ -35,7 +35,7 @@ def test_paulsen_style_rewards_flexible_pawn_shield_and_bishops():
 
 
 def test_paulsen_middlegame_move_generation():
-    """Проверяем генерацию хода Паульсена в миттельшпиле вне книги."""
+    """Check Paulsen move generation in the middlegame, outside the book."""
     bot = PaulsenBot(stockfish_path=None)
     board = chess.Board("r1bq1rk1/1p2bppp/p1nppn2/8/3NP3/2N1B3/PPPQBPPP/2KR3R b - - 3 10")
 
@@ -46,7 +46,7 @@ def test_paulsen_middlegame_move_generation():
 
 @pytest.mark.asyncio
 async def test_paulsen_api_move_endpoint():
-    """Проверяем REST-эндпоинты /api/v1/bots/list и /api/v1/bots/move для игры с Паульсеном."""
+    """Check the REST endpoints /api/v1/bots/list and /api/v1/bots/move for a game against Paulsen."""
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         list_resp = await client.get("/api/v1/bots/list")

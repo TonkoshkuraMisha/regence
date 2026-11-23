@@ -12,12 +12,12 @@ LANGS = ("en", "uk", "ru")
 
 
 def q(text: str) -> str:
-    """Форматирует и экранирует строковый литерал для генерации кода."""
+    """Formats and escapes a string literal for code generation."""
     return "'" + text.replace("\\", "\\\\").replace("'", "\\'") + "'"
 
 
 def number(value) -> str:
-    """Форматирует числовое значение очков без лишнего нуля после точки."""
+    """Formats a score value without a superfluous zero after the point."""
     return str(int(value)) if float(value).is_integer() else str(value)
 
 
@@ -54,15 +54,15 @@ if "_EVENTS: tuple[Event, ...] = (" not in s:
     s = s.replace(old, "_EVENTS: tuple[Event, ...] = (\n")
     old = ")\nEVENTS_BY_KEY = {event.key: event for event in EVENTS}\n"
     assert s.count(old) == 1
-    s = s.replace(old, ")\n# Лента — по годам; турниры одного года — по ключу.\n"
+    s = s.replace(old, ")\n# Feed - by year; tournaments of the same year - by key.\n"
                        "EVENTS: tuple[Event, ...] = tuple(sorted(_EVENTS, key=lambda event: (event.year, event.key)))\n"
                        "EVENTS_BY_KEY = {event.key: event for event in EVENTS}\n")
-anchor = ")\n# Лента — по годам; турниры одного года — по ключу.\n"
+anchor = ")\n# Feed - by year; tournaments of the same year - by key.\n"
 assert s.count(anchor) == 1
 lines = []
 for e in batch["events"]:
     assert f'Event("{e["key"]}"' not in s, e["key"]
-    # Пояснение к турниру — комментарий над записью; длинное переносится, чтобы пройти проверку длины строки.
+    # The tournament note is a comment above the entry; a long one is wrapped to pass the line-length check.
     lines.extend(textwrap.wrap(e["note"], width=112, initial_indent="    # ", subsequent_indent="    # "))
     cycles = f", cycles={e['cycles']}" if e.get("cycles", 1) > 1 else ""
     if e["format"] == "round_robin":
@@ -97,14 +97,14 @@ path.write_text(s, encoding="utf-8", newline="\n")
 for lang in LANGS:
     path = pathlib.Path(f"frontend/src/i18n/messages/{lang}.ts")
     s = path.read_text(encoding="utf-8")
-    # мастера — в конец блока bots.guests
+    # masters - to the end of the bots.guests block
     start = s.index("        guests: {\n")
     end = s.index("\n        },\n", start)
     guests = "".join(
         f"\n            {g['id']}: {{name: {q(g[lang][0])}, shortName: {q(g[lang][1])}, about: {q(g[lang][2])}}},"
         for g in batch["guests"])
     s = s[:end] + guests + s[end:]
-    # события — в конец блока timeMachine.events
+    # events - to the end of the timeMachine.events block
     start = s.index("    timeMachine: {\n")
     events_start = s.index("        events: {\n", start)
     end = s.index("\n        },\n    },\n", events_start)

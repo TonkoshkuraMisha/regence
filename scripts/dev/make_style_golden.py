@@ -1,8 +1,8 @@
 """
-Снимок стилевых бонусов исторических ботов для теста эквивалентности (tests/test_style_presets.py).
+Snapshot of the historical bots' style bonuses for the equivalence test (tests/test_style_presets.py).
 
-Позиции — детерминированные полуслучайные партии: дебют (где действует большинство правил стиля),
-миттельшпиль и эндшпиль. Перегенерировать нужно только при намеренном изменении стиля бота.
+Positions are deterministic semi-random games: the opening (where most style rules apply),
+the middlegame and the endgame. Regenerate only on an intentional change of a bot's style.
 
     python scripts/dev/make_style_golden.py
 """
@@ -21,8 +21,8 @@ from src.services.bots import BOT_INSTANCES  # noqa: E402
 
 OUT = ROOT / "tests" / "fixtures" / "style_bonus_golden.json"
 SAMPLE_PLIES = (0, 1, 2, 3, 5, 8, 12, 17, 23, 30, 40, 55)
-# Позиции под правила, до которых случайные партии почти не доходят: рокировки обеих сторон
-# (в т.ч. длинная), ладьи на центральных вертикалях, превращение пешки.
+# Positions for the rules that random games almost never reach: castling for both sides
+# (including long), rooks on the central files, pawn promotion.
 CURATED = (
     "r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4",
     "r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/2NP1N2/PPP2PPP/R1BQK2R b KQkq - 0 5",
@@ -35,7 +35,7 @@ CURATED = (
 
 
 def sample_positions(games: int = 8, seed: int = 20261112) -> list[str]:
-    """Генерирует детерминированный набор FEN-позиций из разных фаз партии."""
+    """Generates a deterministic set of FEN positions from different phases of a game."""
     rng = random.Random(seed)
     fens: list[str] = []
     for _ in range(games):
@@ -46,14 +46,14 @@ def sample_positions(games: int = 8, seed: int = 20261112) -> list[str]:
             if ply in SAMPLE_PLIES and board.fen() not in fens:
                 fens.append(board.fen())
             moves = sorted(board.legal_moves, key=lambda m: m.uci())
-            # Чаще берём взятия и шахи, чтобы в выборке были тактические правила стиля.
+            # We take captures and checks more often so that the sample has the tactical style rules.
             sharp = [m for m in moves if board.is_capture(m) or board.gives_check(m)]
             board.push(rng.choice(sharp) if sharp and rng.random() < 0.4 else rng.choice(moves))
     return fens
 
 
 def main() -> None:
-    """Записывает эталонный снимок стилевых бонусов исторических ботов в JSON."""
+    """Writes the reference snapshot of the historical bots' style bonuses into JSON."""
     fens = list(CURATED) + [f for f in sample_positions() if f not in CURATED]
     notes: list[str | None] = [None]
     note_ids: dict[str | None, int] = {None: 0}
@@ -74,7 +74,7 @@ def main() -> None:
         data["positions"].append(entry)
     OUT.write_text(json.dumps(data, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     total = sum(len(p["moves"]) for p in data["positions"]) * len(BOT_INSTANCES)
-    print(f"{len(fens)} позиций, {total} пар (бот, ход), {len(notes) - 1} комментариев -> {OUT}")
+    print(f"{len(fens)} positions, {total} (bot, move) pairs, {len(notes) - 1} comments -> {OUT}")
 
 
 if __name__ == "__main__":

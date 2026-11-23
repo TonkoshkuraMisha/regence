@@ -1,4 +1,4 @@
-"""Аннотации партий библиотеки (таск 27.4): auto и approved видны всем, черновики — только модераторам."""
+"""Library game annotations (task 27.4): auto and approved are visible to everyone, drafts only to moderators."""
 
 from sqlalchemy import select
 
@@ -11,7 +11,7 @@ COMMENTS = {"6": {"comment": [{"key": "coach.verdict.blunder.v1", "params": {"mo
 
 
 async def _game(db_session, status: str) -> int:
-    collection = await library.ensure_collection(db_session, "Красивые партии")
+    collection = await library.ensure_collection(db_session, "Beautiful games")
     await library.import_games(db_session, collection, library.read_text(PGN))
     game = (await db_session.execute(select(LibraryGame))).scalars().first()
     db_session.add(LibraryAnnotation(game_id=game.id, status=status, body={"evals": [0] * 7, "comments": COMMENTS}))
@@ -37,7 +37,7 @@ async def test_draft_is_for_moderators_only(client, db_session, test_user_2, tok
 
 
 async def test_game_without_annotation(client, db_session):
-    collection = await library.ensure_collection(db_session, "Партии")
+    collection = await library.ensure_collection(db_session, "Games")
     await library.import_games(db_session, collection, library.read_text(PGN))
     game = (await db_session.execute(select(LibraryGame))).scalars().first()
     assert client.get(f"{API}/games/{game.id}").json()["annotation"] is None

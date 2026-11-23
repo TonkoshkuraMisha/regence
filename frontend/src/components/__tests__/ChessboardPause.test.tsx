@@ -1,5 +1,5 @@
-// Пауза партии с ботом (решение владельца 22.11): в товарищеской партии часы и бот стоят, позиция скрыта плашкой,
-// ходы не принимаются; пауза переживает перезагрузку; в партии лестницы паузы нет (иначе можно думать без часов).
+// Pause of a game with a bot (owner decision 22.11): in a friendly game the clocks and the bot stand still, the position is hidden by a cover,
+// moves are not accepted; the pause survives a reload; there is no pause in a ladder game (otherwise one could think without a clock).
 
 import {act, fireEvent, render, screen, waitFor} from '@testing-library/react';
 import {MemoryRouter} from 'react-router-dom';
@@ -24,7 +24,7 @@ const stubApi = () => vi.stubGlobal('fetch', mockFetchRouter({
     '/profile/matchmaking/queue': () => [],
     '/profile/games/live': () => [],
     '/profile/games/my-active': () => ({active: false}),
-    '/bots/move': () => new Promise(() => {}),   // бот «думает» бесконечно: ход ему не нужен
+    '/bots/move': () => new Promise(() => {}),   // the bot "thinks" forever: we do not need its move
     '/bots/save-game': () => ({game_id: 1, status: 'finished', result: '1-0'}),
 }));
 
@@ -49,19 +49,19 @@ afterEach(() => {
     localStorage.clear();
 });
 
-describe('пауза партии с ботом', () => {
-    it('пауза скрывает позицию и не принимает ходы, продолжение возвращает игру', async () => {
+describe('pause of a game with a bot', () => {
+    it('the pause hides the position and accepts no moves, resuming returns the game', async () => {
         stubApi();
         renderBoard();
         await openBots();
-        await act(async () => fireEvent.click(await screen.findByRole('button', {name: /Белыми/})));
+        await act(async () => fireEvent.click(await screen.findByRole('button', {name: /White/})));
 
         await act(async () => fireEvent.click(await screen.findByTestId('bot-pause')));
         expect(screen.getByTestId('bot-paused-overlay')).toBeInTheDocument();
         fireEvent.click(square('e2'));
         fireEvent.click(square('e4'));
         expect(hasPiece('e2')).toBe(true);
-        expect(hasPiece('e4')).toBe(false);   // ход на паузе не сделан
+        expect(hasPiece('e4')).toBe(false);   // the move was not made during the pause
 
         await act(async () => fireEvent.click(screen.getByTestId('bot-resume')));
         expect(screen.queryByTestId('bot-paused-overlay')).toBeNull();
@@ -70,7 +70,7 @@ describe('пауза партии с ботом', () => {
         expect(hasPiece('e4')).toBe(true);
     });
 
-    it('пауза переживает перезагрузку: снимок с паузой открывается с плашкой, а записанный снимок помнит паузу', async () => {
+    it('the pause survives a reload: a snapshot with a pause opens with the cover, and a recorded snapshot remembers the pause', async () => {
         stubApi();
         saveBotGameSnapshot({...SNAPSHOT, paused: true}, Date.now() - 3600_000);
         renderBoard();
@@ -80,11 +80,11 @@ describe('пауза партии с ботом', () => {
         await waitFor(() => expect(loadBotGameSnapshot('TestPlayer')?.paused).toBe(false));
     });
 
-    it('в партии лестницы паузы нет', async () => {
+    it('there is no pause in a ladder game', async () => {
         stubApi();
         saveBotGameSnapshot({...SNAPSHOT, ladder: true});
         renderBoard();
-        await waitFor(() => expect(hasPiece('e4')).toBe(true));   // партия продолжена
+        await waitFor(() => expect(hasPiece('e4')).toBe(true));   // the game went on
         expect(screen.queryByTestId('bot-pause')).toBeNull();
     });
 });

@@ -1,10 +1,10 @@
-// Каталоги на своём алфавите: в украинском нет русских букв (ы, э, ъ, ё), в русском — украинских (і, ї, є, ґ);
-// в английском нет кириллицы. Ловит тексты, скопированные в чужой каталог без перевода.
+// Catalogs in their own alphabet: Ukrainian has no Russian-only letters (the hard sign, e-reverse, yery, yo); English has no Cyrillic.
+// Catches texts copied into the wrong catalog without translation. The letters are written as \u escapes so that
+// this file itself contains no Cyrillic.
 
 import {describe, expect, it} from 'vitest';
 import {en} from '../messages/en';
 import {uk} from '../messages/uk';
-import {ru} from '../messages/ru';
 
 function flatten(value: unknown, prefix = ''): [string, string][] {
     if (typeof value === 'string') return [[prefix, value]];
@@ -14,7 +14,12 @@ function flatten(value: unknown, prefix = ''): [string, string][] {
     return [];
 }
 
-// Имена собственные и цитаты, где «чужая» буква законна (ключ → причина).
+/** Letters that exist only in Russian: yery, e-reverse, hard sign, yo (lower and upper case). */
+const RUSSIAN_ONLY = /[\u044B\u044D\u044A\u0451\u042B\u042D\u042A\u0401]/;
+/** Any Cyrillic letter (the whole block). */
+const ANY_CYRILLIC = /[\u0400-\u04FF]/;
+
+// Proper names and quotations where a "foreign" letter is legitimate (key → reason).
 const ALLOWED: Record<string, RegExp> = {};
 
 function offenders(catalog: unknown, forbidden: RegExp): string[] {
@@ -23,29 +28,24 @@ function offenders(catalog: unknown, forbidden: RegExp): string[] {
         .map(([key, text]) => `${key}: ${text.slice(0, 100)}`);
 }
 
-describe('алфавит каталогов', () => {
-    it('каталоги прочитаны целиком', () => {
+describe('catalog alphabet', () => {
+    it('the catalogs are read in full', () => {
         expect(flatten(uk).length).toBeGreaterThan(3000);
-        expect(flatten(ru).length).toBe(flatten(uk).length);
+        expect(flatten(en).length).toBeGreaterThan(3000);
     });
 
-    it('украинский — без русских букв', () => {
-        const found = offenders(uk, /[ыэъёЫЭЪЁ]/);
+    it('Ukrainian — without Russian-only letters', () => {
+        const found = offenders(uk, RUSSIAN_ONLY);
         expect(found, `\n${found.join('\n')}`).toEqual([]);
     });
 
-    it('русский — без украинских букв', () => {
-        const found = offenders(ru, /[іїєґІЇЄҐ]/);
-        expect(found, `\n${found.join('\n')}`).toEqual([]);
-    });
-
-    it('английский — без кириллицы', () => {
-        const found = offenders(en, /[Ѐ-ӿ]/);
+    it('English — without Cyrillic', () => {
+        const found = offenders(en, ANY_CYRILLIC);
         expect(found, `\n${found.join('\n')}`).toEqual([]);
     });
 });
 
-// Тексты контента (уроки, классика, курсы): поля uk / ru / en внутри JSON.
+// Content texts (lessons, classics, courses): the uk / en fields inside JSON.
 const CONTENT = import.meta.glob<unknown>('../../content/**/*.json', {eager: true, import: 'default'});
 
 function localized(value: unknown, path: string, out: [string, string, string][]) {
@@ -53,18 +53,18 @@ function localized(value: unknown, path: string, out: [string, string, string][]
         value.forEach((inner, i) => localized(inner, `${path}[${i}]`, out));
     } else if (value && typeof value === 'object') {
         for (const [key, inner] of Object.entries(value)) {
-            if ((key === 'uk' || key === 'ru' || key === 'en') && typeof inner === 'string') out.push([`${path}.${key}`, key, inner]);
+            if ((key === 'uk' || key === 'en') && typeof inner === 'string') out.push([`${path}.${key}`, key, inner]);
             else localized(inner, `${path}.${key}`, out);
         }
     }
 }
 
-describe('алфавит текстов контента', () => {
-    it('uk / ru / en в JSON — на своём алфавите', () => {
+describe('content text alphabet', () => {
+    it('uk / en in JSON — in their own alphabet', () => {
         const texts: [string, string, string][] = [];
         for (const [file, data] of Object.entries(CONTENT)) localized(data, file.replace('../../content/', ''), texts);
         expect(texts.length).toBeGreaterThan(500);
-        const forbidden: Record<string, RegExp> = {uk: /[ыэъёЫЭЪЁ]/, ru: /[іїєґІЇЄҐ]/, en: /[Ѐ-ӿ]/};
+        const forbidden: Record<string, RegExp> = {uk: RUSSIAN_ONLY, en: ANY_CYRILLIC};
         const found = texts.filter(([, lang, text]) => forbidden[lang].test(text)).map(([path, , text]) => `${path}: ${text.slice(0, 90)}`);
         expect(found, `\n${found.join('\n')}`).toEqual([]);
     });

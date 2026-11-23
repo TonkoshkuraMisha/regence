@@ -1,12 +1,13 @@
 """
-Все модели базы данных в одном месте.
+All database models in one place.
 
-Импорт каждого файла моделей здесь обязателен: Alembic берёт таблицы из Base.metadata после импорта этого пакета
-(migrations/env.py), так же тесты создают схему. Модель из файла, который здесь не импортирован, не попадёт ни в
-миграцию, ни в проверку `alembic check`. Таблица регистрируется при импорте своего файла, поэтому модель из уже
-импортированного файла видна Alembic, даже если её имени нет в списке ниже (так сейчас с LibraryAnnotation из
-library.py — её импортируют напрямую из src.models.library). Какие таблицы к какому разделу сайта относятся —
-docs/ARCHITECTURE.md, раздел 3.
+Importing each model file here is mandatory: Alembic takes tables from Base.metadata after importing this package
+(migrations/env.py), tests create the schema the same way. A model from a file that is not imported here will get into neither
+the migration nor the `alembic check` check. A table is registered when its file is imported, so a model from an already
+imported file is visible to Alembic even if its name is not in the list below (this is currently the case for LibraryAnnotation
+from
+library.py - it is imported directly from src.models.library). Which tables belong to which site section -
+docs/ARCHITECTURE.md, section 3.
 """
 
 from src.models.achievement import UserAchievement
@@ -117,4 +118,4 @@ __all__ = [
     "UserAchievement",
 ]
 
-# Импорты выше нужны ради побочного эффекта: при импорте этого пакета все таблицы оказываются в Base.metadata.
+# The imports above are needed for their side effect: when this package is imported all tables end up in Base.metadata.

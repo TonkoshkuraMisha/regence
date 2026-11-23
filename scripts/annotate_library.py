@@ -1,10 +1,10 @@
 """
-Черновики аннотаций партий библиотеки (таск 27.4, этап 4): разметка движком тем же путём, что «Классика» 14.7
-(scripts/build_classics.py: оценка каждой позиции, объяснение наставника кодами coach.* к ошибкам и тактическим
-идеям). Пишется аннотация со статусом auto; аннотации, которые уже правил человек (draft / review / approved), не
-трогаются. Нужен Stockfish; в CI не запускается.
+Draft annotations of library games (task 27.4, stage 4): engine markup by the same path as "Classics" 14.7
+(scripts/build_classics.py: evaluation of every position, mentor explanation with coach.* codes for mistakes and tactical
+ideas). An annotation with status auto is written; annotations already edited by a human (draft / review / approved) are
+left alone. Needs Stockfish; not run in CI.
 
-    python scripts/annotate_library.py --collection "Красивые партии" [--limit 200] [--depth 14] [--workers 4]
+    python scripts/annotate_library.py --collection "Beautiful games" [--limit 200] [--depth 14] [--workers 4]
 """
 
 import argparse
@@ -18,20 +18,20 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 
 def _analyse(job: tuple[int, str, int]) -> tuple[int, dict | None]:
-    """Оценивает ходы партии движком и собирает черновые комментарии наставника."""
+    """Evaluates the game's moves with the engine and collects draft mentor comments."""
     from build_classics import analyse
 
     game_id, pgn, depth = job
     try:
         data = analyse({"pgn": pgn, "stops": []}, depth)
-    except Exception as exc:  # noqa: BLE001 — одна неразборчивая партия не останавливает остальные
+    except Exception as exc:  # noqa: BLE001 - one unparseable game does not stop the others
         print(f"[!] {game_id}: {exc}", flush=True)
         return game_id, None
     return game_id, {"evals": data["evals"], "comments": data["comments"]}
 
 
 async def _select(collection: str, limit: int) -> list[tuple[int, str]]:
-    """Отбирает публичные партии библиотеки, у которых ещё нет автоаннотации."""
+    """Selects public library games that do not have an auto annotation yet."""
     from sqlalchemy import select
     from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
     from sqlalchemy.pool import NullPool
@@ -54,7 +54,7 @@ async def _select(collection: str, limit: int) -> list[tuple[int, str]]:
 
 
 async def _save(results: list[tuple[int, dict]]) -> None:
-    """Сохраняет сгенерированную аннотацию партии в таблицу library_annotations."""
+    """Saves the generated game annotation into the library_annotations table."""
     from sqlalchemy import select
     from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
     from sqlalchemy.pool import NullPool
@@ -76,15 +76,15 @@ async def _save(results: list[tuple[int, dict]]) -> None:
 
 
 def main() -> None:
-    """Запускает пакетную разметку партий библиотеки комментариями наставника."""
+    """Runs batch markup of library games with mentor comments."""
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--collection", required=True, help="часть пути коллекции")
+    parser.add_argument("--collection", required=True, help="part of the collection path")
     parser.add_argument("--limit", type=int, default=200)
     parser.add_argument("--depth", type=int, default=14)
     parser.add_argument("--workers", type=int, default=4)
     args = parser.parse_args()
     jobs = asyncio.run(_select(args.collection, args.limit))
-    print(f"партий: {len(jobs)}", flush=True)
+    print(f"games: {len(jobs)}", flush=True)
     results = []
     with ProcessPoolExecutor(max_workers=args.workers) as pool:
         futures = [pool.submit(_analyse, (game_id, pgn, args.depth)) for game_id, pgn in jobs]
@@ -95,7 +95,7 @@ def main() -> None:
             if index % 10 == 0:
                 print(f"  {index}/{len(jobs)}", flush=True)
     asyncio.run(_save(results))
-    print(f"аннотаций записано: {len(results)}")
+    print(f"annotations written: {len(results)}")
 
 
 if __name__ == "__main__":

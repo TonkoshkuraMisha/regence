@@ -1,16 +1,15 @@
-# Словарь фильтра оскорблений (таск 30.3) — данные модерации, не строки интерфейса.
-# Формат строки:  слово   — начало слова (идиот → идиоты, идиотский);
-#                 =слово  — только слово целиком;
-#                 *корень — корень в любом месте слова (только для корней без безобидных совпадений);
-#                 фраза из нескольких слов — подряд в тексте.
-# Записи сравниваются после нормализации (src/services/civility.py): нижний регистр, ё→е, «цифры-буквы» (0→o, 3→e…),
-# повторы букв схлопнуты. Ложное срабатывание не наказывает: текст только придерживается до решения модератора.
+# Insult filter dictionary (task 30.3) — moderation data, not interface strings.
+# Line format:  word    — beginning of a word (idiot → idiots, idiotic);
+#                 =word  — the whole word only;
+#                 *root  — a root anywhere in a word (only for roots without harmless matches);
+#                 a phrase of several words — consecutively in the text.
+# Entries are compared after normalisation (src/services/civility.py): lower case, "digit-letters" (0→o, 3→e…),
+# repeated letters collapsed. A false positive is not punished: the text is only held until the moderator decides.
 
-# Таблицы нормализации: @имя пары «было=стало».
-@fold ё=е
+# Normalisation tables: @name pairs "from=to".
 @leet 0=o 1=i 3=e 4=a 5=s @=a $=s
 @leet-cyr 0=о 1=и 3=з 4=ч 6=б @=а
-# Латинские двойники кириллических букв (в слове, где есть кириллица).
+# Latin lookalikes of Cyrillic letters (in a word that has Cyrillic).
 @lookalike a=а e=е o=о p=р c=с x=х y=у k=к m=м t=т h=н i=і
 
 # --- en ---
@@ -32,51 +31,6 @@ bulshit
 =kys
 kil yourself
 go die
-
-# --- ru ---
-идиот
-дебил
-кретин
-имбецил
-тупица
-придур
-ублюд
-мраз
-тварь
-=твари
-=урод
-=уроды
-=урода
-=уроду
-уродин
-=чмо
-сука
-=суки
-сучк
-гандон
-мудак
-мудил
-шлюх
-падла
-хуй
-хуе
-хуя
-нахуй
-похуй
-*пизд
-*бляд
-=блять
-ебан
-ебат
-ебал
-=еб
-заеб
-наеб
-выеб
-проеб
-уеб
-убей себя
-сдохни
 
 # --- uk ---
 ідіот

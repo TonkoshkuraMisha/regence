@@ -1,12 +1,12 @@
 // --- FILE: frontend/src/components/puzzles/DefenseTrainer.tsx ---
-// Защитные упражнения (таск 13.6), раздел I каталога тем:
-// * «Что грозит?» — сначала показать угрозу соперника (его фигуру, которая бьёт, или поле удара), затем защититься;
-// * «Не зевни» — из трёх естественных ходов выбрать единственный, который не проигрывает;
-// * «Единственная защита» — задачи базы с тегом защиты: их ведёт тренировка по приёмам (onDefensiveMove).
-// Угроза и верные ходы приходят с сервера только после ответа.
-// После ответа доска свободна (решение владельца 18.11): позицию можно доиграть за обе стороны (usePositionExplorer).
-// Данные — services/puzzles.ts (puzzlesApi.defense*, /api/v1/puzzles/defense/*; правила — src/services/defense_drills.py).
-// Подключается из PuzzlesPage в режиме «defense»; шапку страницы и переход к теме передаёт родитель.
+// Defence exercises (task 13.6), section I of the theme catalog:
+// * "What is threatened?": first show the opponent's threat (its piece that attacks, or the attacked square), then defend;
+// * "Don't blunder": of three natural moves choose the only one that does not lose;
+// * "Only defence": database puzzles with a defence tag, driven by the theme training (onDefensiveMove).
+// The threat and the correct moves come from the server only after the answer.
+// After the answer the board is free (owner's decision 18.11): the position can be played out for both sides (usePositionExplorer).
+// Data is services/puzzles.ts (puzzlesApi.defense*, /api/v1/puzzles/defense/*; rules are src/services/defense_drills.py).
+// Connected from PuzzlesPage in the "defense" mode; the page header and the jump to a theme are passed by the parent.
 
 import {useCallback, useState} from 'react';
 import type {ReactNode} from 'react';
@@ -24,21 +24,21 @@ import {sanMoves, toMove} from './puzzleNotation';
 import {SolutionReplay} from './SolutionReplay';
 import type {ReplayLine, ReplayView} from './SolutionReplay';
 
-/** Этап упражнения: idle → loading → threat (только «Что грозит?») → move → waiting (ждём сервер) → done. */
+/** Exercise stage: idle -> loading -> threat (only "What is threatened?") -> move -> waiting (waiting for the server) -> done. */
 type Phase = 'idle' | 'loading' | 'threat' | 'move' | 'waiting' | 'done';
 
 interface Props {
-    /** Шапка страницы задач (заголовок, профиль, переключатель режимов). */
+    /** Puzzle page header (heading, profile, mode switcher). */
     header: ReactNode;
     initialKind?: DefenseKind;
-    /** «Единственная защита» — тренировка по приёмам с темой defensive_move. */
+    /** "Only defence": theme training with the defensive_move theme. */
     onDefensiveMove: () => void;
-    /** «Разобрать с наставником»: позиция упражнения на свободной доске. */
+    /** "Review with the coach": the exercise position on the free board. */
     onAnalyze?: (fen: string) => void;
 }
 
-/** Ошибка клиента в сообщение интерфейса: код сервера или общая сетевая ошибка. */
-/** Защитные упражнения: «Что грозит?», «Не зевни», «Единственная защита»; верные ходы приходят после ответа. */
+/** Client error to an interface message: a server code or a generic network error. */
+/** Defence exercises: "What is threatened?", "Don't blunder", "Only defence"; the correct moves come after the answer. */
 export function DefenseTrainer({header, initialKind = 'threat', onDefensiveMove, onAnalyze}: Props) {
     const {t} = useI18n();
     const [kind, setKind] = useState<DefenseKind>(initialKind);
@@ -50,10 +50,10 @@ export function DefenseTrainer({header, initialKind = 'threat', onDefensiveMove,
     const [played, setPlayed] = useState<{ from: string; to: string } | null>(null);
     const [mark, setMark] = useState<{ square: string; ok: boolean } | null>(null);
     const [error, setError] = useState<UiMessage | null>(null);
-    // Разбор после ответа (таск B.3): линия на доске вместо позиции упражнения.
+    // Review after the answer (task B.3): a line on the board instead of the exercise position.
     const [replay, setReplay] = useState<ReplayView | null>(null);
-    // Свободная доска после ответа (решение владельца 18.11): первый ход игрока после ответа начинает разбор с
-    // позиции на доске; новое упражнение его сбрасывает.
+    // Free board after the answer (owner's decision 18.11): the player's first move after the answer starts a review from
+    // the position on the board; a new exercise resets it.
     const explorer = usePositionExplorer();
     const exploring = explorer.active && !replay;
     const stopExplorer = explorer.stop;
@@ -268,7 +268,7 @@ export function DefenseTrainer({header, initialKind = 'threat', onDefensiveMove,
     );
 }
 
-/** Позиция с очередью хода соперника — чтобы записать его угрозу нотацией. */
+/** Position with the opponent to move: to write down their threat in notation. */
 function nullMoveFen(fen: string): string {
     const parts = fen.split(' ');
     parts[1] = parts[1] === 'w' ? 'b' : 'w';

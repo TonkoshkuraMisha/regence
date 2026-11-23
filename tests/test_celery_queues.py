@@ -1,5 +1,5 @@
 # --- FILE: tests/test_celery_queues.py ---
-"""Очереди Celery (таск A.4): разбор партий и симуляция турниров не мешают друг другу."""
+"""Celery queues (task A.4): game analysis and tournament simulation do not interfere with each other."""
 
 from pathlib import Path
 

@@ -1,16 +1,18 @@
 # --- FILE: src/services/direct_messages.py ---
 """
-Личные сообщения (таск 30.1): переписка двух игроков, вложения-карточки, настройка «кто может мне писать» и чёрный
-список. Текст сообщения — ввод игрока; строк интерфейса сервер не хранит: карточка вложения — код вида (kind),
-ссылка (ref) и снимок данных на момент отправки (имена игроков, результат, рейтинг задачи), подписи собирает клиент.
+Direct messages (task 30.1): a conversation between two players, card attachments, the "who can message me" setting and a
+block list. The message text is player input; the server stores no interface strings: an attachment card is a kind code (kind),
+a reference (ref) and a snapshot of the data at send time (player names, result, puzzle rating); captions are assembled by
+the client.
 
-Доставка в открытые вкладки — событие WebSocket "direct_message" после записи и коммита (правило WebSocket: сеть —
-после освобождения базы; здесь HTTP, но порядок тот же: сообщение уже в базе, доставка — по возможности). send
-только записывает сообщение; deliver после него вызывает маршрут (src/api/messages.py).
+Delivery to open tabs is the WebSocket event "direct_message" after the write and commit (the WebSocket rule: network --
+after releasing the database; this is HTTP, but the order is the same: the message is already in the database, delivery is
+best effort). send
+only writes the message; deliver is called after it by the route (src/api/messages.py).
 
-Таблицы: direct_messages (сообщения; pair_key — ключ переписки двух игроков), blocks (чёрный список),
-hidden_conversations (скрытые переписки), follows (для настройки «пишут только те, на кого я подписан»);
-настройка получателя — users.dm_policy. Фильтр оскорблений и квоты — src/services/civility.py, запрет чата —
+Tables: direct_messages (messages; pair_key is the conversation key of two players), blocks (block list),
+hidden_conversations (hidden conversations), follows (for the setting "only those I follow may write to me");
+the recipient's setting is users.dm_policy. The abuse filter and quotas are in src/services/civility.py, the chat ban is in
 src/services/moderation.py.
 """
 
@@ -28,17 +30,17 @@ from src.services.attachments import build_attachment, clean_text
 
 logger = logging.getLogger(__name__)
 
-# Значения настройки «кто может мне писать» (users.dm_policy): все, только те, на кого я подписан, никто.
+# Values of the "who can message me" setting (users.dm_policy): everyone, only those I follow, nobody.
 POLICIES = ("all", "following", "nobody")
-# Наибольшая длина текста сообщения в знаках (лишнее обрезается).
+# Maximum message text length in characters (the excess is truncated).
 BODY_MAX = 1000
-# Сколько сообщений переписки отдаётся за один запрос и сколько собеседников в списке переписок.
+# How many messages of a conversation are returned per request and how many correspondents are in the conversation list.
 PAGE = 50
 CONVERSATIONS = 50
 
 
 def pair_key(a: int, b: int) -> str:
-    """Ключ переписки двух игроков, одинаковый в обе стороны: «меньший id:больший id»."""
+    """The conversation key of two players, the same in both directions: "smaller id:larger id"."""
     low, high = sorted((a, b))
     return f"{low}:{high}"
 
@@ -53,10 +55,10 @@ async def is_blocked(db: AsyncSession, blocker_id: int, blocked_id: int) -> bool
 
 
 async def check_write(db: AsyncSession, sender: User, recipient: User) -> None:
-    """Можно ли sender писать recipient; нельзя — DomainError с кодом причины. Чёрный список получателя
-    отвечает тем же dm_closed, что и закрытая настройка: заблокированный не узнаёт, что его заблокировали.
-    Остальные коды: cannot_message_self; dm_chat_banned — у отправителя запрет чата от модератора; dm_you_blocked —
-    отправитель сам заблокировал получателя. Настройка following пропускает только тех, на кого получатель подписан."""
+    """Whether sender may write to recipient; if not -- a DomainError with the reason code. The recipient's block list
+    answers with the same dm_closed as a closed setting: a blocked user does not learn that they were blocked.
+    Other codes: cannot_message_self; dm_chat_banned -- the sender has a chat ban from a moderator; dm_you_blocked --
+    the sender blocked the recipient themselves. The following setting lets through only those the recipient follows."""
     if sender.id == recipient.id:
         raise DomainError("cannot_message_self")
     if moderation.chat_banned(sender):
@@ -73,7 +75,7 @@ async def check_write(db: AsyncSession, sender: User, recipient: User) -> None:
 
 
 async def write_refusal(db: AsyncSession, sender: User, recipient: User) -> str | None:
-    """None — можно писать; иначе код причины."""
+    """None -- may write; otherwise the reason code."""
     try:
         await check_write(db, sender, recipient)
     except DomainError as exc:
@@ -82,7 +84,9 @@ async def write_refusal(db: AsyncSession, sender: User, recipient: User) -> str 
 
 
 def view(message: DirectMessage, me_id: int) -> dict:
-    """Сообщение для клиента глазами игрока me_id: своё или чужое, текст, карточка, прочитано ли, придержано ли."""
+    """
+    A message for the client through the eyes of player me_id: own or foreign, text, card, whether read, whether held back.
+    """
     created = message.created_at.isoformat() if message.created_at else None
     return {"id": message.id, "mine": message.sender_id == me_id, "body": message.body,
             "attachment": message.attachment, "created_at": created, "read": message.read_at is not None,
@@ -90,17 +94,18 @@ def view(message: DirectMessage, me_id: int) -> dict:
 
 
 def _seen_by(me_id: int):
-    """Придержанное фильтром видит только отправитель (таск 30.3)."""
+    """A message held back by the filter is seen only by the sender (task 30.3)."""
     return or_(DirectMessage.held.is_(False), DirectMessage.sender_id == me_id)
 
 
 async def send(db: AsyncSession, sender: User, recipient: User, body: str | None,
                attachment: tuple[str, str] | None, send_anyway: bool = False) -> DirectMessage:
     """
-    Отправка личного сообщения: право писать (настройка получателя, чёрный список), текст и/или карточка-вложение,
-    квота, фильтр оскорблений (сработал — без send_anyway отказ text_flagged, с ним сообщение придерживается и уходит
-    на проверку модератору), запись в базу. Пустое сообщение без карточки — dm_empty. Доставку в открытые вкладки
-    делает отдельный вызов deliver.
+    Sending a direct message: the right to write (the recipient's setting, block list), text and/or a card attachment,
+    quota, abuse filter (if triggered -- without send_anyway the refusal text_flagged, with it the message is held back and
+    goes
+    to a moderator for review), writing to the database. An empty message without a card -- dm_empty. Delivery to open tabs
+    is done by the separate deliver call.
     """
     await check_write(db, sender, recipient)
     text = clean_body(body)
@@ -121,7 +126,7 @@ async def send(db: AsyncSession, sender: User, recipient: User, body: str | None
 
 
 async def deliver(message: DirectMessage, sender_name: str) -> None:
-    """Открытые вкладки получателя; придержанное не доставляется."""
+    """The recipient's open tabs; a held-back message is not delivered."""
     if message.held:
         return
     try:
@@ -130,12 +135,12 @@ async def deliver(message: DirectMessage, sender_name: str) -> None:
         payload = view(message, message.recipient_id)
         await manager.send_personal_message({"event": "direct_message", "from": sender_name, "message": payload},
                                             message.recipient_id)
-    except Exception as exc:  # сообщение уже записано — сбой доставки не критичен
+    except Exception as exc:  # the message is already written -- a delivery failure is not critical
         logger.warning("Direct message delivery failed for user %s: %s", message.recipient_id, exc)
 
 
 async def thread(db: AsyncSession, me: User, other: User, before_id: int | None = None) -> list[dict]:
-    """Последние PAGE сообщений переписки (старые — первыми); before_id — страница раньше."""
+    """The last PAGE messages of a conversation (older first); before_id -- an earlier page."""
     query = select(DirectMessage).where(DirectMessage.pair_key == pair_key(me.id, other.id), _seen_by(me.id))
     if before_id:
         query = query.where(DirectMessage.id < before_id)
@@ -144,7 +149,7 @@ async def thread(db: AsyncSession, me: User, other: User, before_id: int | None 
 
 
 async def mark_read(db: AsyncSession, me: User, other: User) -> None:
-    """Отмечает прочитанными все сообщения собеседника other, адресованные мне (кроме придержанных); с commit."""
+    """Marks as read all messages from the correspondent other addressed to me (except held-back ones); with commit."""
     await db.execute(update(DirectMessage).where(
         DirectMessage.pair_key == pair_key(me.id, other.id), DirectMessage.recipient_id == me.id,
         DirectMessage.held.is_(False), DirectMessage.read_at.is_(None)).values(read_at=datetime.now(UTC)))
@@ -156,7 +161,7 @@ def _unread_for(me_id: int):
 
 
 async def unread_total(db: AsyncSession, me_id: int) -> int:
-    """Число непрочитанных сообщений игрока; придержанные и сообщения из скрытых переписок не считаются."""
+    """The number of a player's unread messages; held-back messages and messages from hidden conversations do not count."""
     hidden = select(HiddenConversation.other_id).where(HiddenConversation.user_id == me_id,
                                                        HiddenConversation.up_to_id >= DirectMessage.id,
                                                        HiddenConversation.other_id == DirectMessage.sender_id)
@@ -165,9 +170,10 @@ async def unread_total(db: AsyncSession, me_id: int) -> int:
 
 
 async def conversations(db: AsyncSession, me: User) -> list[dict]:
-    """Собеседники: последнее сообщение, сколько непрочитанных; свежие — первыми. Скрытые мной переписки
-    не показываются, пока собеседник не напишет снова. Берутся CONVERSATIONS самых свежих переписок; собеседники с
-    удалённым аккаунтом пропускаются; blocked — заблокирован ли собеседник мной."""
+    """Correspondents: last message, how many unread; freshest first. Conversations I hid
+    are not shown until the correspondent writes again. The CONVERSATIONS freshest conversations are taken; correspondents
+    with a
+    deleted account are skipped; blocked -- whether I blocked the correspondent."""
     mine = or_(DirectMessage.sender_id == me.id, DirectMessage.recipient_id == me.id)
     last_ids = (await db.execute(
         select(func.max(DirectMessage.id)).where(mine, _seen_by(me.id)).group_by(DirectMessage.pair_key)
@@ -200,8 +206,9 @@ async def conversations(db: AsyncSession, me: User) -> list[dict]:
 
 async def hide_conversation(db: AsyncSession, me: User, other: User) -> None:
     """
-    Скрыть переписку до нового сообщения собеседника; непрочитанное в ней считается прочитанным. В
-    hidden_conversations запоминается номер последнего сообщения: переписка скрыта, пока нет сообщений новее.
+    Hide a conversation until the correspondent's next message; unread messages in it count as read. In
+    hidden_conversations the number of the last message is remembered: the conversation is hidden while there are no newer
+    messages.
     """
     last = await db.scalar(select(func.max(DirectMessage.id)).where(DirectMessage.pair_key == pair_key(me.id, other.id)))
     if last is None:
@@ -216,7 +223,7 @@ async def hide_conversation(db: AsyncSession, me: User, other: User) -> None:
     await mark_read(db, me, other)
 
 async def block(db: AsyncSession, me: User, other: User) -> None:
-    """Добавляет other в мой чёрный список (повторный вызов ничего не меняет); себя — отказ cannot_block_self."""
+    """Adds other to my block list (a repeat call changes nothing); myself -- refusal cannot_block_self."""
     if me.id == other.id:
         raise DomainError("cannot_block_self")
     if not await is_blocked(db, me.id, other.id):

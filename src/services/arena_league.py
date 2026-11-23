@@ -1,21 +1,24 @@
 # --- FILE: src/services/arena_league.py ---
 """
-Месячная лига арен (таск 33.5, docs/research/arenas.md §7): таблица игроков по сумме очков арен сезона в одной
-категории контроля времени. На рейтинг не влияет — это только зачёт за месяц.
+Monthly arena league (task 33.5, docs/research/arenas.md §7): a table of players by the sum of arena points in a season in one
+time-control category. It does not affect the rating — it is only a monthly standing.
 
-Правила:
+Rules:
 
-* сезон — календарный месяц UTC (league.season_bounds, как у Кубка конференций); арена относится к сезону, в котором
-  началась;
-* в лигу идут только арены (format "arena"): у швейцарки другие очки (за партию, без серий «огня»), складывать их
-  с очками арен нечестно;
-* категория — classify_time_control по контролю арены; вкладки лиги — категории, в которых расписание
-  (arena_schedule.DAY_PLAN и WEEK_PLAN) вообще ставит арены, поэтому новая арена расписания сама даёт свою лигу;
-* очки игрока — сумма arena_players.score по аренам (каждое деление — своя арена); в таблице — участники хотя бы
-  с одной сыгранной партией. Порядок: очки, затем лучшая арена, затем меньше арен (те же очки за меньшее число
-  турниров), затем имя.
+* the season is a calendar month in UTC (league.season_bounds, as in the Conference Cup); an arena belongs to the season in
+  which it
+  started;
+* only arenas (format "arena") count towards the league: a Swiss has different points (per game, without "fire" streaks), and
+  adding them
+  to arena points would be unfair;
+* the category is classify_time_control of the arena's time control; league tabs are the categories in which the schedule
+  (arena_schedule.DAY_PLAN and WEEK_PLAN) creates arenas at all, so a new scheduled arena gives its own league by itself;
+* the player's points are the sum of arena_players.score over arenas (each division is its own arena); the table lists
+  participants with at least
+  one game played. Order: points, then best arena, then fewer arenas (the same points over fewer
+  tournaments), then name.
 
-Откуда данные: таблицы arenas и arena_players; считается при запросе (GET /arenas/league), ничего не хранит.
+Data source: tables arenas and arena_players; computed on request (GET /arenas/league), nothing is stored.
 """
 
 from dataclasses import dataclass
@@ -31,12 +34,12 @@ from src.services.arena_schedule import DAY_PLAN, WEEK_PLAN
 from src.services.league import season_bounds
 from src.services.rating import classify_time_control
 
-# Формат турнира, очки которого идут в лигу.
+# Tournament format whose points count towards the league.
 LEAGUE_FORMAT = "arena"
-# Сколько строк таблицы отдаёт сервер; своя строка игрока приходит отдельно, даже если он ниже.
+# How many table rows the server returns; the player's own row arrives separately, even if it is lower.
 TABLE_SIZE = 50
 
-# Категории, в которых расписание ставит арены, — в порядке RatingCategory (пуля, блиц, рапид, классика).
+# Categories in which the schedule creates arenas, in RatingCategory order (bullet, blitz, rapid, classical).
 _SCHEDULED = {classify_time_control(slot.base_time_ms, slot.increment_ms)
               for slot in [s for _, s in DAY_PLAN] + [s for _, _, s in WEEK_PLAN] if slot.format == LEAGUE_FORMAT}
 LEAGUE_CATEGORIES: tuple[RatingCategory, ...] = tuple(c for c in get_args(RatingCategory) if c in _SCHEDULED)
@@ -44,7 +47,7 @@ LEAGUE_CATEGORIES: tuple[RatingCategory, ...] = tuple(c for c in get_args(Rating
 
 @dataclass(frozen=True)
 class Entry:
-    """Итог игрока за сезон в одной категории: сумма очков, лучшая арена, число арен с партиями."""
+    """A player's season result in one category: sum of points, best arena, number of arenas with games."""
     user_id: int
     username: str
     score: int
@@ -53,7 +56,7 @@ class Entry:
 
 
 def rank(entries: list[Entry]) -> list[dict]:
-    """Таблица лиги по правилам модуля: строки {"place", "user_id", "username", "score", "best", "arenas"}."""
+    """League table by the module rules: rows {"place", "user_id", "username", "score", "best", "arenas"}."""
     ordered = sorted(entries, key=lambda e: (-e.score, -e.best, e.arenas, e.username))
     return [{"place": index + 1, "user_id": e.user_id, "username": e.username, "score": e.score, "best": e.best,
              "arenas": e.arenas} for index, e in enumerate(ordered)]
@@ -62,8 +65,8 @@ def rank(entries: list[Entry]) -> list[dict]:
 async def league(db: AsyncSession, category: RatingCategory, season: str | None = None,
                  user_id: int | None = None, now: datetime | None = None) -> dict:
     """
-    Лига сезона в категории: {"season", "category", "categories", "players", "table" (первые TABLE_SIZE), "me"} —
-    me: строка вошедшего игрока (None — без входа или без партий в этом сезоне). season по умолчанию — текущий.
+    Season league in a category: {"season", "category", "categories", "players", "table" (first TABLE_SIZE), "me"} —
+    me: the row of the signed-in player (None — not signed in or no games in this season). season defaults to the current one.
     """
     key, start, end = season_bounds(season, now)
     arenas = (await db.execute(select(Arena.id, Arena.base_time_ms, Arena.increment_ms).where(

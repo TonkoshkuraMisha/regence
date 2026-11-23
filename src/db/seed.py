@@ -1,21 +1,23 @@
 # --- FILE: src/db/seed.py ---
 """
-Архив партий чемпионов: загрузка PGN в таблицы users и games.
+The champions' game archive: loading PGN into the users and games tables.
 
-Кто в архиве: 21 мастер из CHAMPIONS_META — 17 чемпионов мира от Стейница до Дин Лижэня и четыре претендента
-(Рубинштейн, Керес, Геллер, Корчной). В коде и ниже все они называются «чемпион».
+Who is in the archive: 21 masters from CHAMPIONS_META - 17 world champions from Steinitz to Ding Liren and four challengers
+(Rubinstein, Keres, Geller, Korchnoi). In the code and below they are all called "champion".
 
-Откуда данные: файл партий чемпиона ищется в src/db/data/pgns и data/pgns; если его нет — скачивается с
-pgnmentor.com (PGN_MENTOR_BASE_URL) и сохраняется в src/db/data/pgns. Список чемпионов, их канонические имена и
-исторические рейтинги — CHAMPIONS_META. Права на источник — ATTRIBUTION.md, раздел «Открытые вопросы».
+Where the data comes from: a champion's game file is looked up in src/db/data/pgns and data/pgns; if it is absent - it is
+downloaded from
+pgnmentor.com (PGN_MENTOR_BASE_URL) and saved to src/db/data/pgns. The list of champions, their canonical names and
+historical ratings - CHAMPIONS_META. Rights to the source - ATTRIBUTION.md, the "Open questions" section.
 
-Как хранится: чемпион и его соперники — записи users с признаком is_bot и меткой вместо пароля (войти под ними
-нельзя, в таблицу лидеров они не попадают); партии — games со статусом COMPLETED, датой, местом и кодом дебюта
-из заголовков PGN. Повторный запуск дублей не создаёт: партия с таким же PGN уже есть — пропускается.
+How it is stored: the champion and their opponents are users records with the is_bot flag and a marker instead of a password
+(one cannot log in as them,
+they do not get into the leaderboard); games - games with the COMPLETED status, date, place and opening code
+from the PGN headers. A rerun creates no duplicates: a game with the same PGN already exists - it is skipped.
 
-ensure_champion_seeded вызывается и лениво — при открытии страницы чемпиона (src/api/profile._find_user): пока у
-чемпиона нет ни одной партии в базе, его файл читается; когда партии есть, вызов сразу возвращает запись. Полный
-импорт — `python -m src.db.seed`.
+ensure_champion_seeded is also called lazily - when a champion's page is opened (src/api/profile._find_user): while the
+champion has no games in the database, their file is read; when there are games, the call returns the record at once. The full
+import is `python -m src.db.seed`.
 """
 
 import asyncio
@@ -47,9 +49,11 @@ PGNS_DIRS = [
 
 PGN_MENTOR_BASE_URL = "https://www.pgnmentor.com/players"
 
-# Ключ — фамилия в нижнем регистре (по ней чемпион находится из адреса профиля). id — имя файла PGN (Steinitz.pgn),
-# canonical — имя записи в users и на странице, rating — условный исторический рейтинг (ставится во все четыре
-# категории), exclude — части имён однофамильцев, чьи партии встречаются в том же файле и чемпиону не приписываются.
+# The key is the surname in lower case (the champion is found by it from the profile address). id is the PGN file name
+# (Steinitz.pgn),
+# canonical is the record name in users and on the page, rating is a nominal historical rating (set in all four
+# categories), exclude is parts of names of namesakes whose games occur in the same file and are not attributed to the
+# champion.
 CHAMPIONS_META: dict[str, dict] = {
     "steinitz": {"id": "Steinitz", "canonical": "Steinitz, Wilhelm", "rating": 2650, "exclude": ()},
     "lasker": {"id": "Lasker", "canonical": "Lasker, Emanuel", "rating": 2720,
@@ -83,16 +87,20 @@ DATE_TAG_RE = re.compile(r'\[(?:Event)?Date\s+"([^"]+)"\]')
 SITE_TAG_RE = re.compile(r'\[Site\s+"([^"]+)"\]')
 ECO_TAG_RE = re.compile(r'\[ECO\s+"([^"]+)"\]')
 
-# Замок на чемпиона — в памяти одного процесса: два одновременных открытия страницы не импортируют файл дважды.
-# Между процессами uvicorn замка нет; от дублей там защищает только сверка по тексту PGN перед вставкой.
+# A lock per champion - in the memory of one process: two simultaneous opens of the page do not import the file twice.
+# There is no lock between uvicorn processes; there only the comparison by PGN text before insertion protects against
+# duplicates.
 _SEED_LOCKS: dict[str, asyncio.Lock] = {}
 
 
 def extract_pgn_metadata(raw_pgn: str, fallback_result: str = "*") -> dict[str, str | None]:
     """
-    Результат, дата, место и код дебюта из заголовков PGN; чего в заголовках нет — пустое значение (для результата —
-    fallback_result, а если и он «*» — результат в конце записи ходов; итог приводится game_engine.normalize_result).
-    Дата — первый из заголовков Date и EventDate, который не начинается с «?». Значения обрезаются до длины колонок
+    The result, date, place and opening code from the PGN headers; what is absent from the headers is an empty value (for the
+    result -
+    fallback_result, and if that is "*" too - the result at the end of the move record; the result is normalised by
+    game_engine.normalize_result).
+    The date is the first of the Date and EventDate headers that does not start with "?". Values are truncated to the column
+    lengths
     games.
     """
     result_str = fallback_result or "*"
@@ -126,7 +134,7 @@ def extract_pgn_metadata(raw_pgn: str, fallback_result: str = "*") -> dict[str, 
         eco = e_match.group(1).strip()[:10]
 
     return {
-        # Нестандартная запись итога (½-½, 1:0, «?») — к одному из значений, которые пропускает CHECK games.result.
+        # A non-standard result record (½-½, 1:0, "?") - to one of the values accepted by the CHECK games.result.
         "result": normalize_result(result_str),
         "pgn_date": pgn_date,
         "site": site,
@@ -136,8 +144,9 @@ def extract_pgn_metadata(raw_pgn: str, fallback_result: str = "*") -> dict[str, 
 
 def get_champion_meta(username_or_id: str) -> dict | None:
     """
-    Запись CHAMPIONS_META по ключу-фамилии («tal») или по каноническому имени («Tal, Mikhail»), без учёта регистра;
-    None — это не чемпион. Этой же функцией регистрация проверяет, что имя чемпиона не занять (src/api/auth.py).
+    A CHAMPIONS_META record by the surname key ("tal") or by the canonical name ("Tal, Mikhail"), case-insensitively;
+    None - this is not a champion. The same function is used by registration to check that a champion's name cannot be taken
+    (src/api/auth.py).
     """
     key = (username_or_id or "").strip().lower()
     if key in CHAMPIONS_META:
@@ -149,7 +158,7 @@ def get_champion_meta(username_or_id: str) -> dict | None:
 
 
 def find_champion_pgn_file(champ_id: str) -> Path | None:
-    """Локальный файл PGN чемпиона в папках архива (PGNS_DIRS) или None, если его нет."""
+    """The champion's local PGN file in the archive folders (PGNS_DIRS) or None if there is none."""
     target_lower = f"{champ_id.lower()}.pgn"
     alt_lower = f"{champ_id.lower()}_all_games.pgn"
 
@@ -165,9 +174,9 @@ def find_champion_pgn_file(champ_id: str) -> Path | None:
 
 def _download_champion_pgn_sync(champ_id: str) -> Path | None:
     """
-    Скачивает файл партий чемпиона с pgnmentor.com и кладёт его в src/db/data/pgns: сначала архив <id>.zip, при
-    неудаче — <id>.pgn. Уже скачанный файл повторно не запрашивается. В тестах сеть не трогается (возвращает None).
-    Вызов синхронный (requests, до 30 с на запрос) — из async-кода только через asyncio.to_thread.
+    Downloads a champion's game file from pgnmentor.com and puts it into src/db/data/pgns: first the archive <id>.zip, on
+    failure - <id>.pgn. An already downloaded file is not requested again. In tests the network is not touched (returns None).
+    The call is synchronous (requests, up to 30 s per request) - from async code only via asyncio.to_thread.
     """
     if "pytest" in sys.modules or os.environ.get("PYTEST_CURRENT_TEST"):
         return None
@@ -197,7 +206,7 @@ def _download_champion_pgn_sync(champ_id: str) -> Path | None:
                         target_path.write_text(text, encoding="utf-8", newline="")
                         return target_path
     except Exception as exc:
-        logger.warning("Не удалось скачать ZIP для %s (%s), пробуем прямой .pgn...", champ_id, exc)
+        logger.warning("Failed to download the ZIP for %s (%s), trying the direct .pgn...", champ_id, exc)
 
     try:
         resp = requests.get(pgn_url, headers=headers, timeout=30)
@@ -205,25 +214,25 @@ def _download_champion_pgn_sync(champ_id: str) -> Path | None:
             target_path.write_text(resp.text, encoding="utf-8", newline="")
             return target_path
     except Exception as exc:
-        logger.error("Ошибка загрузки PGN для %s: %s", champ_id, exc)
+        logger.error("PGN download error for %s: %s", champ_id, exc)
 
     return None
 
 
 def _is_target_champion_name(raw_name: str, champ_key: str, meta: dict) -> bool:
-    """Имя из заголовка PGN — это сам чемпион (а не однофамилец из списка exclude)?"""
+    """Is the name from the PGN header the champion themselves (and not a namesake from the exclude list)?"""
     low = raw_name.lower()
     if any(ex in low for ex in meta.get("exclude", ())):
         return False
-    # Надёжное сопоставление по фамилии (даже при сокращении инициалов в PGN Mentor)
+    # Reliable matching by surname (even when initials are abbreviated in PGN Mentor)
     surname = meta["canonical"].split(",")[0].strip().lower()
     return surname in low or champ_key in low
 
 
 def _split_pgn_games(content: str) -> list[str]:
-    """Делит файл PGN на отдельные партии (по заголовку Event) и приводит их текст к единому виду."""
-    # Файлы, записанные на Windows в текстовом режиме поверх виндовых переводов строк архива,
-    # содержат «\r\r\n» — такие уже лежат на машинах разработчиков. «\r+\n» — один перевод строки.
+    """Splits a PGN file into separate games (by the Event header) and brings their text to a uniform form."""
+    # Files written on Windows in text mode on top of the archive's Windows line endings
+    # contain "\r\r\n" - such ones already lie on developers' machines. "\r+\n" is one line break.
     cleaned = re.sub(r"\r+\n|\r", "\n", content.lstrip("\ufeff")).strip()
     if not cleaned:
         return []
@@ -233,13 +242,15 @@ def _split_pgn_games(content: str) -> list[str]:
 
 async def ensure_champion_seeded(db: AsyncSession, username_or_id: str) -> User | None:
     """
-    Гарантирует, что чемпион и его партии есть в базе; возвращает запись чемпиона (None — имя не из CHAMPIONS_META).
+    Guarantees that the champion and their games are in the database; returns the champion record (None - the name is not from
+    CHAMPIONS_META).
 
-    Если у чемпиона уже есть хотя бы одна законченная партия, больше ничего не делается — файл не перечитывается,
-    и партии, добавленные в файл позже, сами в базу не попадут. Иначе создаются записи чемпиона и его соперников,
-    читается PGN (локальный или скачанный) и добавляются партии, которых ещё нет. В файл попадают и партии
-    однофамильцев — берутся только те, где одна из сторон сам чемпион. Одновременные вызовы для одного чемпиона
-    в одном процессе выполняются по очереди (_SEED_LOCKS).
+    If the champion already has at least one finished game, nothing more is done - the file is not re-read,
+    and games added to the file later will not get into the database by themselves. Otherwise the champion's and their
+    opponents' records are created,
+    the PGN is read (local or downloaded) and the games that are not there yet are added. The file also contains games
+    of namesakes - only those where one of the sides is the champion themselves are taken. Simultaneous calls for one champion
+    in one process run one after another (_SEED_LOCKS).
     """
     meta = get_champion_meta(username_or_id)
     if not meta:
@@ -273,8 +284,8 @@ async def ensure_champion_seeded(db: AsyncSession, username_or_id: str) -> User 
             champ_user = User(
                 username=canonical_name,
                 hashed_password="!historical_archive_no_login!",
-                # Фиксированный исторический рейтинг — одинаковый во всех категориях,
-                # архивные партии никогда не рейтингуются и не играются заново.
+                # A fixed historical rating - the same in all categories,
+                # archive games are never rated and never replayed.
                 bullet_rating=meta["rating"],
                 blitz_rating=meta["rating"],
                 rapid_rating=meta["rating"],
@@ -322,8 +333,8 @@ async def ensure_champion_seeded(db: AsyncSession, username_or_id: str) -> User 
 
             for opp_name in (w_name, b_name):
                 if opp_name not in users_by_name and opp_name not in new_opponents:
-                    # Соперник, которого нет в CHAMPIONS_META, получает условный рейтинг 2450 (настоящих
-                    # рейтингов у большинства исторических партий нет).
+                    # An opponent who is not in CHAMPIONS_META gets a nominal rating of 2450 (most historical
+                    # games have no real ratings).
                     opp_meta = get_champion_meta(opp_name)
                     opp_rating = opp_meta["rating"] if opp_meta else 2450
                     new_opponents[opp_name] = User(
@@ -370,8 +381,8 @@ async def ensure_champion_seeded(db: AsyncSession, username_or_id: str) -> User 
                     pgn_date=meta_fields["pgn_date"],
                     site=meta_fields["site"],
                     eco=meta_fields["eco"],
-                    # Признак остаётся True, но рейтинг по архивным партиям не считается: у них нет
-                    # *_initial_rating и *_rating_delta, поэтому в историю рейтинга они не попадают.
+                    # The flag stays True, but the rating is not computed from archive games: they have no
+                    # *_initial_rating and *_rating_delta, so they do not get into the rating history.
                     is_rated=True,
                 )
             )
@@ -381,7 +392,7 @@ async def ensure_champion_seeded(db: AsyncSession, username_or_id: str) -> User 
 
         await db.commit()
         logger.info(
-            "Импортировано %d партий для чемпиона %s из %s",
+            "Imported %d games for champion %s from %s",
             len(games_to_insert),
             canonical_name,
             pgn_file.name,
@@ -390,8 +401,8 @@ async def ensure_champion_seeded(db: AsyncSession, username_or_id: str) -> User 
 
 
 async def seed_all_champions() -> None:
-    """Полный импорт архива: все чемпионы из CHAMPIONS_META, с печатью числа партий каждого."""
-    print(f"=== Полный импорт архивов 21 чемпиона мира (Корень: {PROJECT_ROOT}) ===")
+    """Full archive import: all champions from CHAMPIONS_META, printing the number of games of each."""
+    print(f"=== Full import of the archives of 21 world champions (Root: {PROJECT_ROOT}) ===")
     async with AsyncSessionLocal() as db:
         for _, meta in CHAMPIONS_META.items():
             user = await ensure_champion_seeded(db, meta["id"])
@@ -401,8 +412,8 @@ async def seed_all_champions() -> None:
                     Game.status == GameStatus.COMPLETED,
                 )
                 total = (await db.execute(count_q)).scalar() or 0
-                print(f"[+] {meta['id']:12s} ({meta['canonical']:24s}): в базе {total:4d} партий")
-    print("=== Импорт всех чемпионов успешно завершён! ===")
+                print(f"[+] {meta['id']:12s} ({meta['canonical']:24s}): {total:4d} games in the database")
+    print("=== Import of all champions completed successfully! ===")
 
 
 if __name__ == "__main__":

@@ -1,7 +1,7 @@
 # --- FILE: tests/test_engine_budget.py ---
 """
-Бюджет движка (таск 23.3): время движка по видам работ, игроки за день для «процессора на игрока» и дневные квоты
-бесплатного тарифа на дорогую работу — выключенные, пока их не включит FREE_TIER_LIMITS.
+Engine budget (task 23.3): engine time by kind of work, players per day for "CPU per player" and daily quotas
+of the free tier on expensive work - disabled until FREE_TIER_LIMITS enables them.
 """
 
 import asyncio
@@ -26,7 +26,7 @@ def sample(name: str, kind: str) -> float:
 
 def test_outer_kind_wins_and_unknown_is_other():
     assert current_engine_work() == "other"
-    with engine_work("simulation"), engine_work("bot_move"):  # ход бота в симуляции турнира — работа симуляции
+    with engine_work("simulation"), engine_work("bot_move"):  # a bot move in a tournament simulation counts as simulation work
         assert current_engine_work() == "simulation"
     with engine_work("free-for-all"):
         assert current_engine_work() == "other"
@@ -51,7 +51,7 @@ def test_pool_accounts_held_time_and_refusals(monkeypatch):
     held_before = sample("regence_engine_seconds_total", "coach")
     busy_before = sample("regence_engine_busy_total", "coach")
 
-    with engine_work("coach"), pool.acquire(), pytest.raises(EngineBusyError), pool.acquire():  # единственный движок занят
+    with engine_work("coach"), pool.acquire(), pytest.raises(EngineBusyError), pool.acquire():  # the only engine is busy
         pass
     assert sample("regence_engine_seconds_total", "coach") > held_before
     assert sample("regence_engine_busy_total", "coach") == busy_before + 1
@@ -66,7 +66,7 @@ async def test_active_players_are_counted_once_per_day(client, token_user_1, tok
 
 
 async def test_celery_queue_length_is_exported(client):
-    """Длина очереди Celery берётся из списка брокера в Redis при каждом запросе /metrics (алерты 23.2)."""
+    """The Celery queue length is taken from the broker list in Redis on every /metrics request (alerts 23.2)."""
     from src.db import redis as redis_module
     from src.worker.celery_app import ANALYSIS_QUEUE
 
@@ -81,7 +81,7 @@ async def test_celery_queue_length_is_exported(client):
 
 @pytest.fixture
 def stub_hint(monkeypatch):
-    """Подсказка без движка; ступень 3 — ошибка входных данных (400)."""
+    """A hint without an engine; level 3 is an input error (400)."""
     calls = []
 
     async def hint(fen, step):
@@ -109,14 +109,14 @@ def test_coach_quota_counts_only_completed_work(client, stub_hint, monkeypatch, 
     monkeypatch.setattr(settings, "FREE_COACH_REQUESTS_PER_DAY", 2)
 
     assert hint(client, 1).status_code == 200
-    assert hint(client, 3).status_code == 400  # ошибка не съедает квоту
+    assert hint(client, 3).status_code == 400  # an error does not consume the quota
     assert hint(client, 2).status_code == 200
     refused = hint(client, 1)
     assert refused.status_code == 429
     detail = refused.json()["detail"]
     assert detail["code"] == "daily_limit_reached" and detail["params"]["limit"] == 2
     assert 1 <= detail["params"]["hours"] <= 24 and refused.headers["Retry-After"]
-    assert stub_hint == [1, 2]  # отказ — до работы движка
+    assert stub_hint == [1, 2]  # refusal comes before the engine work
 
 
 def test_engine_seconds_label_set_is_bounded():

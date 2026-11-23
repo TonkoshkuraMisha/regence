@@ -1,19 +1,19 @@
 // --- FILE: frontend/src/config/boardPrefs.ts ---
-// Настройки доски (таск 18.4): как показывать ход соперника, как ходить, «быстрый ход», анимация хода соперника и
-// порядок взятых фигур. Хранятся в браузере; компоненты подписываются на изменения.
+// Board settings (task 18.4): how to show the opponent's move, how to move, "quick move", opponent move animation and
+// captured-piece order. Stored in the browser; components subscribe to changes.
 
 import {useSyncExternalStore} from 'react';
 
 export interface BoardPrefs {
-    /** Ход соперника: подсветка полей, стрелка или и то и другое. */
+    /** Opponent move: square highlight, arrow, or both. */
     lastMove: 'highlight' | 'arrow' | 'both';
-    /** Ввод хода: перетаскивание и щелчки, или только два щелчка (удобно на тачпаде и телефоне). */
+    /** Move input: drag and click, or two clicks only (handy on a touchpad and phone). */
     moveInput: 'both' | 'click';
-    /** «Быстрый ход»: щелчок по полю, куда может пойти только одна ваша фигура, сразу делает ход. */
+    /** "Quick move": clicking a square that only one of your pieces can reach makes the move immediately. */
     quickMove: boolean;
-    /** Анимация хода соперника. */
+    /** Opponent move animation. */
     animateOpponent: boolean;
-    /** Взятые фигуры: по ценности, по видам (от пешек) или по порядку взятия. */
+    /** Captured pieces: by value, by kind (from pawns) or by capture order. */
     captured: 'value' | 'kind' | 'order';
 }
 
@@ -53,12 +53,12 @@ export function setBoardPref<K extends keyof BoardPrefs>(key: K, value: BoardPre
     try {
         localStorage.setItem(KEY, JSON.stringify(current));
     } catch {
-        // Хранилище недоступно — настройка действует до перезагрузки.
+        // Storage unavailable - the setting holds until reload.
     }
     listeners.forEach((listener) => listener());
 }
 
-/** Перечитать из хранилища (тесты, другая вкладка). */
+/** Re-read from storage (tests, another tab). */
 export function reloadBoardPrefs(): void {
     current = read();
     listeners.forEach((listener) => listener());
@@ -78,8 +78,8 @@ const VALUE_ORDER = ['q', 'r', 'b', 'n', 'p'];
 const KIND_ORDER = ['p', 'n', 'b', 'r', 'q'];
 
 /**
- * Взятые фигуры каждой стороной в нужном порядке. `byValue` — уже посчитанные по материалу символы (как раньше);
- * для порядка взятия нужна история ходов партии (chess.js, verbose).
+ * Pieces captured by each side in the required order. `byValue` - symbols already computed by material (as before);
+ * capture order needs the game's move history (chess.js, verbose).
  */
 export function orderCaptured(mode: BoardPrefs['captured'], byValue: { white: string[]; black: string[] },
                               history: { color: string; captured?: string }[]): { white: string[]; black: string[] } {
@@ -101,7 +101,7 @@ function glyphType(glyph: string): string {
     return VALUE_ORDER.find((type) => GLYPHS[type] === glyph) ?? 'p';
 }
 
-/** «Быстрый ход»: единственный ход своей фигуры на поле `to`; иначе null (нет ходов или выбор неоднозначен). */
+/** "Quick move": the only move of your piece to square `to`; otherwise null (no moves or the choice is ambiguous). */
 export function quickMoveFrom(moves: { from: string; to: string; promotion?: string }[], to: string): string | null {
     const sources = new Set(moves.filter((m) => m.to === to).map((m) => m.from));
     return sources.size === 1 ? [...sources][0] : null;

@@ -1,7 +1,7 @@
 # --- FILE: tests/test_connection_manager.py ---
 """
-Менеджер WebSocket-соединений (src/services/connection_manager.py): присутствие в Redis, доставка между воркерами,
-отзыв сессий, зрители и ветки отказов Redis. Сокеты и Redis — заглушки, часы и сон подменены.
+WebSocket connection manager (src/services/connection_manager.py): presence in Redis, delivery between workers,
+session revocation, spectators and Redis failure branches. Sockets and Redis are stubs, clock and sleep are patched.
 """
 
 import asyncio
@@ -19,7 +19,7 @@ from src.services.connection_manager import (
 
 
 class FakeSocket:
-    """Заглушка WebSocket: запоминает отправленное и коды закрытия, может «ломаться»."""
+    """WebSocket stub: remembers what was sent and the close codes, can "break"."""
 
     def __init__(self, fail_send=False, fail_close=False):
         self.sent: list[str] = []
@@ -43,7 +43,7 @@ class FakeSocket:
 
 
 class FakePubSub:
-    """Подписка Redis: очередь готовых сообщений и флаги отказов."""
+    """Redis subscription: a queue of ready messages and failure flags."""
 
     def __init__(self):
         self.subscribed = True
@@ -69,8 +69,8 @@ class FakePubSub:
 
 @pytest.fixture
 def mgr(override_redis):
-    """Свежий менеджер на мок-Redis, без фоновых задач."""
-    from src.db.redis import redis_client  # уже подменён autouse-фикстурой
+    """A fresh manager on mock Redis, without background tasks."""
+    from src.db.redis import redis_client  # already patched by an autouse fixture
     m = ConnectionManager()
     m.redis = redis_client
     m.pubsub = FakePubSub()
@@ -80,7 +80,7 @@ def mgr(override_redis):
 
 @pytest.fixture(autouse=True)
 def no_game_side_effects(monkeypatch):
-    """Отключение/подключение дёргает партии и очередь; здесь проверяется только менеджер."""
+    """Disconnect/connect touches games and the queue; only the manager is checked here."""
     from src.services.game_state import state_manager
     from src.services.matchmaker import matchmaker
 
@@ -105,7 +105,7 @@ def test_is_session_revoked_filters_garbage():
     assert _is_session_revoked(json.dumps({"event": SESSION_REVOKED_EVENT}))
     assert not _is_session_revoked("plain")
     assert not _is_session_revoked(f"{SESSION_REVOKED_EVENT} not json")
-    assert not _is_session_revoked(f'["{SESSION_REVOKED_EVENT}"]')  # список: AttributeError
+    assert not _is_session_revoked(f'["{SESSION_REVOKED_EVENT}"]')  # a list: AttributeError
 
 
 @pytest.mark.asyncio
@@ -125,7 +125,7 @@ async def test_ensure_background_tasks_creates_and_survives_no_loop(override_red
     m2.pubsub = FakePubSub()
     import unittest.mock as mock
     with mock.patch.object(asyncio, "create_task", boom):
-        m2._ensure_background_tasks()  # RuntimeError проглатывается
+        m2._ensure_background_tasks()  # RuntimeError is swallowed
     assert m2._listener_task is None
 
 
@@ -148,7 +148,7 @@ async def test_heartbeat_refreshes_presence_and_survives_errors(mgr, monkeypatch
     async def flaky_zadd(*args, **kwargs):
         await_failures["n"] += 1
         if await_failures["n"] == 1:
-            raise RuntimeError("redis down")  # первый пульс падает, цикл живёт
+            raise RuntimeError("redis down")  # the first heartbeat fails, the loop lives
         return await real_zadd(*args, **kwargs)
 
     mgr.redis.zadd = flaky_zadd
@@ -168,7 +168,7 @@ async def test_listener_delivers_remote_messages_and_skips_own(mgr, monkeypatch)
         {"type": "message", "channel": "weird:5", "data": other},
         {"type": "message", "channel": "user:5", "data": own},
         {"type": "message", "channel": "user:5", "data": other},
-        {"type": "message", "channel": "user:bad", "data": other},  # int() падает -> лог и сон
+        {"type": "message", "channel": "user:bad", "data": other},  # int() fails -> log and sleep
     ]
     sleeps = {"n": 0}
 
@@ -200,12 +200,12 @@ async def test_remote_session_revoked_closes_local_sockets(mgr):
     mgr._user_sockets[3] = {ws, dead}
     await mgr._on_remote_message(3, json.dumps({"event": SESSION_REVOKED_EVENT}))
     assert ws.closed_with == WS_CLOSE_SESSION_REVOKED
-    assert ws.sent  # сообщение доставлено до закрытия
+    assert ws.sent  # message delivered before closing
 
 
 def test_unwrap_envelope_variants(mgr):
     assert mgr._unwrap_envelope("not json {") == "not json {"
-    assert mgr._unwrap_envelope('{"a": 1}') == '{"a": 1}'  # не конверт
+    assert mgr._unwrap_envelope('{"a": 1}') == '{"a": 1}'  # not an envelope
     assert mgr._unwrap_envelope(json.dumps({"origin": mgr.worker_id, "data": "x"})) is None
     assert mgr._unwrap_envelope(json.dumps({"origin": "zz", "data": "x"})) == "x"
 
@@ -258,7 +258,7 @@ async def test_disconnect_last_tab_runs_full_cleanup(mgr, no_game_side_effects):
     ws = FakeSocket()
     await mgr.connect(ws, 4)
     await mgr.add_spectator(10, 4)
-    await mgr.disconnect(4)  # websocket=None: закрыть все локальные
+    await mgr.disconnect(4)  # websocket=None: close all local ones
     assert 4 not in mgr.active_connections
     assert no_game_side_effects["leave"] == [4]
     assert no_game_side_effects["disconnect"] == [4]
@@ -288,7 +288,7 @@ async def test_disconnect_resubscribes_when_user_reconnected_during_unsubscribe(
     assert mgr.pubsub.subscribe_calls == calls_before + 1
     assert no_game_side_effects["disconnect"] == []
 
-    # то же, но повторная подписка падает: только лог
+    # same, but re-subscribing fails: only a log
     mgr._user_sockets[8] = {ws}
     mgr._connections[ws] = (8, "x")
     mgr.pubsub.fail_subscribe = True
@@ -311,7 +311,7 @@ async def test_disconnect_online_after_queue_leave_and_after_game_disconnect(mgr
     from src.services.game_state import state_manager
     from src.services.matchmaker import matchmaker
 
-    # 1) пользователь появился на другом воркере, пока выходил из очереди
+    # 1) the user appeared on another worker while leaving the queue
     ws = FakeSocket()
     await mgr.connect(ws, 13)
 
@@ -322,7 +322,7 @@ async def test_disconnect_online_after_queue_leave_and_after_game_disconnect(mgr
     await mgr.disconnect(13, ws)
     assert no_game_side_effects["disconnect"] == []
 
-    # 2) появился, пока обрабатывалось отключение от партии: отключение откатывается
+    # 2) appeared while the game disconnect was being handled: the disconnect is rolled back
     ws2 = FakeSocket()
     await mgr.connect(ws2, 14)
     no_game_side_effects["reconnect"].clear()
@@ -384,11 +384,11 @@ async def test_spectators_lifecycle(mgr):
     await mgr.broadcast_to_spectators(50, {"m": 1})
     assert a.sent and b.sent
 
-    # смотреть можно одну партию за раз
+    # one game can be watched at a time
     await mgr.add_spectator(51, 1)
     assert await mgr.get_spectator_ids(50) == {2}
 
-    # снятие с чужой партии не стирает обратную ссылку
+    # detaching from someone else's game does not erase the back reference
     await mgr.remove_spectator(50, 1)
     assert await mgr.redis.get("user:1:spectating") == "51"
     await mgr.remove_spectator(51, 1)

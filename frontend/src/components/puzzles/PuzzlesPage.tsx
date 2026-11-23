@@ -1,19 +1,19 @@
 // --- FILE: frontend/src/components/puzzles/PuzzlesPage.tsx ---
-// Режим «Приёмы» (таск 13.4) — TrainingPanel: путь по теме реестра со ступенями и смешанные подборки.
-// Режим «Упражнения» (таск 13.7) — GeneratedDrills: позиции-генераторы «вид × фигура», уровни, «на минуту».
-// Режим «Защита» (таск 13.6) — DefenseTrainer: «Что грозит?», «Не зевни», «Единственная защита».
-// Режим «Мои ошибки» (таск 13.5) — позиции перед ошибками в партиях игрока с повторением через интервалы.
-// Страница задач (таск 13.3): решение по рейтингу или теме, задача дня, режим на время (3/5 минут, три ошибки —
-// конец, личный рекорд), подсказка, «Показать решение», итог с изменением рейтинга, история и график рейтинга,
-// «Разобрать с наставником» — позиция задачи на свободной доске с включённым наставником.
-// Раскладка (план владельца 18.11): режимы — три группы вкладок с пояснением (PuzzleModePicker, puzzleModes.ts);
-// пока задача не загружена, вместо доски с начальной расстановкой — карточки всех режимов по группам, выбранный —
-// крупно и с кнопкой «Начать»;
-// у графика рейтинга подписаны оси (рейтинг слева, даты первой и последней задачи снизу).
-// Данные — services/puzzles.ts (/api/v1/puzzles/*, только с входом; задачи, рейтинг и забег считает сервер,
-// src/services/puzzles.py) и реестр тем services/themes.ts. Маршрут /puzzles (App.tsx); вход из других разделов —
-// через location.state {train, mode} (ежедневная разминка, таск 22.2).
-// Страница по режиму показывает доску задач или встроенный тренажёр (приёмы, упражнения, защита).
+// The "Techniques" mode (task 13.4) is TrainingPanel: a path by a registry theme with steps and mixed sets.
+// The "Exercises" mode (task 13.7) is GeneratedDrills: generator positions "kind x piece", levels, "one minute".
+// The "Defence" mode (task 13.6) is DefenseTrainer: "What is threatened?", "Don't blunder", "Only defence".
+// The "My mistakes" mode (task 13.5) is positions before mistakes in the player's games with repetition at intervals.
+// Puzzle page (task 13.3): solving by rating or theme, the daily puzzle, a timed mode (3/5 minutes, three mistakes
+// end it, a personal record), a hint, "Show solution", a result with the rating change, history and a rating graph,
+// "Review with the coach": the puzzle position on the free board with the coach on.
+// Layout (owner's plan 18.11): the modes are three groups of tabs with an explanation (PuzzleModePicker, puzzleModes.ts);
+// until a puzzle is loaded, instead of a board with the starting setup there are cards of all modes by group, the selected one
+// large and with a "Start" button;
+// the rating graph has labelled axes (the rating on the left, the dates of the first and last puzzle at the bottom).
+// Data is services/puzzles.ts (/api/v1/puzzles/*, with sign-in only; puzzles, rating and the run are computed by the server,
+// src/services/puzzles.py) and the theme registry services/themes.ts. Route /puzzles (App.tsx); entry from other sections is
+// via location.state {train, mode} (the daily warm-up, task 22.2).
+// By mode the page shows the puzzle board or an embedded trainer (techniques, exercises, defence).
 
 import {useCallback, useEffect, useRef, useState} from 'react';
 import {Link, useLocation, useNavigate} from 'react-router-dom';
@@ -45,30 +45,30 @@ import {MODE_GROUPS, MODE_ICONS, MODES} from './puzzleModes';
 import type {Mode} from './puzzleModes';
 import {Card, CardGrid, Section} from '../ui';
 
-// Режим save — «Спасите партию» (27.9): смешанная подборка задач с целью «ничья» (вечный шах, пат, крепость, равенство).
-/** Цель тренировки «Спасите партию»: подборка задач с целью «ничья» без скрытия названия темы. */
+// The save mode is "Save the game" (27.9): a mixed set of puzzles with the goal "draw" (perpetual check, stalemate, fortress, equality).
+/** Goal of the "Save the game" training: a set of puzzles with the "draw" goal without hiding the theme name. */
 const SAVE_TARGET: TrainingTarget = {goal: 'draw', blind: false};
-/** Этап задачи: idle → loading → opponent (первый ход соперника) → solving → waiting (ждём сервер) → done. */
+/** Puzzle stage: idle -> loading -> opponent (the opponent's first move) -> solving -> waiting (waiting for the server) -> done. */
 type Phase = 'idle' | 'loading' | 'opponent' | 'solving' | 'waiting' | 'done';
 
-/** Пауза перед первым ходом соперника в задаче, мс. */
+/** Pause before the opponent's first move in a puzzle, ms. */
 const OPPONENT_DELAY_MS = 500;
-/** Пауза перед ответом соперника на верный ход решающего, мс. */
+/** Pause before the opponent's reply to the solver's correct move, ms. */
 const REPLY_DELAY_MS = 400;
-/** Шаг показа решения ход за ходом, мс. */
+/** Step of showing the solution move by move, ms. */
 const SOLUTION_STEP_MS = 700;
 
-// Повторный экспорт: тест puzzles.test.tsx берёт solutionSan из страницы задач.
+// Re-export: the puzzles.test.tsx test takes solutionSan from the puzzle page.
 export {solutionSan};
 
-/** Ошибка клиента в сообщение интерфейса: код сервера или общая сетевая ошибка. */
-/** Шаг округления границ шкалы рейтинга и запас над и под крайними точками. */
+/** Client error to an interface message: a server code or a generic network error. */
+/** Rounding step of the rating scale bounds and the margin above and below the extreme points. */
 const CHART_STEP = 10;
 const CHART_MARGIN = 5;
 
 /**
- * График рейтинга в задачах по истории попыток (puzzlesApi.me → history, новые первыми). Слева — шкала рейтинга
- * (верх, середина, низ), снизу — даты первой и последней попытки на графике.
+ * Rating graph in puzzles by attempt history (puzzlesApi.me -> history, newest first). On the left is the rating scale
+ * (top, middle, bottom), at the bottom are the dates of the first and last attempt on the graph.
  */
 export function RatingChart({history}: { history: PuzzleProfile['history'] }) {
     const {t, dateLocale} = useI18n();
@@ -101,7 +101,7 @@ export function RatingChart({history}: { history: PuzzleProfile['history'] }) {
     );
 }
 
-/** Имя бота-соперника из каталога (исторический мастер); незнакомый id — как есть. */
+/** Name of the opponent bot from the catalog (a historical master); an unknown id is shown as is. */
 function botShortName(id: string, t: ReturnType<typeof useI18n>['t']): string {
     const key = `bots.profiles.${id}.shortName`;
     return hasMessage(key) ? t(key) : id;
@@ -117,7 +117,7 @@ export default function PuzzlesPage() {
     const [fen, setFen] = useState(new Chess().fen());
     const [startFen, setStartFen] = useState<string | null>(null);
     const [phase, setPhase] = useState<Phase>('idle');
-    // «Кандидаты» (27.9): перед ходом отметить 2–3 хода-кандидата; после решения — был ли верный ход среди них.
+    // "Candidates" (27.9): before moving, mark 2-3 candidate moves; after solving, whether the correct move was among them.
     const [candidatesOn, setCandidatesOn] = useState(false);
     const [candidates, setCandidates] = useState<string[]>([]);
     const [candidateFrom, setCandidateFrom] = useState<string | null>(null);
@@ -135,7 +135,7 @@ export default function PuzzlesPage() {
     const [error, setError] = useState<UiMessage | null>(null);
     const [target, setTarget] = useState<TrainingTarget | null>(null);
     const [personal, setPersonal] = useState<PersonalView | null>(null);
-    // Разбор личной ошибки на доске: ход из партии и сильный ход (таск B.3).
+    // Review of a personal mistake on the board: the move from the game and the strong move (task B.3).
     const [personalReplay, setPersonalReplay] = useState<ReplayView | null>(null);
     const [personalAnswer, setPersonalAnswer] = useState<PersonalAnswer | null>(null);
     const [personalSummary, setPersonalSummary] = useState<PersonalSummary | null>(null);
@@ -150,8 +150,8 @@ export default function PuzzlesPage() {
     };
     useEffect(() => () => timers.current.forEach(clearTimeout), []);
 
-    // Свободная доска после задачи (решение владельца 18.11): разбор начинается первым ходом игрока после конца задачи
-    // и сбрасывается, как только начинается следующая.
+    // Free board after a puzzle (owner's decision 18.11): the review starts with the player's first move after the puzzle ends
+    // and resets as soon as the next one starts.
     const explorer = usePositionExplorer();
     const explorerActive = explorer.active;
     const stopExplorer = explorer.stop;
@@ -211,7 +211,7 @@ export default function PuzzlesPage() {
                 try {
                     view = await puzzlesApi.personalNext();
                 } catch {
-                    view = null;  // к повторению сейчас ничего нет — сводка скажет, когда следующая
+                    view = null;  // nothing to repeat now: the summary will say when the next one is
                 }
                 setPersonal(view);
                 if (view) {
@@ -253,7 +253,7 @@ export default function PuzzlesPage() {
         setPhase('idle');
     }, [refreshProfile]);
 
-    // Таймер забега: показывает время, а конец всё равно фиксирует сервер.
+    // Run timer: shows the time, but the end is still fixed by the server.
     useEffect(() => {
         if (!run) return;
         setSecondsLeft(run.seconds_left);
@@ -270,7 +270,7 @@ export default function PuzzlesPage() {
         setPhase('done');
         if (line?.length) setBestFirst((first) => first ?? line[0]);
         if (line) {
-            // Неверный ход снимается, решение показывается на доске ход за ходом.
+            // A wrong move is taken back, the solution is shown on the board move by move.
             later(() => {
                 gameRef.current.undo();
                 setFen(gameRef.current.fen());
@@ -315,7 +315,7 @@ export default function PuzzlesPage() {
     };
 
     const onMove = async (uci: string) => {
-        // Задача решена (или показано решение) — доска свободна: первый ход игрока начинает разбор с текущей позиции.
+        // The puzzle is solved (or the solution is shown): the board is free, the player's first move starts a review from the current position.
         if (phase === 'done') {
             if (explorer.active) explorer.play(uci);
             else explorer.start(fen, [uci]);
@@ -400,7 +400,7 @@ export default function PuzzlesPage() {
     };
 
     const startTraining = (next: TrainingTarget) => {
-        // «Что грозит?» и «Не зевни» — защитные упражнения (13.6), а не задачи базы.
+        // "What is threatened?" and "Don't blunder" are defence exercises (13.6), not database puzzles.
         const drill = next.theme ? DEFENSE_DRILL_THEMES[next.theme] : undefined;
         if (drill) {
             setDefenseKind(drill);
@@ -412,7 +412,7 @@ export default function PuzzlesPage() {
         void load('themes', next);
     };
 
-    // Переход из ежедневной разминки (таск 22.2): сразу тренировка по теме или «ваши ошибки».
+    // Entry from the daily warm-up (task 22.2): straight to theme training or "your mistakes".
     const location = useLocation();
     const entry = location.state as { train?: TrainingTarget; mode?: Mode } | null;
     useEffect(() => {
@@ -442,7 +442,7 @@ export default function PuzzlesPage() {
                     {t('puzzles.profile', {rating: profile.rating, games: profile.games, streak: profile.streak})}
                 </p>
             )}
-            {/* Пока слева карточки режимов, вкладки их не повторяют; в защите и упражнениях карточек нет. */}
+            {/* While mode cards are on the left, the tabs do not repeat them; defence and exercises have no cards. */}
             {(puzzle || personal || mode === 'defense' || mode === 'drills') && <PuzzleModePicker mode={mode} onChange={chooseMode}/>}
         </>
     );
@@ -452,7 +452,7 @@ export default function PuzzlesPage() {
     }
 
     const candidatesAllowed = mode === 'rated' || mode === 'themes' || mode === 'daily';
-    // Пока кандидаты не отмечены, щелчки по доске отмечают ход «откуда → куда», а не делают его.
+    // Until candidates are marked, clicks on the board mark a move "from -> to" instead of making it.
     const marking = candidatesOn && candidatesAllowed && phase === 'solving' && !candidatesReady && fen === startFen;
     const markCandidate = (square: string) => {
         if (!candidateFrom) {
@@ -472,7 +472,7 @@ export default function PuzzlesPage() {
             <ArrowRight size={15}/> {t(puzzle ? 'puzzles.next' : 'puzzles.start')}
         </button>
     );
-    // Режимы, где задачу берут кнопкой «Начать»; у остальных старт свой (забег, путь по приёмам, очередь ошибок).
+    // Modes where a puzzle is taken with the "Start" button; the others have their own start (a run, a path through techniques, a mistakes queue).
     const startsWithButton = mode === 'rated' || mode === 'daily' || mode === 'save';
 
     if (mode === 'defense') {
@@ -487,7 +487,7 @@ export default function PuzzlesPage() {
         <div className="w-full max-w-6xl mx-auto p-3 sm:p-4 flex flex-col lg:flex-row gap-4" data-testid="puzzles-page">
             <div className="w-full lg:w-[min(70vh,640px)] shrink-0 flex flex-col gap-2">
                 {!puzzle && !personal ? (
-                    // До первой задачи — все режимы карточками по группам; выбранный крупнее и с кнопкой «Начать».
+                    // Before the first puzzle, all modes are cards by group; the selected one is larger and has a "Start" button.
                     <div className="flex flex-col gap-4" data-testid="puzzle-mode-cards">
                         {MODE_GROUPS.map((group) => (
                             <Section key={group.id} title={t(`puzzles.modeGroups.${group.id}`)}>

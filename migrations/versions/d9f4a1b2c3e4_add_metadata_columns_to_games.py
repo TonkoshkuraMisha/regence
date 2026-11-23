@@ -37,7 +37,7 @@ def upgrade() -> None:
     op.create_index(op.f("ix_games_status"), "games", ["status"], unique=False)
     op.create_index(op.f("ix_games_finished_at"), "games", ["finished_at"], unique=False)
 
-    # Бэкфилл метаданных для уже существующих в базе партий
+    # Backfill of metadata for games already in the database
     bind = op.get_bind()
     rows = bind.execute(sa.text("SELECT id, pgn, result FROM games WHERE pgn IS NOT NULL AND pgn != ''")).fetchall()
     for row in rows:

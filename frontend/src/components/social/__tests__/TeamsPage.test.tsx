@@ -1,4 +1,4 @@
-// Команды и лига (таск 17.2): таблица, создание команды, своя команда и выход.
+// Teams and the league (task 17.2): the table, creating a team, your own team and leaving.
 
 import {act, fireEvent, render, screen} from '@testing-library/react';
 import {MemoryRouter} from 'react-router-dom';
@@ -16,8 +16,8 @@ afterEach(() => {
     vi.unstubAllGlobals();
 });
 
-describe('команды', () => {
-    it('без команды: таблица с «Вступить» и создание команды', async () => {
+describe('teams', () => {
+    it('without a team: a table with "Join" and creating a team', async () => {
         let team: unknown = null;
         const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
             const u = String(url);
@@ -28,13 +28,13 @@ describe('команды', () => {
         vi.stubGlobal('fetch', fetchMock);
         render(<MemoryRouter><TeamsPage/></MemoryRouter>);
         expect(await screen.findByTestId('league-table')).toHaveTextContent('Pawn Storm');
-        expect(screen.getByText('Лига, сезон 2026-11')).toBeInTheDocument();
+        expect(screen.getByText('League, season 2026-11')).toBeInTheDocument();
         expect(screen.getByTestId('join-1')).toBeInTheDocument();
         fireEvent.change(screen.getByTestId('team-name'), {target: {value: 'Kings of Rook'}});
         await act(async () => fireEvent.submit(screen.getByTestId('team-create')));
         const post = (fetchMock.mock.calls as unknown as [string, RequestInit][]).find(([, i]) => i?.method === 'POST')!;
         expect(JSON.parse(String(post[1].body))).toEqual({name: 'Kings of Rook'});
-        expect(await screen.findByTestId('my-team')).toHaveTextContent('капитан');
+        expect(await screen.findByTestId('my-team')).toHaveTextContent('captain');
         expect(screen.queryByTestId('join-1')).toBeNull();
     });
 });

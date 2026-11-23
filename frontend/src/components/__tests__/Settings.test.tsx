@@ -1,6 +1,6 @@
 // --- FILE: frontend/src/components/__tests__/Settings.test.tsx ---
-// Настройки: оформление и звук сохраняются в браузере, смена пароля отправляет запрос, подменяет
-// токен и не даёт серверному закрытию WebSocket разлогинить игрока.
+// Settings: the appearance and the sound are saved in the browser, a password change sends a request, replaces
+// the token and does not let a server-side WebSocket close log the player out.
 
 import {act, fireEvent, render, screen, waitFor} from '@testing-library/react';
 import {MemoryRouter} from 'react-router-dom';
@@ -42,7 +42,7 @@ const response = (status: number, body: unknown = {}) =>
 function renderSettings(props: Partial<React.ComponentProps<typeof Settings>> = {}) {
     const onTokenChange = vi.fn();
     const onLogoutEverywhere = vi.fn();
-    // В приложении токен страницы — тот же, что в хранилище входа: App берёт его из authToken.
+    // In the app the page token is the same as in the login storage: App takes it from authToken.
     setToken(props.token === undefined ? 'old-token' : props.token);
     render(
         <MemoryRouter>
@@ -59,10 +59,10 @@ function renderSettings(props: Partial<React.ComponentProps<typeof Settings>> = 
 }
 
 function fillPasswords(current: string, next: string, repeat: string = next) {
-    fireEvent.change(screen.getByLabelText('Текущий пароль'), {target: {value: current}});
-    fireEvent.change(screen.getByLabelText(/Новый пароль \(не короче/), {target: {value: next}});
-    fireEvent.change(screen.getByLabelText('Новый пароль ещё раз'), {target: {value: repeat}});
-    fireEvent.click(screen.getByRole('button', {name: 'Сменить пароль'}));
+    fireEvent.change(screen.getByLabelText('Current password'), {target: {value: current}});
+    fireEvent.change(screen.getByLabelText(/New password \(at least/), {target: {value: next}});
+    fireEvent.change(screen.getByLabelText('New password again'), {target: {value: repeat}});
+    fireEvent.click(screen.getByRole('button', {name: 'Change password'}));
 }
 
 beforeEach(() => {
@@ -74,19 +74,19 @@ afterEach(() => {
     vi.unstubAllGlobals();
 });
 
-describe('Settings: оформление и звук', () => {
-    it('выбор доски и фигур сохраняется в браузере', () => {
+describe('Settings: appearance and sound', () => {
+    it('the choice of board and pieces is saved in the browser', () => {
         renderSettings();
 
-        fireEvent.click(screen.getByRole('button', {name: 'Графит'}));
-        fireEvent.click(screen.getByRole('button', {name: 'Стаунтон (Турнирный)'}));
+        fireEvent.click(screen.getByRole('button', {name: 'Graphite'}));
+        fireEvent.click(screen.getByRole('button', {name: 'Staunton (Tournament)'}));
 
         expect(localStorage.getItem('regence_board_theme')).toBe('slate');
         expect(localStorage.getItem('regence_piece_set')).toBe('cburnett');
-        expect(screen.getByRole('button', {name: 'Графит'})).toHaveAttribute('aria-pressed', 'true');
+        expect(screen.getByRole('button', {name: 'Graphite'})).toHaveAttribute('aria-pressed', 'true');
     });
 
-    it('переключатель звука меняет состояние и блокирует проверку при выключенном звуке', () => {
+    it('the sound switch changes the state and blocks the test when the sound is off', () => {
         renderSettings();
         const toggle = screen.getByRole('switch');
         expect(toggle).toHaveAttribute('aria-checked', 'true');
@@ -95,14 +95,14 @@ describe('Settings: оформление и звук', () => {
 
         expect(soundEngine.toggleMute).toHaveBeenCalled();
         expect(toggle).toHaveAttribute('aria-checked', 'false');
-        expect(screen.getByRole('button', {name: 'Проверить'})).toBeDisabled();
+        expect(screen.getByRole('button', {name: 'Test'})).toBeDisabled();
     });
 
-    it('тема-комплект в один клик: все части выбраны, выбор уходит в профиль; ручная смена снимает отметку', async () => {
+    it('a one-click theme preset: all parts are chosen, the choice goes to the profile; a manual change clears the mark', async () => {
         const fetchMock = vi.fn(async () => response(200, {}));
         vi.stubGlobal('fetch', fetchMock);
         setToken('old-token');
-        setEarnedForTests(['wins_10']);   // мраморная доска открывается за десять побед (таск 18.4)
+        setEarnedForTests(['wins_10']);   // the marble board is unlocked for ten wins (task 18.4)
         renderSettings();
         fireEvent.click(screen.getByTestId('preset-marble_hall'));
         expect(localStorage.getItem('regence_board_theme')).toBe('marble');
@@ -112,12 +112,12 @@ describe('Settings: оформление и звук', () => {
         expect(screen.getByTestId('preset-marble_hall')).toHaveAttribute('aria-pressed', 'true');
         await waitFor(() => expect((fetchMock.mock.calls as unknown as [string, RequestInit][])
             .some(([url, init]) => url.endsWith('/profile/me/settings') && init.body === JSON.stringify({theme_preset: 'marble_hall'}))).toBe(true));
-        fireEvent.click(screen.getByRole('button', {name: 'Графит'}));
+        fireEvent.click(screen.getByRole('button', {name: 'Graphite'}));
         expect(screen.getByTestId('preset-marble_hall')).toHaveAttribute('aria-pressed', 'false');
         setToken(null);
     });
 
-    it('отдельная тема для разбора партий: комплект или «как в игре»', () => {
+    it('a separate theme for game review: a preset or "as in the game"', () => {
         renderSettings();
         fireEvent.change(screen.getByTestId('analysis-theme'), {target: {value: 'study'}});
         expect(localStorage.getItem('regence_analysis_board_theme')).toBe('leather');
@@ -127,7 +127,7 @@ describe('Settings: оформление и звук', () => {
         expect(localStorage.getItem('regence_analysis_board_theme')).toBeNull();
     });
 
-    it('настройки доски: показ хода соперника, ввод хода, быстрый ход сохраняются', () => {
+    it('board settings: showing the opponent\'s move, move input, the quick move are saved', () => {
         renderSettings();
         fireEvent.click(screen.getByTestId('pref-lastMove-arrow'));
         fireEvent.click(screen.getByTestId('pref-moveInput-click'));
@@ -138,13 +138,13 @@ describe('Settings: оформление и звук', () => {
         expect(screen.getByTestId('pref-lastMove-arrow')).toHaveAttribute('aria-checked', 'true');
     });
 
-    it('закрытое оформление: видно с условием, выбрать нельзя; после достижения — можно', () => {
+    it('a locked appearance: visible with the condition, cannot be chosen; after the achievement — can be', () => {
         setEarnedForTests([]);
         renderSettings();
-        expect(screen.getByTestId('lock-preset-marble_hall')).toHaveTextContent('Откроется за достижение «Десять побед»');
+        expect(screen.getByTestId('lock-preset-marble_hall')).toHaveTextContent('Unlocks with the achievement «Ten wins»');
         expect(screen.getByTestId('preset-marble_hall')).toBeDisabled();
         expect(screen.getByTestId('board-marble')).toBeDisabled();
-        expect(screen.getByTestId('pieces-lewis')).toHaveAttribute('title', 'Откроется за достижение «Чемпион»');
+        expect(screen.getByTestId('pieces-lewis')).toHaveAttribute('title', 'Unlocks with the achievement «Champion»');
         fireEvent.click(screen.getByTestId('board-marble'));
         expect(localStorage.getItem('regence_board_theme')).toBeNull();
         act(() => setEarnedForTests(['wins_10', 'tournament_win']));
@@ -153,18 +153,18 @@ describe('Settings: оформление и звук', () => {
         setEarnedForTests([]);
     });
 
-    it('набор звуков выбирается отдельно', () => {
+    it('the sound set is chosen separately', () => {
         renderSettings();
-        // Звук мог остаться выключенным предыдущим тестом (общий мок) — наборы при выключенном звуке недоступны.
+        // The sound could have stayed off from the previous test (a shared mock) — sets are unavailable when the sound is off.
         if (screen.getByRole('switch').getAttribute('aria-checked') === 'false') fireEvent.click(screen.getByRole('switch'));
-        fireEvent.click(screen.getByRole('button', {name: 'Звонкие'}));
+        fireEvent.click(screen.getByRole('button', {name: 'Bright'}));
         expect(soundEngine.setSoundSet).toHaveBeenCalledWith('bright');
-        expect(screen.getByRole('button', {name: 'Звонкие'})).toHaveAttribute('aria-pressed', 'true');
+        expect(screen.getByRole('button', {name: 'Bright'})).toHaveAttribute('aria-pressed', 'true');
     });
 });
 
-describe('Settings: смена пароля', () => {
-    it('успешная смена подменяет токен и заранее отключает WebSocket', async () => {
+describe('Settings: password change', () => {
+    it('a successful change replaces the token and disconnects the WebSocket in advance', async () => {
         const fetchMock = vi.fn(async () => response(200, {access_token: 'new-token', token_type: 'bearer'}));
         vi.stubGlobal('fetch', fetchMock);
         const {onTokenChange} = renderSettings();
@@ -173,7 +173,7 @@ describe('Settings: смена пароля', () => {
 
         await waitFor(() => expect(onTokenChange).toHaveBeenCalledWith('new-token'));
         expect(getToken()).toBe('new-token');
-        expect(screen.getByRole('status')).toHaveTextContent('Пароль изменён');
+        expect(screen.getByRole('status')).toHaveTextContent('Password changed');
 
         const [url, init] = (fetchMock.mock.calls as unknown as [string, RequestInit][]).filter(([url]) => !/\/profile\/me|\/beta\/my-invite/.test(String(url)))[0] as unknown as [string, RequestInit];
         expect(url).toContain('/api/v1/auth/change-password');
@@ -181,25 +181,25 @@ describe('Settings: смена пароля', () => {
         expect(JSON.parse(init.body as string)).toEqual({
             current_password: 'old-password', new_password: 'new-password-1',
         });
-        // Иначе закрытие сокета сервером (сессии отозваны) разлогинило бы игрока.
+        // Otherwise the server closing the socket (sessions revoked) would log the player out.
         expect(gameSocket.disconnect).toHaveBeenCalled();
     });
 
-    it('неверный текущий пароль показывает текст сервера и токен не трогает', async () => {
-        vi.stubGlobal('fetch', vi.fn(async () => response(400, {detail: 'Текущий пароль указан неверно'})));
+    it('a wrong current password shows the server text and does not touch the token', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => response(400, {detail: 'The current password is incorrect'})));
         const {onTokenChange} = renderSettings();
 
         fillPasswords('wrong', 'new-password-1');
 
-        expect(await screen.findByRole('alert')).toHaveTextContent('Текущий пароль указан неверно');
+        expect(await screen.findByRole('alert')).toHaveTextContent('The current password is incorrect');
         expect(onTokenChange).not.toHaveBeenCalled();
         expect(getToken()).toBe('old-token');
     });
 
     it.each([
-        ['short', 'short', /не короче 8 символов/],
-        ['new-password-1', 'new-password-2', /не совпадают/],
-    ])('пароль %s / %s отклоняется до запроса', (next, repeat, message) => {
+        ['short', 'short', /at least 8 characters/],
+        ['new-password-1', 'new-password-2', /do not match/],
+    ])('password %s / %s is rejected before the request', (next, repeat, message) => {
         const fetchMock = vi.fn();
         vi.stubGlobal('fetch', fetchMock);
         renderSettings();
@@ -207,26 +207,26 @@ describe('Settings: смена пароля', () => {
         fillPasswords('old-password', next, repeat);
 
         expect(screen.getByRole('alert')).toHaveTextContent(message);
-        // Запрошен только профиль (e-mail для раздела) — смена пароля на сервер не ушла.
+        // Only the profile was requested (the e-mail for the section) — the password change did not go to the server.
         expect((fetchMock.mock.calls as unknown as [string][]).filter(([url]) => !/\/profile\/me|\/beta\/my-invite/.test(String(url)))).toEqual([]);
     });
 
-    it('кнопка «Выйти на всех устройствах» вызывает выход', () => {
+    it('the "Log out on all devices" button calls logout', () => {
         const {onLogoutEverywhere} = renderSettings();
-        fireEvent.click(screen.getByRole('button', {name: 'Выйти на всех устройствах'}));
+        fireEvent.click(screen.getByRole('button', {name: 'Log out on all devices'}));
         expect(onLogoutEverywhere).toHaveBeenCalled();
     });
 
-    it('гостю доступно только оформление', () => {
+    it('a guest has only the appearance available', () => {
         renderSettings({token: null, username: null});
-        expect(screen.queryByRole('button', {name: 'Сменить пароль'})).not.toBeInTheDocument();
-        expect(screen.getByText(/Войдите в аккаунт/)).toBeInTheDocument();
-        expect(screen.getByRole('button', {name: 'Графит'})).toBeInTheDocument();
+        expect(screen.queryByRole('button', {name: 'Change password'})).not.toBeInTheDocument();
+        expect(screen.getByText(/Log in to change your password/)).toBeInTheDocument();
+        expect(screen.getByRole('button', {name: 'Graphite'})).toBeInTheDocument();
     });
 });
 
-describe('Settings: мои данные (таск 17.5)', () => {
-    it('удаление аккаунта: подтверждение, пароль уходит на сервер, затем выход', async () => {
+describe('Settings: my data (task 17.5)', () => {
+    it('account deletion: confirmation, the password goes to the server, then logout', async () => {
         const fetchMock = vi.fn(async () => response(204));
         vi.stubGlobal('fetch', fetchMock);
         vi.spyOn(window, 'confirm').mockReturnValue(true);
@@ -243,18 +243,18 @@ describe('Settings: мои данные (таск 17.5)', () => {
         expect(gameSocket.disconnect).toHaveBeenCalled();
     });
 
-    it('идущая партия — текст сервера, аккаунт не удалён', async () => {
+    it('a game in progress — the server text, the account is not deleted', async () => {
         vi.stubGlobal('fetch', vi.fn(async () => response(409, {detail: {code: 'account_in_game'}})));
         vi.spyOn(window, 'confirm').mockReturnValue(true);
         const onAccountDeleted = vi.fn();
         renderSettings({onAccountDeleted});
         fireEvent.change(screen.getByTestId('settings-delete-password'), {target: {value: 'secret-pass'}});
         fireEvent.click(screen.getByTestId('settings-delete'));
-        expect(await screen.findByRole('alert')).toHaveTextContent('Сначала доиграйте текущую партию');
+        expect(await screen.findByRole('alert')).toHaveTextContent('Finish your current game');
         expect(onAccountDeleted).not.toHaveBeenCalled();
     });
 
-    it('без пароля кнопка удаления недоступна; выгрузка запрашивает свои данные', async () => {
+    it('without a password the delete button is unavailable; the export requests one\'s own data', async () => {
         const fetchMock = vi.fn(async () => response(200, {format: 1}));
         vi.stubGlobal('fetch', fetchMock);
         URL.createObjectURL = vi.fn(() => 'blob:x');
@@ -267,30 +267,30 @@ describe('Settings: мои данные (таск 17.5)', () => {
     });
 });
 
-describe('Settings: e-mail (таск 17.5)', () => {
-    it('привязка: адрес, пароль и язык уходят на сервер, подсказка про письмо', async () => {
+describe('Settings: e-mail (task 17.5)', () => {
+    it('linking: the address, the password and the language go to the server, a hint about the letter', async () => {
         const fetchMock = vi.fn(async (url: string) => (url.includes('/profile/me')
             ? response(200, {email: null}) : response(202)));
         vi.stubGlobal('fetch', fetchMock);
         renderSettings();
-        expect(await screen.findByText('E-mail не привязан.')).toBeInTheDocument();
+        expect(await screen.findByText('No e-mail linked.')).toBeInTheDocument();
         fireEvent.change(screen.getByTestId('settings-email-input'), {target: {value: 'alice@example.com'}});
         fireEvent.change(screen.getByTestId('settings-email-password'), {target: {value: 'secret-pass'}});
         fireEvent.click(screen.getByTestId('settings-email-send'));
-        expect(await screen.findByText(/Письмо отправлено на alice@example.com/)).toBeInTheDocument();
+        expect(await screen.findByText(/A letter has been sent to alice@example.com/)).toBeInTheDocument();
         const call = fetchMock.mock.calls.find(([url]) => String(url).endsWith('/account/email')) as unknown as [string, RequestInit];
-        expect(JSON.parse(String(call[1].body))).toEqual({email: 'alice@example.com', password: 'secret-pass', language: 'ru'});
+        expect(JSON.parse(String(call[1].body))).toEqual({email: 'alice@example.com', password: 'secret-pass', language: 'en'});
     });
 
-    it('привязанный адрес показан, его можно отвязать с паролем', async () => {
+    it('the linked address is shown, it can be unlinked with a password', async () => {
         const fetchMock = vi.fn(async (url: string) => (url.includes('/profile/me')
             ? response(200, {email: 'alice@example.com'}) : response(204)));
         vi.stubGlobal('fetch', fetchMock);
         renderSettings();
-        expect(await screen.findByText('Привязан: alice@example.com')).toBeInTheDocument();
+        expect(await screen.findByText('Linked: alice@example.com')).toBeInTheDocument();
         fireEvent.change(screen.getByTestId('settings-email-password'), {target: {value: 'secret-pass'}});
         fireEvent.click(screen.getByTestId('settings-email-remove'));
-        expect(await screen.findByText('E-mail отвязан.')).toBeInTheDocument();
-        expect(screen.getByTestId('settings-email-current').textContent).toBe('E-mail не привязан.');
+        expect(await screen.findByText('E-mail unlinked.')).toBeInTheDocument();
+        expect(screen.getByTestId('settings-email-current').textContent).toBe('No e-mail linked.');
     });
 });

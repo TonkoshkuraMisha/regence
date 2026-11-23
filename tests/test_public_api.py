@@ -1,7 +1,7 @@
 # --- FILE: tests/test_public_api.py ---
 """
-Прозрачность и открытые данные (таск 24.3): открытое API только для чтения, журналы калибровки ботов, выгрузка
-своих партий в PGN, партии с других сайтов в выгрузке и при удалении аккаунта.
+Transparency and open data (task 24.3): a read-only public API, bot calibration logs, export
+of one's own games to PGN, games from other sites in the export and on account deletion.
 """
 
 import datetime as dt
@@ -26,7 +26,7 @@ def _auth(token: str) -> dict:
 
 @pytest.fixture
 async def games(db_session, test_user_1, test_user_2):
-    """Три партии player1: рейтинговая и товарищеская завершённые и одна идущая."""
+    """Three games of player1: a rated and a casual one finished, and one in progress."""
     now = dt.datetime(2026, 11, 1, 12, tzinfo=dt.UTC)
     rows = [
         Game(white_player_id=test_user_1.id, black_player_id=test_user_2.id, status=GameStatus.COMPLETED, result="1-0",
@@ -84,7 +84,7 @@ async def test_pgn_downloads(client, games):
     assert one.status_code == 200 and "1. e4 e5 1-0" in one.text
     meta = client.get(f"{PUBLIC}/games/{games[0].id}").json()
     assert meta["white"] == "player1" and meta["termination"] == "checkmate"
-    # Идущая партия наружу не отдаётся — ни записью, ни сведениями.
+    # A game in progress is not exposed - neither the record nor the details.
     assert client.get(f"{PUBLIC}/games/{games[2].id}.pgn").status_code == 404
     assert client.get(f"{PUBLIC}/games/{games[2].id}").json()["detail"]["code"] == "game_not_found"
 
@@ -134,7 +134,7 @@ def test_run_names_cannot_leave_the_folder():
     assert calibration.read_run("2026-11-14_../../x.log") is None
 
 
-# --- свои партии и данные -----------------------------------------------------------------------------------------
+# --- own games and data -----------------------------------------------------------------------------------------
 
 
 async def test_own_games_pgn_has_every_finished_game_in_order(client, games, token_user_1, token_user_2):
@@ -142,7 +142,7 @@ async def test_own_games_pgn_has_every_finished_game_in_order(client, games, tok
     response = client.get("/api/v1/account/games.pgn", headers=_auth(token_user_1))
     assert response.status_code == 200 and response.headers["x-total-count"] == "2"
     assert "attachment" in response.headers["content-disposition"] and ".pgn" in response.headers["content-disposition"]
-    # От старых к новым; идущая партия не входит.
+    # From old to new; a game in progress is not included.
     assert response.text.index("1. e4 e5 1-0") < response.text.index("1. e4 e5 0-1") and "e5 *" not in response.text
     assert client.get("/api/v1/account/games.pgn", headers=_auth(token_user_1), params={"offset": 2}).text == ""
 
@@ -167,7 +167,7 @@ async def test_export_includes_imported_games(client, db_session, test_user_1, t
 
 
 async def test_deleting_the_account_removes_imported_games(client, db_session, test_user_1, token_user_1):
-    """Аккаунт обезличивается, а не удаляется из базы — каскад не сработает; ник с другого сайта остаться не должен."""
+    """The account is anonymised, not deleted - the cascade will not fire; a nickname from another site must not remain."""
     await _imported(db_session, test_user_1.id)
     test_user_1.hashed_password = get_password_hash("secret-pass-1")
     await db_session.commit()

@@ -1,7 +1,7 @@
 # --- FILE: scripts/build_collections.py ---
 """
-«Забавные подборки» архива (таск 16.3): считает показатели всех архивных партий (src/services/collections.py) и
-заменяет содержимое collection_entries. Повторный запуск пересчитывает подборки целиком.
+"Fun collections" of the archive (task 16.3): computes metrics of all archive games (src/services/collections.py) and
+replaces the contents of collection_entries. A re-run recomputes the collections entirely.
 
     python scripts/build_collections.py [--workers 4]
 """
@@ -19,7 +19,7 @@ ARCHIVE_PASSWORD = "!historical_archive_no_login!"
 
 
 def _metrics(item: tuple[int, str]):
-    """Считает показатели партии: число ходов, шахов, взятий, превращений и проходных."""
+    """Computes game metrics: number of moves, checks, captures, promotions and passed pawns."""
     from src.services.collections import game_metrics
 
     game_id, pgn = item
@@ -27,7 +27,7 @@ def _metrics(item: tuple[int, str]):
 
 
 async def _load():
-    """Загружает завершённые партии архива без дублей для тематических подборок."""
+    """Loads finished archive games without duplicates for the thematic collections."""
     from sqlalchemy import select
     from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
     from sqlalchemy.orm import aliased
@@ -51,7 +51,7 @@ async def _load():
 
 
 async def _save(ranked: dict[str, list[tuple[int, int]]]) -> int:
-    """Сохраняет сформированные тематические подборки партий в JSON-файл."""
+    """Saves the formed thematic game collections into a JSON file."""
     from sqlalchemy import delete
     from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
     from sqlalchemy.pool import NullPool
@@ -73,7 +73,7 @@ async def _save(ranked: dict[str, list[tuple[int, int]]]) -> int:
 
 
 def main() -> None:
-    """Собирает семь забавных подборок партий по историческому архиву."""
+    """Builds seven fun game collections from the historical archive."""
     from src.services.collections import rank_collections
 
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -81,12 +81,12 @@ def main() -> None:
     args = parser.parse_args()
     started = time.monotonic()
     games = asyncio.run(_load())
-    print(f"Партий в архиве: {len(games)}", flush=True)
+    print(f"Games in the archive: {len(games)}", flush=True)
     with ProcessPoolExecutor(max_workers=args.workers) as pool:
         metrics = {gid: m for gid, m in pool.map(_metrics, games, chunksize=200) if m is not None}
     ranked = rank_collections(metrics)
     saved = asyncio.run(_save(ranked))
-    print(f"Подборок: {len(ranked)}, мест: {saved} за {time.monotonic() - started:.0f} с", flush=True)
+    print(f"Collections: {len(ranked)}, entries: {saved} in {time.monotonic() - started:.0f} s", flush=True)
 
 
 if __name__ == "__main__":

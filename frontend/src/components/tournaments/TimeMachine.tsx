@@ -1,11 +1,11 @@
 // --- FILE: frontend/src/components/tournaments/TimeMachine.tsx ---
-// «Машина времени» (таск 28.3): /time-machine — знаменитые турниры прошлого по годам. Игрок входит в турнир
-// дополнительным участником при полном историческом составе; партии мастеров между собой разыгрывает сервер.
-// RealResult — «как было на самом деле»: настоящая итоговая таблица рядом с турниром игрока.
-// Данные: services/timeMachine.ts — getTimeMachine (каталог событий с составом) и startHistoricEvent (создание
-// турнира с выбранным контролем); названия и рассказы — каталог timeMachine.events.<ключ>.*. Роут — App.tsx;
-// RealResult показывает ещё TournamentsPage.tsx (TournamentView исторического турнира). Вход в турнир открыт любому
-// зарегистрированному игроку, без порогов по силе.
+// "Time Machine" (task 28.3): /time-machine - famous tournaments of the past by year. The player enters a tournament
+// as an additional participant with the full historic line-up; games between masters are played by the server.
+// RealResult - "how it really was": the real final table next to the player's tournament.
+// Data: services/timeMachine.ts - getTimeMachine (event catalogue with line-ups) and startHistoricEvent (creating a
+// tournament with the chosen time control); titles and stories - catalogue timeMachine.events.<key>.*. Route - App.tsx;
+// RealResult is also shown by TournamentsPage.tsx (TournamentView of a historic tournament). Entering a tournament is open to any
+// registered player, without strength thresholds.
 
 import {useEffect, useState} from 'react';
 import {Link, useNavigate} from 'react-router-dom';
@@ -20,30 +20,30 @@ import {
 } from '../../services/timeMachine';
 import type {FieldEntry, HistoricEvent} from '../../services/timeMachine';
 
-// Общий вид секции-карточки страницы.
+// Shared look of a page section card.
 const sectionClass = 'bg-acacia p-4 rounded-lg border-2 border-acacia-dark';
 /**
- * Периоды ленты — по эпохам турнирной жизни: первые турниры, классика конца века, годы перед мировой войной и
- * время между войнами. Период начинается с указанного года и длится до следующего; последний — до конца ленты.
+ * Timeline periods - by eras of tournament life: the first tournaments, the classics of the end of the century, the years before the world war and
+ * the interwar time. A period starts at the given year and lasts until the next one; the last - to the end of the timeline.
  */
 export const PERIOD_STARTS = [1851, 1881, 1901, 1915];
 
-/** Номер периода, к которому относится год турнира. */
+/** Number of the period the tournament year belongs to. */
 export function periodOf(year: number): number {
     let index = 0;
     for (let i = 0; i < PERIOD_STARTS.length; i++) if (year >= PERIOD_STARTS[i]) index = i;
     return index;
 }
 
-/** Подпись периода: «1881–1900»; у последнего — до года последнего турнира ленты. */
+/** Period label: "1881-1900"; for the last one - up to the year of the timeline's last tournament. */
 export function periodLabel(index: number, lastYear: number): string {
     const end = index + 1 < PERIOD_STARTS.length ? PERIOD_STARTS[index + 1] - 1 : Math.max(lastYear, PERIOD_STARTS[index]);
     return `${PERIOD_STARTS[index]}–${end}`;
 }
-/** Контроль по умолчанию — 10 минут: в большом турнире партий много. */
+/** Default control is 10 minutes: a big tournament has many games. */
 const DEFAULT_CONTROL = 'rapid-10+0';
 
-/** Настоящая таблица турнира: место, участник, очки. В турнире на выбывание — места и выбывшие в первом круге. */
+/** The real tournament table: place, participant, points. In a knockout tournament - places and those eliminated in the first round. */
 function RealTable({field}: { field: FieldEntry[] }) {
     const {t} = useI18n();
     return (
@@ -62,7 +62,7 @@ function RealTable({field}: { field: FieldEntry[] }) {
     );
 }
 
-/** Блок «как было на самом деле»: рассказ и настоящая таблица; раскрыт, когда турнир игрока закончен, и сравнивает место. */
+/** "How it really was" block: a story and the real table; expanded when the player's tournament is finished, and compares the place. */
 export function RealResult({eventKey, finished, myPlace}: { eventKey: string; finished: boolean; myPlace: number | null }) {
     const {t} = useI18n();
     const [event, setEvent] = useState<HistoricEvent | null>(null);
@@ -89,7 +89,7 @@ export function RealResult({eventKey, finished, myPlace}: { eventKey: string; fi
     );
 }
 
-/** Карточка исторического турнира: рассказ, формат, сильнейшие участники, полный состав и кнопка входа или «Продолжить». */
+/** Historic tournament card: story, format, strongest participants, full line-up and an enter or "Continue" button. */
 function EventCard({event, control, busy, onStart}: {
     event: HistoricEvent; control: string; busy: boolean; onStart: (event: HistoricEvent) => void;
 }) {
@@ -145,13 +145,13 @@ function EventCard({event, control, busy, onStart}: {
     );
 }
 
-/** Лента турниров с выбором контроля времени и периода; вход создаёт турнир на сервере и открывает его страницу. */
+/** Tournament timeline with a time control and period choice; entering creates a tournament on the server and opens its page. */
 export function TimeMachinePage() {
     const {t} = useI18n();
     const navigate = useNavigate();
     const [events, setEvents] = useState<HistoricEvent[] | null>(null);
     const [control, setControl] = useState(DEFAULT_CONTROL);
-    // Период ленты: null — все турниры.
+    // Timeline period: null - all tournaments.
     const [period, setPeriod] = useState<number | null>(null);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState<UiMessage | null>(null);
@@ -165,11 +165,11 @@ export function TimeMachinePage() {
         };
     }, []);
 
-    // Пуля для турнира из двадцати партий не годится; «свой контроль» здесь не настраивается.
+    // Bullet is not suitable for a twenty-game tournament; "custom control" is not configured here.
     const controls = ALL_TIME_CONTROLS.filter((c) => !c.isManual && c.base >= 3);
     const chosen = controls.find((c) => c.id === control) ?? controls[0];
     const start = (event: HistoricEvent) => {
-        // Лента открыта и гостю, но участником турнира становится игрок: партии и место пишутся в его профиль.
+        // The timeline is open to a guest too, but the tournament participant is a player: games and place are written to their profile.
         if (!getToken()) {
             setError(uiMessage('timeMachine.loginToEnter'));
             return;
@@ -181,7 +181,7 @@ export function TimeMachinePage() {
             .catch((err) => setError(errorMessage(err, 'timeMachine.startFailed')))
             .finally(() => setBusy(false));
     };
-    // Исторические турниры не блокируют друг друга (решение владельца, 17.11): идущие — со своей кнопкой «Продолжить».
+    // Historic tournaments do not block each other (owner decision, 17.11): ongoing ones - with their own "Continue" button.
     const active = events?.filter((e) => e.active_id !== null) ?? [];
     const shown = events?.filter((e) => period === null || periodOf(e.year) === period) ?? null;
     const lastYear = events?.length ? Math.max(...events.map((e) => e.year)) : PERIOD_STARTS[PERIOD_STARTS.length - 1];
@@ -195,7 +195,7 @@ export function TimeMachinePage() {
                     <Hourglass className="text-amber-400"/> {t('timeMachine.title')}
                 </h1>
                 <p className="text-sm text-boxwood/85 max-w-3xl">{t('timeMachine.intro')}</p>
-                {/* Каталог мастеров прошлого (таск 28.5): отдельная партия с любым участником. */}
+                {/* Catalogue of masters of the past (task 28.5): a single game with any participant. */}
                 <p className="text-sm">
                     <Link to="/masters" data-testid="masters-link" className="underline text-amber-300">{t('masters.title')}</Link>
                     <span className="text-boxwood/75"> — {t('masters.teaser')}</span>

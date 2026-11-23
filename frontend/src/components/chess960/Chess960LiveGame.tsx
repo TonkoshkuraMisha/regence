@@ -1,11 +1,11 @@
-// Партия Фишера с человеком (таск 21.3 / 21.1): /play/960/live. Правила 960 — только на сервере (python-chess в режиме
-// 960, src/services/game_engine.py): клиентская шахматная библиотека рокировку 960 не знает, поэтому доска здесь лишь
-// рисует позицию и передаёт щелчки — как у партии против бота (Chess960Page). Рокировка — щелчок по королю, затем по
-// своей ладье; в ход соперника так же ставится предход (уходит, как только очередь наша; невозможный отклонит сервер).
-// Состояние приходит по общему WebSocket (services/gameSocket): match_found (при старте и при каждом
-// переподключении), move_made, game_over, чат, предложения ничьей и реванша (реванш — та же расстановка, цвета меняются,
-// websockets.create_rematch_game). Основная доска (useGameSocket.ts) сама переводит сюда
-// партию с variant chess960, передавая снимок в location.state.match. Рейтинга у этих партий нет.
+// // Fischer Random game against a human (task 21.3 / 21.1): /play/960/live. The 960 rules live only on the server (python-chess in
+// 960, src/services/game_engine.py): // 960 mode, src/services/game_engine.py): the client chess library does not know 960 castling, so here the board only
+// // draws the position and relays clicks, as in the game against a bot (Chess960Page). Castling is a click on the king, then on
+// // one's own rook; a premove is placed the same way on the opponent's turn (it is sent as soon as it is our turn; the server rejects an impossible one).
+// // State arrives over the shared WebSocket (services/gameSocket): match_found (at start and on every
+// // reconnect), move_made, game_over, chat, draw and rematch offers (a rematch is the same setup with colours swapped,
+// websockets.create_rematch_game). // websockets.create_rematch_game). The main board (useGameSocket.ts) itself redirects here
+// // a game with variant chess960, passing the snapshot in location.state.match. These games are unrated.
 
 import {useCallback, useEffect, useRef, useState} from 'react';
 import {Link, useLocation} from 'react-router-dom';
@@ -20,7 +20,7 @@ import {PuzzleBoard} from '../puzzles/PuzzleBoard';
 import {clickStep} from './Chess960Page';
 import {numberedMoves} from '../../services/moveNumbers';
 
-// Снимок партии для отрисовки: часы (мс) — значения на момент последнего сообщения сервера, версия состояния нужна для make_move.
+// // Game snapshot for rendering: clocks (ms) are values as of the last server message; the state version is needed for make_move.
 interface LiveState {
     gameId: number;
     color: 'white' | 'black';
@@ -36,14 +36,14 @@ interface LiveState {
     lastMove: string | null;
 }
 
-/** Позиция для доски без прав на рокировку: доска рисует фигуры, рокировку 960 проверяет сервер. */
+/** /** Position for a board without castling rights: the board draws pieces, the server validates 960 castling. */
 export function displayFen(fen: string): string {
     const parts = fen.split(' ');
     if (parts.length > 2) parts[2] = '-';
     return parts.join(' ');
 }
 
-/** Ходы партии в SAN из PGN: без заголовков, номеров ходов и результата. */
+/** /** Game moves in SAN from the PGN: without headers, move numbers and result. */
 export function sansOf(pgn: string): string[] {
     const movetext = pgn.split('\n').filter((line) => !line.startsWith('[')).join(' ');
     return movetext.split(/\s+/).filter((token) => token && !/^\d+\.(\.\.)?$/.test(token) && !/^\d+\.{1,3}\S/.test(token)
@@ -51,9 +51,9 @@ export function sansOf(pgn: string): string[] {
 }
 
 /**
- * Сообщение сокета о партии (match_found, move_made, game_over, draw_offered, draw_declined, rematch_offered,
+ *  * Socket message about the game (match_found, move_made, game_over, draw_offered, draw_declined, rematch_offered,
  * rematch_declined — src/api/websockets.py):
- * поля сервера в snake_case; в каждом сообщении только свои, поэтому все необязательны.
+ *  * server fields in snake_case; each message carries only its own, so all are optional.
  */
 interface GameMessage {
     game_id?: number | string;
@@ -76,7 +76,7 @@ interface GameMessage {
     reason?: string;
 }
 
-/** Снимок партии из сообщения match_found (поля сервера в snake_case → состояние компонента). */
+/** /** Game snapshot from a match_found message (server snake_case fields -> component state). */
 function fromSnapshot(data: GameMessage): LiveState {
     return {
         gameId: Number(data.game_id),
@@ -94,20 +94,20 @@ function fromSnapshot(data: GameMessage): LiveState {
     };
 }
 
-// Время «м:сс» с округлением вверх до секунды, как на основной доске.
+// // Time "m:ss" rounded up to the second, as on the main board.
 function clock(ms: number): string {
     const total = Math.max(0, Math.ceil(ms / 1000));
     return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
 }
 
-// Уникальный идентификатор команды хода: сервер по нему отбрасывает повторную отправку одного хода.
+// // Unique move command identifier: the server uses it to drop a repeated submission of the same move.
 function commandId(): string {
     return typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
 }
 
 /**
- * Страница партии с человеком: подписывается на события игрового WebSocket, считает часы локально между сообщениями
- * сервера (разница от updatedAt) и отправляет ходы командой make_move. Без снимка партии показывает ссылку в лобби.
+ *  * Human game page: subscribes to game WebSocket events, counts the clocks locally between server messages
+ *  * (the difference from updatedAt) and sends moves with the make_move command. Without a game snapshot it shows a link to the lobby.
  */
 export function Chess960LiveGame() {
     const {t} = useI18n();
@@ -116,16 +116,16 @@ export function Chess960LiveGame() {
     const [game, setGame] = useState<LiveState | null>(initial?.variant === 'chess960' ? fromSnapshot(initial) : null);
     const [result, setResult] = useState<{ result: string; reason?: string } | null>(null);
     const [from, setFrom] = useState<string | null>(null);
-    // Предход (как на главной доске): ход, выбранный в ход соперника, уходит на сервер, как только очередь наша.
-    // Правила 960 знает только сервер: невозможный предход он отклонит, позиция не изменится.
+    //     // Premove (as on the main board): a move chosen on the opponent's turn is sent to the server as soon as it is our turn.
+    //     // Only the server knows the 960 rules: it rejects an impossible premove, the position does not change.
     const [premove, setPremove] = useState<string | null>(null);
     const [drawOffer, setDrawOffer] = useState<'none' | 'incoming' | 'sent' | 'declined'>(
         initial && initial.draw_offer_from !== undefined && initial.draw_offer_from !== null
             && Number(initial.draw_offer_from) === Number(initial.opponent_id) ? 'incoming' : 'none');
-    // Реванш после конца партии: сервер начнёт партию 960 с той же расстановкой, цвета поменяются (create_rematch_game).
+    //     // Rematch after the game ends: the server starts a 960 game with the same setup, colours swap (create_rematch_game).
     const [rematch, setRematch] = useState<'none' | 'sent' | 'incoming' | 'declined'>('none');
     const [now, setNow] = useState(Date.now());
-    // Чат партии — тот же, что у главной доски (gameChat.ts, GameChatPanel); смена партии очищает ленту.
+    //     // Game chat is the same as on the main board (gameChat.ts, GameChatPanel); switching games clears the feed.
     const chat = useGameChat(game?.gameId ?? null);
     const updatedAt = useRef(Date.now());
     const gameRef = useRef(game);
@@ -201,7 +201,7 @@ export function Chess960LiveGame() {
 
     const turn: 'white' | 'black' = game && game.fen.split(' ')[1] === 'b' ? 'black' : 'white';
     const sans = game ? sansOf(game.pgn) : [];
-    const running = !!game && !result;  // часы идут с начала партии, как на сервере и на основной доске
+    const running = !!game && !result;  //     const running = !!game && !result;  // the clocks run from the start of the game, as on the server and on the main board
     const elapsed = running ? now - updatedAt.current : 0;
     const whiteMs = game ? game.whiteMs - (turn === 'white' ? elapsed : 0) : 0;
     const blackMs = game ? game.blackMs - (turn === 'black' ? elapsed : 0) : 0;
@@ -216,7 +216,7 @@ export function Chess960LiveGame() {
         });
     }, []);
 
-    // Очередь перешла к нам — отправить предход (один раз); конец партии или новая партия его снимают.
+    //     // It became our turn: send the premove (once); the end of the game or a new game cancels it.
     useEffect(() => {
         if (!premove) return;
         if (result || !game) {

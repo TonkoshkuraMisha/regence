@@ -1,4 +1,4 @@
-// Режим «помощник перевода» (таск 17.7): нажать кнопку, затем текст интерфейса → предложение с ключом в модерацию.
+// "Translation helper" mode (task 17.7): press the button, then an interface text → a suggestion with the key goes to moderation.
 
 import {act, fireEvent, render, screen} from '@testing-library/react';
 import {MemoryRouter} from 'react-router-dom';
@@ -23,31 +23,31 @@ function page(text: string) {
     );
 }
 
-describe('помощник перевода', () => {
-    it('выключен — кнопки нет', () => {
-        page('Жалоба отправлена');
+describe('translation helper', () => {
+    it('off — there is no button', () => {
+        page('Report sent');
         expect(screen.queryByTestId('translation-pick')).toBeNull();
     });
 
-    it('нажатие на текст находит ключ и отправляет предложение с языком и страницей', async () => {
+    it('pressing a text finds the key and sends a suggestion with the language and the page', async () => {
         const fetchMock = vi.fn(async () => ({ok: true, status: 201, json: async () => ({id: 1})} as Response));
         vi.stubGlobal('fetch', fetchMock);
         act(() => setTranslationHelper(true));
-        page('Жалоба отправлена');
+        page('Report sent');
         fireEvent.click(screen.getByTestId('translation-pick'));
         fireEvent.click(screen.getByTestId('text'));
         expect(screen.getByTestId('translation-key')).toHaveValue('moderation.reportSent');
-        fireEvent.change(screen.getByTestId('translation-suggestion'), {target: {value: 'Жалоба принята'}});
+        fireEvent.change(screen.getByTestId('translation-suggestion'), {target: {value: 'Report received'}});
         await act(async () => fireEvent.submit(screen.getByTestId('translation-form')));
         const [url, init] = (fetchMock.mock.calls as unknown as [string, RequestInit][])[0];
         expect(url).toContain('/moderation/translations');
         expect(JSON.parse(String(init.body))).toEqual({
-            language: 'ru', key: 'moderation.reportSent', current: 'Жалоба отправлена', suggestion: 'Жалоба принята', context: '/puzzles',
+            language: 'en', key: 'moderation.reportSent', current: 'Report sent', suggestion: 'Report received', context: '/puzzles',
         });
         expect(screen.getByTestId('translation-sent')).toBeInTheDocument();
     });
 
-    it('текст не из каталога — честно говорит об этом', () => {
+    it('a text not from the catalog — honestly says so', () => {
         act(() => setTranslationHelper(true));
         page('magnus_1990');
         fireEvent.click(screen.getByTestId('translation-pick'));

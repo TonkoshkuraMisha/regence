@@ -1,8 +1,8 @@
 // --- FILE: frontend/src/components/puzzles/SolutionReplay.tsx ---
-// Разбор после ответа в тренажёрах (таск B.3): линии «опровержение», «верный ход», «решение» — пошагово на доске,
-// стрелка показывает следующий ход линии; «Разобрать с наставником» — позиция упражнения на свободной доске.
-// Линии и позицию задаёт родитель (данные ответа сервера); сам компонент в сеть не ходит, а лишь сообщает через
-// onShow, что нарисовать вместо позиции упражнения. Используют PuzzlesPage, DefenseTrainer, GeneratedDrills и
+// Review after an answer in trainers (task B.3): the "refutation", "correct move", "solution" lines step by step on the board,
+// an arrow shows the next move of the line; "Review with the coach" is the exercise position on the free board.
+// The lines and the position are set by the parent (server response data); the component itself does not go to the network and only reports via
+// onShow what to draw instead of the exercise position. Used by PuzzlesPage, DefenseTrainer, GeneratedDrills and
 // learn/MateCourse.
 
 import {useState} from 'react';
@@ -12,24 +12,24 @@ import {useI18n} from '../../i18n';
 import type {BoardArrow} from './PuzzleBoard';
 import {toMove} from './puzzleNotation';
 
-/** Одна линия для пошагового показа (опровержение, верный ход, решение). */
+/** A single line for step-by-step display (refutation, correct move, solution). */
 export interface ReplayLine {
     id: string;
-    /** Готовая подпись кнопки линии (текст собирает родитель через t()). */
+    /** Ready label of the line button (the text is assembled by the parent via t()). */
     label: string;
-    /** Ходы линии в UCI от стартовой позиции. */
+    /** Line moves in UCI from the starting position. */
     moves: string[];
     color: NonNullable<BoardArrow['color']>;
 }
 
-/** Что показать на доске вместо позиции упражнения. */
+/** What to show on the board instead of the exercise position. */
 export interface ReplayView {
     fen: string;
     lastMove: { from: string; to: string } | null;
     arrows: BoardArrow[];
 }
 
-/** Позиция линии после ply ходов; стрелка — следующий ход линии. */
+/** Position of the line after ply moves; the arrow is the next move of the line. */
 export function replayView(startFen: string, line: ReplayLine, ply: number): ReplayView {
     const game = new Chess(startFen);
     let lastMove: ReplayView['lastMove'] = null;
@@ -48,20 +48,20 @@ export function replayView(startFen: string, line: ReplayLine, ply: number): Rep
 interface Props {
     startFen: string;
     lines: ReplayLine[];
-    /** Показ линии на доске; null — вернуть позицию упражнения. */
+    /** Showing a line on the board; null means return the exercise position. */
     onShow: (view: ReplayView | null) => void;
-    /** Позиция упражнения на свободной доске с наставником. */
+    /** The exercise position on the free board with the coach. */
     onAnalyze?: (fen: string) => void;
 }
 
-/** Кнопки линий, шаги «назад/вперёд» и «Разобрать с наставником»; пусто, если нет ни линий, ни onAnalyze. */
+/** Line buttons, "back/forward" steps and "Review with the coach"; empty if there are neither lines nor onAnalyze. */
 export function SolutionReplay({startFen, lines, onShow, onAnalyze}: Props) {
     const {t} = useI18n();
     const [selected, setSelected] = useState<{ id: string; ply: number } | null>(null);
     const line = selected ? lines.find((l) => l.id === selected.id) ?? null : null;
 
-    // Показ — из обработчиков, не из эффекта: линии родитель собирает на каждой отрисовке заново, и эффект по ним
-    // зацикливал бы отрисовку (onShow меняет состояние родителя).
+    // Showing is done from handlers, not from an effect: the parent rebuilds the lines on every render, and an effect on them
+    // would loop rendering (onShow changes the parent's state).
     const show = (next: { id: string; ply: number } | null) => {
         setSelected(next);
         const nextLine = next ? lines.find((l) => l.id === next.id) : undefined;

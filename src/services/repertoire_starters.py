@@ -1,18 +1,18 @@
 """
-Стартовые репертуары (таск 20.1): восемь готовых наборов линий — белыми и чёрными, для начинающих, среднего и
-продвинутого уровня (27.10), с меткой стиля: атакующий или позиционный. Линии — главные продолжения открытой таблицы
-дебютов (src/services/data/openings.tsv) и самые частые ответы в архиве партий; ходы — общеизвестная теория, не
-чьи-то тексты. Продвинутые наборы повторяют деление на главы репертуарного дерева владельца (1.e4 за белых; 1…e5,
-славянская и полуславянская, 1.c4 e5 и 1.Nf3 d5 за чёрных); где главы противоречат друг другу (одна позиция — два
-своих хода), оставлен ход большинства глав. Названия и вводные тексты — на клиенте
-(frontend/src/i18n/messages/*.ts, ключи repertoire.starters.<id>.*), здесь только коды и ходы.
+Starter repertoires (task 20.1): eight ready-made sets of lines - for White and Black, for beginner, intermediate and
+advanced levels (27.10), with a style mark: attacking or positional. The lines are main continuations of the open opening
+table (src/services/data/openings.tsv) and the most frequent replies in the game archive; the moves are common theory, not
+anyone's texts. The advanced sets repeat the division into chapters of the owner's repertoire tree (1.e4 for White; 1...e5,
+Slav and Semi-Slav, 1.c4 e5 and 1.Nf3 d5 for Black); where chapters contradict each other (one position - two
+own moves), the move of the majority of chapters is kept. Names and introductory texts are on the client
+(frontend/src/i18n/messages/*.ts, keys repertoire.starters.<id>.*), here are only codes and moves.
 
-Правила набора (проверяет tests/test_repertoire.py): все ходы легальны, в каждой позиции у игрока один свой ход,
-у каждой линии по таблице определяется дебют (линия проходит хотя бы через одну позицию с названием).
+Rules of a set (checked by tests/test_repertoire.py): all moves are legal, in each position the player has one own move,
+each line has an opening identified by the table (the line passes through at least one position with a name).
 
-Наборов по уровням: три для начинающих, три среднего уровня, два продвинутых. В базу набор попадает, когда игрок
-создаёт из него репертуар: линии переводятся в UCI (src/services/repertoire.starter_lines) и записываются в
-repertoire_moves; код набора остаётся в repertoires.starter.
+Sets by level: three for beginners, three intermediate, two advanced. A set reaches the database when a player
+creates a repertoire from it: the lines are converted to UCI (src/services/repertoire.starter_lines) and written to
+repertoire_moves; the set code stays in repertoires.starter.
 """
 
 from dataclasses import dataclass
@@ -20,12 +20,12 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class Starter:
-    """Готовый репертуар: код (он же часть ключей текстов на клиенте), цвет, уровень, линии и метка стиля."""
+    """Ready-made repertoire: the code (also part of the client text keys), colour, level, lines and style mark."""
 
     id: str
     color: str  # white | black
     level: str  # beginner | intermediate | advanced
-    lines: tuple[str, ...]  # SAN из начальной позиции, без номеров ходов
+    lines: tuple[str, ...]  # SAN from the starting position, without move numbers
     style: str = "positional"  # attacking | positional
 
 
@@ -272,4 +272,4 @@ STARTERS: tuple[Starter, ...] = (
     )),
 )
 
-BY_ID: dict[str, Starter] = {starter.id: starter for starter in STARTERS}  # поиск набора по коду из запроса
+BY_ID: dict[str, Starter] = {starter.id: starter for starter in STARTERS}  # lookup of a set by the code from the request

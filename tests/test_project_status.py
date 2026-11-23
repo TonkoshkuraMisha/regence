@@ -1,5 +1,5 @@
 # --- FILE: tests/test_project_status.py ---
-"""Сводка состояния проекта (project_status.py): задачи ToDo.md и порядок работ разбираются правильно."""
+"""Project status summary (project_status.py): ToDo.md tasks and the work order are parsed correctly."""
 
 from pathlib import Path
 
@@ -42,4 +42,4 @@ def test_priority_expands_ranges_and_sprints_and_skips_done():
 
 def test_real_status_builds():
     status = build_status(Path(__file__).resolve().parent.parent)
-    assert "# Состояние проекта" in status and "Голова миграций" in status and "Следующие по порядку работ" in status
+    assert "# Project status" in status and "Migration head" in status and "Next in work order" in status

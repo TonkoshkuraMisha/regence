@@ -1,5 +1,5 @@
-// Часы партии: точное время идёт каждые 50 мс, а перерисовка — только когда меняются цифры на часах
-// (раньше весь Chessboard перерисовывался 20 раз в секунду).
+// Game clock: the exact time ticks every 50 ms, but a re-render happens only when the digits on the clock change
+// (previously the whole Chessboard re-rendered 20 times a second).
 
 import {act, renderHook} from '@testing-library/react';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
@@ -19,7 +19,7 @@ function clock(initialMs: number) {
     return {hook, rendersSince: () => renders - before};
 }
 
-/** Тики по одному, каждый в своём act(): иначе React объединил бы все обновления в одну перерисовку. */
+/** Ticks one at a time, each in its own act(): otherwise React would merge all the updates into one re-render. */
 function tickFor(ms: number) {
     for (let elapsed = 0; elapsed < ms; elapsed += 50) {
         act(() => {
@@ -29,7 +29,7 @@ function tickFor(ms: number) {
 }
 
 describe('useClock', () => {
-    it('песочные часы: время ходящего прибавляется сопернику (фора, таск 21.1)', () => {
+    it('hourglass clock: the mover\'s time is added to the opponent (handicap, task 21.1)', () => {
         const hook = renderHook(() => useClock({isTicking: true, isParticipant: true, currentTurn: 'white', myColor: 'white',
             onLowTime: vi.fn(), hourglass: true}));
         act(() => {
@@ -41,14 +41,14 @@ describe('useClock', () => {
         expect(formatTime(hook.result.current.blackTimeMs)).toBe('01:02');
     });
 
-    it('вне цейтнота — перерисовка раз в секунду, а не каждые 50 мс', () => {
+    it('outside time trouble — a re-render once a second, not every 50 ms', () => {
         const {hook, rendersSince} = clock(60_000);
         tickFor(3_000);
-        expect(rendersSince()).toBeLessThanOrEqual(4);  // было 60: каждый тик 50 мс
+        expect(rendersSince()).toBeLessThanOrEqual(4);  // was 60: every 50 ms tick
         expect(formatTime(hook.result.current.whiteTimeMs)).toBe('00:57');
     });
 
-    it('в цейтноте — десятые, перерисовка раз в 100 мс', () => {
+    it('in time trouble — tenths, a re-render every 100 ms', () => {
         const {hook, rendersSince} = clock(10_000);
         tickFor(1_000);
         expect(rendersSince()).toBeGreaterThanOrEqual(9);
@@ -56,7 +56,7 @@ describe('useClock', () => {
         expect(formatTime(hook.result.current.whiteTimeMs)).toBe('00:09.0');
     });
 
-    it('флаг падает ровно в ноль, добавление учитывает точное время', () => {
+    it('the flag falls exactly at zero, an increment takes the exact time into account', () => {
         const {hook} = clock(1_000);
         act(() => {
             vi.advanceTimersByTime(1_500);
@@ -65,13 +65,13 @@ describe('useClock', () => {
 
         act(() => hook.result.current.setWhiteTimeMs(60_400));
         act(() => {
-            vi.advanceTimersByTime(300);  // цифры не изменились (00:60 → 00:60), состояние не обновлялось
+            vi.advanceTimersByTime(300);  // the digits did not change (00:60 → 00:60), the state was not updated
         });
         act(() => hook.result.current.applyIncrement('white', 2));
-        expect(hook.result.current.whiteTimeMs).toBe(62_100);  // 60 400 − 300 + 2 000 — от точного времени
+        expect(hook.result.current.whiteTimeMs).toBe(62_100);  // 60 400 − 300 + 2 000 — from the exact time
     });
 
-    it('шаг отображения совпадает с formatTime', () => {
+    it('the display step matches formatTime', () => {
         expect(displayBucket(30_000)).not.toBe(displayBucket(29_999));
         expect(displayBucket(45_100)).toBe(displayBucket(45_900));
         expect(displayBucket(5_150)).toBe(displayBucket(5_199));

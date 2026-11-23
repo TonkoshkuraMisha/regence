@@ -1,11 +1,11 @@
 """
-Игрок (таблица users). В той же таблице лежат боты и архивные игроки из PGN — у них is_bot и нет username_key.
+A player (the users table). The same table holds bots and archived players from PGN - they have is_bot and no username_key.
 
-Что хранится: имя и ключ имени без учёта регистра, хэш пароля и версия токенов (src/core/security.py),
-необязательный подтверждённый e-mail, четыре рейтинга по категориям контроля времени и счётчики партий к ним
-(src/services/rating.py), рейтинг лестницы и рейтинг решателя задач, признаки античита (trust_factor, is_cheater —
-src/services/anticheat.py), роль модератора, настройки интерфейса (язык, тема, аватар), страна для конференций
-(src/services/conferences.py). При удалении аккаунта строка не стирается, а обезличивается
+What is stored: the name and the case-insensitive name key, the password hash and the token version (src/core/security.py),
+an optional confirmed e-mail, four ratings by time-control categories and the game counters for them
+(src/services/rating.py), the ladder rating and the puzzle solver rating, anti-cheat flags (trust_factor, is_cheater -
+src/services/anticheat.py), the moderator role, interface settings (language, theme, avatar), the country for conferences
+(src/services/conferences.py). When an account is deleted the row is not erased but anonymised
 (src/services/account.py).
 """
 
@@ -18,7 +18,7 @@ from sqlalchemy.sql import func
 
 from src.models.base import Base, one_of
 
-# Кто может писать игроку личные сообщения (src/services/direct_messages.py, POLICIES).
+# Who can write direct messages to the player (src/services/direct_messages.py, POLICIES).
 DM_POLICIES = ("all", "following", "nobody")
 
 RatingCategory = Literal["bullet", "blitz", "rapid", "classical"]
@@ -27,104 +27,109 @@ RATING_CATEGORIES: tuple[RatingCategory, ...] = ("bullet", "blitz", "rapid", "cl
 
 class User(Base):
     """
-    Запись таблицы users: живой игрок, бот или архивный игрок из PGN. Что в каких полях — в описании модуля выше.
+    A users table record: a live player, a bot or an archived player from PGN. What is in which fields - in the module
+    description above.
     """
     __tablename__ = "users"
     __table_args__ = (one_of("users", "dm_policy", DM_POLICIES),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     username: Mapped[str] = mapped_column(String(50), unique=True, index=True)
-    # Нормализованное имя (casefold) аккаунтов, входящих по паролю: уникальность без учёта
-    # регистра («Misha» и «misha» — один аккаунт) и вход в любом регистре. У архивных игроков
-    # из PGN и ботов — NULL: их имена из заголовков партий могут различаться только регистром,
-    # а NULL уникальный индекс не ограничивает.
+    # The normalised name (casefold) of accounts that log in by password: case-insensitive
+    # uniqueness ("Misha" and "misha" are one account) and login in any case. For archived players
+    # from PGN and bots it is NULL: their names from game headers can differ only by case,
+    # and a unique index does not restrict NULL.
     username_key: Mapped[str | None] = mapped_column(String(50), unique=True, index=True, nullable=True)
-    # Хэш bcrypt (src/core/security.py). У ботов и архивных игроков — метка, которая хэшем не является
-    # («!historical_bot_no_login!» — src/api/bots.py, «!historical_archive_no_login!» — src/db/seed.py): войти
-    # под ними нельзя; по второй метке «Просмотр» и поиск игроков отличают архивных игроков.
+    # A bcrypt hash (src/core/security.py). For bots and archived players - a marker that is not a hash
+    # ("!historical_bot_no_login!" - src/api/bots.py, "!historical_archive_no_login!" - src/db/seed.py): one cannot log in
+    # as them; by the second marker "Watch" and player search tell archived players apart.
     hashed_password: Mapped[str] = mapped_column(String)
-    # Версия токенов: входит в JWT и сверяется при каждой проверке. Увеличение (смена пароля,
-    # «выйти на всех устройствах») делает недействительными все ранее выданные токены.
+    # The token version: part of the JWT and checked on every verification. An increase (password change,
+    # "log out on all devices") invalidates all tokens issued earlier.
     token_version: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)
-    # Аккаунт удалён по просьбе игрока (таск 17.5): имя заменено на deleted_<id>, пароль непригоден, личные данные
-    # стёрты; партии остаются у соперников без его имени.
+    # The account was deleted at the player's request (task 17.5): the name is replaced by deleted_<id>, the password is
+    # unusable, personal data
+    # is erased; games stay with the opponents without their name.
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    # Подтверждённый e-mail (таск 17.5) — необязателен; нужен для сброса пароля. Хранится только подтверждённый:
-    # адрес, который ещё не подтвердили, живёт в одноразовой ссылке (EmailToken), и чужой адрес так не занять.
+    # The confirmed e-mail (task 17.5) - optional; needed for password reset. Only a confirmed one is stored:
+    # an address that has not been confirmed yet lives in a one-time link (EmailToken), so someone else's address cannot be
+    # taken this way.
     email: Mapped[str | None] = mapped_column(String(254), unique=True, index=True, nullable=True)
-    # Согласие с условиями при регистрации (таск 23.1, src/services/legal.py): редакция документов и момент согласия.
-    # У архивных игроков из PGN, ботов и аккаунтов, созданных до появления согласия, — NULL.
+    # Consent to the terms at registration (task 23.1, src/services/legal.py): the edition of the documents and the moment of
+    # consent.
+    # NULL for archived players from PGN, bots and accounts created before consent existed.
     terms_version: Mapped[str | None] = mapped_column(String(16), nullable=True)
     terms_accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    # ELO-рейтинг по отдельности для каждой категории контроля времени (как на chess.com и
-    # lichess.org) — единого «общего» рейтинга больше нет, пуля/блиц/рапид/классика не
-    # сравнимы между собой. Категория определяется по base_time_ms/increment_ms партии,
-    # см. src.services.rating.classify_time_control.
+    # The ELO rating separately for each time-control category (as on chess.com and
+    # lichess.org) - there is no single "general" rating any more, bullet/blitz/rapid/classical are not
+    # comparable with each other. The category is determined by the game's base_time_ms/increment_ms,
+    # see src.services.rating.classify_time_control.
     bullet_rating: Mapped[int] = mapped_column(Integer, default=1200, server_default="1200", nullable=False)
     blitz_rating: Mapped[int] = mapped_column(Integer, default=1200, server_default="1200", nullable=False)
     rapid_rating: Mapped[int] = mapped_column(Integer, default=1200, server_default="1200", nullable=False)
     classical_rating: Mapped[int] = mapped_column(Integer, default=1200, server_default="1200", nullable=False)
 
-    # Число сыгранных рейтинговых партий в каждой категории — определяет K-фактор ELO
-    # (новичкам рейтинг двигается быстрее). Хранится как счётчик, а не через COUNT(*) по
-    # games при каждом завершении партии.
+    # The number of rated games played in each category - determines the ELO K-factor
+    # (for beginners the rating moves faster). Stored as a counter rather than via COUNT(*) over
+    # games on every game finish.
     bullet_games_played: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)
     blitz_games_played: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)
     rapid_games_played: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)
     classical_games_played: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)
 
-    # Клубная лестница (таск 10.4): отдельный рейтинг в партиях с ботами без подсказок движка и
-    # возвратов хода. Пройденные ступени — таблица ladder_beaten (src/models/ladder.py), текущую считает
+    # The club ladder (task 10.4): a separate rating in games with bots without engine hints and
+    # takebacks. The beaten rungs are the table ladder_beaten (src/models/ladder.py), the current one is computed by
     # src/services/ladder.py.
     ladder_rating: Mapped[int] = mapped_column(Integer, default=1000, server_default="1000", nullable=False)
     ladder_games: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)
-    # Рейтинг решателя задач (таск 13.1) — отдельная категория, на игровые рейтинги не влияет.
+    # The puzzle solver rating (task 13.1) is a separate category, it does not affect game ratings.
     puzzle_rating: Mapped[int] = mapped_column(Integer, default=1500, server_default="1500", nullable=False)
     puzzle_games: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)
-    # Личные рекорды режима на время (таск 13.3): решено задач за 3 и за 5 минут.
+    # Personal records of the timed mode (task 13.3): puzzles solved in 3 and in 5 minutes.
     puzzle_best_3: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)
     puzzle_best_5: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)
 
-    # Исторический бот (играбельный AI) или архивный исторический игрок (партии из PGN,
-    # посмотреть — нельзя сыграть) — не реальный зарегистрированный игрок, вне таблицы лидеров.
+    # A historical bot (a playable AI) or an archived historical player (games from PGN,
+    # can be viewed but not played) - not a real registered player, outside the leaderboard.
     is_bot: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
 
-    # Античит (src/services/anticheat.py): фактор доверия начинается со 100 и уменьшается штрафами за «машинный»
-    # ритм ходов; ниже anticheat.CHEATER_TRUST_THRESHOLD (30) ставится флаг is_cheater и создаётся заявка
-    # модератору. Снять или подтвердить флаг может только модератор (src/services/moderation.py).
+    # Anti-cheat (src/services/anticheat.py): the trust factor starts at 100 and decreases with penalties for a "machine"
+    # move rhythm; below anticheat.CHEATER_TRUST_THRESHOLD (30) the is_cheater flag is set and a request
+    # to a moderator is created. Only a moderator can remove or confirm the flag (src/services/moderation.py).
     is_cheater: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
     trust_factor: Mapped[int] = mapped_column(Integer, default=100)
-    # Модерация (таск 17.4): роль модератора (scripts/make_moderator.py) и отключённый чат до момента.
+    # Moderation (task 17.4): the moderator role (scripts/make_moderator.py) and chat disabled until a moment.
     is_moderator: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
     chat_banned_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    # Языки (таск 17.7): язык интерфейса хранится в профиле (переходит между устройствами) и режим «помощник
-    # перевода» — кнопка «Предложить исправление текста».
+    # Languages (task 17.7): the interface language is stored in the profile (moves between devices) and the "translation
+    # helper" mode - the "Suggest a text fix" button.
     language: Mapped[str | None] = mapped_column(String(2), nullable=True)
     translation_helper: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
-    # Оформление (таск 18.3): выбранная тема-комплект (код из frontend/src/config/themePresets.ts) — переходит между
-    # устройствами; гость хранит её в браузере.
+    # Appearance (task 18.3): the chosen theme set (a code from frontend/src/config/themePresets.ts) - moves between
+    # devices; a guest keeps it in the browser.
     theme_preset: Mapped[str | None] = mapped_column(String(32), nullable=True)
-    # Аватар (таск 18.4) из собственного набора: фигура «Льюис» и цвет фона, например «wN-3»; нет — по имени.
+    # An avatar (task 18.4) from the own set: the "Lewis" piece and a background colour, for example "wN-3"; none - by name.
     avatar: Mapped[str | None] = mapped_column(String(8), nullable=True)
-    # Кто может писать личные сообщения (таск 30.1): all | following (только те, на кого подписан я) | nobody.
+    # Who can write direct messages (task 30.1): all | following (only those I follow) | nobody.
     dm_policy: Mapped[str] = mapped_column(String(16), default="all", server_default="all", nullable=False)
-    # Конференция (таск 33.6, src/services/conferences.py): страна, которую игрок сам указал в профиле (код ISO
-    # 3166-1 alpha-2), и сезон «ГГГГ-ММ», в котором он последний раз менял конференцию (одна смена за сезон).
+    # Conference (task 33.6, src/services/conferences.py): the country the player themselves set in the profile (an ISO code
+    # 3166-1 alpha-2), and the season "YYYY-MM" in which they last changed the conference (one change per season).
     country: Mapped[str | None] = mapped_column(String(2), nullable=True)
     country_season: Mapped[str | None] = mapped_column(String(7), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     def rating_for(self, category: RatingCategory) -> int:
-        """Рейтинг игрока в категории контроля времени (колонка <категория>_rating)."""
+        """The player's rating in a time-control category (the column <category>_rating)."""
         return getattr(self, f"{category}_rating")
 
     def games_played_for(self, category: RatingCategory) -> int:
-        """Число рейтинговых партий в категории (колонка <категория>_games_played) — от него зависит K-фактор."""
+        """The number of rated games in a category (the column <category>_games_played) - the K-factor depends on it."""
         return getattr(self, f"{category}_games_played")
 
 
-# Профиль, регистрация, поиск игроков и жалобы ищут имя без учёта регистра (lower(username)): без индекса по этому
-# выражению каждый такой запрос читал всю таблицу (ревизия базы 29.1).
+# Profile, registration, player search and reports look up the name case-insensitively (lower(username)): without an index on
+# this
+# expression every such query read the whole table (database audit 29.1).
 Index("ix_users_username_lower", func.lower(User.username))

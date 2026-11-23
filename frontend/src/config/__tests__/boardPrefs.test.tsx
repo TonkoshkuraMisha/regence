@@ -1,5 +1,5 @@
-// Настройки доски (таск 18.4): хранение, порядок взятых фигур, «быстрый ход»; на доске — стрелка последнего хода,
-// быстрый ход и анимация хода соперника.
+// Board settings (task 18.4): storage, the order of captured pieces, "quick move"; on the board — the last move arrow,
+// a quick move and the animation of the opponent's move.
 
 import {act, fireEvent, render, screen} from '@testing-library/react';
 import {MemoryRouter} from 'react-router-dom';
@@ -31,8 +31,8 @@ afterEach(() => {
     reloadBoardPrefs();
 });
 
-describe('настройки доски', () => {
-    it('по умолчанию — как было; выбор сохраняется; мусор в хранилище игнорируется', () => {
+describe('board settings', () => {
+    it('by default — as before; the choice is saved; junk in storage is ignored', () => {
         expect(getBoardPrefs()).toEqual(DEFAULT_BOARD_PREFS);
         setBoardPref('lastMove', 'arrow');
         expect(JSON.parse(localStorage.getItem('regence_board_prefs')!).lastMove).toBe('arrow');
@@ -44,7 +44,7 @@ describe('настройки доски', () => {
         expect(getBoardPrefs()).toEqual(DEFAULT_BOARD_PREFS);
     });
 
-    it('взятые фигуры: по ценности, по видам, по порядку взятия', () => {
+    it('captured pieces: by value, by kind, by order of capture', () => {
         const byValue = {white: ['♛', '♞', '♟'], black: ['♝', '♟']};
         expect(orderCaptured('value', byValue, [])).toBe(byValue);
         expect(orderCaptured('kind', byValue, [])).toEqual({white: ['♟', '♞', '♛'], black: ['♟', '♝']});
@@ -52,18 +52,18 @@ describe('настройки доски', () => {
         expect(orderCaptured('order', byValue, history)).toEqual({white: ['♟', '♛'], black: ['♞']});
     });
 
-    it('быстрый ход — только когда на поле может пойти одна фигура', () => {
+    it('a quick move — only when exactly one piece can go to the square', () => {
         const start = new Chess().moves({verbose: true});
         expect(quickMoveFrom(start, 'e4')).toBe('e2');
         expect(quickMoveFrom(start, 'a4')).toBe('a2');
-        expect(quickMoveFrom(start, 'f3')).toBeNull();   // и конь g1, и пешка f2 — выбор неоднозначен
+        expect(quickMoveFrom(start, 'f3')).toBeNull();   // both the knight g1 and the pawn f2 can — the choice is ambiguous
         expect(quickMoveFrom(start, 'e5')).toBeNull();
         const knights = new Chess('4k3/8/8/8/8/8/8/1N2KN2 w - - 0 1').moves({verbose: true});
         expect(quickMoveFrom(knights, 'd2')).toBeNull();
     });
 });
 
-describe('настройки на доске', () => {
+describe('settings on the board', () => {
     const squareEl = (square: string) => document.querySelector(`[data-square="${square}"]`) as HTMLElement;
 
     async function startBotGame() {
@@ -78,20 +78,20 @@ describe('настройки на доске', () => {
         }));
         render(<MemoryRouter><Chessboard/></MemoryRouter>);
         await openBots();
-        const start = await screen.findByRole('button', {name: /Белыми/});
+        const start = await screen.findByRole('button', {name: /White/});
         await act(async () => fireEvent.click(start));
     }
 
-    it('стрелка последнего хода вместо подсветки; быстрый ход щелчком по полю; анимация ответа бота', async () => {
+    it('the last move arrow instead of the highlight; a quick move by a click on a square; the animation of the bot\'s reply', async () => {
         setBoardPref('lastMove', 'arrow');
         setBoardPref('quickMove', true);
         await startBotGame();
-        await act(async () => fireEvent.click(squareEl('e4')));   // e4 может занять только пешка e2
+        await act(async () => fireEvent.click(squareEl('e4')));   // only the pawn e2 can take e4
         expect(screen.getByText('e4')).toBeInTheDocument();
         expect(await screen.findByTestId('last-move-arrow')).toBeInTheDocument();
-        // Ответ бота (e7e5) анимируется.
+        // The bot's reply (e7e5) is animated.
         const sliding = await screen.findByTestId('move-animation');
-        // Фигура уже на своём поле (клетки показывают настоящую позицию) и съезжает туда со старого.
+        // The piece is already on its own square (the squares show the real position) and slides there from the old one.
         expect(squareEl('e5').contains(sliding)).toBe(true);
         expect(sliding.querySelector('img')).not.toBeNull();
         await act(async () => {
@@ -99,9 +99,9 @@ describe('настройки на доске', () => {
         });
         expect(screen.queryByTestId('move-animation')).toBeNull();
         setToken(null);
-    }, 20_000);  // под нагрузкой (замер покрытия, CI) 5 с по умолчанию не хватало
+    }, 20_000);  // under load (coverage measurement, CI) the default 5 s was not enough
 
-    it('«только щелчки»: перетаскивание не начинается', async () => {
+    it('"clicks only": dragging does not start', async () => {
         setBoardPref('moveInput', 'click');
         await startBotGame();
         fireEvent.pointerDown(squareEl('e2').querySelector('div.relative.w-full') as HTMLElement, {button: 0, pointerType: 'mouse', clientX: 1, clientY: 1});

@@ -2,8 +2,8 @@
 
 """add_token_version_to_users
 
-Версия токенов пользователя: входит в JWT, её увеличение отзывает все выданные токены
-(смена пароля, «выйти на всех устройствах").
+The user's token version: it is part of the JWT, and increasing it revokes all issued tokens
+(password change, "log out on all devices").
 
 Revision ID: f6c8d0e2b3a4
 Revises: e5b7c9d1a2f3

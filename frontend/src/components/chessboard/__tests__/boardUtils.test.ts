@@ -54,16 +54,16 @@ describe('time controls', () => {
     });
 });
 
-describe('партия с произвольной начальной позиции', () => {
+describe('a game from an arbitrary start position', () => {
     const BLACK_TO_MOVE = '6k1/5ppp/8/8/8/8/5PPP/3R2K1 b - - 0 40';
 
-    it('customStartFen отличает свою позицию от обычной расстановки', () => {
+    it('customStartFen tells a custom position from the ordinary setup', () => {
         expect(customStartFen(new Chess())).toBeNull();
         expect(customStartFen(new Chess(STANDARD_START_FEN))).toBeNull();
         expect(customStartFen(new Chess(BLACK_TO_MOVE))).toBe(BLACK_TO_MOVE);
     });
 
-    it('клон партии с позиции сохраняет начальную позицию и ходы', () => {
+    it('a game clone from a position keeps the start position and the moves', () => {
         const game = new Chess(BLACK_TO_MOVE);
         game.move('Kf8');
         const copy = cloneChessInstance(game);
@@ -74,16 +74,16 @@ describe('партия с произвольной начальной позиц
         expect(copy.fen()).toBe(BLACK_TO_MOVE);
     });
 
-    it('validateFen отклоняет мусор, невозможные и законченные позиции', () => {
+    it('validateFen rejects junk, impossible and finished positions', () => {
         expect(validateFen(BLACK_TO_MOVE)).toBeNull();
         expect(validateFen(`  ${BLACK_TO_MOVE}  `)).toBeNull();
-        expect(validateFen('not a fen')).toMatch(/Некорректная позиция/);
-        expect(validateFen('8/8/8/8/8/8/8/8 w - - 0 1')).toMatch(/Некорректная позиция/);
+        expect(validateFen('not a fen')).toMatch(/Invalid position/);
+        expect(validateFen('8/8/8/8/8/8/8/8 w - - 0 1')).toMatch(/Invalid position/);
         expect(validateFen('k7/7Q/1K6/8/8/8/8/8 b - - 0 1')).toBeNull();
-        expect(validateFen('k7/Q7/1K6/8/8/8/8/8 b - - 0 1')).toMatch(/уже окончена/);  // мат
+        expect(validateFen('k7/Q7/1K6/8/8/8/8/8 b - - 0 1')).toMatch(/already over/);  // mate
     });
 
-    it('pairHalfMoves: обычная партия', () => {
+    it('pairHalfMoves: an ordinary game', () => {
         const pairs = pairHalfMoves([{san: 'e4'}, {san: 'e5'}, {san: 'Nf3'}]);
         expect(pairs).toEqual([
             {moveNumber: 1, whiteSan: 'e4', whiteIdx: 0, blackSan: 'e5', blackIdx: 1},
@@ -91,7 +91,7 @@ describe('партия с произвольной начальной позиц
         ]);
     });
 
-    it('pairHalfMoves: партия с хода чёрных на 40-м ходу', () => {
+    it('pairHalfMoves: a game starting with Black\'s move on move 40', () => {
         const pairs = pairHalfMoves([{san: 'Kf8'}, {san: 'Rd8+'}, {san: 'Ke7'}], BLACK_TO_MOVE);
         expect(pairs).toEqual([
             {moveNumber: 40, whiteIdx: -1, blackSan: 'Kf8', blackIdx: 0},
@@ -99,7 +99,7 @@ describe('партия с произвольной начальной позиц
         ]);
     });
 
-    it('pairHalfMoves: без ходов и с ходом белых не с первого хода', () => {
+    it('pairHalfMoves: without moves and with a White move not from the first move', () => {
         expect(pairHalfMoves([], BLACK_TO_MOVE)).toEqual([]);
         expect(pairHalfMoves([{san: 'Qa7#'}], 'k7/7Q/1K6/8/8/8/8/8 w - - 0 57')).toEqual([
             {moveNumber: 57, whiteSan: 'Qa7#', whiteIdx: 0},
@@ -107,8 +107,8 @@ describe('партия с произвольной начальной позиц
     });
 });
 
-describe('контроль времени: группа совпадает с категорией рейтинга на сервере', () => {
-    // То же правило, что src/services/rating.py: оценка длительности — база + 40 ходов × добавление.
+describe('time control: the group matches the rating category on the server', () => {
+    // The same rule as src/services/rating.py: the duration estimate is the base + 40 moves × the increment.
     const serverCategory = (baseMinutes: number, incSeconds: number) => {
         const estimatedSeconds = baseMinutes * 60 + 40 * incSeconds;
         if (estimatedSeconds < 180) return 'bullet';
@@ -118,7 +118,7 @@ describe('контроль времени: группа совпадает с к
     };
 
     it.each(TIME_CONTROLS.flatMap((group) => group.options.map((option) => [option.id, group.category, option] as const)))(
-        '%s лежит в группе той категории, в которой изменится рейтинг',
+        '%s lies in the group of the category in which the rating will change',
         (_id, groupCategory, option) => {
             expect(option.category).toBe(groupCategory);
             expect(serverCategory(option.base, option.inc)).toBe(groupCategory);
@@ -126,16 +126,16 @@ describe('контроль времени: группа совпадает с к
     );
 });
 
-describe('fittedBoardSize — доска по окну', () => {
-    it('без сохранённого размера — наибольшая, что помещается', () => {
+describe('fittedBoardSize — the board by the window', () => {
+    it('without a saved size — the largest that fits', () => {
         expect(fittedBoardSize(null, 640)).toBe(640);
-        expect(fittedBoardSize('мусор', 640)).toBe(640);
+        expect(fittedBoardSize('junk', 640)).toBe(640);
     });
-    it('сохранённый размер — но не больше окна; окно выросло — доска возвращается к сохранённому', () => {
+    it('a saved size — but not larger than the window; the window grew — the board returns to the saved one', () => {
         expect(fittedBoardSize('560', 400)).toBe(400);
         expect(fittedBoardSize('560', 900)).toBe(560);
     });
-    it('слишком маленький сохранённый размер не используется', () => {
+    it('a too small saved size is not used', () => {
         expect(fittedBoardSize(String(MIN_BOARD_SIZE - 1), 640)).toBe(640);
     });
 });

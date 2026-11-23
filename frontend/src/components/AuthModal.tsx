@@ -1,8 +1,8 @@
 // --- FILE: frontend/src/components/AuthModal.tsx ---
-// Окно входа и регистрации. Регистрация: имя и пароль (правила имени проверяет сервер, src/schemas/user.py), два
-// необязательных вопроса о стаже и силе — по ним сервер ставит стартовый рейтинг, код-приглашение, если регистрация
-// закрыта (программа беты). Отказы сервера приходят кодами и показываются текстом из каталога serverErrors. После
-// входа access-токен хранится только в памяти страницы (services/authToken.ts).
+// Sign-in and registration window. Registration: a name and password (name rules are checked by the server, src/schemas/user.py), two
+// optional questions about experience and strength, by which the server sets the starting rating, and an invitation code if registration is
+// closed (the beta programme). Server refusals arrive as codes and are shown as text from the serverErrors catalog. After
+// sign-in the access token is kept only in page memory (services/authToken.ts).
 
 import {useEffect, useState} from 'react';
 import {LogIn, UserPlus, X} from 'lucide-react';
@@ -17,34 +17,34 @@ import type {UiMessage} from '../i18n';
 import {setToken} from '../services/authToken';
 import {betaApi} from '../services/beta';
 
-/** Сообщение под заголовком: ошибка (ответ сервера по коду или своя) или успех регистрации. */
+/** Message under the heading: an error (a server response by code or its own) or registration success. */
 type Feedback = { tone: 'error' | 'success'; message: UiMessage };
 
 interface AuthModalProps {
     onSuccess: (token: string) => void;
-    /** Закрытие без входа: крестик, клик по затемнению или Esc. */
+    /** Closing without signing in: the cross, a click on the backdrop or Esc. */
     onClose?: () => void;
-    /** «Сыграть первую партию» после регистрации (таск 17.8): стартовый рейтинг игрока. */
+    /** "Play the first game" after registration (task 17.8): the player's starting rating. */
     onFirstGame?: (rating: number) => void;
-    /** Новичку («только начинаю») — переход в азбуку (14.5). */
+    /** For a beginner ("just starting"): a jump to the ABC (14.5). */
     onBasics?: () => void;
-    /** Закрытая регистрация (таск 24.4): без кода-приглашения аккаунт не создать. */
+    /** Closed registration (task 24.4): an account cannot be created without an invitation code. */
     inviteOnly?: boolean;
-    /** Код из ссылки-приглашения: окно открывается сразу на регистрации, код уже вписан. */
+    /** Code from an invitation link: the window opens straight on registration with the code already filled in. */
     inviteCode?: string;
 }
 
 /**
- * Окно входа и регистрации. Вход — POST /auth/login (форма OAuth2), регистрация — POST /auth/register, сброс
- * пароля — POST /account/password-reset; после регистрации показывается приветствие, а вход выполняется сразу.
+ * Sign-in and registration window. Sign-in is POST /auth/login (an OAuth2 form), registration is POST /auth/register, password
+ * reset is POST /account/password-reset; after registration a welcome is shown, and sign-in is done at once.
  */
 export default function AuthModal({onSuccess, onClose: onCloseProp, onFirstGame, onBasics, inviteOnly = false, inviteCode}: AuthModalProps) {
     const {t, tp, language} = useI18n();
     const [isLogin, setIsLogin] = useState(!inviteCode);
     const [invite, setInvite] = useState(inviteCode ?? '');
-    // Согласие с правилами и конфиденциальностью (таск 23.1): без отметки регистрация не отправляется.
+    // Consent to the rules and privacy policy (task 23.1): without the mark, registration is not submitted.
     const [acceptTerms, setAcceptTerms] = useState(false);
-    // Код из ссылки проверяется сразу: о недействительном приглашении лучше узнать до заполнения формы.
+    // The code from the link is checked at once: it is better to learn about an invalid invitation before filling in the form.
     const [inviteValid, setInviteValid] = useState<boolean | null>(null);
     useEffect(() => {
         if (!inviteCode) return;
@@ -59,10 +59,10 @@ export default function AuthModal({onSuccess, onClose: onCloseProp, onFirstGame,
     const showInvite = inviteOnly || Boolean(inviteCode);
     const [experience, setExperience] = useState<Experience | ''>('');
     const [strength, setStrength] = useState<StrengthBand | ''>('');
-    // После регистрации игрок уже вошёл: окно приветствия, закрытие окна — тоже вход.
+    // After registration the player is already signed in: a welcome window, closing the window is also sign-in.
     const [welcome, setWelcome] = useState<{ token: string; rating: number } | null>(null);
     const onClose = welcome ? () => onSuccess(welcome.token) : onCloseProp;
-    // «Забыли пароль?» (таск 17.5): письмо со ссылкой на привязанный e-mail.
+    // "Forgot password?" (task 17.5): an email with a link to the linked e-mail.
     const [forgot, setForgot] = useState(false);
     const [email, setEmail] = useState('');
     const [username, setUsername] = useState('');
@@ -93,12 +93,12 @@ export default function AuthModal({onSuccess, onClose: onCloseProp, onFirstGame,
         }
     };
 
-    /** Вход по имени и паролю из формы: токен сохраняется, гостевые соперники предлагаются к переносу. */
+    /** Sign-in by name and password from the form: the token is saved, guest opponents are offered for transfer. */
     const signIn = async (): Promise<string> => {
-        // Форма OAuth2 и refresh-cookie долгого входа (таск 17.5); 429 — сколько ждать, а не «неверный пароль».
+        // An OAuth2 form and the refresh cookie of a long sign-in (task 17.5); 429 says how long to wait, not "wrong password".
         const accessToken = await accountApi.login(username, password);
         setToken(accessToken);
-        // Соперники, собранные гостем в этом браузере, — предложить перенести в профиль.
+        // Opponents built by a guest in this browser: offer to transfer them to the profile.
         offerGuestPersonalityTransfer(accessToken)
             .then((result) => {
                 if (result?.skipped.length) {
@@ -126,14 +126,14 @@ export default function AuthModal({onSuccess, onClose: onCloseProp, onFirstGame,
             if (isLogin) {
                 onSuccess(await signIn());
             } else {
-                // Регистрация; ответы о силе необязательны (таск 17.8) — по ним сервер ставит стартовый рейтинг.
+                // Registration; strength answers are optional (task 17.8): the server sets the starting rating from them.
                 const created = await accountApi.register({
                     username, password, accept_terms: acceptTerms,
                     ...(experience ? {experience} : {}),
                     ...(strength && experience !== 'new' ? {strength} : {}),
                     ...(showInvite && invite.trim() ? {invite_code: invite.trim()} : {}),
                 });
-                // Сразу вход и приветствие с предложением первой партии.
+                // Sign-in and a welcome with an offer of the first game at once.
                 try {
                     setWelcome({token: await signIn(), rating: created.blitz_rating});
                 } catch {
@@ -152,8 +152,8 @@ export default function AuthModal({onSuccess, onClose: onCloseProp, onFirstGame,
         <div
             className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
             onMouseDown={(e) => {
-                // Только клик по самому затемнению: выделение текста в поле, законченное за
-                // пределами окна, закрывать его не должно.
+                // Only a click on the backdrop itself: a text selection in a field that ended
+                // outside the window must not close it.
                 if (e.target === e.currentTarget) onClose?.();
             }}
         >
@@ -206,7 +206,7 @@ export default function AuthModal({onSuccess, onClose: onCloseProp, onFirstGame,
                             {tp('auth.welcomeRating', PROVISIONAL_GAMES, {rating: welcome.rating})}
                         </p>
                         {experience === 'new' && onBasics && (
-                            // Только узнал правила (17.8): сначала азбука 14.5, партия — по желанию следом.
+                            // Only learned the rules (17.8): ABC 14.5 first, a game optionally after it.
                             <>
                                 <p className="text-sm text-center text-boxwood/85">{t('auth.basicsHint')}</p>
                                 <button type="button" data-testid="auth-start-basics"

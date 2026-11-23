@@ -1,20 +1,20 @@
 """
-Поиск позиций для уроков в партиях мастеров (data/pgns): приём находит правило, движок подтверждает.
+Search for lesson positions in masters' games (data/pgns): a motif finds the rule, the engine confirms.
 
-Как работает: каждая партия проходится ход за ходом; правило приёма (registry RULES) смотрит позицию и сыгранный
-ход мастера и отбирает «кандидатов». Каждый кандидат проверяется Stockfish: сыгранный ход должен быть лучшим, а
-второй по силе ход — слабее не меньше чем на --margin сп (иначе вопрос «найдите ход» угадывается), и оценка для
-ходящего — не ниже --min-score. Результат — JSON со списком {fen, move, san, game, rule, scores}; урок собирается из них
-вручную (текст объяснения пишет человек, правду хода гарантирует движок). Не для CI: нужен Stockfish и время.
+How it works: every game is walked move by move; a motif rule (registry RULES) looks at the position and the master's move
+played and selects "candidates". Each candidate is checked by Stockfish: the move played must be the best, and the
+second-best move must be weaker by at least --margin cp (otherwise the "find the move" question can be guessed), and the
+evaluation for the side to move - not below --min-score. Result: JSON with a list of {fen, move, san, game, rule, scores};
+a lesson is built from them (a human writes the text, the engine vouches for the move). Not for CI: needs Stockfish.
 
-Правила (по реестру RULES):
-  interference — фигура встаёт между защитником и защищённой фигурой соперника; защита рвётся, фигура остаётся без защиты;
-  rook_lift    — ладья поднимается с первой горизонтали на третью к королю соперника;
-  pawn_storm   — штурм пешками (g/h) короля соперника при рокировках в разные стороны;
-  blockade     — фигура блокирует проходную пешку соперника;
-  quiet_move   — тихий ход (не взятие и не шах), который сильно лучше остальных;
-  overload     — у соперника перегруженная фигура (детектор наставника), ход бьёт её или одну из её целей;
-  remove_defender — взятие единственного защитника чужой фигуры, после чего она остаётся без защиты.
+Rules (by the RULES registry):
+  interference - a piece steps between the opponent's defender and the defended piece; the defence breaks, leaving it bare;
+  rook_lift    - a rook rises from the first rank to the third toward the opponent's king;
+  pawn_storm   - a pawn storm (g/h) at the opponent's king with castling to opposite sides;
+  blockade     - a piece blocks the opponent's passed pawn;
+  quiet_move   - a quiet move (not a capture or a check) that is much better than the rest;
+  overload     - the opponent has an overloaded piece (a mentor detector), the move attacks it or one of its targets;
+  remove_defender - capture of the sole defender of an opponent piece, after which it is left undefended.
 
     python -m scripts.dev.mine_lesson_positions --rule interference --limit 12 --out interference.json
 """
@@ -38,13 +38,13 @@ SLIDERS = (chess.BISHOP, chess.ROOK, chess.QUEEN)
 
 
 def relative_rank(square: chess.Square, colour: chess.Color) -> int:
-    """Горизонталь с точки зрения цвета: 0 — своя первая, 7 — последняя."""
+    """Rank from the colour's point of view: 0 - own first, 7 - last."""
     rank = chess.square_rank(square)
     return rank if colour == chess.WHITE else 7 - rank
 
 
 def rule_interference(board: chess.Board, move: chess.Move) -> bool:
-    """Ход встаёт на линию между защитником-слайдером и защищённой им фигурой соперника, оставляя её без защиты."""
+    """The move steps onto the line between a slider defender and the opponent's piece it defends, leaving it undefended."""
     mover, enemy = board.turn, not board.turn
     if board.is_capture(move):
         return False
@@ -67,7 +67,7 @@ def rule_interference(board: chess.Board, move: chess.Move) -> bool:
 
 
 def rule_rook_lift(board: chess.Board, move: chess.Move) -> bool:
-    """Ладья идёт с первой горизонтали на третью к королю соперника (король — на фланге подъёма)."""
+    """A rook goes from the first rank to the third toward the opponent's king (the king is on the side of the lift)."""
     mover, enemy = board.turn, not board.turn
     piece = board.piece_at(move.from_square)
     if piece is None or piece.piece_type != chess.ROOK or board.is_capture(move) or board.fullmove_number < 9:
@@ -80,7 +80,7 @@ def rule_rook_lift(board: chess.Board, move: chess.Move) -> bool:
 
 
 def rule_pawn_storm(board: chess.Board, move: chess.Move) -> bool:
-    """Пешка g/h идёт к королю соперника, рокировки в разные стороны, ходящий уже рокировался."""
+    """A g/h pawn goes toward the opponent's king, castling to opposite sides, the mover has already castled."""
     mover, enemy = board.turn, not board.turn
     piece = board.piece_at(move.from_square)
     if piece is None or piece.piece_type != chess.PAWN or board.is_capture(move):
@@ -93,7 +93,7 @@ def rule_pawn_storm(board: chess.Board, move: chess.Move) -> bool:
 
 
 def rule_blockade(board: chess.Board, move: chess.Move) -> bool:
-    """Фигура (не король и не пешка) становится перед проходной пешкой соперника, продвинувшейся далеко."""
+    """A piece (not a king or a pawn) stands in front of an opponent's passed pawn that has advanced far."""
     mover, enemy = board.turn, not board.turn
     piece = board.piece_at(move.from_square)
     if piece is None or piece.piece_type in (chess.KING, chess.PAWN) or board.is_capture(move):
@@ -114,14 +114,14 @@ def rule_blockade(board: chess.Board, move: chess.Move) -> bool:
 
 
 def rule_quiet_move(board: chess.Board, move: chess.Move) -> bool:
-    """Тихий ход: не взятие, не шах, не превращение и не ход короля."""
+    """A quiet move: not a capture, not a check, not a promotion and not a king move."""
     piece = board.piece_at(move.from_square)
     return (piece is not None and piece.piece_type != chess.KING and not board.is_capture(move)
             and not board.gives_check(move) and move.promotion is None and board.fullmove_number >= 12)
 
 
 def rule_overload(board: chess.Board, move: chess.Move) -> bool:
-    """У соперника есть перегруженная фигура (мотив наставника ``overloaded``), и ход берёт её или одну из её целей."""
+    """The opponent has an overloaded piece (mentor motif ``overloaded``), and the move captures it or one of its targets."""
     if not board.is_capture(move):
         return False
     return any(motif.code == "overloaded" and motif.color == board.turn
@@ -130,7 +130,7 @@ def rule_overload(board: chess.Board, move: chess.Move) -> bool:
 
 
 def rule_remove_defender(board: chess.Board, move: chess.Move) -> bool:
-    """Ход берёт фигуру, которая единственная защищала другую фигуру соперника; та остаётся атакованной и без защиты."""
+    """The move captures the only defender of another opponent piece; that piece is left attacked and undefended."""
     mover, enemy = board.turn, not board.turn
     if not board.is_capture(move):
         return False
@@ -153,7 +153,7 @@ RULES = {"interference": rule_interference, "rook_lift": rule_rook_lift, "pawn_s
 
 
 def candidates(rule_name: str):
-    """Позиции-кандидаты по правилу: (fen до хода, ход, описание партии)."""
+    """Candidate positions by a rule: (fen before the move, the move, the game description)."""
     rule = RULES[rule_name]
     seen: set[str] = set()
     for path in sorted(glob.glob(PGN_GLOB, recursive=True)):
@@ -161,7 +161,7 @@ def candidates(rule_name: str):
             while True:
                 try:
                     game = chess.pgn.read_game(handle)
-                except Exception:  # noqa: BLE001 — битая запись PGN пропускается, поиск идёт дальше
+                except Exception:  # noqa: BLE001 - a broken PGN record is skipped, the search goes on
                     break
                 if game is None:
                     break
@@ -179,7 +179,7 @@ def candidates(rule_name: str):
 
 
 def main() -> None:
-    """Проверяет кандидатов движком и сохраняет подтверждённые."""
+    """Checks the candidates with the engine and saves the confirmed ones."""
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--rule", required=True, choices=sorted(RULES))
     parser.add_argument("--limit", type=int, default=12)
@@ -210,7 +210,7 @@ def main() -> None:
     finally:
         engine.quit()
     args.out.write_text(json.dumps(found, ensure_ascii=False, indent=1), encoding="utf-8")
-    print(f"проверено {checked}, найдено {len(found)} -> {args.out}")
+    print(f"checked {checked}, found {len(found)} -> {args.out}")
 
 
 if __name__ == "__main__":

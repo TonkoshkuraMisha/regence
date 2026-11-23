@@ -1,7 +1,7 @@
 // --- FILE: frontend/src/components/chessboard/MoveList.tsx ---
-// Список ходов партии на главной доске: ход можно выбрать и посмотреть позицию после него, кнопка возвращает к живой
-// позиции. Ходы — история chess.js из Chessboard, разложенная по парам функцией pairHalfMoves (boardUtils.ts).
-// Активный ход помечен классом active-move-btn: по нему Chessboard прокручивает список (scrollMove.ts).
+// Game move list on the main board: a move can be selected to view the position after it, a button returns to the live
+// position. The moves are the chess.js history from Chessboard, laid out in pairs by pairHalfMoves (boardUtils.ts).
+// The active move is marked with the active-move-btn class: Chessboard scrolls the list to it (scrollMove.ts).
 
 import type {RefObject} from 'react';
 
@@ -12,20 +12,20 @@ export type MovePair = HalfMovePair;
 
 export interface MoveListProps {
     movePairs: MovePair[];
-    /** Индекс подсвеченного полухода: показываемый ход, а на живой позиции — последний. */
+    /** Index of the highlighted ply: the move being shown, and on the live position, the last one. */
     activeMoveIndex: number;
-    /** -1 — живая позиция (хвост партии); -2 — начало партии до первого хода; иначе — индекс полухода истории. */
+    /** -1 is the live position (the tail of the game); -2 is the start of the game before the first move; otherwise a history ply index. */
     viewIndex: number;
     historyLength: number;
-    /** Партия с соперником (PvP/бот) идёт — иначе это свободный анализ/песочница. */
+    /** A game against an opponent (PvP/bot) is in progress; otherwise this is free analysis/sandbox. */
     hasActiveSession: boolean;
-    /** Окно прокрутки списка — им управляет вызывающий (держит активный ход в середине). */
+    /** Scroll container of the list: controlled by the caller (keeps the active move in the middle). */
     scrollRef: RefObject<HTMLDivElement | null>;
     onSelectMove: (idx: number) => void;
     onReturnToLive: () => void;
 }
 
-/** Журнал ходов в парах бел/чёрн с подсветкой текущего просматриваемого полухода. */
+/** Move log in white/black pairs, highlighting the ply currently being viewed. */
 export function MoveList({
     movePairs, activeMoveIndex, viewIndex, historyLength, hasActiveSession, scrollRef,
     onSelectMove, onReturnToLive,
@@ -70,7 +70,7 @@ export function MoveList({
                                 </span>
 
                                 {pair.whiteSan === undefined ? (
-                                    // Партия начата с хода чёрных — у первой пары хода белых нет.
+                                    // The game started with Black's move: the first pair has no White move.
                                     <span className="text-boxwood/40 pl-2 select-none">…</span>
                                 ) : (
                                     <button

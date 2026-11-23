@@ -4,9 +4,9 @@ Revision ID: d3f8a2c6e914
 Revises: b4d2e8f1a6c3
 Create Date: 2026-11-18 14:00:00.000000
 
-Сводка телеметрии ходов по сторонам (src/services/anticheat.telemetry_summary). Сырые строки moves удаляет плановая
-задача через telemetry_retention.RETENTION_DAYS после окончания партии, сводка остаётся. Уже сыгранные партии
-получат сводку, когда до них дойдёт эта задача.
+A summary of move telemetry per side (src/services/anticheat.telemetry_summary). The raw moves rows are deleted by a scheduled
+task via telemetry_retention.RETENTION_DAYS after the game ends, the summary stays. Games already played
+will get a summary when this task reaches them.
 """
 from collections.abc import Sequence
 

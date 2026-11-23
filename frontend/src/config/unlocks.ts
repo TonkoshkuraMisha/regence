@@ -1,6 +1,6 @@
 // --- FILE: frontend/src/config/unlocks.ts ---
-// Открываемое оформление (таск 18.4): часть досок и наборов фигур открывается за достижения (17.6). Закрытое видно
-// заранее — с замком и условием; выбрать его нельзя, пока достижение не получено. Уже выбранное раньше не отбирается.
+// Unlockable appearance (task 18.4): some boards and piece sets unlock for achievements (17.6). Locked items are visible
+// in advance - with a lock and the condition; they cannot be selected until the achievement is earned. Already selected items are not taken away.
 
 import {useSyncExternalStore} from 'react';
 import {API_BASE_URL} from './api';
@@ -9,7 +9,7 @@ import type {MessageKey} from '../i18n';
 
 export type UnlockKind = 'board' | 'pieces';
 
-/** Что за какое достижение открывается (коды — src/services/achievements.py). */
+/** Which achievement unlocks what (codes - src/services/achievements.py). */
 export const UNLOCKS: Record<UnlockKind, Record<string, string>> = {
     board: {marble: 'wins_10', malachite: 'puzzles_100', ebony: 'rating_1500', neon: 'arena_10', stained: 'tournament_podium'},
     pieces: {lewis: 'tournament_win', firi: 'lessons_10'},
@@ -25,7 +25,7 @@ function publish(next: Set<string>): void {
     listeners.forEach((listener) => listener());
 }
 
-/** Загрузить полученные достижения игрока (вызывается при входе); гость — пустой набор. */
+/** Load the player's earned achievements (called on sign-in); a guest gets an empty set. */
 export async function loadUnlocks(username: string | null): Promise<void> {
     if (!username) {
         publish(new Set());
@@ -37,7 +37,7 @@ export async function loadUnlocks(username: string | null): Promise<void> {
         const data = await res.json() as { achievements?: { code: string; earned_at: string | null }[] };
         publish(new Set((data.achievements ?? []).filter((a) => a.earned_at).map((a) => a.code)));
     } catch {
-        // Нет связи — оформление остаётся как было (закрытое закрыто).
+        // No connection - the appearance stays as it was (locked stays locked).
     }
 }
 
@@ -45,7 +45,7 @@ export function setEarnedForTests(codes: string[]): void {
     publish(new Set(codes));
 }
 
-/** Код достижения, которое открывает предмет, если оно ещё не получено; иначе null. */
+/** Code of the achievement that unlocks the item if not yet earned; otherwise null. */
 export function lockOf(kind: UnlockKind, id: string, have: Set<string> = earned): string | null {
     const code = UNLOCKS[kind][id];
     return code && !have.has(code) ? code : null;
@@ -56,13 +56,13 @@ function subscribe(listener: () => void): () => void {
     return () => listeners.delete(listener);
 }
 
-/** Хук: функция проверки замка, обновляется, когда достижения загрузились. */
+/** Hook: the lock-check function, updated when achievements have loaded. */
 export function useUnlocks(): (kind: UnlockKind, id: string) => string | null {
     const have = useSyncExternalStore(subscribe, () => snapshot, () => snapshot);
     return (kind, id) => lockOf(kind, id, have);
 }
 
-/** «Откроется за достижение «…»» — подпись закрытого предмета. */
+/** "Unlocks for the achievement '...'" - the label of a locked item. */
 export function unlockText(code: string): string {
     return t('settings.unlockBy', {name: t(`achievements.items.${code}.name` as MessageKey)});
 }

@@ -1,8 +1,8 @@
 # --- FILE: tests/test_coach_mode.py ---
 """
-Игра с наставником (таск 11.3): проверка хода игрока, общий кэш оценок, правила честной игры и учебная отметка.
+Playing with the coach (task 11.3): checking the player's move, shared evaluation cache, fair-play rules and the study mark.
 
-Движок подменяется заданными оценками по позициям: так результат не зависит от Stockfish и одинаков в CI.
+The engine is replaced by evaluations preset per position: the result does not depend on Stockfish and is the same in CI.
 """
 
 import chess
@@ -33,7 +33,7 @@ def _key(fen: str) -> str:
 
 @pytest.fixture
 def engine(monkeypatch):
-    """Подменённый движок: оценки по позициям, подсчёт обращений."""
+    """Substituted engine: evaluations per position, call counting."""
     table: dict[str, PositionEval] = {}
     calls: list[str] = []
 
@@ -100,7 +100,7 @@ def test_positions_are_evaluated_once_across_check_takeback_and_advice(client, e
     engine(ITALIAN, 30, "e1g1")
     engine(_after(ITALIAN, "c4f7"), -250, "e8f7")
     client.post(URL, json={"fen": ITALIAN, "move": "c4f7"})
-    client.post(URL, json={"fen": ITALIAN, "move": "c4f7"})  # переходил и сыграл то же
+    client.post(URL, json={"fen": ITALIAN, "move": "c4f7"})  # transposed and played the same move
     client.post(ADVICE_URL, json={"fen": ITALIAN})
     assert sorted(engine.calls) == sorted([_key(ITALIAN), _key(_after(ITALIAN, "c4f7"))])
 
@@ -157,7 +157,7 @@ def test_game_with_coach_is_saved_as_assisted(client, token_user_1, test_user_1)
     assert flags[plain.json()["game_id"]] is False
 
 
-# --- Подсказка по ступеням (таск 11.4) ---------------------------------------------------------------------------
+# --- Hints by level (task 11.4) ----------------------------------------------------------------------------------
 
 HINT_URL = "/api/v1/analysis/hint"
 BACK_RANK = "6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1"
@@ -223,7 +223,7 @@ async def test_hint_is_closed_during_a_game_with_a_person(client, engine, test_u
     assert response.status_code == 409
 
 
-# --- «Не согласен» ----------------------------------------------------------------------------------------------
+# --- "I disagree" -----------------------------------------------------------------------------------------------
 
 async def test_dispute_goes_to_the_review_queue(client, token_user_1, test_user_1):
     from src.db import redis as redis_module

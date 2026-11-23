@@ -2,7 +2,7 @@
 
 """personal_puzzles
 
-Задачи из партий игрока (таск 13.5) с повторением через интервалы.
+Puzzles from a player's games (task 13.5) with repetition at intervals.
 
 Revision ID: d7f9b1c3e5a8
 Revises: c5e7a9b1d3f6

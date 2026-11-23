@@ -1,7 +1,7 @@
-// «В репертуар» (таск 20.1): добавить текущую линию (UCI из начальной позиции) в один из своих репертуаров.
-// Данные — services/repertoire.ts: список (GET /repertoires) и добавление линии (POST /repertoires/{id}/lines).
-// Используется в «Инструментах» (tools/ToolsPage.tsx: линия на доске и справочник дебютов) и в просмотре партии
-// (GameViewer.tsx: ходы до текущего). Без входа блок не рисуется; выбор репертуара живёт в состоянии компонента.
+// "To repertoire" (task 20.1): add the current line (UCI from the starting position) to one of one's own repertoires.
+// Data is services/repertoire.ts: the list (GET /repertoires) and adding a line (POST /repertoires/{id}/lines).
+// Used in "Tools" (tools/ToolsPage.tsx: the line on the board and the openings reference) and in the game viewer
+// (GameViewer.tsx: the moves up to the current one). Without sign-in the block is not drawn; the repertoire choice lives in the component state.
 
 import {useEffect, useState} from 'react';
 import {Link} from 'react-router-dom';
@@ -14,8 +14,8 @@ import {repertoireApi} from '../../services/repertoire';
 import type {RepertoireSummary} from '../../services/repertoire';
 
 /**
- * Строка «выбрать репертуар и добавить линию moves». При смене линии результат прошлого добавления сбрасывается;
- * пустую линию добавить нельзя. Сервер сам отбрасывает уже известные ходы и возвращает число новых (added).
+ * Row "choose a repertoire and add the line moves". When the line changes, the result of the previous addition is reset;
+ * an empty line cannot be added. The server itself drops already known moves and returns the number of new ones (added).
  */
 export function AddToRepertoire({moves}: { moves: string[] }) {
     const {t, tp} = useI18n();

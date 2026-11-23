@@ -79,19 +79,19 @@ async def test_report_has_accuracy_by_phase():
         assert set(phases) == {"opening", "middlegame", "endgame"}
         assert phases["middlegame"] is None and phases["endgame"] is None
         assert phases["opening"] == report[side]["accuracy"]
-    # Лучший ход движка ничего не теряет — ни в разборе, ни в точности.
+    # The engine's best move loses nothing — neither in the review nor in accuracy.
     best = [m for m in report["moves"] if m["uci"] == m["best_move_uci"]]
     assert all(m["cp_loss"] == 0 for m in best)
 
 
-# --- Дополнительное покрытие: движок-заглушка, отказы разбора, кэш полного разбора ---------------------------------
+# --- Extra coverage: stub engine, review failures, full-review cache ---------------------------------
 
 
 SHORT_PGN = '[Result "1-0"]\n\n1. e4 e5 2. Qh5 Nc6 3. Bc4 Nf6 4. Qxf7# 1-0\n'
 
 
 class _FakeEngine:
-    """Движок-заглушка: оценка +30 и лучший ход e2e4; режим fail — каждая оценка падает; multipv — ответ-список."""
+    """Stub engine: evaluation +30 and best move e2e4; fail mode — every evaluation fails; multipv — a list answer."""
 
     def __init__(self, fail: bool = False, as_list: bool = False):
         self.id = {"name": "FakeFish"}
@@ -100,7 +100,7 @@ class _FakeEngine:
 
     def analyse(self, board, limit):
         if self.fail:
-            raise chess.engine.EngineError("сбой")
+            raise chess.engine.EngineError("failure")
         info = {"score": chess.engine.PovScore(chess.engine.Cp(30), chess.WHITE), "pv": [chess.Move.from_uci("e2e4")]}
         return [info] if self.as_list else info
 
@@ -150,7 +150,7 @@ def test_engine_failure_on_a_position_falls_back_to_static_evaluation(monkeypatc
 
 
 def test_engine_unavailable_at_start_uses_static_fallback(monkeypatch):
-    _use_engine(monkeypatch, acquire_error=EngineUnavailableError("не запустился"))
+    _use_engine(monkeypatch, acquire_error=EngineUnavailableError("failed to start"))
     report = _evaluate_board_sequence_sync(SHORT_PGN, 5)
     assert report["engine"] == "Static Fallback Evaluator"
 
@@ -166,8 +166,8 @@ async def test_analyze_position_with_engine_and_fallbacks(monkeypatch):
     _use_engine(monkeypatch, _FakeEngine(as_list=True))
     result = await analysis_service.analyze_position(None, ["e4", "e7e5", "not-a-move", "Nf3"])
     assert result["best_move"] == "e2e4" and result["evaluation_cp"] == 30
-    assert result["fen"].startswith("rnbqkbnr/pppp1ppp/8/4p3/4P3/8")  # ход после мусора не сыгран
-    _use_engine(monkeypatch, acquire_error=EngineUnavailableError("занят"))
+    assert result["fen"].startswith("rnbqkbnr/pppp1ppp/8/4p3/4P3/8")  # the move after the garbage was not played
+    _use_engine(monkeypatch, acquire_error=EngineUnavailableError("busy"))
     static = await analysis_service.analyze_position(None, ["e4"])
     assert static["best_move"] is None
 
@@ -183,18 +183,18 @@ async def test_full_game_analysis_cache_and_save_failure(db_session, test_user_1
     game_id = game.id
     first = await analysis_service.analyze_full_game(db_session, game_id)
     assert first["game_id"] == game_id and game.analysis_json
-    # Повтор берётся из сохранённого разбора, без нового расчёта.
-    monkeypatch.setattr(module, "evaluate_pgn", lambda pgn: pytest.fail("разбор должен быть из кэша"))
+    # The repeat is taken from the stored review, without a new calculation.
+    monkeypatch.setattr(module, "evaluate_pgn", lambda pgn: pytest.fail("the review must come from the cache"))
     assert (await analysis_service.analyze_full_game(db_session, game_id))["game_id"] == game_id
-    # Испорченный кэш пересчитывается; сбой сохранения только пишется в лог.
-    game.analysis_json = "{не json"
+    # A corrupted cache is recalculated; a save failure is only written to the log.
+    game.analysis_json = "{not json"
     await db_session.commit()
 
     async def fresh(pgn):
         return {"format_version": module.ANALYSIS_FORMAT_VERSION, "moves": []}
 
     async def failing_commit():
-        raise RuntimeError("база недоступна")
+        raise RuntimeError("database unavailable")
 
     monkeypatch.setattr(module, "evaluate_pgn", fresh)
     monkeypatch.setattr(db_session, "commit", failing_commit)

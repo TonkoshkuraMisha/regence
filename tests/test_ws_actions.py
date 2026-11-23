@@ -1,8 +1,8 @@
 # --- FILE: tests/test_ws_actions.py ---
 """
-Действия WebSocket (src/api/websockets.py): отказы и редкие ветки обработчиков — чат, зрители, отмена, берсерк,
-сдача, ничья, реванш, приглашения, ход с итогом партии, снимок при переподключении. Сообщения идут через
-настоящий эндпоинт matchmaking_endpoint (как в test_ws_rate_limit.py), сессии БД — тестовые.
+WebSocket actions (src/api/websockets.py): refusals and rare handler branches - chat, spectators, cancel, berserk,
+resign, draw, rematch, invitations, a move with the game result, snapshot on reconnect. Messages go through
+the real matchmaking_endpoint (as in test_ws_rate_limit.py), DB sessions are test ones.
 """
 
 import asyncio
@@ -25,7 +25,7 @@ _CLOSE = object()
 
 
 class QueueSocket:
-    """WebSocket-заглушка: входящие сообщения — очередь, исходящие запоминаются."""
+    """WebSocket-WebSocket stub: incoming messages are a queue, outgoing ones are recorded."""
 
     def __init__(self):
         self.incoming: asyncio.Queue = asyncio.Queue()
@@ -68,7 +68,7 @@ async def _run(user: User, messages: list, *, close: bool = True) -> QueueSocket
 
 @pytest.fixture
 async def duo(db_session):
-    """Два игрока в БД и идущая партия в Redis (id 7001), плюс сторонний наблюдатель."""
+    """Two players in the DB and a running game in Redis (id 7001), plus an outside spectator."""
     users = [User(
         username=f"wa_{i}", hashed_password="pw", bullet_rating=1500, blitz_rating=1500, rapid_rating=1500,
         classical_rating=1500,
@@ -143,14 +143,14 @@ async def test_rate_limited_move_with_bad_game_id_has_no_position(duo, monkeypat
     assert "fen" not in socket.events("error")[0]
 
 
-# --- Лобби и приглашения -----------------------------------------------------------------
+# --- Lobby and invitations -----------------------------------------------------------------
 
 async def test_accept_challenge_requires_target_and_reports_matchmaker_error(duo):
     white, black, _ = duo
     socket = await _run(white, [
-        {"action": "accept_challenge"},  # без target_user_id — игнор
-        {"action": "accept_challenge", "target_user_id": "x"},  # мусор — игнор
-        {"action": "accept_challenge", "target_user_id": white.id},  # сам себе
+        {"action": "accept_challenge"},  # without target_user_id - ignored
+        {"action": "accept_challenge", "target_user_id": "x"},  # garbage - ignored
+        {"action": "accept_challenge", "target_user_id": white.id},  # oneself
     ])
     assert socket.codes() == ["own_challenge"]
 
@@ -159,7 +159,7 @@ async def test_invite_creation_and_acceptance_errors(duo):
     watcher = duo[2]
     socket = await _run(watcher, [
         {"action": "create_invite", "color_pref": "white", "rated": False, "variant": "standard"},
-        {"action": "accept_invite", "code": "   "},  # пустой код — игнор
+        {"action": "accept_invite", "code": "   "},  # empty code - ignored
         {"action": "accept_invite", "code": "NOSUCH"},
     ])
     created = socket.events("invite_created")[0]
@@ -167,7 +167,7 @@ async def test_invite_creation_and_acceptance_errors(duo):
     assert socket.codes() == ["invite_invalid"]
 
 
-# --- Зрители ------------------------------------------------------------------------------
+# --- Spectators ------------------------------------------------------------------------------
 
 async def test_spectate_lifecycle(duo):
     _, _, watcher = duo
@@ -175,8 +175,8 @@ async def test_spectate_lifecycle(duo):
         {"action": "spectate_game", "game_id": GID},
         {"action": "leave_spectate", "game_id": GID},
         {"action": "spectate_game", "game_id": GID},
-        {"action": "leave_spectate"},  # без id — все партии
-        {"action": "spectate_game", "game_id": 999999},  # неизвестная — игнор
+        {"action": "leave_spectate"},  # no id - all games
+        {"action": "spectate_game", "game_id": 999999},  # unknown - ignored
     ])
     assert len(socket.events("spectate_started")) == 2
     assert len(socket.events("spectate_left")) == 2
@@ -186,14 +186,14 @@ async def test_spectate_lifecycle(duo):
     assert socket.codes() == ["spectate_unavailable"]
 
 
-# --- Чат ----------------------------------------------------------------------------------
+# --- Chat ----------------------------------------------------------------------------------
 
 async def test_chat_rules(duo, db_session):
     white, _, watcher = duo
     preset = next(iter(ws_module.CHAT_PRESETS))
     socket = await _run(white, [
-        {"action": "chat_message", "game_id": GID, "preset": "no-such-preset"},  # игнор
-        {"action": "chat_message", "game_id": GID, "text": "   "},  # пусто — игнор
+        {"action": "chat_message", "game_id": GID, "preset": "no-such-preset"},  # ignored
+        {"action": "chat_message", "game_id": GID, "text": "   "},  # empty - ignored
         {"action": "chat_message", "game_id": GID, "preset": preset},
     ])
     sent = socket.events("chat_message")
@@ -209,7 +209,7 @@ async def test_chat_rules(duo, db_session):
     assert banned.codes() == ["chat_banned"]
 
 
-# --- Отмена, берсерк ----------------------------------------------------------------------
+# --- Cancel, berserk ----------------------------------------------------------------------
 
 async def test_abort_branches(duo, monkeypatch):
     white, _, _ = duo
@@ -243,7 +243,7 @@ async def test_berserk_branches(duo, monkeypatch):
     monkeypatch.setattr(arena_service, "berserk", fake_berserk)
     socket = await _run(white, [{"action": "berserk", "game_id": GID}] * 2)
     assert socket.codes() == ["berserk_unavailable"]
-    assert not socket.events("berserk")  # повторный берсерк — тишина
+    assert not socket.events("berserk")  # repeated berserk - silence
 
     async def ok(db, gid, uid):
         return {"color": "white", "state": await state_manager.get_game_state(gid)}
@@ -253,7 +253,7 @@ async def test_berserk_branches(duo, monkeypatch):
     assert socket.events("berserk")[0]["color"] == "white"
 
 
-# --- Сдача и ничья ------------------------------------------------------------------------
+# --- Resign and draw ------------------------------------------------------------------------
 
 async def test_resign_loses_race_to_other_ending(duo, monkeypatch):
     white, _, _ = duo
@@ -268,14 +268,14 @@ async def test_resign_loses_race_to_other_ending(duo, monkeypatch):
 
 async def test_draw_offer_flow_and_refusals(duo, monkeypatch):
     white, black, _ = duo
-    # принять нечего
+    # nothing to accept
     socket = await _run(white, [{"action": "accept_draw", "game_id": GID}])
     assert socket.codes() == ["no_draw_offer"]
-    # отклонять нечего — игнор
+    # nothing to decline - ignored
     socket = await _run(white, [{"action": "decline_draw", "game_id": GID}])
     assert not socket.events("error")
 
-    # своё предложение принять нельзя; соперник его отклоняет
+    # one's own offer cannot be accepted; the opponent declines it
     await _run(white, [{"action": "offer_draw", "game_id": GID}])
     socket = await _run(white, [{"action": "accept_draw", "game_id": GID}])
     assert socket.codes() == ["no_draw_offer"]
@@ -283,7 +283,7 @@ async def test_draw_offer_flow_and_refusals(duo, monkeypatch):
     await _run(black, [{"action": "decline_draw", "game_id": GID}])
     assert not (await state_manager.get_game_state(GID)).get("draw_offer")
 
-    # ничья принята, но предложение пропало до захвата — партия продолжается
+    # draw accepted, but the offer vanished before the claim - the game continues
     await state_manager.update_game_state(GID, {"draw_offer": str(black.id)})
 
     async def lost(*args, **kwargs):
@@ -305,7 +305,7 @@ async def test_draw_offer_after_game_ended_is_ignored(duo, monkeypatch):
     assert not socket.events("draw_offered") and not socket.codes()
 
 
-# --- Реванш -------------------------------------------------------------------------------
+# --- Rematch -------------------------------------------------------------------------------
 
 async def test_rematch_flow(duo):
     white, black, _ = duo
@@ -315,18 +315,18 @@ async def test_rematch_flow(duo):
 
     await _run(white, [{"action": "offer_rematch", "game_id": GID}])
     assert (await state_manager.get_game_state(GID))["rematch_offer"] == str(white.id)
-    # своё предложение принять нельзя
+    # one's own offer cannot be accepted
     assert (await _run(white, [{"action": "accept_rematch", "game_id": GID}])).codes() == ["no_rematch_offer"]
 
     declined = await _run(black, [{"action": "decline_rematch", "game_id": GID}])
     assert not declined.codes()
     assert not (await state_manager.get_game_state(GID)).get("rematch_offer")
 
-    # принятое предложение создаёт партию с переменой цветов
+    # an accepted offer creates a game with swapped colors
     await _run(white, [{"action": "offer_rematch", "game_id": GID}])
     accepted = await _run(black, [{"action": "accept_rematch", "game_id": GID}])
     started = accepted.events("match_found")
-    assert started and started[-1]["color"] == "white"  # чёрные прошлой партии теперь белые
+    assert started and started[-1]["color"] == "white"  # Black from the previous game is now White
 
 
 async def test_create_rematch_for_chess960_and_hourglass(duo, monkeypatch):
@@ -352,21 +352,21 @@ async def test_create_rematch_for_chess960_and_hourglass(duo, monkeypatch):
     assert captured[1]["odds"]["hourglass"] is True
 
 
-# --- Ходы ---------------------------------------------------------------------------------
+# --- Moves ---------------------------------------------------------------------------------
 
 async def test_move_input_validation_and_error_replies(duo):
     white, black, _ = duo
     socket = await _run(white, [
-        {"action": "make_move", "game_id": GID},  # нет хода — игнор
-        {"action": "make_move", "game_id": GID, "move": "e2e4e4e4e4e4"},  # слишком длинный — игнор
-        {"action": "make_move", "game_id": GID, "move": 5},  # не строка — игнор
-        {"action": "make_move", "game_id": True, "move": "e2e4"},  # bool вместо id — игнор
+        {"action": "make_move", "game_id": GID},  # no move - ignored
+        {"action": "make_move", "game_id": GID, "move": "e2e4e4e4e4e4"},  # too long - ignored
+        {"action": "make_move", "game_id": GID, "move": 5},  # not a string - ignored
+        {"action": "make_move", "game_id": True, "move": "e2e4"},  # bool bool instead of an id - ignored
         {"action": "make_move", "game_id": GID, "move": "e2e5", "state_version": True, "time_taken_ms": -5},
     ])
     errors = socket.events("error")
-    assert len(errors) == 1 and "fen" in errors[0]  # illegal_move возвращает позицию
+    assert len(errors) == 1 and "fen" in errors[0]  # illegal_move illegal_move returns the position
 
-    # повтор команды с тем же command_id — тишина
+    # repeating a command with the same command_id - silence
     move = {"action": "make_move", "game_id": GID, "move": "e2e4", "command_id": "c1", "time_taken_ms": 12.5}
     socket = await _run(white, [move, move])
     assert len(socket.events("move_made")) == 1
@@ -388,7 +388,7 @@ async def test_checkmate_finishes_game_and_failed_finish_still_shows_last_move(d
     white, black, _ = duo
     from src.models.game import Game, GameStatus
 
-    # Партия в БД нужна finish_game; позиция — мат в один ход (Ra8#).
+    # The game must be in the DB for finish_game; the position is mate in one (Ra8#).
     fen = "6k1/5ppp/8/8/8/8/8/R6K w - - 0 1"
     game = Game(id=7002, white_player_id=white.id, black_player_id=black.id, status=GameStatus.IN_PROGRESS,
                 base_time_ms=180000, increment_ms=0, board_fen=fen, initial_fen=fen)
@@ -399,7 +399,7 @@ async def test_checkmate_finishes_game_and_failed_finish_still_shows_last_move(d
     socket = await _run(white, [{"action": "make_move", "game_id": 7002, "move": "a1a8"}])
     assert socket.events("game_over")[0]["reason"] in ("checkmate", "mate")
 
-    # сбой finish_game: последний ход всё равно рассылается, ошибка уходит в internal_error
+    # finish_game failed: the last move is still broadcast, the error goes to internal_error
     game2 = Game(id=7003, white_player_id=white.id, black_player_id=black.id, status=GameStatus.IN_PROGRESS,
                  base_time_ms=180000, increment_ms=0, board_fen=fen, initial_fen=fen)
     db_session.add(game2)

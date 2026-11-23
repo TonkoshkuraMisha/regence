@@ -1,9 +1,9 @@
 # --- FILE: tests/test_ladder.py ---
 """
-Клубная лестница (таск 10.4): соперники по измеренной силе, отдельный рейтинг, ступени, и
-серверная проверка честности — подсказка движка, возврат хода и подмена соперника не засчитываются.
-С 18.11 (задача 7 плана) в лестнице все боты и архетипы, прогресс — множество пройденных ступеней (ladder_beaten):
-соперник, добавленный ниже пройденного, игрока не отбрасывает — он «пропущен».
+Club ladder (task 10.4): opponents by measured strength, a separate rating, rungs, and a
+server-side fairness check: engine hints, takebacks and opponent substitution do not count.
+Since 18.11 (plan item 7) the ladder holds all bots and archetypes, and progress is the set of beaten rungs (ladder_beaten):
+an opponent added below the beaten ones does not push the player back; it is "skipped".
 """
 
 import chess
@@ -17,8 +17,8 @@ from src.services.bots import calibration
 from src.services.bots.archetypes import ARCHETYPES
 
 API = "/api/v1/bots"
-FOOLS_MATE = ["f2f3", "e7e5", "g2g4", "d8h4"]  # мат белым на 4-м полуходе
-# Белые ставят мат за 4 хода (детский мат): игрок белыми выигрывает.
+FOOLS_MATE = ["f2f3", "e7e5", "g2g4", "d8h4"]  # mate for White on ply 4
+# White mates in 4 moves (Scholar's mate): the player as White wins.
 SCHOLARS_MATE = ["e2e4", "e7e5", "d1h5", "b8c6", "f1c4", "g8f6", "h5f7"]
 
 
@@ -33,7 +33,7 @@ def no_engine(monkeypatch):
 
 @pytest.fixture
 def fake_calibration(monkeypatch):
-    """Измеренная сила: «Торопыга» (rusher) самый слабый, Морфи — сильнее заявленного."""
+    """Measured strength: "Rusher" is the weakest, Morphy is stronger than claimed."""
     data = {
         "meta": {"date": "2026-11-12", "games": 10},
         "players": {
@@ -56,7 +56,7 @@ def fens_along(moves: list[str]) -> list[chess.Board]:
 
 
 def play_ladder_moves(client, token, opponent: dict, moves: list[str], player_color: str):
-    """Запросы ходов соперника — как их делает клиент — для позиций, где ходит соперник."""
+    """Opponent move requests, as the client makes them, for positions where the opponent is to move."""
     for board in fens_along(moves):
         bot_to_move = (board.turn == chess.WHITE) != (player_color == "white")
         if not bot_to_move:
@@ -79,15 +79,15 @@ def save(client, token, opponent: dict, moves: list[str], color: str, result: st
     return client.post(f"{API}/save-game", headers=auth(token), json=body)
 
 
-# --- Лестница и каталог --------------------------------------------------------------------------
+# --- Ladder and catalog --------------------------------------------------------------------------
 
 def test_rungs_are_ordered_by_measured_strength(fake_calibration):
     items = ladder.rungs()
-    assert len(items) == len(AVAILABLE_BOTS) + len(ARCHETYPES)  # все боты и все архетипы, с новичковыми
+    assert len(items) == len(AVAILABLE_BOTS) + len(ARCHETYPES)  # all bots and all archetypes, including the beginner ones
     assert [r.rating for r in items] == sorted(r.rating for r in items)
     rusher = next(r for r in items if r.key == "archetype:rusher")
     assert rusher.measured and rusher.rating == 650
-    assert items[0].kind == "archetype" and items[0].rating < 650  # внизу — соперник для новичков
+    assert items[0].kind == "archetype" and items[0].rating < 650  # a beginner opponent at the bottom
     morphy = next(r for r in items if r.key == "morphy")
     assert morphy.rating == 2050 and morphy.measured
     assert not next(r for r in items if r.key == "philidor").measured
@@ -111,7 +111,7 @@ def test_new_player_starts_at_the_bottom(client, token_user_1, fake_calibration)
     assert client.get(f"{API}/ladder").status_code == 401
 
 
-# --- Честная победа ------------------------------------------------------------------------------
+# --- Fair win ------------------------------------------------------------------------------
 
 def test_clean_win_raises_rating_and_unlocks_next_rung(client, token_user_1, fake_calibration):
     start = client.post(f"{API}/ladder/start", headers=auth(token_user_1), json={"color": "white"}).json()
@@ -140,11 +140,11 @@ def test_loss_lowers_rating_and_keeps_the_rung(client, token_user_1, fake_calibr
     assert outcome["counted"] and outcome["delta"] < 0 and not outcome["promoted"] and outcome["step"] == 0
 
 
-# --- Нечестная партия не засчитывается -----------------------------------------------------------
+# --- An unfair game does not count -----------------------------------------------------------
 
 def test_engine_hint_for_players_side_voids_the_game(client, token_user_1, fake_calibration):
     start = client.post(f"{API}/ladder/start", headers=auth(token_user_1), json={"color": "white"}).json()
-    # Игрок спрашивает ход у движка в своей позиции (белые ходят).
+    # The player asks the engine for a move in his own position (White to move).
     client.post(f"{API}/move", headers=auth(token_user_1), json={"bot_id": "morphy", "fen": chess.STARTING_FEN})
     play_ladder_moves(client, token_user_1, start["opponent"], SCHOLARS_MATE, "white")
 
@@ -165,7 +165,7 @@ def test_takeback_voids_the_game(client, token_user_1, fake_calibration):
     start = client.post(f"{API}/ladder/start", headers=auth(token_user_1), json={"color": "white"}).json()
     opponent = start["opponent"]
     play_ladder_moves(client, token_user_1, opponent, SCHOLARS_MATE[:4], "white")
-    # Возврат хода: соперника снова спрашивают о позиции, которую он уже прошёл.
+    # Takeback: the opponent is asked again about a position it has already passed.
     play_ladder_moves(client, token_user_1, opponent, SCHOLARS_MATE, "white")
     outcome = save(client, token_user_1, opponent, SCHOLARS_MATE, "white", "1-0").json()["ladder"]
     assert not outcome["counted"] and outcome["reason"] == "takeback"
@@ -174,7 +174,7 @@ def test_takeback_voids_the_game(client, token_user_1, fake_calibration):
 def test_retried_request_for_the_same_position_is_not_a_takeback(client, token_user_1, fake_calibration):
     start = client.post(f"{API}/ladder/start", headers=auth(token_user_1), json={"color": "white"}).json()
     opponent = start["opponent"]
-    # Ход соперника после 1.e4 запрошен дважды (ретрай после сбоя связи), затем партия идёт дальше.
+    # The opponent's move after 1.e4 was requested twice (a retry after a connection failure), then the game goes on.
     play_ladder_moves(client, token_user_1, opponent, SCHOLARS_MATE[:2], "white")
     play_ladder_moves(client, token_user_1, opponent, SCHOLARS_MATE[:2], "white")
     play_ladder_moves(client, token_user_1, opponent, SCHOLARS_MATE, "white")
@@ -203,7 +203,7 @@ def test_save_must_match_the_open_ladder_game(client, token_user_1, fake_calibra
 
 def test_abandoned_started_game_counts_as_loss(client, token_user_1, fake_calibration):
     start = client.post(f"{API}/ladder/start", headers=auth(token_user_1), json={"color": "black"}).json()
-    # Соперник (белые) сделал первый ход — партия начата, но игрок её бросил.
+    # The opponent (White) made the first move: the game started, but the player abandoned it.
     play_ladder_moves(client, token_user_1, start["opponent"], ["e2e4"], "black")
 
     restart = client.post(f"{API}/ladder/start", headers=auth(token_user_1), json={"color": "white"}).json()
@@ -229,15 +229,15 @@ def test_current_rung_is_above_the_strongest_beaten():
     items = [ladder.Rung(k, "archetype", k, r, False) for k, r in (("a", 400), ("b", 600), ("c", 800), ("d", 1000))]
     assert ladder.current_index(items, set()) == 0
     assert ladder.current_index(items, {"a", "b"}) == 2
-    # «a» добавлен в лестницу позже, чем игрок прошёл «b»: текущая — «c», «a» — пропущена, а не текущая.
+    # "a" was added to the ladder after the player beat "b": the current one is "c", "a" is skipped, not current.
     assert ladder.current_index(items, {"b"}) == 2
     assert [ladder.rung_status(i, r, 2, {"b"}) for i, r in enumerate(items)] == ["skipped", "beaten", "current", "locked"]
-    assert ladder.current_index(items, {"a", "b", "c", "d"}) == 3  # всё пройдено — последняя
+    assert ladder.current_index(items, {"a", "b", "c", "d"}) == 3  # all beaten: the last one
 
 
 async def test_progress_carried_over_from_the_old_ladder_stays(client, db_session, test_user_1, token_user_1,
                                                                fake_calibration):
-    # Как после миграции b4d2e8f1a6c3: пройдены первые пять ступеней прежней лестницы.
+    # As after migration b4d2e8f1a6c3: the first five rungs of the old ladder are beaten.
     old = ["archetype:rusher", "archetype:quiet", "archetype:pawn_keeper", "archetype:cavalier", "archetype:centralist"]
     db_session.add_all(LadderBeaten(user_id=test_user_1.id, rung_key=key) for key in old)
     await db_session.commit()
@@ -246,7 +246,7 @@ async def test_progress_carried_over_from_the_old_ladder_stays(client, db_sessio
     assert all(statuses[key] == "beaten" for key in old)
     current = next(r for r in state["rungs"] if r["status"] == "current")
     strongest = max(r["rating"] for r in state["rungs"] if r["status"] == "beaten")
-    assert current["rating"] >= strongest  # не отброшен вниз к новичковым соперникам
+    assert current["rating"] >= strongest  # not pushed down to beginner opponents
     assert "skipped" in statuses.values() and statuses[ladder.rungs()[0].key] == "skipped"
     start = client.post(f"{API}/ladder/start", headers=auth(token_user_1), json={"color": "white"}).json()
     assert start["opponent"]["key"] == current["key"] and start["step"] == state["step"]

@@ -1,9 +1,9 @@
 # --- FILE: tests/test_db_integrity.py ---
 """
-Целостность схемы (ревизия базы 29.1, задача 3 плана 18.11):
-- у каждой ссылки (внешнего ключа) есть индекс, начинающийся с неё, и явное правило удаления;
-- наборы значений CHECK в моделях совпадают с наборами, которые проверяют сервисы (один источник правды на деле);
-- база отказывает в записи значения вне набора (SQLite в тестах соблюдает CHECK так же, как PostgreSQL).
+Schema integrity (database review 29.1, task 3 of the 18.11 plan):
+- every reference (foreign key) has an index starting with it and an explicit delete rule;
+- the CHECK value sets in models match the sets the services validate (one real source of truth);
+- the database rejects writing a value outside the set (SQLite in tests enforces CHECK the same way as PostgreSQL).
 """
 
 from typing import get_args
@@ -12,7 +12,7 @@ import pytest
 import sqlalchemy as sa
 from sqlalchemy.exc import IntegrityError
 
-import src.models  # noqa: F401 — регистрирует все таблицы
+import src.models  # noqa: F401 - registers all tables
 from src.models import beta as beta_models
 from src.models import game, imported_game, library, moderation, puzzle, tournament
 from src.models import user as user_models
@@ -24,7 +24,7 @@ from src.services import moderation as moderation_service
 
 
 def _leading_columns(table: sa.Table) -> set[str]:
-    """Колонки, с которых начинается какой-либо индекс, первичный ключ или ограничение уникальности."""
+    """Columns that start any index, primary key or unique constraint."""
     leading = {col.name for col in table.columns if col.index or col.unique}
     leading |= {list(idx.columns)[0].name for idx in table.indexes if list(idx.columns)}
     for cons in table.constraints:

@@ -1,5 +1,5 @@
 # --- FILE: tests/test_achievements.py ---
-"""Достижения и звания клуба (таск 17.6): только за реальные результаты, открытое не теряется."""
+"""Achievements and club titles (task 17.6): only for real results, what is unlocked is never lost."""
 
 from datetime import UTC, datetime
 
@@ -33,7 +33,7 @@ async def test_games_wins_and_lessons(client, db_session, test_user_1, test_user
         Game(white_player_id=test_user_1.id, black_player_id=bot.id, status=GameStatus.COMPLETED, winner_id=test_user_1.id),
         Game(white_player_id=test_user_2.id, black_player_id=test_user_1.id, status=GameStatus.COMPLETED,
              winner_id=test_user_1.id),
-        # Симуляция и незаконченная партия не считаются.
+        # A simulation and an unfinished game do not count.
         Game(white_player_id=test_user_1.id, black_player_id=bot.id, status=GameStatus.COMPLETED, winner_id=test_user_1.id,
              is_simulation=True),
         Game(white_player_id=test_user_1.id, black_player_id=bot.id, status=GameStatus.IN_PROGRESS),
@@ -53,7 +53,7 @@ async def test_games_wins_and_lessons(client, db_session, test_user_1, test_user
     assert items["lessons_10"]["progress"] == 10 and items["lessons_10"]["earned_at"]
     assert items["basics_done"]["progress"] == 1 and items["endgames_10"]["progress"] == 1
 
-    # Повторный запрос: открытое уже записано, «новым» больше не считается.
+    # Repeated request: the unlocked item is already recorded, it no longer counts as "new".
     again = by_code(client.get("/api/v1/profile/player1/achievements").json())
     assert again["first_game"]["new"] is False and again["first_game"]["earned_at"] == items["first_game"]["earned_at"]
     assert client.get("/api/v1/profile/nobody/achievements").status_code == 404
@@ -67,13 +67,13 @@ def test_club_title():
     user.blitz_games_played = 10
     assert achievements.title(user) == "candidate"
     user.blitz_rating = 900
-    assert achievements.title(user) == "amateur"   # лучший рейтинг теперь 1200 (в других категориях)
+    assert achievements.title(user) == "amateur"   # best rating is now 1200 (in other categories)
     user.bullet_rating = user.rapid_rating = user.classical_rating = 800
     assert achievements.title(user) == "beginner"
 
 
 async def test_closed_knight_tour(db_session, test_user_1):
-    """Таск 19.4: замкнутый обход конём 8×8 — тренажёр пишет больше 100 очков; открытый и малые доски не считаются."""
+    """Task 19.4: a closed knight's tour of 8x8 earns over 100 points; an open one and small boards do not count."""
     from src.models.trainer import TrainerResult
 
     db_session.add_all([

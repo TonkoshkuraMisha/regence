@@ -1,8 +1,8 @@
 # --- FILE: scripts/build_endgames.py ---
 """
-Упражнения эндшпильного тренажёра (таск 14.4) → frontend/src/content/endgames.json. Каждая позиция проверяется по
-эндшпильным таблицам (settings.TABLEBASE_URL): результат для стороны, которая ходит, должен совпадать с целью
-(выигрыш для mate/promote/convert, ничья для draw), а для матов записывается оптимум — ходов до мата по таблицам.
+Endgame trainer exercises (task 14.4) -> frontend/src/content/endgames.json. Every position is verified against
+the endgame tablebases (settings.TABLEBASE_URL): the result for the side to move must match the goal
+(a win for mate/promote/convert, a draw for draw), and for mates the optimum is recorded - moves to mate per the tablebases.
 
     python scripts/build_endgames.py
 """
@@ -21,8 +21,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 OUT = Path(__file__).resolve().parents[1] / "frontend" / "src" / "content" / "endgames.json"
 
-# (id, FEN, цель). Цели: mate — поставить мат; promote — провести пешку в ферзи, не упустив выигрыш; convert — оставить
-# сопернику одного короля, не упустив выигрыш; draw — удержать ничью.
+# (id, FEN, goal). Goals: mate - deliver mate; promote - queen the pawn without throwing away the win; convert - leave
+# the opponent a lone king without throwing away the win; draw - hold the draw.
 EXERCISES = [
     ("kq_center", "8/8/8/4k3/8/8/8/KQ6 w - - 0 1", "mate"),
     ("kq_far", "8/8/3k4/8/8/8/1Q6/6K1 w - - 0 1", "mate"),
@@ -56,7 +56,7 @@ EXERCISES = [
     ("q_vs_a_pawn_def", "8/6K1/8/8/Q7/8/p1k5/8 b - - 0 1", "draw"),
     ("opposite_bishops_def", "8/8/2b1k3/4P3/3K4/3B4/8/8 b - - 0 1", "draw"),
     ("vancura", "R7/6k1/P4r2/8/8/8/8/K7 b - - 0 1", "draw"),
-    # Этюды давно умерших составителей (27.9, записи в ATTRIBUTION.md).
+    # Studies by long-dead composers (27.9, entries in ATTRIBUTION.md).
     ("study_saavedra", "8/8/1KP5/3r4/8/8/8/k7 w - - 0 1", "promote"),
     ("study_reti", "7K/8/k1P5/7p/8/8/8/8 w - - 0 1", "draw"),
 ]
@@ -65,7 +65,7 @@ MATE_SLACK = 8
 
 
 def probe(fen: str) -> dict:
-    """Запрашивает оценку и оптимум ходов позиции в эндшпильных таблицах."""
+    """Requests the evaluation and the optimal move count of a position from the endgame tablebases."""
     from src.core.config import settings
 
     url = settings.TABLEBASE_URL + "?" + urllib.parse.urlencode({"fen": fen})
@@ -74,7 +74,7 @@ def probe(fen: str) -> dict:
 
 
 def main() -> None:
-    """Сверяет канонические позиции эндшпильного тренажёра с таблицами Syzygy."""
+    """Checks the canonical endgame trainer positions against Syzygy tablebases."""
     result = []
     for exercise_id, fen, goal in EXERCISES:
         board = chess.Board(fen)
@@ -83,7 +83,7 @@ def main() -> None:
         category = data.get("category")
         expected = "draw" if goal == "draw" else "win"
         if category != expected:
-            raise SystemExit(f"{exercise_id}: по таблицам {category}, а цель — {expected}")
+            raise SystemExit(f"{exercise_id}: tablebases say {category}, but the goal is {expected}")
         optimum = math.ceil(data["dtm"] / 2) if goal == "mate" and data.get("dtm") else None
         limit = optimum + MATE_SLACK if optimum else LIMITS[goal]
         if exercise_id == "lucena":
@@ -93,7 +93,7 @@ def main() -> None:
         print(f"{exercise_id:22} {goal:8} {category:5} optimum={optimum} limit={limit}", flush=True)
         time.sleep(0.6)
     OUT.write_text(json.dumps(result, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
-    print(f"{len(result)} упражнений → {OUT}")
+    print(f"{len(result)} exercises -> {OUT}")
 
 
 if __name__ == "__main__":

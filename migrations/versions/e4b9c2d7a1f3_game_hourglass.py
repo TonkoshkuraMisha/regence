@@ -1,7 +1,7 @@
 """game hourglass
 
-Партия с «песочными часами» (фора, таск 21.1): флаг нужен, чтобы после восстановления состояния из БД часы
-продолжали идти по тем же правилам.
+A game with an "hourglass" (handicap, task 21.1): the flag is needed so that after the state is restored from the DB the clock
+keeps running by the same rules.
 
 Revision ID: e4b9c2d7a1f3
 Revises: d3a8f1c6e2b7

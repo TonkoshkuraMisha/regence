@@ -1,8 +1,8 @@
 // --- FILE: frontend/src/main.tsx ---
-// Точка входа клиента: подключает стили, ставит фон страницы до первой отрисовки, регистрирует установку на телефон
-// и рисует приложение (App) внутри маршрутизатора.
+// Client entry point: loads styles, sets the page background before the first paint, registers phone installation
+// and renders the app (App) inside the router.
 
-// Первым: перенос настроек со старого названия платформы (michess_… → regence_…) до модулей, читающих настройки.
+// First: migrate settings from the old platform name (michess_… → regence_…) before the modules that read settings.
 import './migrateStorage'
 import { initSentry } from './services/sentry'
 import { StrictMode } from 'react'
@@ -14,13 +14,13 @@ import { applyPageBackground } from './config/pageBackground'
 import { initPwa } from './services/pwa'
 import { installClientErrorReporting } from './services/clientErrors'
 
-// Фон страницы (таск 18.1) — до первой отрисовки, чтобы не мигал.
+// Page background (task 18.1) — before the first paint so it does not flicker.
 applyPageBackground()
-// Sentry (проект regence-web) — только при заданном VITE_SENTRY_DSN; до первой отрисовки, чтобы поймать её сбои.
+// Sentry (project regence-web) — only when VITE_SENTRY_DSN is set; before the first paint so it catches its failures.
 initSentry()
-// Отчёты об ошибках страницы и след событий для разбора «страница внезапно обновилась» (clientErrors.ts).
+// Page error reports and the event trail for diagnosing «the page suddenly refreshed» (clientErrors.ts).
 installClientErrorReporting()
-// Установка на главный экран и офлайн-страница (таск 24.2); сервис-воркер — только в сборке.
+// Add-to-home-screen installation and the offline page (task 24.2); the service worker only in the production build.
 initPwa()
 
 createRoot(document.getElementById('root')!).render(

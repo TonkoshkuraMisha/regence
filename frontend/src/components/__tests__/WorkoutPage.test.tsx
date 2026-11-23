@@ -1,4 +1,4 @@
-// Ежедневная разминка (таск 22.2): план с отметками и серией, переходы в задачи по теме, тренажёр, дебюты, ошибки.
+// The daily workout (task 22.2): a plan with marks and a streak, jumps to puzzles by theme, the trainer, openings, mistakes.
 
 import {act, fireEvent, render, screen} from '@testing-library/react';
 import {MemoryRouter, Route, Routes, useLocation} from 'react-router-dom';
@@ -43,30 +43,30 @@ afterEach(() => {
     setToken(null);
 });
 
-describe('ежедневная разминка', () => {
-    it('план, серия, ссылки на тренажёр и повторение', async () => {
+describe('daily workout', () => {
+    it('the plan, the streak, links to the trainer and to the review', async () => {
         vi.stubGlobal('fetch', vi.fn(async (url: unknown) => reply(url)));
         await act(async () => page());
-        expect(screen.getByTestId('workout-status')).toHaveTextContent('Дней подряд: 3');
-        expect(screen.getByTestId('workout-puzzles')).toHaveTextContent('Задачи на слабые темы: 2 из 5');
-        expect(screen.getByRole('link', {name: 'Назови поле'})).toHaveAttribute('href', '/train/coord_name');
-        expect(screen.getByRole('link', {name: 'Повторить позиций: 4'})).toHaveAttribute('href', '/repertoire/7/drill');
-        expect(screen.getByTestId('workout-mistake')).toHaveTextContent('Сегодня ошибок для повторения нет.');
+        expect(screen.getByTestId('workout-status')).toHaveTextContent('Days in a row: 3');
+        expect(screen.getByTestId('workout-puzzles')).toHaveTextContent('Puzzles on weak themes: 2 of 5');
+        expect(screen.getByRole('link', {name: 'Name the square'})).toHaveAttribute('href', '/train/coord_name');
+        expect(screen.getByRole('link', {name: 'Review 4 positions'})).toHaveAttribute('href', '/repertoire/7/drill');
+        expect(screen.getByTestId('workout-mistake')).toHaveTextContent('No mistakes to repeat today.');
         await act(async () => fireEvent.click(screen.getByTestId('workout-theme-pin')));
         expect(screen.getByTestId('probe')).toHaveTextContent('{"train":{"theme":"pin","blind":false}}');
     });
 
-    it('«Моя неделя»: партии, задачи, дни и совет по коду сервера', async () => {
+    it('"My week": games, puzzles, days and advice by the server code', async () => {
         vi.stubGlobal('fetch', vi.fn(async (url: unknown) => reply(url)));
         await act(async () => page());
-        expect(await screen.findByTestId('week-games')).toHaveTextContent('Партий за 7 дней: 5 (побед 3, ничьих 1, поражений 1)');
+        expect(await screen.findByTestId('week-games')).toHaveTextContent('Games over the last 7 days: 5 (3 won, 1 drawn, 1 lost)');
         expect(screen.getByTestId('week-games')).toHaveTextContent('+14');
-        expect(screen.getByTestId('week-puzzles')).toHaveTextContent('решено 9 из 12');
-        expect(screen.getByTestId('week-days')).toHaveTextContent('Дней с занятиями: 4 из 7');
-        expect(screen.getByTestId('week-advice')).toHaveTextContent('Ровная неделя');
+        expect(screen.getByTestId('week-puzzles')).toHaveTextContent('Puzzles: 9 solved of 12');
+        expect(screen.getByTestId('week-days')).toHaveTextContent('Active days: 4 of 7');
+        expect(screen.getByTestId('week-advice')).toHaveTextContent('A steady week');
     });
 
-    it('без входа — подсказка', () => {
+    it('without a login — a hint', () => {
         setToken(null);
         page();
         expect(screen.getByTestId('workout-login')).toBeInTheDocument();

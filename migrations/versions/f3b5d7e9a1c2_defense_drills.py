@@ -2,7 +2,7 @@
 
 """defense_drills
 
-Защитные упражнения (таск 13.6): «Что грозит соперник?» и «Не зевни». Загружаются из
+Defence drills (task 13.6): "What does the opponent threaten?" and "Don't blunder". Loaded from
 data/puzzles/defense_drills.csv.gz (scripts/import_puzzles.py).
 
 Revision ID: f3b5d7e9a1c2

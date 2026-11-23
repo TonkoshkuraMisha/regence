@@ -1,13 +1,13 @@
 // --- FILE: frontend/src/components/ui/SegmentedControl.tsx ---
-// Переключатель вкладок (общие компоненты дизайна, план владельца 18.11; docs/design-system.md): режимы и фильтры на
-// одной строке вместо россыпи одинаковых кнопок. Доступность — role="tablist"/"tab", aria-selected, стрелки
-// влево/вправо переводят выбор (по кругу). Опции — данные вызывающего: id, подпись (уже на языке игрока), иконка и
-// необязательная подсказка.
+// Tab switcher (shared design components, owner plan of 18.11; docs/design-system.md): modes and filters on
+// one line instead of a scatter of identical buttons. Accessibility - role="tablist"/"tab", aria-selected, left/
+// right arrows move the selection (cyclically). Options are caller data: id, label (already in the player's language), icon and
+// an optional hint.
 
 import {useRef} from 'react';
 import type {KeyboardEvent, ReactNode} from 'react';
 
-/** Вкладка: id — значение выбора, label — подпись на языке игрока. */
+/** Tab: id - the selection value, label - the label in the player's language. */
 export interface SegmentOption<T extends string> {
     id: T;
     label: ReactNode;
@@ -19,14 +19,14 @@ interface Props<T extends string> {
     options: SegmentOption<T>[];
     value: T;
     onChange: (id: T) => void;
-    /** Подпись группы для читалок экрана. */
+    /** Group label for screen readers. */
     label: string;
-    /** На всю ширину: вкладки делят строку поровну. */
+    /** Full width: tabs share the line equally. */
     stretch?: boolean;
     testIdPrefix?: string;
 }
 
-/** Строка вкладок; value вне списка опций допустим (тогда в группу входят с первой вкладки). */
+/** Row of tabs; a value outside the option list is allowed (then the group is entered from the first tab). */
 export function SegmentedControl<T extends string>({options, value, onChange, label, stretch = false, testIdPrefix}: Props<T>) {
     const refs = useRef<(HTMLButtonElement | null)[]>([]);
     const onKey = (event: KeyboardEvent, index: number) => {
@@ -41,7 +41,7 @@ export function SegmentedControl<T extends string>({options, value, onChange, la
              className={`inline-flex flex-wrap gap-1 rounded-lg bg-black/30 border border-amber-900/50 p-1 ${stretch ? 'w-full' : 'self-start max-w-full'}`}>
             {options.map((option, index) => {
                 const selected = option.id === value;
-                // Значение может быть из соседней группы (страница задач): тогда в эту группу входят с первой вкладки.
+                // The value may come from a neighbouring group (the puzzles page): then the group is entered from the first tab.
                 const focusable = selected || (index === 0 && !options.some((o) => o.id === value));
                 return (
                     <button key={option.id} type="button" role="tab" aria-selected={selected} tabIndex={focusable ? 0 : -1}

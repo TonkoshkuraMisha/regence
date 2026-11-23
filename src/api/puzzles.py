@@ -1,7 +1,7 @@
 # --- FILE: src/api/puzzles.py ---
 """
-Задачи (таск 13.2): выдача, проверка хода, подсказка, «показать решение», задача дня, профиль решателя.
-Защитные упражнения (таск 13.6): /defense/*.
+Puzzles (task 13.2): serving, move check, hint, "show the solution", the puzzle of the day, the solver profile.
+Defence drills (task 13.6): /defense/*.
 """
 
 import datetime as dt
@@ -23,11 +23,11 @@ router = APIRouter(dependencies=[Depends(rate_limit("puzzles", "RATE_LIMIT_PUZZL
 
 
 class TimedStartRequest(BaseModel):
-    minutes: int = Field(..., description="3 или 5")
+    minutes: int = Field(..., description="3 or 5")
 
 
 class MoveRequest(BaseModel):
-    move: str = Field(..., min_length=4, max_length=5, description="Ход решающего в UCI")
+    move: str = Field(..., min_length=4, max_length=5, description="The solver's move in UCI")
 
 
 def _http(exc: service.PuzzleError):
@@ -36,11 +36,11 @@ def _http(exc: service.PuzzleError):
 
 @router.get("/next")
 async def next_puzzle(
-        theme: str | None = Query(default=None, max_length=40, description="Код темы реестра"),
+        theme: str | None = Query(default=None, max_length=40, description="Registry theme code"),
         user: User = Depends(get_current_user),
         db: AsyncSession = Depends(get_db),
 ):
-    """Задача под рейтинг решателя (и по теме), без недавно решавшихся. Начинает её — предыдущая отменяется."""
+    """A puzzle for the solver's rating (and by theme), without recently solved ones. Starting it cancels the previous one."""
     try:
         puzzle = await service.pick_puzzle(db, user, theme)
     except service.PuzzleError as exc:
@@ -51,17 +51,18 @@ async def next_puzzle(
 
 @router.get("/train")
 async def train(
-        theme: str | None = Query(default=None, max_length=40, description="Тема реестра"),
-        section: str | None = Query(default=None, max_length=1, description="Раздел каталога (смешанная подборка)"),
-        stage: int | None = Query(default=None, description="Ступень 1–4; по умолчанию — текущая ступень игрока"),
-        blind: bool = Query(default=False, description="Не показывать темы задачи до конца решения"),
-        goal: str | None = Query(default=None, max_length=12, description="Цель: mate / draw / promotion / material"),
+        theme: str | None = Query(default=None, max_length=40, description="Registry theme"),
+        section: str | None = Query(default=None, max_length=1, description="Catalogue section (a mixed selection)"),
+        stage: int | None = Query(default=None, description="Tier 1-4; by default the player's current tier"),
+        blind: bool = Query(default=False, description="Do not show the puzzle themes until the solution is complete"),
+        goal: str | None = Query(default=None, max_length=12, description="Goal: mate / draw / promotion / material"),
         user: User = Depends(get_current_user),
         db: AsyncSession = Depends(get_db),
 ):
     """
-    Тренировка по приёмам (таск 13.4): задача темы на ступени игрока, смешанная по разделу или — одной целью без темы
-    и раздела — смешанная по цели («Спасите партию», 27.9: goal=draw).
+    Training by tactical themes (task 13.4): a theme puzzle at the player's tier, mixed by section or - by a single goal
+    without a theme
+    and section - mixed by goal ("Save the game", 27.9: goal=draw).
     """
     try:
         puzzle, chosen_stage = await service.pick_training(db, user, theme=theme, section=section, stage=stage,
@@ -75,7 +76,7 @@ async def train(
 @router.get("/demo")
 async def demo(theme: str = Query(..., max_length=40), user: User = Depends(get_current_user),
                db: AsyncSession = Depends(get_db)):
-    """Показ приёма: две задачи темы с решением (не попытка — рейтинг и история не меняются)."""
+    """Showing a theme: two puzzles of the theme with the solution (not an attempt - rating and history do not change)."""
     try:
         return {"theme": theme, "examples": await service.demo_puzzles(db, theme)}
     except service.PuzzleError as exc:
@@ -84,13 +85,13 @@ async def demo(theme: str = Query(..., max_length=40), user: User = Depends(get_
 
 @router.get("/training")
 async def training(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """Прогресс по всем темам: ступень, последние результаты, освоена ли, сколько задач на ступенях."""
+    """Progress over all themes: tier, latest results, whether mastered, how many puzzles on the tiers."""
     return await service.training_overview(db, user)
 
 
 @router.get("/daily")
 async def daily(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """Задача дня — одна на всех (по дате UTC)."""
+    """The puzzle of the day - one for everybody (by UTC date)."""
     try:
         puzzle = await service.daily_puzzle(db, dt.datetime.now(dt.UTC).date())
     except service.PuzzleError as exc:
@@ -101,7 +102,8 @@ async def daily(user: User = Depends(get_current_user), db: AsyncSession = Depen
 
 @router.get("/personal")
 async def personal_summary(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """«Ваши ошибки» (таск 13.5): сколько задач к повторению сейчас, всего в работе, освоено, когда следующая."""
+    """"Your mistakes" (task 13.5): how many puzzles are due for repetition now, total in work, mastered, when the next one
+    is."""
     return await personal_puzzles.summary(db, user)
 
 
@@ -126,21 +128,21 @@ async def personal_answer(puzzle_id: int, payload: MoveRequest, user: User = Dep
 
 @router.get("/personal/game/{game_id}")
 async def personal_for_game(game_id: int, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """Полуходы партии, из которых сделаны задачи игрока — значок в разборе партии."""
+    """Plies of the game from which the player's puzzles were made - the badge in the game review."""
     return {"game_id": game_id, "plies": await personal_puzzles.plies_for_game(db, game_id, user)}
 
 
 class SquareRequest(BaseModel):
-    square: str = Field(..., min_length=2, max_length=2, description="Поле доски, например e4")
+    square: str = Field(..., min_length=2, max_length=2, description="A board square, for example e4")
 
 
 @router.get("/defense/next")
 async def defense_next(
-        kind: str = Query(..., max_length=10, description="threat — «Что грозит соперник?», blunder — «Не зевни»"),
+        kind: str = Query(..., max_length=10, description="threat: \"What is threatened?\", blunder: \"Don't blunder\""),
         user: User = Depends(get_current_user),
         db: AsyncSession = Depends(get_db),
 ):
-    """Защитное упражнение (таск 13.6) на ступени игрока. Угроза и верные ходы не отправляются."""
+    """A defence drill (task 13.6) at the player's tier. The threat and the correct moves are not sent."""
     try:
         return defense_drills.public_view(await defense_drills.pick(db, user, kind))
     except service.PuzzleError as exc:
@@ -150,7 +152,8 @@ async def defense_next(
 @router.post("/defense/{drill_id}/threat")
 async def defense_threat(drill_id: int, payload: SquareRequest, user: User = Depends(get_current_user),
                          db: AsyncSession = Depends(get_db)):
-    """«Что грозит соперник?», первый этап: поле фигуры, которая бьёт, или поле удара. Угроза раскрывается."""
+    """"What does the opponent threaten?", the first stage: the square of the attacking piece or the square of the attack. The
+    threat is revealed."""
     try:
         return await defense_drills.show_threat(db, user, drill_id, payload.square)
     except service.PuzzleError as exc:
@@ -160,7 +163,7 @@ async def defense_threat(drill_id: int, payload: SquareRequest, user: User = Dep
 @router.post("/defense/{drill_id}/answer")
 async def defense_answer(drill_id: int, payload: MoveRequest, user: User = Depends(get_current_user),
                          db: AsyncSession = Depends(get_db)):
-    """Защита (или ход из трёх в «Не зевни»): итог, верные ходы, опровержения, прогресс темы."""
+    """A defence (or a move out of three in "Don't blunder"): the result, correct moves, refutations, theme progress."""
     try:
         return await defense_drills.answer(db, user, drill_id, payload.move)
     except service.PuzzleError as exc:
@@ -170,9 +173,9 @@ async def defense_answer(drill_id: int, payload: MoveRequest, user: User = Depen
 
 
 class DrillAnswerRequest(BaseModel):
-    key: str = Field(..., max_length=60, description="Ключ упражнения из /drills/next")
-    moves: list[str] = Field(..., min_length=1, max_length=3, description="Ходы решения (мат в 2 — три)")
-    run: bool = Field(default=False, description="Ответ в забеге на время")
+    key: str = Field(..., max_length=60, description="The drill key from /drills/next")
+    moves: list[str] = Field(..., min_length=1, max_length=3, description="Solution moves (mate in 2 - three)")
+    run: bool = Field(default=False, description="The answer in a timed run")
 
 
 class DrillRunRequest(BaseModel):
@@ -186,7 +189,7 @@ async def drills_next(
         kind: str = Query(..., max_length=10), piece: str = Query(..., max_length=1),
         level: int = Query(..., ge=1, le=3), user: User = Depends(get_current_user),
 ):
-    """Упражнение-генератор (таск 13.7): позиция по таблице seed; решение не отправляется."""
+    """A generator drill (task 13.7): a position by the seed table; the solution is not sent."""
     try:
         return generated_drills.view(generated_drills.pick(kind, piece, level))
     except service.PuzzleError as exc:
@@ -233,20 +236,20 @@ async def drills_records(user: User = Depends(get_current_user), db: AsyncSessio
 
 @router.get("/course/mates")
 async def mate_course(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """Курс матовых конструкций (таск 14.6): конструкции по порядку и число задач у каждой."""
+    """The mating-pattern course (task 14.6): patterns in order and the number of puzzles for each."""
     return await mate_course_service.overview(db)
 
 
 @router.get("/course/mates/exam")
 async def mate_course_exam(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """План итоговой проверки: задачи разных конструкций (тема и номер в её наборе)."""
+    """The final check plan: puzzles of different patterns (the theme and the number in its set)."""
     return {"minutes": mate_course_service.EXAM_MINUTES, "tasks": await mate_course_service.exam_plan(db)}
 
 
 @router.get("/course/mates/{theme}/{index}")
 async def mate_course_task(theme: str, index: int, user: User = Depends(get_current_user),
                            db: AsyncSession = Depends(get_db)):
-    """Начать задачу курса: index-я по сложности задача конструкции; рейтинг задач она не меняет."""
+    """Start a course puzzle: the index-th puzzle of the pattern by difficulty; it does not change the puzzle rating."""
     try:
         puzzle = await mate_course_service.start_task(db, user, theme, index)
     except service.PuzzleError as exc:
@@ -256,7 +259,7 @@ async def mate_course_task(theme: str, index: int, user: User = Depends(get_curr
 
 @router.post("/timed/start")
 async def timed_start(payload: TimedStartRequest, user: User = Depends(get_current_user)):
-    """Начать забег на время (предыдущий незаконченный отменяется)."""
+    """Start a timed run (the previous unfinished one is cancelled)."""
     try:
         return await service.start_run(user, payload.minutes)
     except service.PuzzleError as exc:
@@ -265,7 +268,7 @@ async def timed_start(payload: TimedStartRequest, user: User = Depends(get_curre
 
 @router.get("/timed/next")
 async def timed_next(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """Следующая задача забега: сложнее с каждой решённой; рейтинг не меняет."""
+    """The next puzzle of the run: harder with each solved one; it does not change the rating."""
     try:
         puzzle, run = await service.next_in_run(db, user)
     except service.PuzzleError as exc:
@@ -286,7 +289,7 @@ async def timed_leaders(
         minutes: int = Query(default=3), scope: str = Query(default="week"),
         user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
 ):
-    """Таблица лидеров забегов на время: scope «week» — текущая неделя, «all» — рекорды; плюс своя строка."""
+    """The timed-run leaderboard: scope "week" - the current week, "all" - records; plus one's own row."""
     if minutes not in puzzle_leaders.MINUTES or scope not in puzzle_leaders.SCOPES:
         raise DomainValueError("invalid_timed_leaders", minutes=minutes, scope=scope).to_http(400)
     return await puzzle_leaders.leaders(db, minutes, scope, user.id)

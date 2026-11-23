@@ -1,6 +1,6 @@
 # --- FILE: tests/test_feed.py ---
-"""Лента и публикации (таск 30.2): лента подписок, карточки, библиотека с ограниченной видимостью, достижения,
-«нравится», комментарии с уведомлением, чёрный список, скрытые и удалённые публикации."""
+"""Feed and posts (task 30.2): subscription feed, cards, library with limited visibility, achievements,
+likes, comments with notification, blocklist, hidden and deleted posts."""
 
 from datetime import UTC, datetime, timedelta
 
@@ -24,17 +24,17 @@ def post(client, token: str, body: str = "", attachment: dict | None = None):
 
 
 async def test_following_feed_and_profile(client, token_user_1, token_user_2, test_user_2):
-    mine = post(client, token_user_1, "Мой разбор", {"kind": "position", "ref": START})
+    mine = post(client, token_user_1, "My review", {"kind": "position", "ref": START})
     assert mine.status_code == 201
     assert (mine.json()["author"], mine.json()["mine"], mine.json()["attachment"]["kind"]) == ("player1", True, "position")
-    post(client, token_user_2, "Пост второго")
-    assert [p["body"] for p in client.get(API, headers=auth(token_user_1)).json()["posts"]] == ["Мой разбор"]
+    post(client, token_user_2, "Second's post")
+    assert [p["body"] for p in client.get(API, headers=auth(token_user_1)).json()["posts"]] == ["My review"]
     client.post("/api/v1/social/follow/player2", headers=auth(token_user_1))
     bodies = [p["body"] for p in client.get(API, headers=auth(token_user_1)).json()["posts"]]
-    assert bodies == ["Пост второго", "Мой разбор"]
-    # Лента игрока видна и гостю.
+    assert bodies == ["Second's post", "My review"]
+    # A player's feed is visible to a guest too.
     guest = client.get(f"{API}/user/player2").json()["posts"]
-    assert [(p["body"], p["mine"], p["liked"]) for p in guest] == [("Пост второго", False, False)]
+    assert [(p["body"], p["mine"], p["liked"]) for p in guest] == [("Second's post", False, False)]
     assert client.get(API).status_code == 401
 
 
@@ -52,7 +52,7 @@ async def test_empty_and_invalid(client, token_user_1, test_user_1, db_session):
     empty = post(client, token_user_1, "  \n ")
     assert empty.status_code == 400 and empty.json()["detail"]["code"] == "post_empty"
     bad = post(client, token_user_1, "", {"kind": "achievement", "ref": "first_game"})
-    assert bad.json()["detail"]["code"] == "attachment_invalid"           # ещё не заработано
+    assert bad.json()["detail"]["code"] == "attachment_invalid"           # not earned yet
     db_session.add(UserAchievement(user_id=test_user_1.id, code="first_game"))
     await db_session.commit()
     card = post(client, token_user_1, "", {"kind": "achievement", "ref": "first_game"}).json()["attachment"]
@@ -83,49 +83,49 @@ async def test_likes_comments_and_notification(client, token_user_1, token_user_
         delivered.append((user_id, note["kind"], note["payload"]))
 
     monkeypatch.setattr(notifications, "deliver", fake_deliver)
-    post_id = post(client, token_user_1, "Этюд").json()["id"]
+    post_id = post(client, token_user_1, "Study").json()["id"]
     liked = client.post(f"{API}/posts/{post_id}/like", headers=auth(token_user_2)).json()
     assert (liked["likes"], liked["liked"]) == (1, True)
-    assert client.post(f"{API}/posts/{post_id}/like", headers=auth(token_user_2)).json()["likes"] == 1   # повтор
+    assert client.post(f"{API}/posts/{post_id}/like", headers=auth(token_user_2)).json()["likes"] == 1   # repeat
     assert client.delete(f"{API}/posts/{post_id}/like", headers=auth(token_user_2)).json()["likes"] == 0
 
-    comment = client.post(f"{API}/posts/{post_id}/comments", json={"body": "Красиво!"}, headers=auth(token_user_2))
+    comment = client.post(f"{API}/posts/{post_id}/comments", json={"body": "Beautiful!"}, headers=auth(token_user_2))
     assert comment.status_code == 201 and comment.json()["author"] == "player2"
-    client.post(f"{API}/posts/{post_id}/comments", json={"body": "Спасибо"}, headers=auth(token_user_1))
-    assert delivered == [(test_user_1.id, "post_comment", {"from": "player2", "post_id": post_id})]   # свой — без уведомления
+    client.post(f"{API}/posts/{post_id}/comments", json={"body": "Thanks"}, headers=auth(token_user_1))
+    assert delivered == [(test_user_1.id, "post_comment", {"from": "player2", "post_id": post_id})]   # own: no notification
     kinds = (await db_session.execute(select(Notification.kind).where(Notification.user_id == test_user_1.id))).scalars().all()
     assert kinds == ["post_comment"]
 
     view = client.get(f"{API}/posts/{post_id}", headers=auth(token_user_1)).json()
     assert view["post"]["comments"] == 2
-    assert [(c["body"], c["can_delete"]) for c in view["comments"]] == [("Красиво!", True), ("Спасибо", True)]
+    assert [(c["body"], c["can_delete"]) for c in view["comments"]] == [("Beautiful!", True), ("Thanks", True)]
     empty = client.post(f"{API}/posts/{post_id}/comments", json={"body": " "}, headers=auth(token_user_2))
     assert empty.json()["detail"]["code"] == "comment_empty"
 
-    # Автор публикации удаляет чужой комментарий; посторонний — нет.
+    # The post author deletes someone else's comment; an outsider cannot.
     theirs = view["comments"][0]["id"]
     assert client.delete(f"{API}/comments/{view['comments'][1]['id']}", headers=auth(token_user_2)).status_code == 404
     assert client.delete(f"{API}/comments/{theirs}", headers=auth(token_user_1)).status_code == 200
 
 
 async def test_block_and_chat_ban(client, token_user_1, token_user_2, test_user_2, db_session):
-    post_id = post(client, token_user_1, "Пост").json()["id"]
+    post_id = post(client, token_user_1, "Post").json()["id"]
     client.post("/api/v1/messages/block/player2", headers=auth(token_user_1))
     closed = client.post(f"{API}/posts/{post_id}/comments", json={"body": "!"}, headers=auth(token_user_2))
     assert closed.status_code == 403 and closed.json()["detail"]["code"] == "comment_closed"
-    # Кого я заблокировал — того нет в моей ленте, даже если подписан.
+    # Whoever I blocked is not in my feed, even if subscribed.
     client.post("/api/v1/social/follow/player2", headers=auth(token_user_1))
-    post(client, token_user_2, "Спам")
-    assert [p["body"] for p in client.get(API, headers=auth(token_user_1)).json()["posts"]] == ["Пост"]
+    post(client, token_user_2, "Spam")
+    assert [p["body"] for p in client.get(API, headers=auth(token_user_1)).json()["posts"]] == ["Post"]
 
     test_user_2.chat_banned_until = datetime.now(UTC) + timedelta(hours=1)
     await db_session.commit()
-    banned = post(client, token_user_2, "ещё")
+    banned = post(client, token_user_2, "more")
     assert banned.status_code == 403 and banned.json()["detail"]["code"] == "posting_banned"
 
 
 async def test_hidden_and_deleted(client, token_user_1, token_user_2, db_session):
-    post_id = post(client, token_user_1, "Скрытое").json()["id"]
+    post_id = post(client, token_user_1, "Hidden").json()["id"]
     item = await db_session.get(Post, post_id)
     item.hidden_at = datetime.now(UTC)
     await db_session.commit()
@@ -133,7 +133,7 @@ async def test_hidden_and_deleted(client, token_user_1, token_user_2, db_session
     assert client.get(f"{API}/posts/{post_id}", headers=auth(token_user_1)).json()["post"]["hidden"] is True
     assert client.get(f"{API}/user/player1").json()["posts"] == []
 
-    other = post(client, token_user_1, "Удалить").json()["id"]
-    assert client.delete(f"{API}/posts/{other}", headers=auth(token_user_2)).status_code == 404   # чужое — нельзя
+    other = post(client, token_user_1, "Delete").json()["id"]
+    assert client.delete(f"{API}/posts/{other}", headers=auth(token_user_2)).status_code == 404   # someone else's: not allowed
     assert client.delete(f"{API}/posts/{other}", headers=auth(token_user_1)).json() == {"deleted": True}
     assert client.get(f"{API}/posts/{other}", headers=auth(token_user_1)).status_code == 404

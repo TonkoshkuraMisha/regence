@@ -1,6 +1,6 @@
 // --- FILE: frontend/src/trainers/boardPuzzles.ts ---
-// Головоломки на доске (таск 19.4): расстановки («Восемь ферзей», ладьи, слоны, кони, доминирование) и «Обход конём».
-// Поля — пары [столбец, ряд] от 0; доска N×N. Проверки — чистые функции (тесты: все 92 решения, доминирование, обход).
+// Board puzzles (task 19.4): placements ("Eight queens", rooks, bishops, knights, domination) and the "Knight's tour".
+// Squares - [column, row] pairs from 0; board N x N. Checks are pure functions (tests: all 92 solutions, domination, tour).
 
 export type Piece = 'Q' | 'R' | 'B' | 'N';
 export type Cell = [number, number];
@@ -10,11 +10,11 @@ export interface PlacementPuzzle {
     piece: Piece;
     count: number;
     size: number;
-    /** independent — фигуры не бьют друг друга; dominate — каждое поле занято или под боем. */
+    /** independent - pieces do not attack each other; dominate - every square is occupied or attacked. */
     goal: 'independent' | 'dominate';
 }
 
-/** Порядок — уровень тренажёра (1 — проще всего). */
+/** Order - trainer level (1 - easiest). */
 export const PLACEMENT_PUZZLES: PlacementPuzzle[] = [
     {id: 'queens4', piece: 'Q', count: 4, size: 4, goal: 'independent'},
     {id: 'queens5', piece: 'Q', count: 5, size: 5, goal: 'independent'},
@@ -42,7 +42,7 @@ const LINES: Record<'Q' | 'R' | 'B', Cell[]> = {
 export const key = ([x, y]: Cell) => `${x},${y}`;
 const inside = ([x, y]: Cell, size: number) => x >= 0 && y >= 0 && x < size && y < size;
 
-/** Поля под боем фигуры с поля `from`; линии останавливаются на занятых полях (их тоже бьют). */
+/** Squares attacked by the piece from square `from`; lines stop at occupied squares (those are attacked too). */
 export function attacks(piece: Piece, from: Cell, size: number, occupied: Set<string> = new Set()): Cell[] {
     if (piece === 'N') return KNIGHT.map(([dx, dy]) => [from[0] + dx, from[1] + dy] as Cell).filter((c) => inside(c, size));
     const result: Cell[] = [];
@@ -57,7 +57,7 @@ export function attacks(piece: Piece, from: Cell, size: number, occupied: Set<st
     return result;
 }
 
-/** Пары фигур, бьющих друг друга (для подсветки). */
+/** Pairs of pieces attacking each other (for highlighting). */
 export function conflicts(piece: Piece, cells: Cell[], size: number): Set<string> {
     const occupied = new Set(cells.map(key));
     const bad = new Set<string>();
@@ -72,7 +72,7 @@ export function conflicts(piece: Piece, cells: Cell[], size: number): Set<string
     return bad;
 }
 
-/** Поля, которые не заняты и не под боем (для доминирования). */
+/** Squares that are neither occupied nor attacked (for domination). */
 export function uncovered(piece: Piece, cells: Cell[], size: number): Cell[] {
     const occupied = new Set(cells.map(key));
     const covered = new Set(occupied);
@@ -88,12 +88,12 @@ export function isSolved(puzzle: PlacementPuzzle, cells: Cell[]): boolean {
     return uncovered(puzzle.piece, cells, puzzle.size).length === 0;
 }
 
-/** Ключ решения — чтобы считать различные найденные решения. */
+/** Solution key - to count distinct solutions found. */
 export function solutionKey(cells: Cell[]): string {
     return cells.map(key).sort().join(';');
 }
 
-/** Все решения задачи о N ферзях (для 8×8 — 92). */
+/** All solutions of the N queens problem (for 8x8 - 92). */
 export function allQueenSolutions(size: number): Cell[][] {
     const solutions: Cell[][] = [];
     const cols: number[] = [];
@@ -114,7 +114,7 @@ export function allQueenSolutions(size: number): Cell[][] {
     return solutions;
 }
 
-// ---- Обход конём ----
+// ---- Knight's tour ----
 
 export const TOUR_SIZES = [5, 6, 8];
 
@@ -132,7 +132,7 @@ export function isKnightMove(a: Cell, b: Cell): boolean {
     return (dx === 1 && dy === 2) || (dx === 2 && dy === 1);
 }
 
-/** Подсказка по правилу Варнсдорфа: ход туда, откуда меньше всего продолжений (при равенстве — первый). */
+/** Warnsdorff's rule hint: the move to the square with the fewest onward moves (on a tie - the first). */
 export function warnsdorffHint(path: Cell[], size: number): Cell | null {
     const visited = new Set(path.map(key));
     const options = knightMoves(path[path.length - 1], size, visited);
@@ -149,7 +149,7 @@ export function warnsdorffHint(path: Cell[], size: number): Cell | null {
     return best;
 }
 
-/** Обход корректен: каждое поле один раз, каждый шаг — ход коня. */
+/** A tour is valid: every square once, every step is a knight move. */
 export function isTour(path: Cell[], size: number): boolean {
     if (path.length !== size * size || new Set(path.map(key)).size !== path.length) return false;
     return path.every((cell, i) => inside(cell, size) && (i === 0 || isKnightMove(path[i - 1], cell)));

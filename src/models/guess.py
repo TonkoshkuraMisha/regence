@@ -1,6 +1,6 @@
 """
-Позиции «Угадай ход мастера» (таблица guess_positions). Заполняет scripts/build_guess_positions.py по правилам
-src/services/guess_selection.py; выдаёт и оценивает ответы src/services/guess.py.
+Positions of "Guess the master's move" (the guess_positions table). Filled by scripts/build_guess_positions.py by the rules of
+src/services/guess_selection.py; answers are served and scored by src/services/guess.py.
 """
 
 from datetime import datetime
@@ -13,9 +13,10 @@ from src.models.base import Base
 
 class GuessPosition(Base):
     """
-    «Угадай ход мастера» (таск 14.3): позиция из партии мастера, где ход мастера объективно находится расчётом —
-    лучший ход движка с отрывом или единственный, сохраняющий результат (отбор — src/services/guess_selection.py,
-    скрипт scripts/build_guess_positions.py). Позиции одной серии (несколько ходов игрока подряд) делят series_id.
+    "Guess the master's move" (task 14.3): a position from a master's game where the master's move is objectively found by
+    calculation -
+    the engine's best move with a margin or the only one that keeps the result (selection - src/services/guess_selection.py,
+    the script scripts/build_guess_positions.py). Positions of one series (several player moves in a row) share series_id.
     """
 
     __tablename__ = "guess_positions"
@@ -23,22 +24,23 @@ class GuessPosition(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     game_id: Mapped[int] = mapped_column(ForeignKey("games.id", ondelete="CASCADE"), index=True)
-    # Номер полухода в партии (0 — первый ход белых): позиция — перед этим ходом.
+    # The ply number in the game (0 - White's first move): the position is before this move.
     ply: Mapped[int] = mapped_column(Integer)
     fen: Mapped[str] = mapped_column(String(100))
     move_uci: Mapped[str] = mapped_column(String(5))
-    # Оценка лучшего хода и отрыв от второго — с точки зрения стороны, которая ходит, в сантипешках.
+    # The evaluation of the best move and the gap to the second - from the point of view of the side to move, in centipawns.
     best_cp: Mapped[int] = mapped_column(Integer)
     gap_cp: Mapped[int] = mapped_column(Integer)
-    # До трёх лучших ходов движка с оценками: [[uci, cp], …] — ответ игрока оценивается по ним без движка.
+    # Up to three best engine moves with evaluations: [[uci, cp], ...] - the player's answer is scored by them without the
+    # engine.
     lines: Mapped[list] = mapped_column(JSON)
-    # Серия: позиции одной партии подряд, где каждый ход игрока проходит отбор.
+    # A series: positions of one game in a row where each player move passes the selection.
     series_id: Mapped[int | None] = mapped_column(Integer, index=True, nullable=True)
     series_index: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
-    # Сложность — число по шкале рейтинга задач. Начальное значение считается при отборе
-    # (guess_selection.difficulty); дальше меняется по ответам вошедших игроков (src/services/guess.answer).
+    # Difficulty - a number on the puzzle rating scale. The initial value is computed at selection
+    # (guess_selection.difficulty); then it changes by the answers of logged-in players (src/services/guess.answer).
     difficulty: Mapped[int] = mapped_column(Integer, index=True)
-    # Коды тем реестра 13.0 (guess_selection.position_themes) — показываются после ответа.
+    # Theme codes of registry 13.0 (guess_selection.position_themes) - shown after the answer.
     themes: Mapped[list] = mapped_column(JSON, default=list, server_default="[]")
     plays: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     solved: Mapped[int] = mapped_column(Integer, default=0, server_default="0")

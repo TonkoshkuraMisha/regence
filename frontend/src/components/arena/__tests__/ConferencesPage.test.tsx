@@ -1,5 +1,5 @@
-// Конференции (таск 33.6): Кубок сезона, выбор страны с подсказкой, правило одной смены за сезон; зачёт на странице арены;
-// матчи конференций — список на странице и счёт с досками на странице матча.
+// Conferences (task 33.6): the season Cup, choosing a country with a suggestion, the rule of one change per season; the standings on the arena page;
+// conference matches — a list on the page and a score with boards on the match page.
 
 import {act, fireEvent, render, screen} from '@testing-library/react';
 import {MemoryRouter, Route, Routes} from 'react-router-dom';
@@ -31,23 +31,23 @@ afterEach(() => {
     vi.unstubAllGlobals();
 });
 
-describe('страница конференций', () => {
-    it('кубок сезона: пять конференций по очкам, своя выделена', async () => {
+describe('conferences page', () => {
+    it('season cup: five conferences by points, one\'s own highlighted', async () => {
         const me = {country: 'IN', conference: 'eastern', can_change: true};
         vi.stubGlobal('fetch', vi.fn(async () => ({ok: true, status: 200, json: async () => ({...PAGE, me})} as Response)));
         page();
-        expect(await screen.findByText('Кубок конференций, сезон 2026-11')).toBeInTheDocument();
+        expect(await screen.findByText('Conference Cup, season 2026-11')).toBeInTheDocument();
         const rows = screen.getAllByTestId(/^cup-/);
         expect(rows.map((row) => row.getAttribute('data-testid'))).toEqual(
             ['cup-central', 'cup-eastern', 'cup-western', 'cup-northern', 'cup-southern']);
-        expect(rows[0]).toHaveTextContent('Центральная конференция');
+        expect(rows[0]).toHaveTextContent('Central conference');
         expect(rows[0]).toHaveTextContent('42');
         expect(rows[1].className).toContain('font-bold');
-        expect(screen.getByTestId('my-conference')).toHaveTextContent('Ваша конференция: Восточная конференция');
+        expect(screen.getByTestId('my-conference')).toHaveTextContent('Your conference: Eastern conference');
         expect(screen.getByTestId('country-select')).toHaveValue('IN');
     });
 
-    it('подсказка страны только предлагается; сохранение отправляет выбранную страну', async () => {
+    it('the country suggestion is only offered; saving sends the chosen country', async () => {
         let me: Record<string, unknown> = {country: null, conference: null, can_change: true};
         const sent: unknown[] = [];
         vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
@@ -59,21 +59,21 @@ describe('страница конференций', () => {
             return {ok: true, status: 200, json: async () => ({...PAGE, suggested_country: 'UA', me})} as Response;
         }));
         page();
-        expect(await screen.findByTestId('my-conference')).toHaveTextContent('Страна не указана');
-        expect(screen.getByTestId('country-suggestion')).toHaveTextContent('Похоже, ваша страна — Украина.');
+        expect(await screen.findByTestId('my-conference')).toHaveTextContent('No country chosen');
+        expect(screen.getByTestId('country-suggestion')).toHaveTextContent('It looks like your country is Ukraine.');
         expect(screen.getByTestId('country-save')).toBeDisabled();
-        expect(sent).toEqual([]);                                        // подсказка сама ничего не отправляет
+        expect(sent).toEqual([]);                                        // the suggestion sends nothing by itself
 
         fireEvent.click(screen.getByTestId('country-use-suggested'));
         expect(screen.getByTestId('country-select')).toHaveValue('UA');
-        expect(screen.getByTestId('country-preview')).toHaveTextContent('Эта страна играет за: Центральная конференция');
+        expect(screen.getByTestId('country-preview')).toHaveTextContent('This country plays for: Central conference');
         await act(async () => fireEvent.click(screen.getByTestId('country-save')));
         expect(sent).toEqual([['PUT', {country: 'UA'}]]);
-        expect(await screen.findByText('Ваша конференция: Центральная конференция')).toBeInTheDocument();
+        expect(await screen.findByText('Your conference: Central conference')).toBeInTheDocument();
         expect(screen.queryByTestId('country-suggestion')).toBeNull();
     });
 
-    it('смена в сезоне уже использована — об этом сказано; отказ сервера виден; страну можно убрать', async () => {
+    it('the change in the season is already used — it says so; a server refusal is visible; the country can be removed', async () => {
         const sent: unknown[] = [];
         vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
             if (String(url).endsWith('/me')) {
@@ -89,25 +89,25 @@ describe('страница конференций', () => {
                 me: {country: 'DE', conference: 'northern', can_change: false}})} as Response;
         }));
         page();
-        expect(await screen.findByText(/В этом сезоне вы уже меняли конференцию/)).toBeInTheDocument();
+        expect(await screen.findByText(/You have already changed your conference this season/)).toBeInTheDocument();
         fireEvent.change(screen.getByTestId('country-select'), {target: {value: 'IT'}});
         await act(async () => fireEvent.click(screen.getByTestId('country-save')));
-        expect(await screen.findByRole('alert')).toHaveTextContent('Сменить конференцию можно один раз за сезон');
+        expect(await screen.findByRole('alert')).toHaveTextContent('You can change your conference once a season');
         await act(async () => fireEvent.click(screen.getByTestId('country-remove')));
         expect(sent).toEqual([{country: 'IT'}, {country: null}]);
     });
 
-    it('гость видит кубок и приглашение войти', async () => {
+    it('a guest sees the cup and an invitation to log in', async () => {
         setToken(null);
         vi.stubGlobal('fetch', vi.fn(async () => ({ok: true, status: 200, json: async () => PAGE} as Response)));
         page();
         expect(await screen.findByTestId('conference-cup')).toBeInTheDocument();
-        expect(screen.getByTestId('my-country')).toHaveTextContent('Войдите, чтобы указать страну');
+        expect(screen.getByTestId('my-country')).toHaveTextContent('Log in to choose your country');
         expect(screen.queryByTestId('country-select')).toBeNull();
     });
 
-    it('названия стран — от браузера на языке интерфейса; страна из языка браузера', () => {
-        expect(countryName('UA', 'ru')).toBe('Украина');
+    it('country names come from the browser in the interface language; a country from the browser language', () => {
+        expect(countryName('UA', 'en')).toBe('Ukraine');
         expect(countryName('UA', 'uk')).toBe('Україна');
         expect(countryName('DE', 'en')).toBe('Germany');
         expect(localeCountry(['uk-UA', 'en'])).toBe('UA');
@@ -116,8 +116,8 @@ describe('страница конференций', () => {
     });
 });
 
-describe('зачёт конференций на странице арены', () => {
-    it('конференция у игрока в таблице и очки конференций под ней', async () => {
+describe('conference standings on the arena page', () => {
+    it('the player\'s conference in the table and the conference points under it', async () => {
         const arena = {
             id: 3, schedule_key: 'western:blitz-3+2', conference: 'western', base_time_ms: 180000, increment_ms: 2000,
             starts_at: new Date().toISOString(), ends_at: new Date(Date.now() + 40 * 60_000).toISOString(), status: 'running',
@@ -134,20 +134,20 @@ describe('зачёт конференций на странице арены', (
                 <Routes><Route path="/arenas/:arenaId" element={<ArenaPage/>}/></Routes>
             </MemoryRouter>,
         );
-        expect(await screen.findByTestId('arena-conf-misha')).toHaveTextContent('Центр');
+        expect(await screen.findByTestId('arena-conf-misha')).toHaveTextContent('Central');
         expect(screen.queryByTestId('arena-conf-guest')).toBeNull();
         const table = screen.getByTestId('arena-conferences');
-        expect(table).toHaveTextContent('Центральная конференция');
+        expect(table).toHaveTextContent('Central conference');
         expect(table).toHaveTextContent('1/1');
     });
 });
 
-describe('матчи конференций', () => {
-    it('счёт записывается с половинками', () => {
+describe('conference matches', () => {
+    it('the score is recorded with halves', () => {
         expect([0, 0.5, 1, 1.5, 4].map(matchScore)).toEqual(['0', '½', '1', '1½', '4']);
     });
 
-    it('список матчей на странице конференций: сыгранный со счётом, ближайший — со временем', async () => {
+    it('the match list on the conferences page: a played one with a score, the nearest — with a time', async () => {
         const matches = [
             {arena_id: 7, home: 'central', guest: 'western', starts_at: '2026-11-14T17:00:00Z', status: 'finished',
                 home_score: 1.5, guest_score: 2.5, players: 4},
@@ -158,12 +158,12 @@ describe('матчи конференций', () => {
         page();
         const played = await screen.findByTestId('match-7');
         expect(played).toHaveAttribute('href', '/arenas/7');
-        expect(played).toHaveTextContent('Центральная конференция — Западная конференция');
+        expect(played).toHaveTextContent('Central conference — Western conference');
         expect(played).toHaveTextContent('1½ : 2½');
         expect(screen.getByTestId('match-8')).not.toHaveTextContent('0 : 0');
     });
 
-    it('страница матча: счёт и доски вместо таблицы, запись закрыта — кнопки входа нет', async () => {
+    it('the match page: a score and boards instead of a table, registration is closed — no join button', async () => {
         const seat = (username: string, score: number) => ({username, rating: 1500, score});
         const arena = {
             id: 7, format: 'match', conference: 'central', opponent_conference: 'western', rounds: 2, current_round: 2,
@@ -181,7 +181,7 @@ describe('матчи конференций', () => {
             </MemoryRouter>,
         );
         expect(await screen.findByTestId('match-score')).toHaveTextContent('1½ : ½');
-        expect(screen.getByText('Матч Центральная конференция — Западная конференция')).toBeInTheDocument();
+        expect(screen.getByText('Match Central conference — Western conference')).toBeInTheDocument();
         expect(screen.getByTestId('match-board-2')).toHaveTextContent('olga');
         expect(screen.queryByTestId('arena-standings')).toBeNull();
         expect(screen.queryByTestId('arena-join')).toBeNull();

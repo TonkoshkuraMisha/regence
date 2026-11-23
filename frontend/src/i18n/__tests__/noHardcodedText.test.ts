@@ -1,7 +1,7 @@
 // --- FILE: frontend/src/i18n/__tests__/noHardcodedText.test.ts ---
-// Сторож правила «весь текст — в каталогах»: разбирает исходники токенизатором TypeScript и падает на любой
-// кириллице в строках, шаблонах и тексте JSX вне каталогов. Комментарии пропускаются — они для разработчиков
-// и пишутся по-русски. Новая строка интерфейса, вписанная прямо в компонент, этот тест уронит.
+// A guard for the rule "all text lives in the catalogs": it parses the sources with the TypeScript tokenizer and fails on any
+// Cyrillic in strings, templates and JSX text outside the catalogs. Comments are skipped — they are for developers
+// and are written in English. A new interface string written straight into a component will fail this test.
 
 import {readdirSync, readFileSync} from 'node:fs';
 import {join, relative, sep} from 'node:path';
@@ -9,9 +9,9 @@ import ts from 'typescript';
 import {describe, expect, it} from 'vitest';
 
 const SRC = join(__dirname, '..', '..');
-const CYRILLIC = /[Ѐ-ӿ]/;
+const CYRILLIC = /[\u0400-\u04FF]/;
 
-// Каталоги сообщений — единственное место для текста; тесты и тестовые утилиты пишутся по-русски.
+// The message catalogs are the only place for text; tests and test utilities are written in English.
 const ALLOWED = [`i18n${sep}messages${sep}`, `${sep}__tests__${sep}`, `test${sep}`];
 
 function sourceFiles(dir: string): string[] {
@@ -31,7 +31,7 @@ const TEXT_TOKENS = new Set([
     ts.SyntaxKind.JsxText,
 ]);
 
-/** Строки с кириллицей в коде (не в комментариях): «файл:строка: текст». */
+/** Strings with Cyrillic in code (not in comments): "file:line: text". */
 function hardcodedText(file: string): string[] {
     const text = readFileSync(file, 'utf-8');
     const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true,
@@ -48,21 +48,23 @@ function hardcodedText(file: string): string[] {
     return found;
 }
 
-describe('текст интерфейса — только в каталогах', () => {
-    it('в компонентах, хуках, сервисах и конфигах нет кириллицы вне комментариев', () => {
+describe('interface text — only in the catalogs', () => {
+    it('components, hooks, services and configs have no Cyrillic outside comments', () => {
         const offenders = sourceFiles(SRC)
             .filter((file) => !ALLOWED.some((allowed) => file.includes(allowed)))
             .flatMap(hardcodedText);
         expect(offenders, `\n${offenders.join('\n')}`).toEqual([]);
     });
 
-    it('сторож действительно находит текст в строке, шаблоне и JSX', () => {
+    it('the guard really finds text in a string, a template and JSX', () => {
+        // The Cyrillic sample is built from code points so that this file itself contains no Cyrillic letters.
+        const sample = '\u0442\u0435\u043A\u0441\u0442';
         const probe = join(SRC, 'i18n', '__tests__', 'probe.tsx');
         const source = ts.createSourceFile(probe, [
-            "// комментарий не считается",
-            "const a = 'строка';",
-            "const b = `шаблон ${a}`;",
-            "const c = <p>текст</p>;",
+            `// ${sample} in a comment does not count`,
+            `const a = '${sample}';`,
+            `const b = \`${sample} \${a}\`;`,
+            `const c = <p>${sample}</p>;`,
         ].join('\n'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
         const kinds: ts.SyntaxKind[] = [];
         const visit = (node: ts.Node) => {

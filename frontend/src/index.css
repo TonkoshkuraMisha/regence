@@ -3,38 +3,38 @@
 @import "tailwindcss";
 
 @theme {
-    /* Светлые элементы интерфейса (Самшит индийский) */
+    /* Light interface elements (Indian boxwood) */
     --color-boxwood-light: #F5DEB3;
     --color-boxwood: #E6C998;
     --color-boxwood-dark: #D0A972;
 
-    /* Темные элементы интерфейса (Акация) */
+    /* Dark interface elements (Acacia) */
     --color-acacia-light: #7A4B31;
     --color-acacia: #5C3A21;
     --color-acacia-dark: #3D2314;
 
-    /* Клетки шахматной доски */
+    /* Chessboard squares */
     --color-board-light: #DFC8A2;
     --color-board-dark: #966C46;
 
-    /* Фон и элементы интерфейса (Стол/Комната) */
+    /* Background and interface elements (Table/Room) */
     --color-room-light: #4A3B32;
     --color-room: #2C221C;
     --color-room-dark: #1A120B;
 
     --color-paper: #FDFBF7;
 
-    /* Универсальные читаемые шрифты */
+    /* Universal readable fonts */
     --font-sans: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     --font-serif: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     --font-mono: "JetBrains Mono", "Fira Code", "Cascadia Mono", Consolas, ui-monospace, monospace;
 
-    /* Тени */
+    /* Shadows */
     --shadow-heavy: 0 15px 35px -5px rgba(0, 0, 0, 0.6), 0 10px 15px -5px rgba(0, 0, 0, 0.4);
     --shadow-piece: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
     --shadow-inner-board: inset 0 2px 6px 0 rgba(0, 0, 0, 0.35);
 
-    /* Текстуры */
+    /* Textures */
     --background-image-wood-texture: url('/assets/textures/wood-grain.svg');
 }
 
@@ -50,10 +50,10 @@ html, body {
     -moz-osx-font-smoothing: grayscale;
 }
 
-/* Фокус клетки доски с клавиатуры (таск 26.3): двухцветная рамка — чёрная снаружи, белая внутри (приём WCAG C40).
-   На любой клетке любой темы хотя бы один из двух цветов даёт контраст не ниже 3:1 (WCAG 1.4.11); одноцветная голубая
-   рамка на многих темах сливалась с клеткой. Проверка — config/__tests__/boardThemes.test.ts. Класс ставят клеткам
-   Chessboard.tsx и puzzles/PuzzleBoard.tsx. */
+/* Keyboard focus of a board square (task 26.3): a two-colour ring - black outside, white inside (WCAG C40 technique).
+   On any square of any theme at least one of the two colours gives contrast of at least 3:1 (WCAG 1.4.11); a single-colour blue
+   ring blended into the square on many themes. Checked by config/__tests__/boardThemes.test.ts. The class is set on squares by
+   Chessboard.tsx and puzzles/PuzzleBoard.tsx. */
 .board-square:focus-visible {
     outline: 3px solid #000000;
     outline-offset: -3px;

@@ -1,7 +1,7 @@
 // --- FILE: frontend/src/components/InviteFriend.tsx ---
-// «Пригласить друга» (таск 26.2): личная ссылка игрока вида <адрес сайта>/?invite=КОД и счётчик, сколько человек уже
-// зарегистрировалось по ней. Код выдаёт сервер (GET /beta/my-invite, src/services/beta.py): при первом обращении он
-// создаётся и дальше не меняется. Ссылку открывает форма регистрации с уже подставленным кодом (App.tsx читает ?invite).
+// "Invite a friend" (task 26.2): the player's personal link of the form <site address>/?invite=CODE and a counter of how many people have
+// registered through it. The code is issued by the server (GET /beta/my-invite, src/services/beta.py): on the first request it is
+// created and does not change afterwards. The link is opened by the registration form with the code already filled in (App.tsx reads ?invite).
 
 import {useEffect, useState} from 'react';
 import {Copy, Check} from 'lucide-react';
@@ -27,7 +27,7 @@ export function InviteFriend() {
             setCopied(true);
             window.setTimeout(() => setCopied(false), 2000);
         } catch {
-            // Буфер недоступен — ссылка остаётся в поле, её можно скопировать вручную.
+            // The clipboard is unavailable: the link stays in the field and can be copied manually.
         }
     };
 

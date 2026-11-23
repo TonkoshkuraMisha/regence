@@ -1,14 +1,14 @@
 // --- FILE: frontend/src/services/watch.ts ---
-// «Просмотр» (таск 16.3): идущие партии (/profile/games/live), архив мастеров с фильтрами, «Партия дня» и «забавные
-// подборки» (/watch/*).
-// Маршруты — src/api/watch.py и src/api/profile.py (идущие партии); всё открыто без входа. Архив — исторические
-// партии мастеров, загруженные из PGN (src/db/seed.py); подборки заранее считает scripts/build_collections.py
-// (таблица collection_entries), сервер их только отдаёт.
+// "Watch" (task 16.3): ongoing games (/profile/games/live), master archive with filters, "Game of the day" and "fun
+// collections" (/watch/*).
+// Routes - src/api/watch.py and src/api/profile.py (ongoing games); all open without sign-in. The archive - historical
+// master games loaded from PGN (src/db/seed.py); collections are precomputed by scripts/build_collections.py
+// (table collection_entries), the server only serves them.
 
 import type {LiveGameItem} from '../components/chessboard/types';
 import {apiRequest} from './http';
 
-/** Партия архива мастеров в списке: игроки, год, место, результат и код дебюта. */
+/** Master archive game in a list: players, year, place, result and opening code. */
 export interface ArchiveGame {
     id: number;
     white: string;
@@ -19,7 +19,7 @@ export interface ArchiveGame {
     eco: string | null;
 }
 
-/** Фильтры архива (GET /watch/archive): часть имени игрока, годы, код дебюта, результат и смещение страницы. */
+/** Archive filters (GET /watch/archive): part of a player's name, years, opening code, result and page offset. */
 export interface ArchiveFilters {
     player?: string;
     year_from?: number;
@@ -29,18 +29,18 @@ export interface ArchiveFilters {
     offset?: number;
 }
 
-/** Ключи «забавных подборок» — те же, что на сервере (src/services/collections.py); названия — в каталоге. */
+/** Keys of the "fun collections" - the same as on the server (src/services/collections.py); titles are in the catalog. */
 export const COLLECTIONS = ['shortest', 'checks', 'capture_streak', 'peaceful', 'promotions', 'pawn_wars', 'stalemates'] as const;
 export type CollectionKey = typeof COLLECTIONS[number];
 
-/** GET к /api/v1 через общую обёртку http.ts (токен уходит, если игрок вошёл; открытые маршруты его игнорируют). */
+/** GET to /api/v1 via the shared http.ts wrapper (the token is sent if the player is signed in; open routes ignore it). */
 const get = <T>(path: string) => apiRequest<T>(path);
 
-/** Размер страницы архива (параметр limit). */
+/** Archive page size (limit parameter). */
 export const PAGE_SIZE = 20;
 
 export const watchApi = {
-    /** Партии между людьми, идущие прямо сейчас. */
+    /** Games between humans in progress right now. */
     live: () => get<LiveGameItem[]>('/profile/games/live'),
     archive: (filters: ArchiveFilters) => {
         const params = new URLSearchParams({limit: String(PAGE_SIZE)});
@@ -49,8 +49,8 @@ export const watchApi = {
         }
         return get<{ total: number; items: ArchiveGame[] }>(`/watch/archive?${params}`);
     },
-    /** «Партия дня» — одна на всех: результативная партия архива, выбранная по дате; null — архив пуст. */
+    /** "Game of the day" - one for everyone: a decisive archive game picked by date; null - the archive is empty. */
     gameOfTheDay: () => get<{ date?: string; game: ArchiveGame | null }>('/watch/game-of-the-day'),
-    /** Подборки: партии по местам, value — показатель подборки (число шахов, длина партии и т. п.). */
+    /** Collections: games by place, value - the collection's metric (number of checks, game length, etc.). */
     collections: () => get<{ collections: Record<CollectionKey, (ArchiveGame & { value: number })[]> }>('/watch/collections'),
 };

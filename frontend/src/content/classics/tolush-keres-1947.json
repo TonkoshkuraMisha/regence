@@ -637,12 +637,10 @@
   }
  ],
  "intro": {
-  "ru": "Защита Нимцовича, система 4.Qc2 с 5...c5. Чёрные сдваивают ладьи на линии «b» (24...Rfb8, 25...R3b6) и давят на ферзевый фланг.",
   "uk": "Захист Німцовича, система 4.Qc2 з 5...c5. Чорні здвоюють тури на лінії «b» (24...Rfb8, 25...R3b6) і тиснуть на ферзевий фланг.",
   "en": "A Nimzo-Indian Defence, 4.Qc2 with 5...c5. Black doubles rooks on the b-file (24...Rfb8, 25...R3b6) and presses on the queenside."
  },
  "summary": {
-  "ru": "Давление по линии «b» приносит плоды: ладья вторгается (48...Rb2+), а после ошибки 52.g5+ проходная «a» доходит до a2 (54...a2). Урок: полуоткрытая линия против пешек соперника — основа долгого плана; сдвоенные ладьи на ней создают давление, которое трудно выдержать.",
   "uk": "Тиск по лінії «b» приносить плоди: тура вторгається (48...Rb2+), а після помилки 52.g5+ прохідний «a» доходить до a2 (54...a2). Урок: напіввідкрита лінія проти пішаків суперника — основа довгого плану; здвоєні тури на ній створюють тиск, який важко витримати.",
   "en": "The pressure along the b-file bears fruit: the rook invades (48...Rb2+), and after the mistake 52.g5+ the a-pawn reaches a2 (54...a2). Lesson: a half-open file against the opponent's pawns is the basis of a long-term plan; doubled rooks on it create pressure that is hard to withstand."
  }

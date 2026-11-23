@@ -1,6 +1,6 @@
-// Курс матовых конструкций, дополнительные пути: лучший результат проверки в списке, примеры показа, «показать
-// решение», отказ сервера на ходу и при сдаче, конец набора задач, итог проверки по времени и по последней задаче.
-// Сеть — стаб fetch по адресу; ходы — двумя щелчками, как в MateCourse.test.tsx.
+// Mate patterns course, extra paths: the best test result in the list, demonstration examples, "show the
+// solution", a server refusal on a move and on submission, the end of the puzzle set, the result of the timed test and of the last puzzle.
+// The network is a fetch stub by address; moves are two clicks, as in MateCourse.test.tsx.
 
 import {act, fireEvent, render, screen, waitFor} from '@testing-library/react';
 import {MemoryRouter, Route, Routes} from 'react-router-dom';
@@ -27,7 +27,7 @@ async function play(from: string, to: string) {
 type Reply = { ok?: boolean; body: unknown };
 type Route = [RegExp, (init?: RequestInit) => Reply | unknown];
 
-/** Ответ вида {ok:false, body} — отказ сервера; всё прочее — успешный ответ с таким телом. */
+/** A reply like {ok:false, body} is a server refusal; anything else is a successful reply with that body. */
 function stub(routes: Route[]) {
     const calls: { url: string; init?: RequestInit }[] = [];
     vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
@@ -65,8 +65,8 @@ afterEach(() => {
     vi.unstubAllGlobals();
 });
 
-describe('курс матов: список и конструкция', () => {
-    it('в списке виден лучший результат итоговой проверки', async () => {
+describe('mate course: list and pattern', () => {
+    it('the best result of the final test is visible in the list', async () => {
         stub([
             [/course\/mates$/, () => ONE_TASK_OVERVIEW],
             [/learn\/progress$/, () => [{lesson_id: 'mates-exam', step: 0, steps_total: 1, completed: true, exam_score: 7, exam_total: 10}]],
@@ -76,13 +76,13 @@ describe('курс матов: список и конструкция', () => {
         await waitFor(() => expect(screen.getByText(/7/, {selector: 'p'})).toBeInTheDocument());
     });
 
-    it('сбой обзора курса — сообщение об ошибке', async () => {
+    it('a course overview failure — an error message', async () => {
         stub([[/course\/mates$/, () => ({ok: false, body: {detail: {code: 'internal_error'}}})]]);
         renderAt('/learn/mates');
         expect(await screen.findByRole('alert')).toBeInTheDocument();
     });
 
-    it('примеры показа выводятся до задач', async () => {
+    it('demonstration examples are shown before the puzzles', async () => {
         stub([
             [/course\/mates$/, () => ONE_TASK_OVERVIEW],
             [/\/demo/, () => ({theme: 'back_rank_mate', examples: [{fen: '6k1/5ppp/8/8/8/8/8/3R2K1 w - - 0 1', moves: ['d1d8'], color: 'white'}]})],
@@ -92,7 +92,7 @@ describe('курс матов: список и конструкция', () => {
         expect(screen.getByTestId('mates-start')).toBeInTheDocument();
     });
 
-    it('«Показать решение» засчитывает неудачу и рисует стрелку; конец набора — итог конструкции', async () => {
+    it('"Show solution" counts a failure and draws an arrow; the end of the set — the pattern summary', async () => {
         const calls = stub([
             [/course\/mates$/, () => ONE_TASK_OVERVIEW],
             [/\/demo/, () => ({theme: 'back_rank_mate', examples: []})],
@@ -103,16 +103,16 @@ describe('курс матов: список и конструкция', () => {
         renderAt('/learn/mates/back_rank_mate');
         fireEvent.click(await screen.findByTestId('mates-start', {}, {timeout: 5000}));
         await waitForRook();
-        fireEvent.click(await screen.findByRole('button', {name: 'Показать решение'}));
+        fireEvent.click(await screen.findByRole('button', {name: 'Show solution'}));
         expect(await screen.findByTestId('course-failed')).toBeInTheDocument();
         expect(calls.some((c) => c.url.endsWith('/11/give-up'))).toBe(true);
-        // Единственная задача набора — конструкция закрыта.
+        // The only puzzle of the set — the pattern is closed.
         expect(await screen.findByTestId('mates-finished')).toBeInTheDocument();
         const put = calls.find((c) => c.url.includes('/learn/progress/'))!;
         expect(JSON.parse(String(put.init?.body))).toMatchObject({completed: true, steps_total: 1});
     }, 20_000);
 
-    it('отказ сервера при «Показать решение» и на ходу — сообщение, задача не теряется', async () => {
+    it('a server refusal on "Show solution" and on a move — a message, the puzzle is not lost', async () => {
         stub([
             [/course\/mates$/, () => ONE_TASK_OVERVIEW],
             [/\/demo/, () => ({theme: 'back_rank_mate', examples: []})],
@@ -125,23 +125,23 @@ describe('курс матов: список и конструкция', () => {
         await waitForRook();
         await play('d2', 'd8');
         expect(await screen.findByRole('alert')).toBeInTheDocument();
-        fireEvent.click(screen.getByRole('button', {name: 'Показать решение'}));
+        fireEvent.click(screen.getByRole('button', {name: 'Show solution'}));
         await waitFor(() => expect(screen.getAllByRole('alert').length).toBeGreaterThan(0));
         expect(screen.queryByTestId('course-failed')).toBeNull();
     }, 20_000);
 });
 
-describe('курс матов: итоговая проверка', () => {
-    it('сбой загрузки плана — сообщение об ошибке', async () => {
+describe('mate course: final test', () => {
+    it('a plan loading failure — an error message', async () => {
         stub([[/course\/mates\/exam$/, () => ({ok: false, body: {detail: {code: 'internal_error'}}})]]);
         renderAt('/learn/mates/exam');
         fireEvent.click(screen.getByTestId('mates-exam-start'));
         expect(await screen.findByRole('alert')).toBeInTheDocument();
     });
 
-    it('время вышло — показан итог, результат сохранён один раз', async () => {
+    it('time is up — the result is shown, the result is saved once', async () => {
         const calls = stub([
-            // Две секунды вместо десяти минут: срок считает клиент от ответа сервера.
+            // Two seconds instead of ten minutes: the deadline is computed by the client from the server reply.
             [/course\/mates\/exam$/, () => ({minutes: 0.02, tasks: [{theme: 'back_rank_mate', index: 0}]})],
             [/course\/mates\/back_rank_mate\/0$/, () => TASK],
             [/learn\/progress\//, () => ({})],
@@ -154,7 +154,7 @@ describe('курс матов: итоговая проверка', () => {
         expect(JSON.parse(String(put.init?.body))).toMatchObject({exam_score: 0, exam_total: 1, completed: true});
     }, 20_000);
 
-    it('последняя задача решена — итог с очками и пересдача', async () => {
+    it('the last puzzle is solved — the result with points and a retake', async () => {
         stub([
             [/course\/mates\/exam$/, () => ({minutes: 10, tasks: [{theme: 'back_rank_mate', index: 0}]})],
             [/course\/mates\/back_rank_mate\/0$/, () => TASK],

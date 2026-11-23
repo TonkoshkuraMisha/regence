@@ -1,5 +1,5 @@
 # --- FILE: tests/test_time_machine.py ---
-"""«Машина времени» (таск 28.2): мастера прошлого, реестр знаменитых турниров, вход игрока в исторический состав."""
+""""Time Machine" (task 28.2): past masters, the registry of famous tournaments, a player joining a historical lineup."""
 
 import json
 
@@ -33,28 +33,28 @@ async def play(db, tournament_id: int, outcome) -> None:
         await service.record_result(db, tournament, pending[0], outcome(pending[0]))
 
 
-# --- мастера прошлого ---------------------------------------------------------------------------------------------
+# --- past masters ---------------------------------------------------------------------------------------------
 
 def test_guests_are_well_formed():
     assert len(GUESTS) == len(GUESTS_BY_ID) >= 40
-    # Имя из PGN — ключ, по которому сервер узнаёт мастера при сохранении партии: двух одинаковых быть не может.
+    # The PGN name is the key by which the server recognises the master when saving a game: there cannot be two identical ones.
     assert len({guest.pgn_name for guest in GUESTS}) == len(GUESTS)
     for guest in GUESTS:
         assert guest.id.isascii() and guest.id == guest.id.lower()
         assert guest.key == f"guest:{guest.id}"
-        # Имя в турнире — в колонке на 30 знаков; в PGN — «Фамилия, Имя» латиницей.
+        # The tournament name fits a 30-character column; in PGN it is "Surname, Name" in Latin letters.
         assert len(guest.pgn_name) <= 30 and ", " in guest.pgn_name and guest.pgn_name.isascii(), guest.pgn_name
         assert guest.config.target_elo == guest.rating and 1500 <= guest.rating <= 2500
         if guest.era is None:
-            # Годы жизни неизвестны — допустимо только для участника турнира не позже 1905 года: взрослому
-            # участнику такого турнира сейчас было бы больше 135 лет, правило 1 («давно умершие») соблюдено и так.
+            # Unknown years of life are allowed only for a participant of a tournament no later than 1905: an adult
+            # participant of such a tournament would now be over 135 years old, so rule 1 ("long deceased") holds anyway.
             assert min(event.year for event in EVENTS if guest.id in {entry.id for entry in event.field}) <= 1905, guest.id
         else:
             born, died = (int(part) for part in guest.era.split("–"))
-            assert 1750 < born < died <= 1995 and 15 <= died - born <= 100, guest.id  # правило 1: только умершие мастера
-        # Характер проходит ту же проверку, что и соперник мастерской.
+            assert 1750 < born < died <= 1995 and 15 <= died - born <= 100, guest.id  # rule 1: deceased masters only
+        # The character passes the same check as a workshop opponent.
         assert BotPersonalityConfig.model_validate_json(guest.config.model_dump_json()) == guest.config
-    # Мастер прошлого не дублирует бота с книгой и портретом.
+    # A past master does not duplicate a bot with a book and a portrait.
     assert not set(GUESTS_BY_ID) & set(BOT_METADATA)
     assert not set(GUESTS_BY_ID) & set(MASTERS_BY_ID)
 
@@ -68,7 +68,7 @@ def test_signature_openings_exist_and_are_played():
     for guest_id, (white, black) in SIGNATURE_OPENINGS.items():
         assert (white or black) and len(white) <= 3 and len(black) <= 3, guest_id
         config = GUESTS_BY_ID[guest_id].config
-        # Каждое название есть в таблице дебютов, а характер мастера ссылается на его позицию.
+        # Every name is in the openings table, and the master's character refers to its position.
         assert config.openings_white == [opening_position(name) for name in white], guest_id
         assert config.openings_black == [opening_position(name) for name in black], guest_id
         assert all(table[epd].moves for epd in (*config.openings_white, *config.openings_black))
@@ -82,7 +82,7 @@ def test_signature_openings_exist_and_are_played():
         found = PersonalityBot(GUESTS_BY_ID[guest_id].config)._book_move(board)
         return found[0].uci() if found else None
 
-    # Белыми — свой первый ход; чёрными — ответ в своём дебюте, если белые в него идут.
+    # As White - own first move; as Black - the reply in own opening, if White goes into it.
     assert book("bird") == "f2f4" and book("wyvill") == "c2c4" and book("ware") == "a2a4"
     assert book("winawer", "e2e4") == "e7e6" and book("winawer", "e2e4", "e7e6", "d2d4", "d7d5", "b1c3") == "f8b4"
     assert book("grunfeld", "d2d4") == "g8f6" and book("grunfeld", "d2d4", "g8f6", "c2c4", "g7g6", "b1c3") == "d7d5"
@@ -90,14 +90,14 @@ def test_signature_openings_exist_and_are_played():
     assert book("alapin", "e2e4", "c7c5") == "c2c3"
     assert book("kieseritzky", "e2e4", "e7e5") == "f2f4"
     assert book("owen", "e2e4") == "b7b6" and book("from", "f2f4") == "e7e5"
-    # Варианты имени самого мастера: Барнс открывает партию 1.f3, Кмох идёт на 4.f3 в защите Нимцовича.
+    # Variants of the master's own name: Barnes opens the game with 1.f3, Kmoch plays 4.f3 in the Nimzowitsch defence.
     assert book("barnes") == "f2f3" and book("barnes", "e2e4") == "f7f6"
     assert book("kmoch", "d2d4", "g8f6", "c2c4", "e7e6", "b1c3", "f8b4") == "f2f3"
     assert book("pollock", "e2e4", "e7e5", "g1f3", "b8c6", "f1b5") == "c6a5"
     assert book("rousseau", "e2e4", "e7e5", "g1f3", "b8c6", "f1c4") == "f7f5"
     assert book("hromadka", "d2d4", "g8f6", "c2c4") == "c7c5" and book("raphael", "d2d4", "f7f5") == "b1c3"
     assert book("breyer", "e2e4", "e7e5", "f2f4", "e5f4") == "d1f3"
-    # У мастера без фирменного дебюта книги нет — он играет по характеру.
+    # A master without a signature opening has no book - he plays by character.
     assert "mucklow" not in SIGNATURE_OPENINGS and book("mucklow") is None
 
 
@@ -113,14 +113,14 @@ def test_guest_plays_a_legal_move():
     assert chess.Move.from_uci(bot.choose_move(board.fen())["uci"]) in board.legal_moves
 
 
-# --- реестр турниров ----------------------------------------------------------------------------------------------
+# --- tournament registry ----------------------------------------------------------------------------------------------
 
 def test_events_are_in_order_and_complete():
     keys = [event.key for event in EVENTS]
     assert len(keys) == len(set(keys)) >= 5 and all(len(key) <= 32 and key.isascii() for key in keys)
     assert {"london_1851", "hastings_1895", "st_petersburg_1914", "new_york_1924", "avro_1938"} <= set(keys)
     assert [event.year for event in EVENTS] == sorted(event.year for event in EVENTS)
-    assert all(event.year <= 1948 for event in EVENTS)  # решение спринта: турниры до 1948 года
+    assert all(event.year <= 1948 for event in EVENTS)  # sprint decision: tournaments up to 1948
     sizes = {event.key: (len(event.field), event.format, event.cycles, event.player_games) for event in EVENTS}
     for key, expected in {
         "london_1851": (16, "knockout", 1, None),
@@ -128,31 +128,31 @@ def test_events_are_in_order_and_complete():
         "st_petersburg_1914": (11, "round_robin", 1, 11),
         "new_york_1924": (11, "round_robin", 2, 22),
         "avro_1938": (8, "round_robin", 2, 16),
-        # Четверо в шесть кругов и шестеро в четыре: у игрока по 24 партии.
+        # Four players over six rounds and six over four: the player has 24 games each.
         "st_petersburg_1895": (4, "round_robin", 6, 24),
         "new_york_1927": (6, "round_robin", 4, 24),
     }.items():
         assert sizes[key] == expected, key
     rounds = {event.key: event.rounds for event in EVENTS}
     assert (rounds["london_1851"], rounds["hastings_1895"], rounds["new_york_1924"], rounds["avro_1938"]) == (5, 23, 22, 18)
-    # Пятеро (четверо мастеров и игрок) в шесть кругов: 30 туров, в каждом один свободен.
+    # Five (four masters and the player) over six rounds: 30 rounds, one sits out in each.
     assert rounds["st_petersburg_1895"] == 30
     for event in EVENTS:
         ids = [entry.id for entry in event.field]
         assert len(ids) == len(set(ids)), event.key
         for entry in event.field:
-            spec, rating = time_machine.participant(entry.id)  # каждый участник существует как соперник
+            spec, rating = time_machine.participant(entry.id)  # every participant exists as an opponent
             assert spec.kind in ("bot", "guest") and rating > 0
-    # Каждый мастер прошлого играет хотя бы в одном турнире.
+    # Every past master plays in at least one tournament.
     assert {entry.id for event in EVENTS for entry in event.field} >= set(GUESTS_BY_ID)
 
 
 def test_real_results_match_the_sources():
     hastings = {entry.id: (entry.place, entry.score) for entry in EVENTS_BY_KEY["hastings_1895"].field}
     assert hastings["pillsbury"] == (1, 16.5) and hastings["chigorin"] == (2, 16) and hastings["lasker"] == (3, 15.5)
-    assert hastings["bardeleben"] == hastings["teichmann"] == (7, 11.5)  # делёж — одно место
+    assert hastings["bardeleben"] == hastings["teichmann"] == (7, 11.5)  # a tie - one place
     assert hastings["vergani"] == (22, 3)
-    # Круговой в один круг: сумма очков — число партий.
+    # Single round-robin: the sum of points is the number of games.
     assert sum(score for _, score in hastings.values()) == 22 * 21 / 2
     assert sum(e.score for e in EVENTS_BY_KEY["st_petersburg_1914"].field) == 11 * 10 / 2
     assert sum(e.score for e in EVENTS_BY_KEY["new_york_1924"].field) == 11 * 10
@@ -177,17 +177,17 @@ def test_every_event_has_a_consistent_real_table(event):
         return
     scores = [entry.score for entry in field]
     assert all(score is not None and score >= 0 for score in scores)
-    assert scores == sorted(scores, reverse=True)  # таблица — по убыванию очков
+    assert scores == sorted(scores, reverse=True)  # the table is by descending points
     for index, entry in enumerate(field):
-        # Место — номер первой строки с такими же очками: делёж даёт одно место на всех.
+        # The place is the number of the first row with the same points: a tie gives one place to all.
         assert entry.place == 1 + next(i for i, other in enumerate(field) if other.score == entry.score), entry.id
         assert index == 0 or entry.place >= field[index - 1].place
     games = len(field) * (len(field) - 1) // 2 * event.cycles
     if event.partial:
-        # Турнир не доиграли или ничьи не давали очков: очков заметно меньше, чем партий.
+        # The tournament was not finished or draws gave no points: noticeably fewer points than games.
         assert sum(scores) < games - 2, (event.key, sum(scores), games)
     else:
-        # Сумма очков — число партий; в старых турнирах бывала несыгранная партия без очков обоим.
+        # The sum of points is the number of games; in old tournaments there could be an unplayed game with no points for both.
         assert games - 2 <= sum(scores) <= games, (event.key, sum(scores), games)
     assert max(scores) <= (len(field) - 1) * event.cycles
 
@@ -200,7 +200,7 @@ async def test_every_event_can_be_entered(event, db_session, test_user_1):
     assert (tournament.event_key, tournament.size, len(players)) == (event.key, event.size, len(event.field) + 1)
     assert sorted(p.seat for p in players) == list(range(1, event.size + 1))
     assert sum(1 for p in players if p.kind == "user") == 1
-    # Каждый участник реестра сидит за доской: бот — по id, мастер прошлого — персоналией с ключом и характером.
+    # Every registry participant sits at a board: a bot by id, a past master as a persona with a key and a character.
     keys = {p.bot_key for p in players if p.kind != "user"}
     assert keys == {entry.id if entry.id in BOT_METADATA else f"guest:{entry.id}" for entry in event.field}
     assert all(p.config_json and p.personality_name for p in players if (p.bot_key or "").startswith("guest:"))
@@ -210,11 +210,11 @@ async def test_every_event_can_be_entered(event, db_session, test_user_1):
         assert sum(1 for g in games if mine in (g.white_seat, g.black_seat)) == event.player_games
         assert max(g.round for g in games) == event.rounds
     else:
-        assert len(games) == event.size - (2 ** (event.rounds - 1))  # матчи первого круга, остальные проходят без игры
+        assert len(games) == event.size - (2 ** (event.rounds - 1))  # first-round matches, the rest advance without playing
 
 
 def test_client_catalogs_have_names_and_texts_for_everything():
-    """Имена мастеров и тексты о турнирах — на клиенте, на трёх языках: без них на странице были бы голые ключи."""
+    """Master names and tournament texts live on the client, in three languages: without them the page would show bare keys."""
     import pathlib
     import re
 
@@ -251,21 +251,21 @@ def test_overview_lists_events_with_field_and_history(client, token_user_1):
 
 
 def test_guest_sees_the_timeline_without_history_and_cannot_enter(client, token_user_1):
-    """Лента турниров открыта гостю: турниры прошлого — содержание. История и вход в турнир — только игроку."""
+    """The tournament feed is open to a guest: past tournaments are content. History and joining are for a player only."""
     guest = client.get(f"{API}/time-machine")
     assert guest.status_code == 200
     events = guest.json()["events"]
     assert [e["key"] for e in events] == [e.key for e in EVENTS]
     assert all((e["active_id"], e["best_place"], e["played"]) == (None, None, 0) for e in events)
     assert all(e["field"] for e in events)
-    # Негодный токен — тот же гость, а не ошибка.
+    # An invalid token is the same guest, not an error.
     assert client.get(f"{API}/time-machine", headers={"Authorization": "Bearer nonsense"}).status_code == 200
     assert client.post(f"{API}/time-machine/avro_1938", json={}).status_code == 401
 
     client.post(f"{API}/time-machine/avro_1938", json={}, headers=auth(token_user_1))
     mine = client.get(f"{API}/time-machine", headers=auth(token_user_1)).json()["events"]
     assert next(e for e in mine if e["key"] == "avro_1938")["active_id"] is not None
-    # Чужая история гостю не видна.
+    # Another's history is not visible to a guest.
     again = client.get(f"{API}/time-machine").json()["events"]
     assert next(e for e in again if e["key"] == "avro_1938")["active_id"] is None
 
@@ -283,13 +283,13 @@ def test_player_joins_avro_as_the_ninth(client, token_user_1):
     assert created.status_code == 201
     t = created.json()
     assert (t["event_key"], t["format"], t["size"], t["base_time_ms"]) == ("avro_1938", "round_robin", 9, 900_000)
-    # 9 участников в два круга: 72 партии, 18 туров, у игрока 16 партий — по две с каждым.
+    # 9 participants over two rounds: 72 games, 18 rounds, the player has 16 games - two with each.
     assert len(t["games"]) == 72 and max(g["round"] for g in t["games"]) == 18
     mine = [g for g in t["games"] if t["my_seat"] in (g["white_seat"], g["black_seat"])]
     assert len(mine) == 16
     players = {p["seat"]: p for p in t["players"]}
     keres = next(p for p in t["players"] if p["bot_key"] == "guest:keres")
-    # Мастер прошлого — персоналия с характером: клиент играет с ним как с соперником мастерской.
+    # A past master is a persona with a character: the client plays against him as against a workshop opponent.
     assert keres["kind"] == "personality" and keres["personality_name"] == "Keres, Paul"
     assert keres["config"]["target_elo"] == keres["rating"] == 2400
     botvinnik = next(p for p in t["players"] if p["bot_key"] == "botvinnik")
@@ -306,14 +306,14 @@ def test_time_machine_is_never_blocked(client, token_user_1):
     regular = {"format": "round_robin", "size": 4, "base_time_ms": 300_000,
                "participants": [{"kind": "bot", "id": b} for b in ("morphy", "philidor", "staunton")]}
     assert client.post(API, headers=auth(token_user_1), json=regular).status_code == 201
-    # Решение владельца (17.11): исторические турниры не блокируются ничем — ни своим турниром, ни друг другом.
+    # Owner decision (17.11): historical tournaments are blocked by nothing - neither by an own tournament nor by each other.
     assert client.post(f"{API}/time-machine/london_1851", json={}, headers=auth(token_user_1)).status_code == 201
     assert client.post(f"{API}/time-machine/avro_1938", json={}, headers=auth(token_user_1)).status_code == 201
     assert client.post(API, headers=auth(token_user_1), json=regular).status_code == 201
 
 
 def test_regular_tournaments_cannot_invite_guests_directly(client, token_user_1):
-    # Мастера прошлого приходят только с историческим турниром: в своём турнире такого вида соперника нет.
+    # Past masters come only with a historical tournament: there is no such kind of opponent in one's own tournament.
     body = {"format": "round_robin", "size": 4, "base_time_ms": 300_000,
             "participants": [{"kind": "guest", "id": "keres"}, {"kind": "bot", "id": "morphy"}, {"kind": "bot", "id": "tal"}]}
     assert client.post(API, headers=auth(token_user_1), json=body).status_code == 422
@@ -322,10 +322,10 @@ def test_regular_tournaments_cannot_invite_guests_directly(client, token_user_1)
 async def test_london_1851_knockout_to_the_end(client, db_session, token_user_1, test_user_1):
     t = client.post(f"{API}/time-machine/london_1851", json={}, headers=auth(token_user_1)).json()
     assert (t["size"], t["format"]) == (17, "knockout")
-    # Шестнадцать мастеров и игрок: один стыковой матч двух младших по посеву, остальные начинают со второго круга.
+    # Sixteen masters and the player: one play-in match of the two lowest seeds, the rest start from the second round.
     assert len(t["games"]) == 1
     seeds = {p["seat"]: p for p in t["players"]}
-    assert seeds[1]["bot_key"] == "anderssen"  # сильнейший по силе на старте
+    assert seeds[1]["bot_key"] == "anderssen"  # the strongest by starting strength
     assert seeds[t["my_seat"]]["kind"] == "user"
 
     await play(db_session, t["id"], lambda g: "1-0" if g.white_seat < g.black_seat else "0-1")
@@ -336,7 +336,7 @@ async def test_london_1851_knockout_to_the_end(client, db_session, token_user_1,
     events = client.get(f"{API}/time-machine", headers=auth(token_user_1)).json()["events"]
     london = next(e for e in events if e["key"] == "london_1851")
     assert london["active_id"] is None and london["played"] == 1 and london["best_place"] == places[t["my_seat"]]
-    # Закончив, можно войти в тот же турнир снова.
+    # After finishing, one can join the same tournament again.
     assert client.post(f"{API}/time-machine/london_1851", json={}, headers=auth(token_user_1)).status_code == 201
 
 
@@ -344,10 +344,10 @@ async def test_guest_games_are_simulated_with_their_names(client, db_session, to
     t = client.post(f"{API}/time-machine/avro_1938", json={}, headers=auth(token_user_1)).json()
     tournament = (await db_session.execute(select(Tournament).where(Tournament.id == t["id"]))).scalar_one()
     players = {p.seat: p for p in await service.players_of(db_session, tournament.id)}
-    # Партии мастеров между собой играет сервер: в первом туре игрок занят в одной партии, остальные — ботов.
+    # The server plays the masters' games among themselves: in the first round the player is in one game, the rest are bots'.
     assert len(await service.simulatable_games(db_session, tournament)) == 3
     white = next(p for p in players.values() if p.bot_key == "guest:keres")
-    # Бот мастера прошлого собирается из его характера; в PGN — латинское имя.
+    # A past master's bot is assembled from his character; in PGN it is the Latin name.
     bot = tournament_simulation.bot_for(white)
     assert bot.config == BotPersonalityConfig.model_validate(json.loads(white.config_json))
     assert tournament_simulation._pgn_name(white) == white.personality_name

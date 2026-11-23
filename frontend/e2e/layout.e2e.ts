@@ -1,27 +1,27 @@
 /// <reference lib="dom" />
-// Вёрстка на телефоне и на широком экране, на трёх языках (таски 17.6 и 17.7): страница не прокручивается вбок, текст
-// не вылезает за экран и не обрезается в кнопках, ссылках и блоках со скрытым переполнением. Намеренное многоточие
-// (`text-overflow: ellipsis`) и блоки со своей горизонтальной прокруткой (таблицы) — не ошибка. При ошибке к отчёту
-// прикладывается снимок страницы; E2E_LAYOUT_SHOTS=1 — снимки всех страниц (для глаз).
+// Layout on a phone and on a wide screen, in both languages (tasks 17.6 and 17.7): the page does not scroll sideways, text
+// does not overflow the screen and is not clipped in buttons, links and blocks with hidden overflow. An intentional ellipsis
+// (`text-overflow: ellipsis`) and blocks with their own horizontal scroll (tables) are not errors. On failure a page
+// screenshot is attached to the report; E2E_LAYOUT_SHOTS=1 — screenshots of all pages (for the eyes).
 
 import {expect, test} from '@playwright/test';
 import type {Page, TestInfo} from '@playwright/test';
 import {API, loginNewPlayer} from './helpers.ts';
 import {languageState} from './languageState.ts';
 
-const LANGUAGES = ['ru', 'en', 'uk'] as const;
-// Телефоны — от самого узкого распространённого (360 px) до крупного (430 px, таск 24.2). Длиннее всего тексты на
-// узком экране, поэтому 360 — на всех языках; 430 — на русском, чтобы поймать то, что ломается на границе раскладки.
+const LANGUAGES = ['en', 'uk'] as const;
+// Phones — from the narrowest common one (360 px) to a large one (430 px, task 24.2). Texts are longest on the
+// narrow screen, so 360 runs in all languages; 430 in Ukrainian, to catch what breaks at the layout boundary.
 const VIEWPORTS = [
     {name: 'phone', width: 360, height: 780, languages: LANGUAGES},
-    {name: 'phone', width: 430, height: 932, languages: ['ru'] as const},
+    {name: 'phone', width: 430, height: 932, languages: ['uk'] as const},
     {name: 'wide', width: 1600, height: 900, languages: LANGUAGES},
-    // Планшет и ноутбук (17.11): между телефоном и широким экраном страницы раньше не проверялись — так шапка
-    // оказалась шире экрана на 768–1366 px. Один язык: здесь важна сама раскладка, а не длина текстов.
-    {name: 'tablet', width: 768, height: 1024, languages: ['ru'] as const},
-    {name: 'laptop', width: 1366, height: 768, languages: ['ru'] as const},
+    // Tablet and laptop (17.11): pages between the phone and the wide screen used to go unchecked — that is how the header
+    // ended up wider than the screen at 768–1366 px. One language: the layout matters here, not the text length.
+    {name: 'tablet', width: 768, height: 1024, languages: ['uk'] as const},
+    {name: 'laptop', width: 1366, height: 768, languages: ['uk'] as const},
 ];
-// Страницы без параметров и разделы, у которых есть своя первая страница.
+// Pages without parameters and the sections that have their own first page.
 const ROUTES = [
     '/', '/puzzles', '/learn', '/learn/basics', '/learn/classics', '/learn/endgames', '/learn/mates', '/train', '/tools',
     '/watch', '/guess', '/train/games', '/tournaments', '/arenas', '/conferences', '/teams', '/study', '/leaderboard', '/about', '/settings', '/moderation',
@@ -35,7 +35,7 @@ interface Problem {
     detail: string;
 }
 
-/** Проблемы вёрстки на открытой странице (выполняется в браузере). */
+/** Layout problems on the open page (runs in the browser). */
 async function findProblems(page: Page): Promise<Problem[]> {
     return page.evaluate(() => {
         const problems: { kind: 'page-scroll' | 'off-screen' | 'clipped'; text: string; detail: string }[] = [];
@@ -88,11 +88,11 @@ async function check(page: Page, testInfo: TestInfo, label: string, route: strin
 
 for (const language of LANGUAGES) {
     for (const viewport of VIEWPORTS.filter((v) => (v.languages as readonly string[]).includes(language))) {
-        test(`вёрстка: ${language}, ${viewport.name} ${viewport.width}px`, async ({page, request}, testInfo) => {
+        test(`layout: ${language}, ${viewport.name} ${viewport.width}px`, async ({page, request}, testInfo) => {
             test.setTimeout(240_000);
             await page.setViewportSize({width: viewport.width, height: viewport.height});
             const token = await loginNewPlayer(page, request, 'layout');
-            // Язык — из профиля (таск 17.7): иначе при входе он перекрыл бы язык браузера.
+            // The language comes from the profile (task 17.7): otherwise on login it would override the browser language.
             await page.request.patch(`${API}/api/v1/profile/me/settings`, {
                 data: {language}, headers: {Authorization: `Bearer ${token}`},
             });
@@ -104,9 +104,9 @@ for (const language of LANGUAGES) {
                     failures.push(...await check(page, testInfo, `${language} ${viewport.width}`, path));
                 }
             } finally {
-                // Игрок общий для прогона, а остальные сценарии написаны против русского интерфейса — вернуть язык.
+                // The player is shared by the run, and the other scenarios are written against the English interface — restore the language.
                 await page.request.patch(`${API}/api/v1/profile/me/settings`, {
-                    data: {language: 'ru'}, headers: {Authorization: `Bearer ${token}`},
+                    data: {language: 'en'}, headers: {Authorization: `Bearer ${token}`},
                 });
             }
             expect(failures).toEqual([]);
@@ -114,62 +114,62 @@ for (const language of LANGUAGES) {
     }
 }
 
-// Шапка гостя (без входа): кнопок в ней больше, чем у вошедшего игрока, а название сайта появляется только с
-// определённой ширины — на границе шапка однажды вылезла за экран (380–407 px). Основной прогон идёт со входом и
-// этого не видит, поэтому гость проверяется отдельно, по всем ширинам телефона.
-test('вёрстка: шапка гостя на телефонах 360–480 px', async ({browser}, testInfo) => {
+// The guest header (not logged in): it has more buttons than a logged-in player's, and the site name appears only from
+// a certain width — at that boundary the header once overflowed the screen (380–407 px). The main run is logged in and
+// does not see this, so the guest is checked separately, at all phone widths.
+test('layout: guest header on phones 360–480 px', async ({browser}, testInfo) => {
     const failures: string[] = [];
     for (const width of [360, 375, 380, 390, 400, 412, 420, 430, 440, 460, 480]) {
-        const context = await browser.newContext({viewport: {width, height: 800}, locale: 'ru-RU', storageState: languageState('ru')});
+        const context = await browser.newContext({viewport: {width, height: 800}, locale: 'en-US', storageState: languageState('en')});
         const page = await context.newPage();
         for (const route of ['/about', '/time-machine']) {
-            failures.push(...await check(page, testInfo, `гость ${width}`, route));
+            failures.push(...await check(page, testInfo, `guest ${width}`, route));
         }
         await context.close();
     }
     expect(failures).toEqual([]);
 });
 
-// Шапка на планшетах и ноутбуках (768–1440 px): между телефоном и широким экраном её раньше никто не проверял,
-// и она не помещалась — гостю до ~1200 px, вошедшему игроку с длинным именем до 1366 px (кнопка входа и меню
-// профиля уезжали за экран, страница прокручивалась вбок). Теперь на этих ширинах в меню — значки с подсказками,
-// подписи появляются с 1360 px (у вошедшего игрока самая длинная — с 1500 px). Шрифт интерфейса системный: в
-// сборке для CI (Linux) он шире, чем на Windows, поэтому пороги подобраны по широкому шрифту, а этот тест —
-// их настоящая проверка. Гость и вошедший игрок проверяются отдельно: состав шапки у них разный.
-// 640–720 px — граница, где у вошедшего игрока появляются имя и название сайта.
+// The header on tablets and laptops (768–1440 px): nobody used to check it between the phone and the wide screen,
+// and it did not fit — for a guest up to ~1200 px, for a logged-in player with a long name up to 1366 px (the login button and the profile
+// menu went off the screen, the page scrolled sideways). Now at these widths the menu shows icons with tooltips,
+// labels appear from 1360 px (for a logged-in player the longest one from 1500 px). The interface font is the system one: in
+// the CI build (Linux) it is wider than on Windows, so the thresholds are tuned to the wide font, and this test is
+// their real check. The guest and the logged-in player are checked separately: their headers have different contents.
+// 640–720 px is the boundary where the name and the site name appear for a logged-in player.
 const HEADER_WIDTHS = [640, 700, 720, 768, 820, 1024, 1180, 1280, 1340, 1360, 1366, 1440, 1500, 1536];
 
-test('вёрстка: шапка гостя на планшетах и ноутбуках 640–1440 px', async ({browser}, testInfo) => {
+test('layout: guest header on tablets and laptops 640–1440 px', async ({browser}, testInfo) => {
     test.setTimeout(240_000);
     const failures: string[] = [];
-    for (const [locale, language] of [['ru-RU', 'ru'], ['en-US', 'en'], ['uk-UA', 'uk']] as const) {
+    for (const [locale, language] of [['en-US', 'en'], ['uk-UA', 'uk']] as const) {
         for (const width of HEADER_WIDTHS) {
             const context = await browser.newContext({viewport: {width, height: 800}, locale, storageState: languageState(language)});
             const page = await context.newPage();
-            failures.push(...await check(page, testInfo, `гость ${locale} ${width}`, '/about'));
+            failures.push(...await check(page, testInfo, `guest ${locale} ${width}`, '/about'));
             await context.close();
         }
     }
     expect(failures).toEqual([]);
 });
 
-test('вёрстка: шапка вошедшего игрока на планшетах и ноутбуках 640–1440 px', async ({page, request}, testInfo) => {
+test('layout: logged-in player header on tablets and laptops 640–1440 px', async ({page, request}, testInfo) => {
     test.setTimeout(240_000);
     const token = await loginNewPlayer(page, request, 'layout');
     const failures: string[] = [];
     try {
-        for (const language of ['en', 'ru']) {
+        for (const language of ['en', 'uk']) {
             await page.request.patch(`${API}/api/v1/profile/me/settings`, {
                 data: {language}, headers: {Authorization: `Bearer ${token}`},
             });
             for (const width of HEADER_WIDTHS) {
                 await page.setViewportSize({width, height: 800});
-                failures.push(...await check(page, testInfo, `игрок ${language} ${width}`, '/about'));
+                failures.push(...await check(page, testInfo, `player ${language} ${width}`, '/about'));
             }
         }
     } finally {
         await page.request.patch(`${API}/api/v1/profile/me/settings`, {
-            data: {language: 'ru'}, headers: {Authorization: `Bearer ${token}`},
+            data: {language: 'en'}, headers: {Authorization: `Bearer ${token}`},
         });
     }
     expect(failures).toEqual([]);

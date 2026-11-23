@@ -1,26 +1,29 @@
 # --- FILE: src/services/conferences.py ---
 """
-Конференции (таск 33.6, docs/research/arenas.md §9): командное соревнование поверх общего пула арен.
+Conferences (task 33.6, docs/research/arenas.md section 9): a team competition on top of the common arena pool.
 
-Пять конференций названы по сторонам света от Украины; каждая страна мира — ровно в одной (таблица COUNTRIES ниже,
-ключи конференций — те же, что у расписания: arena_schedule.CONFERENCE_ZONES). Пары в аренах по-прежнему создаются
-по силе со всего мира, но каждое очко игрока идёт и в зачёт его конференции.
+The five conferences are named by compass direction from Ukraine; every country in the world is in exactly one (the COUNTRIES
+table below,
+conference keys are the same as in the schedule: arena_schedule.CONFERENCE_ZONES). Pairings in arenas are still created
+by strength from the whole world, but every player's point also counts towards their conference.
 
-Откуда берутся данные:
+Where the data comes from:
 
-* принадлежность — страна в профиле игрока (users.country, двухбуквенный код ISO 3166-1; выбирает сам игрок).
-  По адресу в сети страна только предлагается: её может назвать прокси перед сервером в заголовке
-  (настройка COUNTRY_HEADER, например «CF-IPCountry»); сам сервер адреса со странами не сопоставляет и ничего об
-  этом не хранит. Без страны — без конференции: игрок играет, но очков конференции не приносит;
-* смена конференции — не чаще одного раза за сезон (сезон — календарный месяц UTC, как в лиге команд), чтобы нельзя
-  было перейти в выигрывающую. Первый выбор сменой не считается; смена страны внутри той же конференции свободна;
-  убрать страну можно всегда (это личные данные), но это тоже расходует смену сезона (users.country_season);
-* зачёт арены — конференция игрока запоминается при входе в арену (arena_players.conference), поэтому поздняя смена
-  страны итогов не переписывает. Очки конференции в арене — сумма очков её TOP_PLAYERS лучших участников (чтобы
-  большая аудитория не выигрывала числом);
-* Кубок конференций — сумма зачётов всех арен, начавшихся в сезоне; считается из arena_players при запросе;
-* матчи конференций (формат арены "match", правила — conference_match_rules.py) — список matches: матчи сезона и
-  ближайшие, со счётом сторон из arena_players.
+* membership -- the country in the player's profile (users.country, a two-letter ISO 3166-1 code; chosen by the player).
+  A country is only suggested from the network address: a proxy in front of the server may name it in a header
+  (the COUNTRY_HEADER setting, for example "CF-IPCountry"); the server itself does not map addresses to countries and stores
+  nothing
+  about this. No country -- no conference: the player plays but brings no conference points;
+* changing conference -- at most once per season (a season is a calendar month UTC, as in the team league), so that one cannot
+  move to the winning one. The first choice does not count as a change; changing country within the same conference is free;
+  the country can always be removed (it is personal data), but that also uses up the season's change (users.country_season);
+* arena standings -- the player's conference is remembered on entering the arena (arena_players.conference), so a late change
+  of country does not rewrite results. A conference's points in an arena are the sum of the points of its TOP_PLAYERS best
+  participants (so that
+  a large audience does not win by numbers);
+* Conference Cup -- the sum of the standings of all arenas started in the season; computed from arena_players on request;
+* conference matches (arena format "match", rules in conference_match_rules.py) -- the matches list: matches of the season and
+  upcoming ones, with the sides' scores from arena_players.
 """
 
 from collections import defaultdict
@@ -37,22 +40,23 @@ from src.models.user import User
 from src.services.arena_schedule import CONFERENCE_ZONES
 from src.services.league import season_bounds
 
-# Сколько лучших участников конференции идёт в её зачёт одной арены.
+# How many of a conference's best participants count towards its standing in one arena.
 TOP_PLAYERS = 10
 
-# Страны по конференциям — 250 кодов (ISO 3166-1 alpha-2 и XK — Косово, у которого официального кода нет), каждый
-# код встречается один раз. Правило из решения
-# владельца: Центральная — Украина и соседи до Балтии и Кавказа; Западная — запад Европы и обе Америки; Северная —
-# Германия, Британия, Скандинавия; Южная — Италия, Балканы, Турция, Ближний Восток и вся Африка; Восточная — Россия,
-# Беларусь, вся остальная Азия, Австралия и Океания. Малые государства и территории — по ближайшему соседу.
+# Countries by conference -- 250 codes (ISO 3166-1 alpha-2 plus XK, Kosovo, which has no official code), each
+# code appears once. The rule comes from the owner's decision:
+# Central -- Ukraine and its neighbours up to the Baltics and the Caucasus; Western -- western Europe and both Americas;
+# Northern --
+# Germany, Britain, Scandinavia; Southern -- Italy, the Balkans, Turkey, the Middle East and all of Africa; Eastern -- Russia,
+# Belarus, the rest of Asia, Australia and Oceania. Small states and territories go with the nearest neighbour.
 COUNTRIES: dict[str, tuple[str, ...]] = {
     "central": (
         "UA", "PL", "MD", "RO", "SK", "CZ", "HU", "LT", "LV", "EE", "GE", "AM", "AZ",
     ),
     "western": (
-        # Европа
+        # Europe
         "FR", "ES", "PT", "BE", "NL", "LU", "CH", "AT", "AD", "MC", "LI", "GI",
-        # Северная, Центральная и Южная Америка, Карибы
+        # North, Central and South America, the Caribbean
         "AI", "AG", "AR", "AW", "BS", "BB", "BZ", "BM", "BO", "BQ", "BR", "VG", "CA", "KY", "CL", "CO", "CR", "CU",
         "CW", "DM", "DO", "EC", "SV", "FK", "GF", "GD", "GP", "GT", "GY", "HT", "HN", "JM", "MQ", "MX", "MS", "NI",
         "PA", "PY", "PE", "PR", "BL", "KN", "LC", "MF", "PM", "VC", "SX", "SR", "TT", "TC", "US", "UY", "VE", "VI",
@@ -62,50 +66,51 @@ COUNTRIES: dict[str, tuple[str, ...]] = {
         "DE", "GB", "IE", "DK", "NO", "SE", "FI", "IS", "FO", "AX", "SJ", "IM", "JE", "GG",
     ),
     "southern": (
-        # Европа
+        # Europe
         "IT", "GR", "AL", "BA", "HR", "ME", "MK", "RS", "SI", "XK", "BG", "SM", "VA", "MT",
-        # Турция, Кипр, Ближний Восток
+        # Turkey, Cyprus, the Middle East
         "TR", "CY", "SY", "LB", "IL", "PS", "JO", "IQ", "IR", "SA", "YE", "OM", "AE", "QA", "BH", "KW",
-        # Африка
+        # Africa
         "DZ", "AO", "BJ", "BW", "BF", "BI", "CV", "CM", "CF", "TD", "KM", "CG", "CD", "CI", "DJ", "EG", "GQ", "ER",
         "SZ", "ET", "GA", "GM", "GH", "GN", "GW", "KE", "LS", "LR", "LY", "MG", "MW", "ML", "MR", "MU", "YT", "MA",
         "MZ", "NA", "NE", "NG", "RE", "RW", "SH", "ST", "SN", "SC", "SL", "SO", "ZA", "SS", "SD", "TZ", "TG", "TN",
         "UG", "EH", "ZM", "ZW", "IO", "TF",
-        # Антарктида
+        # Antarctica
         "AQ",
     ),
     "eastern": (
         "RU", "BY",
-        # Центральная и Южная Азия
+        # Central and South Asia
         "KZ", "UZ", "TM", "KG", "TJ", "IN", "PK", "BD", "LK", "NP", "BT", "MV", "AF",
-        # Восточная и Юго-Восточная Азия
+        # East and Southeast Asia
         "CN", "JP", "KR", "KP", "MN", "TW", "HK", "MO", "TH", "VN", "LA", "KH", "MM", "MY", "SG", "ID", "PH", "BN",
         "TL",
-        # Австралия и Океания
+        # Australia and Oceania
         "AU", "NZ", "PG", "FJ", "SB", "VU", "NC", "PF", "WS", "TO", "TV", "KI", "NR", "PW", "FM", "MH", "GU", "MP",
         "AS", "CK", "NU", "TK", "WF", "PN", "NF", "CX", "CC", "HM", "UM",
     ),
 }
-# Обратная таблица: код страны → ключ конференции.
+# Reverse table: country code -> conference key.
 CONFERENCE_OF: dict[str, str] = {code: key for key, codes in COUNTRIES.items() for code in codes}
-# Конференции таблицы стран и расписания арен должны совпадать: расхождение — ошибка в одном из двух модулей.
+# The conferences of the country table and of the arena schedule must match: a mismatch is an error in one of the two modules.
 assert set(COUNTRIES) == set(CONFERENCE_ZONES), "conference keys differ between the country table and the schedule"
 
 
 def conference_of(country: str | None) -> str | None:
-    """Конференция страны; без страны или с незнакомым кодом — None."""
+    """The country's conference; with no country or an unknown code -- None."""
     return CONFERENCE_OF.get((country or "").upper())
 
 
 def current_season(now: datetime | None = None) -> str:
-    """Ключ текущего сезона «ГГГГ-ММ» (календарный месяц UTC, league.season_bounds)."""
+    """Key of the current season "YYYY-MM" (calendar month UTC, league.season_bounds)."""
     return season_bounds(None, now)[0]
 
 
 def membership(user: User, now: datetime | None = None) -> dict:
     """
-    Страна и конференция игрока и можно ли сейчас сменить конференцию (одна смена за сезон): смена доступна, пока
-    в users.country_season не записан текущий сезон.
+    The player's country and conference and whether the conference can be changed now (one change per season): a change is
+    available while
+    users.country_season does not hold the current season.
     """
     return {"country": user.country, "conference": conference_of(user.country),
             "can_change": user.country_season != current_season(now)}
@@ -113,10 +118,12 @@ def membership(user: User, now: datetime | None = None) -> dict:
 
 async def set_country(db: AsyncSession, user: User, country: str | None, now: datetime | None = None) -> dict:
     """
-    Страна в профиле. Первый выбор и смена страны внутри той же конференции — свободно; смена конференции (в том
-    числе выход из неё) — раз в сезон: вторая попытка в том же сезоне — отказ country_change_too_soon. Убрать страну
-    можно всегда, но это расходует смену сезона. Код страны не из таблицы COUNTRIES — отказ country_unknown.
-    Возвращает membership.
+    The country in the profile. The first choice and a change of country within the same conference are free; changing
+    conference (including
+    leaving it) is once per season: a second attempt in the same season is refused with country_change_too_soon. The country
+    can be removed
+    at any time, but that uses up the season's change. A country code not in COUNTRIES is refused with country_unknown.
+    Returns membership.
     """
     code = country.upper() if country else None
     if code is not None and code not in CONFERENCE_OF:
@@ -134,7 +141,7 @@ async def set_country(db: AsyncSession, user: User, country: str | None, now: da
 
 
 def suggested_country(headers: Mapping[str, str]) -> str | None:
-    """Страна, которую назвал прокси перед сервером (заголовок из настройки COUNTRY_HEADER), — только как подсказка."""
+    """The country named by a proxy in front of the server (header from the COUNTRY_HEADER setting) -- only as a hint."""
     name = settings.COUNTRY_HEADER
     code = (headers.get(name) or "").strip().upper() if name else ""
     return code if code in CONFERENCE_OF else None
@@ -142,9 +149,11 @@ def suggested_country(headers: Mapping[str, str]) -> str | None:
 
 def team_scores(rows: Iterable[tuple[str | None, int]]) -> list[dict]:
     """
-    Зачёт конференций одной арены по парам (конференция игрока, его очки): сумма TOP_PLAYERS лучших. Возвращает
-    строки {"conference", "score", "counted", "players"} — по убыванию очков (при равенстве — в порядке таблицы
-    COUNTRIES); конференции без участников нет. counted — сколько игроков вошло в сумму, players — сколько играло.
+    Conference standings of one arena from pairs (the player's conference, their points): the sum of the TOP_PLAYERS best.
+    Returns
+    rows {"conference", "score", "counted", "players"} -- by descending score (ties -- in the order of the
+    COUNTRIES table); a conference with no participants is absent. counted -- how many players entered the sum, players --
+    how many played.
     """
     by_conference: dict[str, list[int]] = defaultdict(list)
     for conference, score in rows:
@@ -159,7 +168,7 @@ def team_scores(rows: Iterable[tuple[str | None, int]]) -> list[dict]:
 
 
 async def arena_table(db: AsyncSession, arena_id: int) -> list[dict]:
-    """Зачёт конференций арены — по конференциям, запомненным у участников при входе."""
+    """Arena conference standings -- by the conferences remembered for participants at entry."""
     rows = (await db.execute(select(ArenaPlayer.conference, ArenaPlayer.score).where(
         ArenaPlayer.arena_id == arena_id, ArenaPlayer.conference.is_not(None)))).all()
     return team_scores((conference, score) for conference, score in rows)
@@ -167,9 +176,10 @@ async def arena_table(db: AsyncSession, arena_id: int) -> list[dict]:
 
 async def cup(db: AsyncSession, season: str | None = None, now: datetime | None = None) -> dict:
     """
-    Кубок конференций за сезон: сумма зачётов арен (и швейцарок), начавшихся в этом месяце. В таблице всегда все пять
-    конференций: {"conference", "score", "arenas"} — arenas: в скольких аренах конференция набрала очки. Берутся
-    участники с очками больше нуля; каждое деление арены — отдельная запись arenas и считается отдельно.
+    Conference Cup for a season: the sum of arena (and Swiss) standings that started in this month. The table always has all
+    five
+    conferences: {"conference", "score", "arenas"} -- arenas: in how many arenas the conference scored. Participants
+    with points above zero are taken; each arena division is a separate arenas entry and is counted separately.
     """
     key, start, end = season_bounds(season, now)
     rows = (await db.execute(
@@ -196,8 +206,8 @@ async def cup(db: AsyncSession, season: str | None = None, now: datetime | None 
 
 async def matches(db: AsyncSession, season: str | None = None, now: datetime | None = None) -> list[dict]:
     """
-    Матчи конференций сезона и ещё не начавшиеся: {"arena_id", "home", "guest", "starts_at", "status", "home_score",
-    "guest_score", "players"} по порядку начала. Счёт — очки арены сторон в единицах матча (победа 1, ничья ½).
+    Conference matches of the season and not yet started: {"arena_id", "home", "guest", "starts_at", "status", "home_score",
+    "guest_score", "players"} in start order. Score -- the sides' arena points in match units (win 1, draw 1/2).
     """
     from src.services import arena as arena_service
     from src.services import conference_match_rules as match_rules

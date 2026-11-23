@@ -1,10 +1,10 @@
 // --- FILE: frontend/src/components/social/TranslationHelper.tsx ---
-// Режим «помощник перевода» (таск 17.7): кнопка «Предложить исправление текста» в углу экрана. После неё игрок
-// нажимает на любой текст интерфейса — по тексту находится ключ каталога (i18n/catalogIndex.ts), игрок пишет свой
-// вариант, предложение уходит в очередь модерации (17.4) с ключом, языком и страницей.
-// Данные: включение — настройка профиля (services/profileSettings.ts, useSyncExternalStore); предложение уходит через
-// moderationApi.suggestTranslation (services/moderation.ts) и попадает в очередь модератора вида translation. Рисуется
-// в App.tsx поверх всех страниц; свои элементы помечает атрибутом data-translation-helper, чтобы не выбирать их самих.
+// "Translation helper" mode (task 17.7): a "Suggest a text correction" button in the screen corner. After pressing it the player
+// clicks any interface text - the catalogue key is found by the text (i18n/catalogIndex.ts), the player writes their own
+// variant, and the suggestion goes to the moderation queue (17.4) with the key, language and page.
+// Data: enabling - a profile setting (services/profileSettings.ts, useSyncExternalStore); the suggestion goes through
+// moderationApi.suggestTranslation (services/moderation.ts) and lands in the moderator queue of kind translation. Rendered
+// in App.tsx above all pages; marks its own elements with the data-translation-helper attribute so they are not picked themselves.
 
 import {useEffect, useState, useSyncExternalStore} from 'react';
 import {useLocation} from 'react-router-dom';
@@ -19,13 +19,13 @@ import {moderationApi} from '../../services/moderation';
 import {isTranslationHelperOn, subscribeTranslationHelper} from '../../services/profileSettings';
 import {MODERATION_TEXT_MAX} from '../../config/textLimits';
 
-// Выбранный текст: то, что показано на экране, и ключи каталога, где такой текст найден (может быть несколько или ни одного).
+// Selected text: what is shown on screen and the catalogue keys where such text was found (there may be several or none).
 interface Picked {
     shown: string;
     keys: string[];
 }
 
-/** Плавающая кнопка и форма предложения: перехватывает следующий клик по странице, находит ключ каталога и отправляет вариант игрока. */
+/** Floating button and suggestion form: intercepts the next click on the page, finds the catalogue key and submits the player's variant. */
 export function TranslationHelper() {
     const on = useSyncExternalStore(subscribeTranslationHelper, isTranslationHelperOn, isTranslationHelperOn);
     const {t, language} = useI18n();

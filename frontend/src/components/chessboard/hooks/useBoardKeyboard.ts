@@ -1,17 +1,17 @@
 // --- FILE: frontend/src/components/chessboard/hooks/useBoardKeyboard.ts ---
-// Доска с клавиатуры (таск 26.3): клетки — кнопки, в порядок Tab входит одна клетка (keySquare: последняя, на которой
-// был фокус, иначе левая верхняя на экране), стрелки переводят фокус по экрану (у перевёрнутой доски — тоже по экрану,
-// stepSquare из services/a11y/speech.ts), Enter или пробел — то же, что щелчок по клетке. Подпись клетки («e4, белый
-// конь») доска ставит сама — squareLabel. Общий для главной доски (Chessboard.tsx) и доски задач и тренажёров
-// (puzzles/PuzzleBoard.tsx). Сети и данных нет.
+// Board from the keyboard (task 26.3): squares are buttons, one square enters the Tab order (keySquare: the last one that
+// had focus, otherwise the top-left on screen), arrows move focus across the screen (for a flipped board too, by screen,
+// stepSquare from services/a11y/speech.ts), Enter or Space does the same as a click on a square. The square label ("e4, white
+// knight") is set by the board itself, squareLabel. Shared by the main board (Chessboard.tsx) and the puzzle and trainer board
+// (puzzles/PuzzleBoard.tsx). No network or data.
 
 import {useRef, useState} from 'react';
 import type {KeyboardEvent as ReactKeyboardEvent} from 'react';
 import {stepSquare} from '../../../services/a11y/speech';
 
 /**
- * Клавиатура доски: firstSquare — клетка, с которой начинается Tab, если фокуса на доске ещё не было; flipped — доска
- * перевёрнута; activate — действие Enter/пробела (как щелчок). Возвращает свойства клетки для разметки.
+ * Board keyboard: firstSquare is the square Tab starts from if the board has not had focus yet; flipped means the board
+ * is flipped; activate is the Enter/Space action (like a click). Returns the square properties for the markup.
  */
 export function useBoardKeyboard(firstSquare: string, flipped: boolean, activate: (square: string) => void) {
     const [focused, setFocused] = useState<string | null>(null);
@@ -33,7 +33,7 @@ export function useBoardKeyboard(firstSquare: string, flipped: boolean, activate
         refs.current[next]?.focus();
     };
 
-    /** Свойства клетки-кнопки: ссылка для фокуса, роль, место в порядке Tab и обработчики клавиш и фокуса. */
+    /** Properties of a button square: a ref for focus, role, position in the Tab order, and key and focus handlers. */
     const squareProps = (square: string) => ({
         ref: (element: HTMLElement | null) => {
             refs.current[square] = element;

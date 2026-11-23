@@ -1,12 +1,12 @@
 # --- FILE: src/models/position.py ---
 """
-Индекс позиций (таск 16.1): статистика ходов из позиции и партии, через которые позиция проходила. Позиция — хэш
-Zobrist (python-chess, 64 бита; в базе — со знаком, чтобы влезть в BIGINT). Глубина индекса — первые
-position_index.MAX_PLIES полуходов партии. Сборка — src/services/position_index.py.
+The position index (task 16.1): move statistics from a position and the games that passed through the position. A position is a
+Zobrist hash (python-chess, 64 bits; signed in the database to fit into BIGINT). The index depth is the first
+position_index.MAX_PLIES plies of a game. Built by src/services/position_index.py.
 
-Первичные ключи — естественные (ревизия базы 29.1, находка 1; миграция c9a4e7d2f5b8): суррогатного id нет, им никто
-не пользовался, а на индекс позиций приходится около двух третей базы. Ключ (position_hash, …) — он же индекс для
-поиска по позиции.
+The primary keys are natural (database audit 29.1, finding 1; migration c9a4e7d2f5b8): there is no surrogate id, nobody
+used it, and the position index takes about two thirds of the database. The key (position_hash, ...) is also the index for
+search by position.
 """
 
 from sqlalchemy import BigInteger, ForeignKey, Integer, String
@@ -17,8 +17,8 @@ from src.models.base import Base
 
 class PositionStat(Base):
     """
-    Статистика одного хода из позиции: сколько партий через него прошло и чем они закончились (победы белых, ничьи,
-    победы чёрных). Ключ — (позиция, ход).
+    Statistics of one move from a position: how many games went through it and how they ended (White wins, draws,
+    Black wins). The key is (position, move).
     """
     __tablename__ = "position_stats"
 
@@ -31,8 +31,8 @@ class PositionStat(Base):
 
 class PositionGame(Base):
     """
-    Партия, прошедшая через позицию: один раз на партию, даже если позиция повторялась (ply — первый полуход, на
-    котором она встретилась). Ключ — (позиция, партия).
+    A game that passed through a position: once per game, even if the position repeated (ply is the first ply at
+    which it occurred). The key is (position, game).
     """
     __tablename__ = "position_games"
 
@@ -43,9 +43,10 @@ class PositionGame(Base):
 
 class PositionLibraryGame(Base):
     """
-    Партия библиотеки, прошедшая через позицию (8б): примеры под позицией в справочнике дебютов. В статистику ходов
-    (position_stats) партии библиотеки не попадают — многие из них есть и в архиве чемпионов, и одна партия
-    посчиталась бы дважды. Ключ — (позиция, партия библиотеки); ply — первый полуход, на котором позиция встретилась.
+    A library game that passed through a position (8b): examples under the position in the opening explorer. Library games do
+    not enter the move statistics
+    (position_stats) - many of them are in the champions archive too, and one game
+    would be counted twice. The key is (position, library game); ply is the first ply at which the position occurred.
     """
     __tablename__ = "position_library_games"
 

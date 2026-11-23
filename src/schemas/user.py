@@ -1,9 +1,10 @@
 """
-Формат регистрации и ответа с данными игрока, правила имени.
+The format of registration and of a response with a player's data, the name rules.
 
-Имя: от USERNAME_MIN_LENGTH до USERNAME_MAX_LENGTH знаков, только буквы латиницы или кириллицы, цифры, «_» и
-«-»; смешивать алфавиты нельзя (иначе «Мorphy» с кириллической М выглядел бы как чужое имя). Сравнение имён без
-учёта регистра — username_key. Зарезервированные имена (маршруты, боты, чемпионы) проверяет src/api/auth.py.
+The name: from USERNAME_MIN_LENGTH to USERNAME_MAX_LENGTH characters, only Latin or Cyrillic letters, digits, "_" and
+"-"; mixing alphabets is not allowed (otherwise "Morphy" with a Cyrillic first letter would look like a foreign name). Names
+are compared
+case-insensitively - username_key. Reserved names (routes, bots, champions) are checked by src/api/auth.py.
 """
 
 import re
@@ -16,23 +17,26 @@ from src.services.onboarding import Experience, StrengthBand
 
 USERNAME_MIN_LENGTH = 3
 USERNAME_MAX_LENGTH = 30
-_USERNAME_RE = re.compile(r"[A-Za-z0-9А-Яа-яЁё_-]+")
+# Ukrainian Cyrillic letters by code point (escapes keep the source free of Cyrillic): A-Shch, soft sign, Yu, Ya, Ye,
+# I, Yi, Ghe-with-upturn and their lowercase forms. Russian-only letters (yo, hard sign, yery, e) are not allowed.
+_UK_LETTERS = "\u0410-\u0429\u042c\u042e\u042f\u0404\u0406\u0407\u0490\u0430-\u0449\u044c\u044e\u044f\u0454\u0456\u0457\u0491"
+_USERNAME_RE = re.compile(rf"[A-Za-z0-9{_UK_LETTERS}_-]+")
 _LATIN_RE = re.compile(r"[A-Za-z]")
-_CYRILLIC_RE = re.compile(r"[А-Яа-яЁё]")
+_CYRILLIC_RE = re.compile(rf"[{_UK_LETTERS}]")
 
 
 def username_key(username: str) -> str:
-    """Ключ для сравнения имён без учёта регистра (casefold); хранится в users.username_key и уникален в базе."""
+    """A key for comparing names case-insensitively (casefold); stored in users.username_key and unique in the database."""
     return username.strip().casefold()
 
 
 def validate_username(value: str) -> str:
     """
-    Правила имени при регистрации. Белый список символов отсекает пробелы, невидимые и
-    управляющие символы, а запрет смешивать алфавиты — подделки вида «Мorphy» (кириллическая М).
-    Имя должно содержать хотя бы одну букву. Нарушение — ошибка проверки с кодом из src/core/errors.py
-    (username_invalid_chars, username_mixed_scripts, username_no_letters). Те же правила — у имён соперников
-    мастерской (src/api/personalities.py).
+    The name rules at registration. A whitelist of characters cuts off spaces, invisible and
+    control characters, and the ban on mixing alphabets - forgeries like "Morphy" with a Cyrillic first letter.
+    The name must contain at least one letter. A violation is a validation error with a code from src/core/errors.py
+    (username_invalid_chars, username_mixed_scripts, username_no_letters). The same rules apply to the names of workshop
+    opponents (src/api/personalities.py).
     """
     if not _USERNAME_RE.fullmatch(value):
         raise validation_error("username_invalid_chars")
@@ -43,25 +47,25 @@ def validate_username(value: str) -> str:
     return value
 
 
-# Длина пароля (регистрация, смена и сброс — src/api/auth.py, src/api/account.py): не короче 8 знаков; верхняя
-# граница — чтобы не хэшировать мегабайтные «пароли» (bcrypt всё равно учитывает 72 байта). Клиент проверяет
-# нижнюю заранее — frontend/src/config/passwordRules.ts.
+# The password length (registration, change and reset - src/api/auth.py, src/api/account.py): at least 8 characters; the upper
+# bound is so as not to hash megabyte-long "passwords" (bcrypt only takes 72 bytes into account anyway). The client checks
+# the lower one in advance - frontend/src/config/passwordRules.ts.
 PASSWORD_MIN_LENGTH = 8
 PASSWORD_MAX_LENGTH = 128
 
 
 class UserCreate(BaseModel):
-    """Данные регистрации (POST /auth/register): имя, пароль и необязательные ответы и код-приглашение."""
+    """Registration data (POST /auth/register): the name, the password and optional answers and an invite code."""
     username: str = Field(
         ..., min_length=USERNAME_MIN_LENGTH, max_length=USERNAME_MAX_LENGTH, description="Unique username",
     )
     password: str = Field(..., min_length=PASSWORD_MIN_LENGTH, max_length=PASSWORD_MAX_LENGTH, description="Strong password")
-    # Первый вход (таск 17.8): необязательные ответы для стартового рейтинга (src/services/onboarding.py).
+    # The first login (task 17.8): optional answers for the starting rating (src/services/onboarding.py).
     experience: Experience | None = None
     strength: StrengthBand | None = None
-    # Код-приглашение (таск 24.4): обязателен при закрытой регистрации (REGISTRATION_INVITE_ONLY).
+    # An invite code (task 24.4): required when registration is closed (REGISTRATION_INVITE_ONLY).
     invite_code: str | None = Field(None, max_length=64)
-    # Согласие с условиями (таск 23.1): обязательно при REQUIRE_TERMS_CONSENT, иначе 400 terms_not_accepted.
+    # Consent to the terms (task 23.1): required with REQUIRE_TERMS_CONSENT, otherwise 400 terms_not_accepted.
     accept_terms: bool = False
 
     @field_validator("username")
@@ -72,8 +76,8 @@ class UserCreate(BaseModel):
 
 class UserResponse(BaseModel):
     """
-    Ответ регистрации — данные только что созданного игрока. Хэша пароля и числового фактора доверия
-    (users.trust_factor) в нём нет; флаг is_cheater игрок о себе видит.
+    The registration response - the data of the just created player. The password hash and the numeric trust factor
+    (users.trust_factor) are not in it; the is_cheater flag is visible to the player about themselves.
     """
     id: int
     username: str
@@ -84,5 +88,5 @@ class UserResponse(BaseModel):
     is_cheater: bool
     created_at: datetime
 
-    # from_attributes: ответ собирается прямо из объекта модели User.
+    # from_attributes: the response is assembled directly from the User model object.
     model_config = ConfigDict(from_attributes=True)

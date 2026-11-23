@@ -1,10 +1,10 @@
 // --- FILE: frontend/src/components/trainers/StructureQuiz.tsx ---
-// «Узнай структуру» (таск 27.9, тренажёр 19.1): позиция из партии библиотеки (или учебный скелет) → название пешечной
-// структуры из четырёх. После ответа — ссылка на партию, из которой взята позиция, и свободная доска: позицию можно
-// разыграть за обе стороны (решение владельца 18.11, usePositionExplorer; учебный скелет без королей chess.js не
-// примет — тогда доска просто остаётся показом).
-// Данные: GET /library/structure-quiz (services/library.ts → src/api/library.py, src/services/structure_quiz.py); названия — каталог structures.*,
-// планы — structurePlans.*. Запускается из TrainersPage.tsx (тренажёры structure_quiz и plan_quiz); 10 очков за верный ответ.
+// "Recognise the structure" (task 27.9, trainer 19.1): a position from a library game (or a teaching skeleton) -> the name of the pawn
+// structure out of four. After the answer - a link to the game the position was taken from, and a free board: the position can be
+// played out for both sides (owner decision 18.11, usePositionExplorer; a teaching skeleton without kings is not accepted by chess.js -
+// then the board simply remains a display).
+// Data: GET /library/structure-quiz (services/library.ts -> src/api/library.py, src/services/structure_quiz.py); names - the structures.* catalogue,
+// plans - structurePlans.*. Launched from TrainersPage.tsx (trainers structure_quiz and plan_quiz); 10 points for a correct answer.
 
 import {useEffect, useState} from 'react';
 import {Link} from 'react-router-dom';
@@ -14,18 +14,18 @@ import {ExplorerControls, usePositionExplorer} from '../puzzles/usePositionExplo
 import {libraryApi} from '../../services/library';
 import type {StructureCode, StructureQuestion} from '../../services/library';
 
-/** Вопросов в попытке; уходит серверу как count. */
+/** Questions per attempt; goes to the server as count. */
 export const STRUCTURE_ROUNDS = 10;
 
-/** Свойства игры: seed, onFinish(очки, ошибки) и вариант вопроса. */
+/** Game props: seed, onFinish(score, mistakes) and the question variant. */
 interface Props {
     seed: number;
     onFinish: (score: number, mistakes: number) => void;
-    /** «Найди план» (27.9): варианты — типовые планы структур, а не их названия. */
+    /** "Find the plan" (27.9): the options are typical structure plans, not their names. */
     variant?: 'name' | 'plan';
 }
 
-/** Попытка из STRUCTURE_ROUNDS вопросов; пока вопросы грузятся или загрузка не удалась, рисуется заглушка. */
+/** An attempt of STRUCTURE_ROUNDS questions; while questions load or loading failed, a placeholder is rendered. */
 export function StructureQuiz({seed, onFinish, variant = 'name'}: Props) {
     const {t} = useI18n();
     const [questions, setQuestions] = useState<StructureQuestion[] | null>(null);

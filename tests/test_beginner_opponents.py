@@ -1,6 +1,6 @@
 """
-Соперники для новичков и характеры (таск 21.4): привычки и дебютный характер как правила стиля и линии, отношение к
-ничьей (выбор хода при равенстве и ответ на предложение), проходные пешки, новые архетипы 300–1200 вне лестницы.
+Opponents for beginners and characters (task 21.4): habits and opening character as style and line rules, attitude to
+draws (move choice when equal and the reply to an offer), passed pawns, new 300-1200 archetypes outside the ladder.
 """
 
 import chess
@@ -30,7 +30,7 @@ def test_defaults_change_nothing():
     plain = BotPersonalityConfig()
     assert (plain.habits, plain.opening_style, plain.draw_attitude, plain.passed_pawns) == ([], "normal", 0, 100)
     assert favorite_moves(plain) == {}
-    # Сила 600+ считается как раньше (параметры поиска от 600), ниже — только больше ошибок.
+    # Strength 600+ is computed as before (search parameters from 600); below that there are only more errors.
     assert strength_for(600).depth == strength_for(300).depth and strength_for(300).error_rate == 0.57
     assert strength_for(1500).error_rate == 0.0
     with pytest.raises(ValidationError):
@@ -50,7 +50,7 @@ def test_habits_shift_move_preferences():
     castle_board = chess.Board("r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 6 5")
     assert bonus(BotPersonalityConfig(habits=["no_castling"]), castle_board, "e1g1") < -100
     careless = BotPersonalityConfig(habits=["hangs_pieces"])
-    # Взятие — не «зевок»; слон на d5 под ударом коня f6 — «оставить под боем».
+    # A capture is not a "blunder"; a bishop on d5 attacked by the knight on f6 is "leaving a piece en prise".
     assert bonus(careless, castle_board, "c4f7") == bonus(BotPersonalityConfig(), castle_board, "c4f7")
     assert bonus(careless, castle_board, "c4d5") - bonus(BotPersonalityConfig(), castle_board, "c4d5") == 70
 
@@ -65,11 +65,11 @@ def test_passed_pawns_slider():
 def test_opening_characters_follow_table_lines():
     victim, trapper = style_lines("trap_victim"), style_lines("trapper")
     assert victim and len(victim) == len(trapper)
-    assert all(v[0] != t[0] for v, t in zip(victim, trapper, strict=True))  # стороны ловушки — разные
+    assert all(v[0] != t[0] for v, t in zip(victim, trapper, strict=True))  # the trap's sides differ
     assert all("Gambit" in name and "Declined" not in name for _, _, name in style_lines("gambit"))
     bot = PersonalityBot(BotPersonalityConfig(opening_style="offbeat"))
     move, comment = bot._book_move(chess.Board())
-    assert comment == {"key": "personality.openingHabit", "params": {}}  # название линии не выдаётся
+    assert comment == {"key": "personality.openingHabit", "params": {}}  # the line's name is not revealed
     first_moves = {uci for uci, _ in bot.favorites[chess.Board().epd()]}
     assert move.uci() in first_moves and not first_moves & {"e2e4", "d2d4", "c2c4", "g1f3"}
 
@@ -78,12 +78,12 @@ def test_draw_attitude():
     assert accepts_draw(BotPersonalityConfig(), 20) and not accepts_draw(BotPersonalityConfig(), 60)
     assert accepts_draw(BotPersonalityConfig(draw_attitude=100), 190)
     assert not accepts_draw(BotPersonalityConfig(draw_attitude=-100), -900)
-    # При равенстве миролюбивый охотнее меняет фигуры, непримиримый — избегает размена.
+    # When the position is equal, the peaceful bot trades pieces more readily and the uncompromising one avoids trades.
     board = chess.Board("r1bqkb1r/pppp1ppp/2n2n2/4p3/4P3/2N2N2/PPPP1PPP/R1BQKB1R w KQkq - 4 4")
     capture = chess.Move.from_uci("f3e5")
     scores = {capture: 0.0, chess.Move.from_uci("f1c4"): 10.0}
     peace = PersonalityBot(BotPersonalityConfig(draw_attitude=100))._draw_attitude(board, scores)
-    assert peace[capture] == 0.0  # e5 — пешка: размен фигуры не засчитывается
+    assert peace[capture] == 0.0  # e5 is a pawn: it does not count as a piece trade
     trade_board = chess.Board("r1bqkb1r/pppp1ppp/2n5/4p3/3nP3/2N2N2/PPPP1PPP/R1BQKB1R w KQkq - 4 4")
     trade = chess.Move.from_uci("f3d4")
     peace = PersonalityBot(BotPersonalityConfig(draw_attitude=100))._draw_attitude(trade_board, {trade: 0.0})
@@ -98,7 +98,7 @@ BEGINNER_IDS = {"blunderer", "queen_rusher", "trap_victim", "pawn_grabber", "kni
 def test_beginner_archetypes():
     beginners = [a for a in ARCHETYPES if a.id in BEGINNER_IDS]
     assert len(beginners) == 12 and all(300 <= a.config.target_elo <= 1200 for a in beginners)
-    # С 18.11 соперники для новичков — нижние ступени лестницы (прогресс хранится ключами, ничей не сдвигается).
+    # Since 18.11 the beginner opponents are the lower rungs of the ladder (progress is stored by key, nobody's shifts).
     assert {f"archetype:{a.id}" for a in beginners} <= {r.key for r in ladder.rungs()}
     assert ARCHETYPES_BY_ID["trap_victim"].config.opening_style == "trap_victim"
 
@@ -118,7 +118,7 @@ def test_draw_offer_endpoint(client, monkeypatch):
     assert client.post(f"{API}/draw-offer", json=early).json()["comment"]["key"] == "personality.drawTooEarly"
     assert client.post(f"{API}/draw-offer", json={**body, "bot_id": "nobody"}).status_code == 404
     morphy = {"fen": late, "bot_id": "morphy", "bot_color": "white"}
-    assert client.post(f"{API}/draw-offer", json=morphy).json()["accepted"] is False  # романтик: −40
+    assert client.post(f"{API}/draw-offer", json=morphy).json()["accepted"] is False  # romantic: -40
 
 
 def test_agreement_saved_as_draw(client, token_user_1):

@@ -583,12 +583,10 @@
   }
  ],
  "intro": {
-  "ru": "Славянская защита. Почти 40 ходов позиция остаётся равной.",
   "uk": "Слов'янський захист. Майже 40 ходів позиція залишається рівною.",
   "en": "A Slav Defence. For almost 40 moves the position stays level."
  },
  "summary": {
-  "ru": "Продвижение 37...h4 стало ошибкой: после размена ладей (38.Rf1+, 39.Rxf8+) белые забирают пешку — 41.Bxh4. Урок: в эндшпиле пешка, ушедшая вперёд без защиты, становится слабостью — продвигайте пешки, только если их есть кому защитить.",
   "uk": "Просування 37...h4 стало помилкою: після розміну тур (38.Rf1+, 39.Rxf8+) білі забирають пішака — 41.Bxh4. Урок: в ендшпілі пішак, що пішов уперед без захисту, стає слабкістю — просувайте пішаків, лише якщо є кому їх захистити.",
   "en": "The advance 37...h4 was a mistake: after the rook trade (38.Rf1+, 39.Rxf8+) White picks up the pawn — 41.Bxh4. Lesson: in the endgame a pawn that runs ahead without protection becomes a weakness — advance pawns only when they can be defended."
  }

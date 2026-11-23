@@ -1,21 +1,22 @@
 # --- FILE: src/services/tablebase.py ---
 """
-Эндшпильные таблицы (таск 14.4): API таблиц по адресу settings.TABLEBASE_URL — в разработке открытый сервер lichess
-(tablebase.lichess.ovh, до 7 фигур), в продакшене — свой сервер таблиц с тем же API (DEPLOY). На сторонний сервер
-уходит только позиция (FEN) — никаких данных игрока; клиент представляется общим именем (ATTRIBUTION, «Внешние
-сервисы»). Ответ кэшируется в Redis: таблицы не меняются.
+Endgame tablebases (task 14.4): the tablebase API at settings.TABLEBASE_URL - in development the open lichess server
+(tablebase.lichess.ovh, up to 7 pieces), in production our own tablebase server with the same API (DEPLOY). Only the
+position (FEN) goes to the third-party server - no player data; the client introduces itself with a generic name
+(ATTRIBUTION, "External services"). The answer is cached in Redis: tablebases do not change.
 
-Результат с точки зрения стороны, которая ходит: category (win / draw / loss и их «проклятые» варианты по правилу
-50 ходов), dtm и dtz — в полуходах (lichess отдаёт их так), лучший ход — первый в списке ответа (lichess сортирует
-ходы от лучшего для ходящей стороны).
+The result is from the point of view of the side to move: category (win / draw / loss and their "cursed" variants by the
+50 move rule), dtm and dtz in plies (lichess returns them that way), the best move is the first in the response list
+(lichess sorts moves from best for the side to move).
 
-Запасной путь (таск 1 плана 18.11): сервер таблиц не ответил за TIMEOUT_S или ответил ошибкой — позицию оценивает
-Stockfish из пула (engine_pool, глубина FALLBACK_DEPTH), чтобы тренажёр не падал. Ответ тогда помечен source="engine":
-dtm и dtz неизвестны (null), категория — по оценке (engine_category): мат или перевес от ENGINE_WIN_CP — win / loss,
-не больше ENGINE_DRAW_CP — draw, между ними — maybe-win / maybe-loss (клиент в этом коридоре партию не обрывает).
-Ответ движка не кэшируется: таблицы могут снова стать доступны. Нет и движка — прежний отказ tablebase_unavailable.
+Fallback path (task 1 of the 18.11 plan): the tablebase server did not answer within TIMEOUT_S or answered with an error -
+the position is evaluated by Stockfish from the pool (engine_pool, depth FALLBACK_DEPTH), so that the trainer does not
+fail. The answer is then marked source="engine": dtm and dtz are unknown (null), the category is by evaluation
+(engine_category): mate or an advantage from ENGINE_WIN_CP - win / loss, no more than ENGINE_DRAW_CP - draw, between them -
+maybe-win / maybe-loss (the client does not end the game in this corridor). The engine answer is not cached: the tablebases
+may become available again. No engine either - the former refusal tablebase_unavailable.
 
-Вызывает probe из POST /analysis/tablebase (src/api/analysis.py). Ключ Redis — «tablebase:<FEN>».
+Called by probe from POST /analysis/tablebase (src/api/analysis.py). The Redis key is "tablebase:<FEN>".
 """
 
 import asyncio
@@ -34,26 +35,28 @@ from src.services.engine_pool import EngineUnavailableError, get_engine_pool
 
 logger = logging.getLogger(__name__)
 
-# Сколько ждать сервер таблиц: дольше игрок ждать ответа соперника не должен — дальше считает движок.
+# How long to wait for the tablebase server: a player must not wait for an opponent's answer longer - after that the engine
+# computes.
 TIMEOUT_S = 1.5
-# Больше фигур на доске таблицы не покрывают — отказ tablebase_too_many_pieces.
+# The tablebases do not cover more pieces on the board - refusal tablebase_too_many_pieces.
 MAX_PIECES = 7
-# Срок жизни ответа таблиц в Redis (30 суток): таблицы не меняются, срок лишь не даёт ключам копиться.
+# Lifetime of a tablebase answer in Redis (30 days): tablebases do not change, the lifetime only keeps keys from piling up.
 CACHE_TTL_S = 30 * 24 * 3600
-# Общее имя клиента для стороннего сервера (без данных игрока).
+# Generic client name for the third-party server (without player data).
 USER_AGENT = "regence-endgame-trainer"
-# Глубина запасного расчёта: в эндшпиле до семи фигур её хватает, чтобы найти мат и отличить выигрыш от ничьей.
+# Depth of the fallback calculation: in an endgame of up to seven pieces it is enough to find mate and tell a win from a draw.
 FALLBACK_DEPTH = 18
-# Оценка движка (сантипешки, для ходящей стороны) не меньше этой — выигрыш, не больше минус её — проигрыш.
+# An engine evaluation (centipawns, for the side to move) of at least this is a win, of at most minus this is a loss.
 ENGINE_WIN_CP = 400
-# По модулю не больше этой — ничья. Между ENGINE_DRAW_CP и ENGINE_WIN_CP вердикт ненадёжен — maybe-win / maybe-loss.
+# By absolute value no more than this - a draw. Between ENGINE_DRAW_CP and ENGINE_WIN_CP the verdict is unreliable -
+# maybe-win / maybe-loss.
 ENGINE_DRAW_CP = 50
 
 
 async def _fetch(fen: str) -> dict:
     """
-    Запрос к API таблиц по settings.TABLEBASE_URL, ответ — JSON как у lichess. Ошибка сети или статуса —
-    httpx.HTTPError (подменяется в тестах).
+    A request to the tablebase API at settings.TABLEBASE_URL, the answer is JSON as in lichess. A network or status error -
+    httpx.HTTPError (replaced in tests).
     """
     async with httpx.AsyncClient(timeout=TIMEOUT_S, headers={"User-Agent": USER_AGENT}) as client:
         response = await client.get(settings.TABLEBASE_URL, params={"fen": fen})
@@ -62,7 +65,7 @@ async def _fetch(fen: str) -> dict:
 
 
 def engine_category(score: chess.engine.Score) -> str:
-    """Категория позиции для ходящей стороны по оценке движка (пороги — ENGINE_WIN_CP и ENGINE_DRAW_CP)."""
+    """Category of a position for the side to move by the engine evaluation (thresholds - ENGINE_WIN_CP and ENGINE_DRAW_CP)."""
     mate = score.mate()
     if mate is not None:
         return "win" if mate > 0 else "loss"
@@ -77,7 +80,7 @@ def engine_category(score: chess.engine.Score) -> str:
 
 
 def _engine_probe(board: chess.Board) -> dict:
-    """Запасной ответ движка в формате probe (синхронно — вызывается в потоке). Нет бинарника — EngineUnavailableError."""
+    """Fallback engine answer in the probe format (synchronous - called in a thread). No binary - EngineUnavailableError."""
     path = resolve_stockfish_path()
     if not path:
         raise EngineUnavailableError("stockfish not found")
@@ -95,8 +98,8 @@ def _engine_probe(board: chess.Board) -> dict:
 
 async def probe(board: chess.Board) -> dict:
     """
-    {category, dtm, dtz, best: {uci, san, category, dtm, dtz} | None, source} для стороны, которая ходит. source —
-    "tablebase" (точный ответ таблиц) или "engine" (сервер таблиц недоступен, см. описание модуля).
+    {category, dtm, dtz, best: {uci, san, category, dtm, dtz} | None, source} for the side to move. source is
+    "tablebase" (an exact tablebase answer) or "engine" (the tablebase server is unavailable, see the module description).
     """
     if len(board.piece_map()) > MAX_PIECES:
         raise DomainError("tablebase_too_many_pieces", max=MAX_PIECES)

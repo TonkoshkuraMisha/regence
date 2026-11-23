@@ -1,7 +1,7 @@
 // --- FILE: frontend/src/components/chessboard/GameHallHeader.tsx ---
-// Заголовок левой колонки главной доски: название раздела, счёт текущей сессии, звук и переворот доски. Счёт
-// сессии считает Chessboard по итогам партий с людьми и ботами, сыгранных с момента открытия страницы; он нигде
-// не сохраняется и обнуляется при перезагрузке. Выключенный звук запоминает services/soundEngine.ts (localStorage).
+// Header of the main board's left column: section name, current session score, sound and board flip. The session
+// score is computed by Chessboard from the results of games against humans and bots played since the page was opened; it is
+// never saved and resets on reload. A muted sound is remembered by services/soundEngine.ts (localStorage).
 
 import {Sword, RefreshCw, Volume2, VolumeX} from 'lucide-react';
 import {useI18n} from '../../i18n';
@@ -13,7 +13,7 @@ export interface GameHallHeaderProps {
     onFlipBoard: () => void;
 }
 
-/** Заголовок левой колонки: название раздела, счёт текущей сессии, звук и переворот доски. */
+/** Left column header: section name, current session score, sound and board flip. */
 export function GameHallHeader({sessionStats, isSoundMuted, onToggleSound, onFlipBoard}: GameHallHeaderProps) {
     const {t} = useI18n();
     return (

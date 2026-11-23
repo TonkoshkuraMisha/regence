@@ -28,7 +28,7 @@ SOURCES = {
     "new_york_1889": ("new_york_1889_chess_tournament", 5),
     "kyiv_1903": ("kiev_1903_chess_tournament", 0),
 }
-# id в партии -> как фамилия записана в источнике (без диакритики, нижний регистр)
+# game id -> how the surname is written in the source (no diacritics, lower case)
 ALIASES = {
     "paulsen": "louis paulsen", "paulsen_w": "wilfried paulsen", "schwarz_jacques": "schwarz", "schutz": "schuetz",
     "dus_chotimirsky": "duz-khotimirsky", "suchting": "suchting", "rabinovich_abram": "rabinovich",
@@ -40,13 +40,13 @@ ALIASES = {
 
 
 def plain(text: str) -> str:
-    """Очищает содержимое ячейки от HTML-тегов, сносок и пробелов."""
+    """Cleans the cell content of HTML tags, footnotes and spaces."""
     text = text.replace("ø", "o").replace("ł", "l").replace("ß", "ss")
     return "".join(c for c in unicodedata.normalize("NFD", text.lower()) if not unicodedata.combining(c))
 
 
 def number(cell: str) -> float | None:
-    """Преобразует текстовую запись очков с символом ½ в float."""
+    """Converts a text score entry with the ½ symbol to a float."""
     cell = re.sub(r"'''|<[^>]+>|&nbsp;", " ", cell).strip()
     cell = re.sub(r"\{\{frac\|(\d)\|(\d)\}\}", lambda m: f" {int(m.group(1)) / int(m.group(2))}", cell)
     cell = cell.replace("{{frac|2}}", "½").replace("½", ".5")
@@ -65,17 +65,17 @@ def result_points(cell: str) -> float | None:
         return 0.0
     if not re.fullmatch(r"[01½\-–+=]+", cell):
         return None
-    # «+» — партия, засчитанная без игры (соперник выбыл): очко.
+    # "+" - a game awarded without play (the opponent withdrew): a point.
     return cell.count("1") + cell.count("+") + 0.5 * cell.count("½")
 
 
 def rows_of(slug: str, index: int) -> list[tuple[str, float | None, float | None]]:
-    """Разбирает кросс-таблицу английской Википедии в список строк игроков."""
+    """Parses an English Wikipedia crosstable into a list of player rows."""
     text = (HERE / ".cache" / f"{slug}.txt").read_text(encoding="utf-8")
     table = re.findall(r"\{\|.*?\n\|\}", text, flags=re.S)[index]
     out = []
     for row in table.split("\n|-")[1:]:
-        row = row.replace("\n||", "||")  # строка, перенесённая перед разделителем ячеек
+        row = row.replace("\n||", "||")  # a line wrapped before the cell separator
         cells =[c.strip() for c in re.split(r"\|\||\n\|", "\n" + row.strip().lstrip("|")) if c.strip() != ""]
         named = next((i for i, c in enumerate(cells)
                       if re.search(r"[A-Za-z]{4,}", re.sub(r"style=[^|]*\||align=\w+\|", "", c))), None)
@@ -93,8 +93,8 @@ def rows_of(slug: str, index: int) -> list[tuple[str, float | None, float | None
         name = plain(re.sub(r"\s*\(.*?\)", "", name)).strip()
         rest = cells[named + 1:]
         while rest and number(rest[0]) is None and result_points(rest[0]) is None:
-            rest = rest[1:]  # колонки города и страны
-        # итог — последняя ячейка-число; после него могут идти призы
+            rest = rest[1:]  # city and country columns
+        # the total is the last numeric cell; prizes may follow it
         total_at = None
         for i in range(len(rest) - 1, -1, -1):
             if "$" in rest[i] or rest[i] in ("}",):
@@ -112,7 +112,7 @@ batch = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
 bad = 0
 for event in batch["events"]:
     slug, index = SOURCES[event["key"]]
-    # Выбывшие, чьи партии аннулированы (в строках остальных участников — прочерки).
+    # Withdrawn players whose games were annulled (dashes in the rows of the other participants).
     withdrawn = {'hamburg_1910': ('jacob',)}.get(event['key'], ())
     source = [(n, t, c) for n, t, c in rows_of(slug, index) if t is not None and not any(w in n for w in withdrawn)]
     ours = event["table"]

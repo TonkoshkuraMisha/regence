@@ -1,6 +1,6 @@
-// Предохранитель страниц: ошибка отрисовки одной страницы не гасит всё приложение — шапка и меню остаются,
-// на месте страницы сообщение и «Обновить». Сбрасывается при переходе на другой адрес (resetKey).
-// Тексты — каталог common.* (i18n); ошибка пишется в консоль браузера. Оборачивает маршруты в App.tsx.
+// Page safety guard: a rendering error on one page does not take down the whole app: the header and menu stay,
+// and in the page's place there is a message and "Refresh". It resets on navigation to another address (resetKey).
+// Texts are the common.* catalog (i18n); the error is written to the browser console. Wraps the routes in App.tsx.
 
 import {Component} from 'react';
 import type {ErrorInfo, ReactNode} from 'react';
@@ -9,7 +9,7 @@ import {useI18n} from '../i18n';
 import {reportClientError} from '../services/clientErrors';
 import {captureRenderError} from '../services/sentry';
 
-/** Запасной вид страницы: сообщение, перезагрузка и ссылка на главную. */
+/** Fallback view of a page: a message, a reload and a link to the home page. */
 function Fallback() {
     const {t} = useI18n();
     return (
@@ -26,7 +26,7 @@ function Fallback() {
     );
 }
 
-/** resetKey — адрес текущей страницы: его смена снимает признак сбоя. */
+/** resetKey is the current page address: changing it clears the failure flag. */
 interface Props {
     resetKey: string;
     children: ReactNode;
@@ -38,8 +38,8 @@ interface State {
 }
 
 /**
- * Классовый компонент: перехватывать ошибки отрисовки потомков в React можно только так. Признак сбоя
- * (failed) сбрасывается в getDerivedStateFromProps, когда меняется resetKey.
+ * Class component: catching rendering errors of descendants in React is possible only this way. The failure flag
+ * (failed) is reset in getDerivedStateFromProps when resetKey changes.
  */
 export class PageErrorBoundary extends Component<Props, State> {
     state: State = {failed: false, key: this.props.resetKey};

@@ -1,5 +1,5 @@
-// Диагностический экзамен, дополнительные пути: список тестов уровня, отказ сервера при старте и при сдаче,
-// кнопка «назад к списку» посреди теста. Сеть — стаб fetch; таймеры — подменённые.
+// The diagnostic exam, additional paths: the list of level tests, a server refusal at the start and at submission,
+// the "back to the list" button in the middle of a test. The network is a fetch stub; timers are replaced.
 
 import {act, fireEvent, render, screen} from '@testing-library/react';
 import {MemoryRouter} from 'react-router-dom';
@@ -48,17 +48,17 @@ afterEach(() => {
     setToken(null);
 });
 
-describe('диагностический экзамен: дополнительные пути', () => {
-    it('в обзоре показаны тесты уровня; у сданного — «пересдать» и результат, у несданного — «начать»', async () => {
+describe('diagnostic exam: additional paths', () => {
+    it('the overview shows the level tests; a passed one has "retake" and the result, a not passed one has "start"', async () => {
         stub();
         await act(async () => render(<MemoryRouter><ExamPage/></MemoryRouter>));
         expect(screen.getByTestId('exam-overall')).toBeInTheDocument();
-        expect(screen.getByTestId('exam-test-level1')).toHaveTextContent('3 из 4');
-        expect(screen.getByTestId('exam-start-level1')).toHaveTextContent('Пройти снова');
-        expect(screen.getByTestId('exam-start-level2')).toHaveTextContent('Начать');
+        expect(screen.getByTestId('exam-test-level1')).toHaveTextContent('3 of 4');
+        expect(screen.getByTestId('exam-start-level1')).toHaveTextContent('Retake');
+        expect(screen.getByTestId('exam-start-level2')).toHaveTextContent('Start');
     });
 
-    it('сервер отказал при старте — сообщение об ошибке, список остаётся', async () => {
+    it('the server refused at the start — an error message, the list stays', async () => {
         stub({questions: true});
         await act(async () => render(<MemoryRouter><ExamPage/></MemoryRouter>));
         await act(async () => fireEvent.click(screen.getByTestId('exam-start-level2')));
@@ -67,7 +67,7 @@ describe('диагностический экзамен: дополнитель�
         expect(screen.getByTestId('exam-start-level2')).toBeInTheDocument();
     });
 
-    it('сервер отказал при сдаче — сообщение об ошибке; повторное «не знаю» ничего не ломает', async () => {
+    it('the server refused at submission — an error message; a repeated "don\'t know" changes nothing', async () => {
         const calls = stub({submit: true});
         await act(async () => render(<MemoryRouter><ExamPage/></MemoryRouter>));
         await act(async () => fireEvent.click(screen.getByTestId('exam-start-level2')));
@@ -78,12 +78,12 @@ describe('диагностический экзамен: дополнитель�
         expect(calls.filter((u) => u.endsWith('/submit'))).toHaveLength(1);
     });
 
-    it('«назад к списку» посреди теста возвращает обзор и позволяет начать заново', async () => {
+    it('"back to the list" in the middle of a test shows the overview and lets you start again', async () => {
         const calls = stub();
         await act(async () => render(<MemoryRouter><ExamPage/></MemoryRouter>));
         await act(async () => fireEvent.click(screen.getByTestId('exam-start-level2')));
         expect(screen.getByTestId('exam-question')).toBeInTheDocument();
-        await act(async () => fireEvent.click(screen.getByRole('button', {name: 'Все тесты'})));
+        await act(async () => fireEvent.click(screen.getByRole('button', {name: 'All tests'})));
         expect(screen.queryByTestId('exam-question')).toBeNull();
         expect(screen.getByTestId('exam-start-level2')).toBeInTheDocument();
         await act(async () => fireEvent.click(screen.getByTestId('exam-start-level2')));

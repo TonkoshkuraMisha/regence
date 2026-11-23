@@ -1,14 +1,15 @@
 # --- FILE: src/services/onboarding.py ---
 """
-Первый вход (таск 17.8): два необязательных вопроса при регистрации — как давно играете и примерная сила — дают
-стартовый рейтинг. По нему подбираются соперники и задачи с первой партии; пока партий в категории меньше
-PROVISIONAL_GAMES, рейтинг временный (K = 40 и пометка в интерфейсе) и быстро догоняет настоящую силу.
+First login (task 17.8): two optional questions at registration - how long you have been playing and approximate strength -
+give the starting rating. Opponents and puzzles are selected by it from the first game; while there are fewer games in a
+category than PROVISIONAL_GAMES, the rating is provisional (K = 40 and a mark in the interface) and quickly catches up with
+the real strength.
 
-Без ответов — прежние 1200. «Только узнал правила» — самый низкий старт, сила тогда не спрашивается.
+Without answers - the former 1200. "Just learned the rules" is the lowest start, strength is then not asked.
 
-Кто применяет: регистрация (src/api/auth.py) записывает стартовое значение сразу во все категории игрового рейтинга
-и в рейтинг задач (колонки users.*_rating). Без ответов действуют значения по умолчанию модели: игра — 1200,
-задачи — 1500. PROVISIONAL_GAMES — константа src/services/rating.py.
+Who applies it: registration (src/api/auth.py) writes the starting value at once to all game rating categories
+and to the puzzle rating (the users.*_rating columns). Without answers the model defaults apply: games - 1200,
+puzzles - 1500. PROVISIONAL_GAMES is a constant of src/services/rating.py.
 """
 
 from typing import Literal
@@ -16,18 +17,19 @@ from typing import Literal
 Experience = Literal["new", "casual", "regular"]
 StrengthBand = Literal["under_1000", "1000_1400", "1400_1800", "over_1800"]
 
-DEFAULT_RATING = 1200  # старт без ответов и для «играю регулярно» без оценки силы; равен умолчанию модели User
-BEGINNER_RATING = 600  # «только узнал правила»
-# Середины диапазонов, с поправкой вниз у двух верхних (1550 вместо 1600): заявленная сила обычно выше настоящей.
+DEFAULT_RATING = 1200  # no answers, or "play regularly" without strength; the User model default
+BEGINNER_RATING = 600  # "just learned the rules"
+# Range midpoints, adjusted downward for the top two (1550 instead of 1600): the claimed strength is usually higher than
+# the real one.
 BAND_RATINGS: dict[str, int] = {"under_1000": 800, "1000_1400": 1200, "1400_1800": 1550, "over_1800": 1850}
-# Без оценки силы: «играю иногда» — чуть ниже середины шкалы, «играю регулярно» — середина.
+# Without a strength estimate: "play occasionally" - a little below the middle of the scale, "play regularly" - the middle.
 EXPERIENCE_RATINGS: dict[str, int] = {"casual": 1000, "regular": DEFAULT_RATING}
 
 
 def starting_rating(experience: Experience | None, strength: StrengthBand | None) -> int:
     """
-    Стартовый рейтинг по ответам, по убыванию приоритета: новичок — BEGINNER_RATING (сила не учитывается);
-    названа сила — BAND_RATINGS; назван только опыт — EXPERIENCE_RATINGS; иначе DEFAULT_RATING.
+    Starting rating from the answers, in descending priority: a beginner - BEGINNER_RATING (strength is not taken into
+    account); strength given - BAND_RATINGS; only experience given - EXPERIENCE_RATINGS; otherwise DEFAULT_RATING.
     """
     if experience == "new":
         return BEGINNER_RATING

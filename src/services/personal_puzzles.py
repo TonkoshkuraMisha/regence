@@ -1,23 +1,24 @@
 # --- FILE: src/services/personal_puzzles.py ---
 """
-Задачи из партий игрока (таск 13.5). После разбора завершённой партии ищутся моменты, где игрок (не бот) ошибся
-или упустил выигрыш, и из них делаются личные задачи «Ваши ошибки» — по тем же критериям объективной решаемости,
-что «Угадай ход мастера» (14.3):
+Puzzles from the player's games (task 13.5). After the review of a finished game, moments are searched where the player
+(not a bot) erred or missed a win, and personal "Your mistakes" puzzles are made from them - by the same criteria of
+objective solvability as "Guess the Master's Move" (14.3):
 
-* ход партии — ошибка или грубая ошибка по разбору (потеря ≥ MIN_LOSS сп);
-* у лучшего хода есть отрыв: второй по силе ход хуже на ≥ MIN_GAP сп (или лучший матует, а второй — нет) — иначе
-  задача «угадывается», а не решается;
-* лучший ход — не очевидное взятие незащищённой фигуры;
-* не больше MAX_PER_PLAYER задач на игрока за партию (самые дорогие ошибки).
+* the game move is a mistake or a blunder by the review (loss >= MIN_LOSS cp);
+* the best move has a margin: the second-best move is worse by >= MIN_GAP cp (or the best mates and the second does not) -
+otherwise
+  the puzzle is guessed rather than solved;
+* the best move is not an obvious capture of an undefended piece;
+* no more than MAX_PER_PLAYER puzzles per player per game (the costliest mistakes).
 
-Повторение с интервалами: новая задача доступна сразу; неверный ответ возвращает её через 1 день, первый верный —
-через 3 дня, второй верный подряд делает её освоенной (done). В INTERVALS_DAYS записаны и интервалы 7 и 21 день, но
-при SOLVES_TO_MASTER = 2 задача до них не доходит: после второго верного ответа она уже освоена.
+Spaced repetition: a new puzzle is available at once; a wrong answer returns it after 1 day, the first correct one after
+3 days, the second correct in a row makes it mastered (done). INTERVALS_DAYS also holds intervals of 7 and 21 days, but
+with SOLVES_TO_MASTER = 2 a puzzle never reaches them: after the second correct answer it is already mastered.
 
-Данные: разбор партии — games.analysis_json (пишет analysis_service.py) и imported_games.analysis_json (пишет
-game_import.py), задачи — таблица personal_puzzles. Извлечение запускают фоновая задача после разбора
-(src/worker/tasks.py) и импорт партий (src/api/game_import.py). Движок — только для проверки отрыва лучшего хода
-(два лучших хода, глубина ENGINE_DEPTH), через пул; без движка задачи из партии не создаются.
+Data: the game review is games.analysis_json (written by analysis_service.py) and imported_games.analysis_json (written by
+game_import.py), puzzles are the personal_puzzles table. Extraction is run by the background task after the review
+(src/worker/tasks.py) and by game import (src/api/game_import.py). The engine is used only to check the margin of the best move
+(two best moves, depth ENGINE_DEPTH), via the pool; without the engine no puzzles are created from a game.
 """
 
 import asyncio
@@ -44,28 +45,29 @@ from src.services.themes import themes_for_motif
 
 logger = logging.getLogger(__name__)
 
-MIN_LOSS = 100  # наименьшая потеря хода партии (сп), с которой ошибка годится в задачу
-MIN_GAP = 200  # на сколько сп лучший ход должен опережать второй, чтобы решение было единственным
-MAX_PER_PLAYER = 3  # задач на игрока из одной партии
-ENGINE_DEPTH = 14  # глубина проверки двух лучших ходов
-MATE_CP = 10_000  # условная оценка мата в сантипешках; оценка от MATE_CP - 100 считается матом
-# Через сколько дней задача возвращается, по индексу personal_puzzles.interval_index (см. докстринг модуля: при
-# SOLVES_TO_MASTER = 2 используются только первые два значения).
+MIN_LOSS = 100  # the smallest loss of a game move (cp) at which a mistake qualifies as a puzzle
+MIN_GAP = 200  # by how many cp the best move must lead the second so that the solution is unique
+MAX_PER_PLAYER = 3  # puzzles per player from one game
+ENGINE_DEPTH = 14  # depth of checking the two best moves
+MATE_CP = 10_000  # conventional mate evaluation in centipawns; an evaluation from MATE_CP - 100 counts as mate
+# After how many days a puzzle comes back, by the index personal_puzzles.interval_index (see the module docstring: with
+# SOLVES_TO_MASTER = 2 only the first two values are used).
 INTERVALS_DAYS = (1, 3, 7, 21)
-SOLVES_TO_MASTER = 2  # верных ответов подряд, после которых задача освоена и больше не показывается
-# Разделитель кодов тем в колонке personal_puzzles.themes (см. join_themes / split_themes).
+SOLVES_TO_MASTER = 2  # correct answers in a row after which the puzzle is mastered and no longer shown
+# Separator of theme codes in the personal_puzzles.themes column (see join_themes / split_themes).
 THEMES_SEPARATOR = ","
 
 
 def _score(info: chess.engine.InfoDict, turn: chess.Color) -> int:
-    """Оценка линии движка в сантипешках с точки зрения стороны turn; мат — около ±MATE_CP."""
+    """Engine line evaluation in centipawns from the point of view of the side turn; mate - about +-MATE_CP."""
     return int(info["score"].pov(turn).score(mate_score=MATE_CP) or 0)
 
 
 def top_two(board: chess.Board) -> list[tuple[str, int]] | None:
     """
-    Два лучших хода с оценкой с точки зрения стороны, которая ходит (Stockfish через пул, глубина ENGINE_DEPTH, две
-    линии). None — движка нет. Один элемент — в позиции единственный легальный ход. Синхронная: вызывать в потоке.
+    Two best moves with an evaluation from the point of view of the side to move (Stockfish via the pool, depth
+    ENGINE_DEPTH, two lines). None - no engine. One element - the position has the only legal move. Synchronous: call in a
+    thread.
     """
     path = resolve_stockfish_path()
     if not path:
@@ -79,8 +81,8 @@ def top_two(board: chess.Board) -> list[tuple[str, int]] | None:
 
 def obvious_capture(board: chess.Board, move: chess.Move) -> bool:
     """
-    Взятие незащищённой фигуры — его видно без расчёта, задачи из него не выйдет. «Незащищённая» — на поле взятия
-    не бьёт ни одна фигура её стороны; взятие на проходе очевидным не считается.
+    Capturing an undefended piece is visible without calculation, no puzzle comes out of it. "Undefended" - on the capture
+    square no piece of its side attacks; an en passant capture is not considered obvious.
     """
     target = board.piece_at(move.to_square)
     if target is None or board.is_en_passant(move):
@@ -90,16 +92,16 @@ def obvious_capture(board: chess.Board, move: chess.Move) -> bool:
 
 def is_solvable(board: chess.Board, best: chess.Move, candidates: list[tuple[str, int]]) -> bool:
     """
-    Объективно ли решаема задача: лучший ход — не очевидное взятие, он не единственный легальный и опережает второй по
-    силе ход на MIN_GAP (или матует, а второй — нет). candidates — ответ ``top_two``; лучший ход разбора партии
-    должен совпасть с первым ходом этой более глубокой проверки, иначе задача не создаётся.
+    Whether a puzzle is objectively solvable: the best move is not an obvious capture, it is not the only legal move and it
+    leads the second-best move by MIN_GAP (or mates and the second does not). candidates - the ``top_two`` answer; the best
+    move of the game review must match the first move of this deeper check, otherwise the puzzle is not created.
     """
     if obvious_capture(board, best):
         return False
     if not candidates or candidates[0][0] != best.uci():
         return False
     if len(candidates) == 1:
-        return False  # единственный легальный ход — решать нечего
+        return False  # the only legal move - nothing to solve
     (_, first), (_, second) = candidates[0], candidates[1]
     if first >= MATE_CP - 100 and second < MATE_CP - 100:
         return True
@@ -107,17 +109,17 @@ def is_solvable(board: chess.Board, best: chess.Move, candidates: list[tuple[str
 
 
 def join_themes(codes: Iterable[str]) -> str:
-    """Темы личной задачи в виде, в котором они хранятся (personal_puzzles.themes): коды реестра через запятую."""
+    """Themes of a personal puzzle as stored (personal_puzzles.themes): registry codes separated by commas."""
     return THEMES_SEPARATOR.join(codes)
 
 
 def split_themes(stored: str | None) -> list[str]:
-    """Коды тем из personal_puzzles.themes — обратная к join_themes; пустое значение — тем нет."""
+    """Theme codes from personal_puzzles.themes - the inverse of join_themes; an empty value means no themes."""
     return [code for code in (stored or "").split(THEMES_SEPARATOR) if code]
 
 
 def themes_of(board: chess.Board, move: chess.Move) -> list[str]:
-    """Коды тем реестра, которые ход создаёт на доске, — по мотивам детектора наставника."""
+    """Registry theme codes that the move creates on the board - from the mentor detector's motifs."""
     facts = analyze_move(board, move)
     after = board.copy(stack=False)
     after.push(move)
@@ -132,8 +134,9 @@ def themes_of(board: chess.Board, move: chess.Move) -> list[str]:
 
 async def extract_for_game(db: AsyncSession, game_id: int) -> int:
     """
-    Личные задачи из разобранной партии — для каждой стороны, за которую играл человек, а не бот. Без разбора
-    (games.analysis_json) или без PGN задач нет. Повторный вызов ничего не дублирует. Возвращает число новых задач.
+    Personal puzzles from a reviewed game - for each side the human played, not a bot. Without a review
+    (games.analysis_json) or without PGN there are no puzzles. A repeated call duplicates nothing. Returns the number of
+    new puzzles.
     """
     game = await db.get(Game, game_id)
     if game is None or not game.analysis_json or not game.pgn:
@@ -150,7 +153,7 @@ async def extract_for_game(db: AsyncSession, game_id: int) -> int:
 
 
 async def extract_for_imported(db: AsyncSession, imported_id: int) -> int:
-    """То же для партии с другого сайта (таск 24.1): задачи только для стороны игрока — соперник не наш."""
+    """The same for a game from another site (task 24.1): puzzles only for the player's side - the opponent is not ours."""
     game = await db.get(ImportedGame, imported_id)
     if game is None or not game.analysis_json:
         return 0
@@ -167,14 +170,14 @@ async def extract_for_imported(db: AsyncSession, imported_id: int) -> int:
 async def _extract(db: AsyncSession, pgn: str, analysis_json: str, players: dict[str, User],
                    existing: set, source: dict[str, int], label: str) -> int:
     """
-    Общая часть извлечения. players — цвет («white» / «black») → игрок, для которого ищутся задачи; existing —
-    уже созданные пары (игрок, полуход); source — колонка-источник задачи (game_id или imported_game_id).
+    General part of the extraction. players - colour ("white" / "black") -> the player for whom puzzles are searched;
+    existing - already created (player, ply) pairs; source - the source column of the puzzle (game_id or imported_game_id).
 
-    Порядок: из разбора берутся ходы игрока с классификацией Mistake или Blunder и потерей от MIN_LOSS, у которых
-    лучший ход известен и отличается от сыгранного; по убыванию потери каждый проверяется движком (``is_solvable``),
-    пока не наберётся MAX_PER_PLAYER (уже созданные задачи партии входят в этот счёт). Если движок недоступен,
-    извлечение прекращается досрочным возвратом — без commit: задачи, добавленные к этому моменту, сохранятся,
-    только если сессию закоммитит вызывающий код.
+    Order: from the review the player's moves classified Mistake or Blunder with a loss from MIN_LOSS are taken, for which
+    the best move is known and differs from the played one; in descending order of loss each is checked by the engine
+    (``is_solvable``), until MAX_PER_PLAYER is reached (puzzles already created for the game count toward it). If the
+    engine is unavailable, extraction stops with an early return - without commit: the puzzles added by then are saved
+    only if the calling code commits the session.
     """
     if not players:
         return 0
@@ -223,7 +226,7 @@ async def _extract(db: AsyncSession, pgn: str, analysis_json: str, players: dict
                 with engine_work("puzzles"):
                     top = await asyncio.to_thread(top_two, position.copy(stack=False))
             except EngineUnavailableError as exc:
-                logger.warning("Stockfish недоступен для задач из партии (%s): %s", label, exc)
+                logger.warning("Stockfish unavailable for puzzles from a game (%s): %s", label, exc)
                 return added
             if top is None:
                 return added
@@ -240,7 +243,7 @@ async def _extract(db: AsyncSession, pgn: str, analysis_json: str, players: dict
     return added
 
 
-# --- решение и повторение -------------------------------------------------------------------------------------
+# --- decision and repetition -------------------------------------------------------------------------------
 
 def _now() -> dt.datetime:
     return dt.datetime.now(dt.UTC)
@@ -251,7 +254,7 @@ def _aware(value: dt.datetime) -> dt.datetime:
 
 
 def view(puzzle: PersonalPuzzle) -> dict:
-    """Личная задача для клиента: позиция, предыдущий ход, чей ход, темы и счётчики попыток. Решение не отдаётся."""
+    """A personal puzzle for the client: position, previous move, side to move, themes, attempt counters. No solution."""
     board = chess.Board(puzzle.fen)
     return {
         "id": puzzle.id, "game_id": puzzle.game_id, "imported_game_id": puzzle.imported_game_id,
@@ -264,7 +267,8 @@ def view(puzzle: PersonalPuzzle) -> dict:
 
 async def game_context(db: AsyncSession, puzzle: PersonalPuzzle, user: User) -> dict:
     """
-    Откуда ошибка (таск B.3): соперник (бот — его id, клиент переводит имя; своя персоналия — её имя) и дата партии.
+    Where the mistake came from (task B.3): the opponent (a bot - its id, the client translates the name; a personality of
+    its own - its name) and the game date.
     """
     if puzzle.imported_game_id is not None:
         imported = await db.get(ImportedGame, puzzle.imported_game_id)
@@ -292,8 +296,8 @@ async def game_context(db: AsyncSession, puzzle: PersonalPuzzle, user: User) -> 
 
 async def summary(db: AsyncSession, user: User) -> dict:
     """
-    Сводка личных задач игрока: сколько к повторению сейчас, сколько в работе, сколько освоено и когда подойдёт
-    следующая.
+    Summary of the player's personal puzzles: how many to repeat now, how many in progress, how many mastered and when the
+    next one is due.
     """
     now = _now()
     total = await db.scalar(select(func.count()).select_from(PersonalPuzzle).where(
@@ -309,7 +313,7 @@ async def summary(db: AsyncSession, user: User) -> dict:
 
 
 async def next_due(db: AsyncSession, user: User) -> PersonalPuzzle | None:
-    """Следующая задача к повторению: неосвоенная, срок которой уже подошёл; первой — с самым давним сроком."""
+    """Next puzzle to repeat: not mastered, whose due time has come; the one with the oldest due time first."""
     return await db.scalar(
         select(PersonalPuzzle).where(PersonalPuzzle.user_id == user.id, PersonalPuzzle.done.is_(False),
                                      PersonalPuzzle.due_at <= _now())
@@ -319,9 +323,9 @@ async def next_due(db: AsyncSession, user: User) -> PersonalPuzzle | None:
 
 async def answer(db: AsyncSession, user: User, puzzle_id: int, uci: str) -> dict:
     """
-    Ответ на личную задачу: верно — интервал растёт; неверно — снова завтра. Решена дважды подряд — освоена.
-    Верным считается ход решения или любой ход, ставящий мат. Срок следующего показа — от момента ответа. В ответе
-    раскрываются решение и ход, сделанный в партии, — и при неверном ответе тоже.
+    Answer to a personal puzzle: correct - the interval grows; wrong - again tomorrow. Solved twice in a row - mastered.
+    A correct answer is the solution move or any move that gives mate. The next showing time is counted from the moment of
+    the answer. The answer reveals the solution and the move made in the game - also on a wrong answer.
     """
     puzzle = await db.get(PersonalPuzzle, puzzle_id)
     if puzzle is None or puzzle.user_id != user.id:
@@ -357,7 +361,7 @@ async def answer(db: AsyncSession, user: User, puzzle_id: int, uci: str) -> dict
 
 
 async def plies_for_game(db: AsyncSession, game_id: int, user: User | None) -> list[int]:
-    """Полуходы партии, из которых сделаны задачи (для значка в разборе): свои — владельцу партии."""
+    """Plies of a game from which puzzles were made (for the badge in the review): own - for the game owner."""
     if user is None:
         return []
     rows = await db.execute(select(PersonalPuzzle.ply).where(PersonalPuzzle.game_id == game_id,
@@ -366,7 +370,7 @@ async def plies_for_game(db: AsyncSession, game_id: int, user: User | None) -> l
 
 
 async def plies_for_imported(db: AsyncSession, imported_id: int, user: User) -> list[int]:
-    """То же, что ``plies_for_game``, для партии с другого сайта."""
+    """The same as ``plies_for_game``, for a game from another site."""
     rows = await db.execute(select(PersonalPuzzle.ply).where(PersonalPuzzle.imported_game_id == imported_id,
                                                               PersonalPuzzle.user_id == user.id))
     return sorted(set(rows.scalars()))

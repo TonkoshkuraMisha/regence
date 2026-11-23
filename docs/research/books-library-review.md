@@ -1,134 +1,134 @@
-# Обзор учебной библиотеки владельца (15.11.2026)
+# Review of the owner's study library (15.11.2026)
 
-Рабочий документ разработки. Владелец проекта дал для изучения папку «Книги для вдохновения обучалки» на своём
-Google Диске: книги (PDF, DjVu), базы партий и учебные базы (PGN и закрытый формат коммерческой базы партий),
-дерево дебютного репертуара, подборки партий и полный список файлов (`full_tree.txt`). Цель — понять, что из этого
-можно взять в платформу. Ничего из папки не копируется в репозиторий: партии попадают в нашу базу скриптом импорта
-(таск 27.2), всё остальное — только идеи и методика.
+Development working document. The project owner gave a folder, "Books to inspire the learning section", on their own
+Google Drive for study: books (PDF, DjVu), game databases and study databases (PGN and the closed format of a commercial game database),
+the opening repertoire tree, game collections and the full list of files (`full_tree.txt`). The goal is to understand what from it
+can be taken into the platform. Nothing from the folder is copied into the repository: games enter our database through the import script
+(task 27.2), and everything else is only ideas and methodology.
 
-Что получилось:
+What came out of it:
 
-* Список файлов разобран полностью: 432 папки, 4 922 файла, 1,2 ГБ.
-* PGN — выборочно: дебютный репертуар, пешечные структуры, «Красивые партии», партии из «Как стать мастером».
-  Записи партий в них голые — только заголовки и ходы, кое-где чужие пометки с оценкой движка (их отрезаем).
-* PDF — выходные данные и вступления. Это современные издания (2014–2017) с правами составителей и переводчиков.
-* DjVu (16 книг) не читались: на машине разработки нет программы для этого формата. Оценены по названиям.
-* Учебные базы в закрытом формате (`.cbh`, `.cbv`, `.cib`, около 250 баз) свободными средствами не открываются;
-  разобраны названия их глав — по ним видна структура курсов.
+* The list of files was parsed completely: 432 folders, 4,922 files, 1.2 GB.
+* PGN - selectively: the opening repertoire, pawn structures, "Beautiful games", games from "How to Become a Master".
+  The game records in them are bare - only headers and moves, in places someone else's notes with an engine evaluation (we cut them off).
+* PDF - imprint data and introductions. These are modern editions (2014-2017) with the rights of compilers and translators.
+* DjVu (16 books) were not read: the development machine has no program for this format. Assessed by their titles.
+* Study databases in a closed format (`.cbh`, `.cbv`, `.cib`, about 250 databases) cannot be opened with free tools;
+  we parsed their chapter titles - they show the structure of the courses.
 
-## Граница: что берём и что нет (правило 5 Части II)
+## The boundary: what we take and what we do not (rule 5 of Part II)
 
-* **Берём идеи и методику**: виды упражнений, порядок обучения, классификацию приёмов, устройство тестов. Это не
-  охраняется. Тексты пишем сами на трёх языках, позиции берём свои (из нашей базы задач CC0, из архива, из
-  генераторов) или из партий.
-* **Берём партии** — ходы и заголовки (игроки, место, год, результат). Это факты. Комментарии, оценки и варианты
-  из файлов отрезаются при импорте; свои комментарии появятся позже (таск 27.4).
-* **Подборка «Красивые партии» составлена владельцем** — её можно брать целиком, включая состав подборки.
-* **Не берём**: тексты, комментарии, диаграммы, обложки, подборки задач и упражнений из книг (подборка охраняется
-  как составное произведение, даже если каждая позиция — из партии), композиционные задачи и этюды современных
-  составителей, названия коммерческих программ и баз (правило 5).
-* **Имена живых шахматистов** не используем для соперников-ботов и в рекламе; их партии в библиотеке — как факты.
-* **Личные партии** (папка «ЛИЧНЫЕ ПАРТИИ», ~300 PGN, в том числе партии ребёнка, имена соперников; фото чужого
-  сборника партий) — только в приватной коллекции владельца, без публикации.
+* **We take ideas and methodology**: kinds of exercises, the order of teaching, the classification of techniques, the design of tests. This is not
+  protected. We write the texts ourselves in three languages, and take the positions as our own (from our CC0 puzzle database, from the archive, from
+  generators) or from games.
+* **We take games** - moves and headers (players, place, year, result). These are facts. Comments, evaluations and variations
+  from the files are cut off at import; our own comments will appear later (task 27.4).
+* **The "Beautiful games" collection was compiled by the owner** - it can be taken whole, including the composition of the collection.
+* **We do not take**: texts, comments, diagrams, covers, collections of puzzles and exercises from books (a collection is protected
+  as a compiled work, even if every position comes from a game), composed problems and studies by modern
+  composers, names of commercial programs and databases (rule 5).
+* **Names of living chess players** are not used for bot opponents or in advertising; their games in the library are facts.
+* **Personal games** (the "PERSONAL GAMES" folder, ~300 PGN, including a child's games, opponents' names; a photo of someone else's
+  game collection) - only in the owner's private collection, without publication.
 
-## Что в папке
+## What is in the folder
 
-| Раздел | Содержимое | Как используем |
+| Section | Contents | How we use it |
 |---|---|---|
-| `# ДЕБЮТНЫЙ РЕПЕРТУАР` | Дерево репертуара: за белых — 26 глав после 1.e4 (скандинавская, Алехин, Пирц, Каро — Канн, французская, русская, шотландская, испанская, сицилианская: Мароци, челябинский, Паульсен, дракон, Керес, Раузер, Найдорф); за чёрных — 35 глав (Рети, английское, ферзевые пешки, славянская с вариантами, королевский гамбит, дебюты коня и слона, четыре коня, шотландская, защита двух коней, испанская с Брейером). В узлах — `MAIN LINE.pgn` и примерные партии; крупные базы на 2–9 МБ (всего ~470 МБ PGN, есть повторы файлов в разных главах) | Скелет — в продвинутые стартовые репертуары (20.1), партии — в библиотеку (27.2). Крупные базы собраны владельцем при чтении книг (решение 15.11) — в библиотеку публично |
-| `# ПЕШЕЧНЫЕ СТРУКТУРЫ` | 14 структур с примерными партиями (~120): испанская (e4 против d6), французская цепь, симметрия e4/e5, разменная французская, «пила», Мароци, изолированная пешка, висячие пешки, карлсбадская, каменная стена, староиндийская цепь, клин в центре, модерн-Бенони, ёж | Библиотека (публично) + модуль «Пешечные структуры» Большого курса + детектор структуры (27.5) |
-| `# ПАРТИИ` | «Красивые партии» (138, подборка владельца), Капабланка (125), Каспаров (64), Ботвинник (36), Эйве (33), Иванчук (2), «Как стать мастером» (4), личные партии (~300 PGN и 5 баз), фото сборника партий (171) | Библиотека: «Красивые партии» и партии мастеров — публично; личные — приватно; фото — не используем |
-| `ALL CHESS CHAMPIONS` | Партии 14 чемпионов мира от Стейница до Крамника: базы закрытого формата и 14 архивов zip (8 МБ) | Библиотека после перевода в PGN (27.3); история чемпионов в курсе; новые исторические соперники (21.5) — только умершие мастера |
-| `PGN-BOOKS` | ~120 книг в виде учебных баз: курсы тактики, стратегии, эндшпиля, дебютов, сборники партий, матчи на первенство мира | Партии матчей и сборников — в библиотеку (только ходы, 27.3); курсы — структура для Большого курса |
-| `ШАХМАТЫ. КЛАССИКИ` и книги в корне | Учебники Капабланки, Ласкера, Нимцовича, Рети, Алехина, Спасского, Фишера; Блох, Губницкий, Иващенко, Левенфиш, Николаев, Панченко, Сейраван (4 книги), Хмельницкий, тесты Конотопов (6 уровней) | Только методика |
+| `# OPENING REPERTOIRE` | The repertoire tree: for White - 26 chapters after 1.e4 (Scandinavian, Alekhine, Pirc, Caro-Kann, French, Russian, Scotch, Spanish, Sicilian: Maroczy, Chelyabinsk, Paulsen, Dragon, Keres, Rauzer, Najdorf); for Black - 35 chapters (Réti, English, queen's pawn openings, Slav with variations, King's Gambit, knight and bishop openings, Four Knights, Scotch, Two Knights Defense, Spanish with the Breyer). The nodes hold `MAIN LINE.pgn` and sample games; large databases of 2-9 MB (~470 MB of PGN in all, with duplicate files in different chapters) | The skeleton goes into advanced starter repertoires (20.1), the games into the library (27.2). The large databases were compiled by the owner while reading the books (decision of 15.11) - into the library publicly |
+| `# PAWN STRUCTURES` | 14 structures with sample games (~120): Spanish (e4 against d6), French chain, e4/e5 symmetry, Exchange French, "saw", Maroczy, isolated pawn, hanging pawns, Carlsbad, stonewall, King's Indian chain, wedge in the center, Modern Benoni, hedgehog | Library (public) + the "Pawn structures" module of the Big Course + the structure detector (27.5) |
+| `# GAMES` | "Beautiful games" (138, the owner's collection), Capablanca (125), Kasparov (64), Botvinnik (36), Euwe (33), Ivanchuk (2), "How to Become a Master" (4), personal games (~300 PGN and 5 databases), photos of a game collection (171) | Library: "Beautiful games" and master games - public; personal - private; photos - not used |
+| `ALL CHESS CHAMPIONS` | Games of 14 world champions from Steinitz to Kramnik: databases in a closed format and 14 zip archives (8 MB) | Library after conversion to PGN (27.3); the history of the champions in the course; new historical opponents (21.5) - only deceased masters |
+| `PGN-BOOKS` | ~120 books in the form of study databases: courses on tactics, strategy, endgames, openings, game collections, World Championship matches | Games of the matches and collections go into the library (moves only, 27.3); courses - the structure for the Big Course |
+| `CHESS. CLASSICS` and books in the root | Textbooks by Capablanca, Lasker, Nimzowitsch, Réti, Alekhine, Spassky, Fischer; Bloch, Gubnitsky, Ivashchenko, Levenfish, Nikolaev, Panchenko, Seirawan (4 books), Khmelnitsky, Konotop tests (6 levels) | Methodology only |
 
-## Что берём: методика и форматы
+## What we take: methodology and formats
 
-### Учебные планы и уровни
+### Curricula and levels
 
-* **Уровни по разрядам.** Тесты по тактике Конотопов разделены по шести уровням: начинающие, IV, III, II, I разряд,
-  высокая квалификация. Для игроков Украины и стран бывшего СССР разряды понятнее рейтинга. Уровни Большого
-  курса и экзамены уровней (22.0) строим по этой шкале, рядом показываем ориентир по рейтингу.
-* **Программа по годам обучения** (Чехов — Архипов, IV–II разряд; Чехов — Комляков, I разряд — КМС). Первый год:
-  закрытие от шаха, мат в 1, 2, 3 хода. Второй год: тактические слабости позиции, простейшие тактические позиции,
-  мат в 2–3. Старшая ступень: ограничение фигур и пешек противника, стратегическая игра и планирование, техника
-  расчёта, этюды для комбинационного зрения. Это каркас программ 22.3.
-* **Мелкая шкала сложности** (Иващенко, 11 ступеней обучения комбинациям) — внутри уровня курса задачи идут по
-  ступеням, а не одним списком.
-* **Экзамен с профилем навыков** (Хмельницкий, «Шахматный экзамен»): тест по разделам, итог — профиль сильных и
-  слабых сторон и оценка уровня. Модель для 22.0 и карты навыков 22.1.
-* **Курс в 64 урока** (Губницкий, Николаев, Рублевский) — удобный объём одной ступени курса.
-* **Сначала простые концовки, потом середина игры** (Капабланка): ранние уровни курса начинаются с простейших матов
-  и пешечных окончаний.
-* **Программированное обучение** (Фишер): один маленький шаг, сразу вопрос и проверка. Подходит «Азбуке» и
-  урокам 14.1.
+* **Levels by rating class.** The Konotop tactics tests are divided into six levels: beginners, Class IV, III, II, I,
+  high qualification. For players in Ukraine and the former USSR countries, rating classes are clearer than a rating. We build the levels of the Big
+  Course and the level exams (22.0) on this scale, showing a rating guide alongside.
+* **A program by years of study** (Chekhov - Arkhipov, Class IV-II; Chekhov - Komlyakov, Class I - Candidate Master). First year:
+  getting out of check, mate in 1, 2, 3 moves. Second year: tactical weaknesses of a position, the simplest tactical positions,
+  mate in 2-3. The senior stage: restricting the opponent's pieces and pawns, strategic play and planning, calculation
+  technique, studies for combinational vision. This is the skeleton of the 22.3 programs.
+* **A fine difficulty scale** (Ivashchenko, 11 steps of training in combinations) - within a course level, puzzles go
+  by steps, not in one list.
+* **An exam with a skill profile** (Khmelnitsky, "Chess Exam"): a test by sections, the result is a profile of strong and
+  weak sides and an estimate of the level. A model for 22.0 and the skill map 22.1.
+* **A course of 64 lessons** (Gubnitsky, Nikolaev, Rublevsky) - a convenient size for one step of the course.
+* **Simple endings first, then the middlegame** (Capablanca): the early course levels begin with the simplest mates
+  and pawn endings.
+* **Programmed learning** (Fischer): one small step, immediately a question and a check. Suits the "Basics" and
+  the 14.1 lessons.
 
-### Классификация тактики: приём × цель
+### Classification of tactics: technique × goal
 
-Интенсивный курс тактики Калиниченко раскладывает тактику по двум осям. Это сильнее нашего плоского списка тем.
+Kalinichenko's intensive tactics course lays tactics out along two axes. This is stronger than our flat list of themes.
 
-* **Прямые удары**: мат в 1, двойной удар, одновременное нападение, открытое нападение (с шахом), вскрытый шах,
-  мельница, двойной шах, линейная атака, абсолютная и относительная связка, ловушки в дебюте, проходная пешка,
-  промежуточный ход и шах, контрудар, цугцванг, вторжение, неотвратимая угроза, засада, рентген, выигрыш темпа.
-* **Приёмы ничьей**: теоретическая ничья, пат, «бешеная» фигура, вечный шах, вечное нападение, вечная угроза,
-  позиционная ничья, крепость, блокада.
-* **Методы с целью**: открытие линий (для мата, для атаки, для вторжения, для двойного удара, для линейной атаки,
-  для ловли ферзя, для вскрытого шаха), завоевание поля (матового, для вторжения), отвлечение (на мат, от поля
-  вторжения, от поля превращения, защитника, связывающей и блокирующей фигуры, с двойным ударом), завлечение (под
-  мат, в матовую сеть, под связку, под двойной удар, под линейную атаку, под вскрытый шах, под пат, под вечный шах,
-  на критическое поле, для выигрыша темпа), уничтожение защиты, блокада (с матом, с превращением, маршрута короля,
-  превентивная, патовая), освобождение поля и линии, перекрытие (с матовыми угрозами, для превращения, связки,
-  линии защиты, превентивное, вынужденное).
-* **Форсированные варианты** того же: форсированный мат, форсированный двойной удар и т. д.
+* **Direct strikes**: mate in 1, double attack, simultaneous attack, discovered attack (with check), discovered check,
+  windmill, double check, line attack, absolute and relative pin, traps in the opening, passed pawn,
+  intermediate move and check, counterblow, zugzwang, invasion, unstoppable threat, ambush, x-ray, gaining a tempo.
+* **Drawing techniques**: theoretical draw, stalemate, "rampant" piece, perpetual check, perpetual attack, perpetual threat,
+  positional draw, fortress, blockade.
+* **Methods with a goal**: opening lines (for mate, for attack, for invasion, for a double attack, for a line attack,
+  for trapping the queen, for a discovered check), conquering a square (a mating one, for invasion), deflection (to mate, from the invasion square,
+  from the promotion square, of a defender, of a pinning and blocking piece, with a double attack), decoy (into
+  mate, into a mating net, into a pin, into a double attack, into a line attack, into a discovered check, into stalemate, into perpetual check,
+  onto a critical square, to gain a tempo), destroying the defense, blockade (with mate, with promotion, of the king's route,
+  preventive, stalemate), clearing a square and a line, interference (with mating threats, for promotion, pin,
+  line of defense, preventive, forced).
+* **Forcing variations** of the same: forced mate, forced double attack and so on.
 
-Решение: к теме в реестре (`src/services/themes.py`) добавляется второй признак — **цель приёма** (`mate`,
-`material`, `promotion`, `invasion`, `draw`, `tempo`). Новых тем немного (список — в 27.8), остальное покрывается
-сочетанием «тема × цель».
+Decision: a second attribute is added to a theme in the registry (`src/services/themes.py`) - the **goal of the technique** (`mate`,
+`material`, `promotion`, `invasion`, `draw`, `tempo`). There are few new themes (the list is in 27.8); the rest is covered by
+the "theme × goal" combination.
 
-### Новые виды упражнений
+### New kinds of exercises
 
-* **«Спасите партию»** — найти ничью в проигранной позиции: пат, вечный шах, вечное нападение, крепость, блокада,
-  «бешеная» фигура. У нас есть только часть тем (`perpetual_check`, `stalemate_trick`, `fortress`, `save_by_*`).
-* **«Узнай структуру»** — быстрая игра: позиция → название пешечной структуры. Структура определяется по пешкам
-  автоматически; тот же детектор размечает архив и библиотеку.
-* **«Найди план»** — позиция из примерной партии структуры, выбор плана из 3–4 вариантов, разбор — продолжение
-  партии.
-* **«Кандидаты»** (Котов, «Техника расчёта») — перед ходом назвать 2–3 хода-кандидата; разбор показывает, был ли
-  лучший ход среди них.
-* **«Миниатюры»** (идея сборников коротких партий и энциклопедии дебютных ошибок) — короткая решающая партия из
-  архива, задача — найти решающую ошибку и наказание. Подборку делаем сами.
-* **«Обязательные позиции» эндшпиля** (идея учебников эндшпиля) — список теоретических позиций с отметкой
-  «освоено», проверка по эндшпильным таблицам.
-* **Этюды для комбинационного зрения** — только этюды давно умерших составителей, с записью в `ATTRIBUTION.md`.
-* **Сравни два хода** (идея учебников творческого мышления) — какой из двух ходов сильнее и почему; ответ — на
-  доске.
-* **Тест на разряд** — фиксированный набор позиций на время, итог — оценка уровня.
+* **"Save the game"** - find a draw in a lost position: stalemate, perpetual check, perpetual attack, fortress, blockade,
+  "rampant" piece. We have only some of the themes (`perpetual_check`, `stalemate_trick`, `fortress`, `save_by_*`).
+* **"Recognize the structure"** - a quick game: position → name of the pawn structure. The structure is determined from the pawns
+  automatically; the same detector tags the archive and the library.
+* **"Find the plan"** - a position from a sample game of a structure, a choice of the plan from 3-4 options, the review is the continuation of
+  the game.
+* **"Candidates"** (Kotov, "Think Like a Grandmaster") - before the move, name 2-3 candidate moves; the review shows whether the
+  best move was among them.
+* **"Miniatures"** (the idea of collections of short games and the encyclopedia of opening mistakes) - a short decisive game from the
+  archive, the task is to find the decisive mistake and the punishment. We compile the collection ourselves.
+* **"Must-know positions" of the endgame** (the idea of endgame textbooks) - a list of theoretical positions with a
+  "mastered" mark, checked against endgame tablebases.
+* **Studies for combinational vision** - only studies by composers who died long ago, with an entry in `ATTRIBUTION.md`.
+* **Compare two moves** (the idea of creative-thinking textbooks) - which of two moves is stronger and why; the answer is on
+  the board.
+* **Class test** - a fixed set of positions, timed, the result is an estimate of the level.
 
-### Позиционные темы, которых нет в разделе L
+### Positional themes that are not in section L
 
-Из классики стратегии (понятия общие, объяснения свои): блокада, сверхзащита, централизация, пешечная цепь и
-атака её основания, ограничение подвижности фигур, преимущество двух слонов, размен «плохого» слона, атака
-меньшинства (уже есть), критическая позиция и выбор плана, профилактика (уже есть).
+From the strategy classics (the concepts are common, the explanations are our own): blockade, overprotection, centralization, pawn chain and
+attack on its base, restricting the mobility of pieces, advantage of the two bishops, exchange of a "bad" bishop, minority
+attack (already there), critical position and choice of plan, prophylaxis (already there).
 
-## Чего не делаем
+## What we do not do
 
-1. Не копируем тексты, комментарии, диаграммы, подборки задач и упражнений из книг — ни из современных, ни из
-   классических: классики здесь в переводах и составлениях с действующими правами.
-2. Не берём композиционные задачи и этюды современных составителей.
-3. Не упоминаем в продукте коммерческие программы и базы, из которых взяты файлы.
-4. Не публикуем личные партии и фото чужого сборника.
-5. Не делаем соперников-ботов с именами живых шахматистов.
-6. Не используем обложки книг.
-7. Базы партий неизвестного происхождения не открываем пользователям. Репертуарные базы этой папки владелец собрал
-   сам (решение 15.11) — к ним это не относится.
+1. We do not copy texts, comments, diagrams, collections of puzzles and exercises from books - neither from modern ones nor from
+   classical ones: the classics here are in translations and compilations with rights still in force.
+2. We do not take composed problems and studies by modern composers.
+3. We do not mention in the product the commercial programs and databases from which the files were taken.
+4. We do not publish personal games or the photo of someone else's collection.
+5. We do not make bot opponents with the names of living chess players.
+6. We do not use book covers.
+7. We do not open game databases of unknown origin to users. The repertoire databases of this folder were compiled by the owner
+   (decision of 15.11) - this does not apply to them.
 
-## Решения владельца (15.11)
+## Owner decisions (15.11)
 
-* Репертуарные базы собраны владельцем при чтении книг — берём, публично.
-* Учебные базы закрытого формата переводим в PGN сами (27.3).
-* Аннотации к партиям библиотеки пишем сами; владелец потом дорабатывает (27.4).
+* The repertoire databases were compiled by the owner while reading the books - we take them, publicly.
+* We convert the study databases of the closed format to PGN ourselves (27.3).
+* We write the annotations to the library games ourselves; the owner refines them afterwards (27.4).
 
-## Что из этого вышло в план
+## What came out of this in the plan
 
-Спринт 27 в `ToDo.md`: библиотека партий (27.1–27.5), Большой курс (27.6–27.12), новые упражнения и темы (27.8,
-27.9), экзамены уровней (вместе с 22.0). Устройство курса — `docs/research/supercourse.md`.
+Sprint 27 in `ToDo.md`: the game library (27.1-27.5), the Big Course (27.6-27.12), new exercises and themes (27.8,
+27.9), level exams (together with 22.0). The structure of the course is in `docs/research/supercourse.md`.

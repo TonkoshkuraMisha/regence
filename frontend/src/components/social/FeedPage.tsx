@@ -1,11 +1,11 @@
 // --- FILE: frontend/src/components/social/FeedPage.tsx ---
-// Лента и публикации (таск 30.2): /feed — поле публикации и лента подписок; /feed/post/:postId — публикация с
-// комментариями; ProfilePosts — публикации игрока в профиле. Поделиться из другой страницы:
-// navigate('/feed', {state: {attach: {kind, ref}}}) — поле публикации откроется с готовой карточкой.
-// Данные: services/feed.ts — feedApi (GET /api/v1/feed — лента подписок, /feed/user/{имя}, /feed/posts/{id}, публикация,
-// лайк, комментарии; src/api/feed.py). Текст публикации — до 2000 знаков, комментария — до 500 (как BODY_MAX и COMMENT_MAX
-// в src/services/feed.py); страница ленты — по 20 публикаций с подгрузкой «ещё». Фильтр оскорблений и придержанные
-// тексты — Civility.tsx. Роуты — App.tsx; ProfilePosts рисует Profile.tsx.
+// Feed and posts (task 30.2): /feed is the post field and the subscription feed; /feed/post/:postId is a post with
+// comments; ProfilePosts is the player's posts in the profile. Sharing from another page:
+// navigate('/feed', {state: {attach: {kind, ref}}}): the post field opens with a ready card.
+// Data: services/feed.ts, feedApi (GET /api/v1/feed is the subscription feed, /feed/user/{name}, /feed/posts/{id}, publishing,
+// like, comments; src/api/feed.py). A post text is up to 2000 characters, a comment up to 500 (like BODY_MAX and COMMENT_MAX
+// in src/services/feed.py); the feed page loads 20 posts at a time with a "more" load. The insult filter and held
+// texts are in Civility.tsx. Routes are App.tsx; ProfilePosts is rendered by Profile.tsx.
 
 import {useCallback, useEffect, useState} from 'react';
 import type {FormEvent} from 'react';
@@ -23,12 +23,12 @@ import type {AttachmentDraft} from './AttachmentPicker';
 import {FlaggedNotice, HeldNote, isTextFlagged, RulesLink, TextReportButton} from './Civility';
 import {FEED_COMMENT_MAX, FEED_POST_MAX} from '../../config/textLimits';
 
-/** Дата и время публикации в локали игрока. */
+/** Date and time of a post in the player's locale. */
 function when(iso: string | null, code: string): string {
     return iso ? new Date(iso).toLocaleString(code, {dateStyle: 'short', timeStyle: 'short'}) : '';
 }
 
-/** Поле новой публикации с вложением; при отказе фильтра показывает FlaggedNotice и позволяет отправить на проверку. */
+/** New post field with an attachment; on a filter refusal it shows FlaggedNotice and lets one send it for review. */
 export function Composer({initial, onPosted}: { initial: AttachmentDraft | null; onPosted: (post: Post) => void }) {
     const {t} = useI18n();
     const [body, setBody] = useState('');
@@ -81,7 +81,7 @@ export function Composer({initial, onPosted}: { initial: AttachmentDraft | null;
     );
 }
 
-/** Публикация: автор, текст, вложение, лайк, комментарии, жалоба (чужая) или удаление (своя); linkToPost — ссылка на страницу публикации. */
+/** Post: author, text, attachment, like, comments, a report (someone else's) or deletion (one's own); linkToPost is a link to the post page. */
 export function PostCard({post, onChange, onRemoved, linkToPost = true}: {
     post: Post;
     onChange: (post: Post) => void;
@@ -132,7 +132,7 @@ export function PostCard({post, onChange, onRemoved, linkToPost = true}: {
     );
 }
 
-/** Постраничная загрузка списка публикаций: страница заканчивается, когда сервер вернул меньше page штук; load(beforeId) берёт более ранние. */
+/** Paged loading of the post list: the page ends when the server returned fewer than page items; load(beforeId) takes earlier ones. */
 function usePostList(load: (beforeId?: number) => Promise<{ posts: Post[]; page: number }>) {
     const [posts, setPosts] = useState<Post[] | null>(null);
     const [more, setMore] = useState(false);
@@ -164,7 +164,7 @@ function usePostList(load: (beforeId?: number) => Promise<{ posts: Post[]; page:
     return {posts, more, loadMore, replace, drop, prepend};
 }
 
-/** Список публикаций с кнопкой «ещё» и подписью для пустого списка. */
+/** Post list with a "more" button and a label for an empty list. */
 function PostList({list, emptyKey}: { list: ReturnType<typeof usePostList>; emptyKey: 'feed.empty' | 'feed.noProfilePosts' }) {
     const {t} = useI18n();
     if (!list.posts) return null;
@@ -181,7 +181,7 @@ function PostList({list, emptyKey}: { list: ReturnType<typeof usePostList>; empt
     );
 }
 
-/** Лента подписок и поле публикации; требует входа. */
+/** Subscription feed and the post field; requires sign-in. */
 export function FeedPage() {
     const {t} = useI18n();
     const location = useLocation();
@@ -205,7 +205,7 @@ export function FeedPage() {
     );
 }
 
-/** Публикация с комментариями. Придержанный комментарий в счётчик не входит. */
+/** Post with comments. A held comment is not counted in the counter. */
 export function PostPage() {
     const {t, dateLocale} = useI18n();
     const {postId} = useParams<{ postId: string }>();
@@ -286,7 +286,7 @@ export function PostPage() {
     );
 }
 
-/** Публикации игрока в профиле. */
+/** Player's posts in the profile. */
 export function ProfilePosts({username}: { username: string }) {
     const {t} = useI18n();
     const load = useCallback((beforeId?: number) => feedApi.ofUser(username, beforeId), [username]);

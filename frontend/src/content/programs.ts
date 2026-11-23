@@ -1,6 +1,6 @@
-// Программы тренировок (таск 22.3): маршруты по уже готовым разделам — азбуке, урокам, курсу матов, эндшпилю, темам
-// задач, тренажёрам, репертуару, экзамену. 8 недель × 5 занятий; занятие — 1–2 упражнения. Названия программ — в
-// каталогах (programs.<id>.*), подписи упражнений — из каталогов самих разделов. Все id сверяет тест
+// Training programs (task 22.3): routes through already ready sections - basics, lessons, the mate course, endgames, puzzle themes,
+// trainers, repertoire, exam. 8 weeks x 5 sessions; a session is 1-2 exercises. Program names are in
+// the catalogs (programs.<id>.*), exercise labels come from the catalogs of the sections themselves. All ids are checked by a test
 // (content/__tests__/programs.test.ts).
 
 export type Activity =
@@ -12,7 +12,7 @@ export type Activity =
     | { kind: 'trainer'; id: string }
     | { kind: 'mini'; id: string }
     | { kind: 'exam'; id: string }
-    /** Библиотека партий (27.1), с фильтром по пешечной структуре (27.5) — для модулей Большого курса. */
+    /** Game library (27.1), with a pawn structure filter (27.5) - for Big course modules. */
     | { kind: 'library'; structure?: string; moves?: string }
     | { kind: 'workout' | 'repertoire' | 'classics' | 'guess' | 'play' };
 
@@ -20,7 +20,7 @@ export type Session = Activity[];
 
 export interface Program {
     id: 'first_steps' | 'to_1200' | 'club' | 'advanced';
-    /** Ориентир по рейтингу: [от, до]. */
+    /** Rating guideline: [from, to]. */
     range: [number, number];
     weeks: Session[][];
 }
@@ -100,7 +100,7 @@ export function programById(id: string): Program | undefined {
     return PROGRAMS.find((p) => p.id === id);
 }
 
-/** Куда ведёт упражнение. Тема задач открывается сразу тренировкой (PuzzlesPage читает состояние перехода). */
+/** Where an exercise leads. A puzzle theme opens straight into training (PuzzlesPage reads the navigation state). */
 export function activityLink(activity: Activity): { to: string; state?: unknown } {
     switch (activity.kind) {
         case 'basics': return {to: `/learn/basics/${activity.id}`};

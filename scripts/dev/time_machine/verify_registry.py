@@ -44,7 +44,7 @@ SOURCES = {
     "bled_1931": ("bled_1931_chess_tournament", 0),
     "nottingham_1936": ("nottingham_1936_chess_tournament", 0),
     "avro_1938": ("avro_1938_chess_tournament", 1),
-    # проверенные этой ночью — ещё раз, уже с именами
+    # verified last night - once more, now with names
     "berlin_1881": ("berlin_1881_chess_tournament", 0),
     "new_york_1889": ("new_york_1889_chess_tournament", 5),
     "berlin_1897": ("berlin_1897_chess_tournament", 0),
@@ -60,27 +60,27 @@ SOURCES = {
     "san_remo_1930": ("san_remo_1930_chess_tournament", 0),
 }
 BOT_NAMES = {key: str(meta.get("pgn_name", key)) for key, meta in BOT_METADATA.items()}
-# Один и тот же человек, записанный в источнике иначе, чем у нас (id -> часть имени в источнике).
+# The same person written in the source differently than in ours (id -> part of the name in the source).
 KNOWN_SPELLINGS = {
     "steinitz": "wilhelm steinitz", "janowski": "dawid janowski", "salwe": "gersz salwe",
     "dus_chotimirsky": "duz-khotimirsky", "dandre": "andre", "moreau": "colonel moreau",
     "ilyin_zhenevsky": "ilyin-genevsky", "bohatyrchuk": "bogatyrchuk", "romih": "massimiliano romi",
     "stoltz": "gosta stoltz",
 }
-# Опечатки самих источников: (турнир, участник) — очки или ячейки строки в таблице источника не сходятся.
-# Карлсбад 1911: у Видмара напечатано 15½, по его строке и общему итогу (325) — 15, в реестре 15.
-# Вена 1898: ячейки строк Шифферса и Шовальтера дают на пол-очка меньше напечатанного итога; итоги верны.
+# Typos in the sources themselves: (tournament, participant) - the score or the row cells in the source table do not add up.
+# Carlsbad 1911: Vidmar has 15½ printed, by his row and the overall total (325) it is 15, in the registry 15.
+# Vienna 1898: the Schiffers and Schowalter row cells give half a point less than the printed total; the totals are right.
 KNOWN_SOURCE_TYPOS = {("carlsbad_1911", "vidmar"), ("vienna_1898", "schiffers"), ("vienna_1898", "showalter")}
 
 
 def plain(text: str) -> str:
-    """Удаляет HTML-теги и сноски из текста ячейки турнирной таблицы."""
+    """Removes HTML tags and footnotes from the text of a tournament table cell."""
     text = text.replace("ø", "o").replace("ł", "l").replace("ß", "ss").replace("Ł", "L")
     return "".join(c for c in unicodedata.normalize("NFD", text.lower()) if not unicodedata.combining(c))
 
 
 def number(cell: str) -> float | None:
-    """Переводит текстовую запись очков с половинами в число float."""
+    """Converts a text score entry with halves to a float."""
     cell = re.sub(r"'''|<[^>]+>|&nbsp;", " ", cell).strip()
     cell = re.sub(r"\{\{frac\|(\d)\|(\d)\}\}", lambda m: f" {int(m.group(1)) / int(m.group(2))}", cell)
     cell = cell.replace("{{frac|2}}", "½").replace("½", ".5").replace(" ", "")
@@ -91,7 +91,7 @@ def number(cell: str) -> float | None:
 
 
 def result_points(cell: str) -> float | None:
-    """Суммирует очки игрока по ячейкам отдельных партий строки таблицы."""
+    """Sums a player's scores over the cells of the individual games of a table row."""
     cell = cell.replace("{{frac|1|2}}", "½").replace("{{frac|2}}", "½")
     cell = re.sub(r"'''|<[^>]+>|\{\{[^}]*\}\}|style=[^|]*\|", "", cell).strip()
     if cell == "" or re.fullmatch(r"[xX*\-–\s]+", cell):
@@ -102,15 +102,15 @@ def result_points(cell: str) -> float | None:
 
 
 def rows_of(slug: str, index: int) -> list[tuple[str, float | None, float | None]]:
-    """Извлекает строки результатов участников из HTML-таблицы источника."""
+    """Extracts participant result rows from the source HTML table."""
     text = (HERE / ".cache" / f"{slug}.txt").read_text(encoding="utf-8")
     table = re.findall(r"\{\|.*?\n\|\}", text, flags=re.S)[index]
     out = []
     for row in table.split("\n|-")[1:]:
-        row = row.replace("\n||", "||").replace("|||", "||")  # перенос перед разделителем и лишняя черта
+        row = row.replace("\n||", "||").replace("|||", "||")  # a line wrapped before the separator and a stray bar
         cells = [c.strip() for c in re.split(r"\|\||\n\|", "\n" + row.strip().lstrip("|")) if c.strip() != ""]
         def letters(cell: str) -> str:
-            """Оставляет в строке только латинские буквы в нижнем регистре для сверки."""
+            """Keeps only Latin letters in lower case in the string for matching."""
             return re.sub(r'(?:style|rowspan|colspan|align|bgcolor)\s*=\s*(?:"[^"]*"|[^|\s]+)\s*\|?', "", cell)
 
         named = next((i for i, c in enumerate(cells) if re.search(r"[A-Za-z]{4,}", letters(c))), None)
@@ -143,7 +143,7 @@ def rows_of(slug: str, index: int) -> list[tuple[str, float | None, float | None
 
 
 def our_name(player_id: str) -> str:
-    """Приводит имя мастера из реестра к виду для сопоставления с таблицей."""
+    """Converts a registry master's name to a form for matching against the table."""
     guest = GUESTS_BY_ID.get(player_id)
     return guest.pgn_name if guest else BOT_NAMES.get(player_id, player_id)
 
@@ -153,14 +153,14 @@ def same_person(source: str, ours: str) -> bool:
     surname, _, given = ours.partition(", ")
     words = plain(source).replace(".", " ").replace("-", " ").split()
     sur = plain(surname).replace("-", " ").split()
-    # фамилия: последнее слово нашей фамилии есть в источнике (с учётом ue/oe/ae и вариантов записи)
+    # surname: the last word of our surname is in the source (allowing ue/oe/ae and spelling variants)
     variants = {sur[-1], sur[-1].replace("ue", "u").replace("oe", "o").replace("ae", "a")}
     if not any(v in words or any(w.startswith(v[:5]) and len(v) >= 5 for w in words) for v in variants):
         return False
     first = plain(given).replace(".", " ").split()
     if not first or not words:
         return True
-    # имя: первое слово имени совпадает с началом имени в источнике (инициалы допускаются)
+    # first name: the first word of the name matches the start of the name in the source (initials allowed)
     return any(w == first[0] or (len(w) == 1 and first[0].startswith(w)) or (len(first[0]) == 1 and w.startswith(first[0]))
                or w[:4] == first[0][:4] for w in words[:-1]) or len(words) == 1
 

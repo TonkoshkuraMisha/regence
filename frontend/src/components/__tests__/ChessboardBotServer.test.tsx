@@ -1,8 +1,8 @@
 // --- FILE: frontend/src/components/__tests__/ChessboardBotServer.test.tsx ---
-// Ответы сервера в партии с ботом (useBotGame.ts через Chessboard.tsx): итог партии, который сервер рассудил иначе,
-// отказ и сбой сохранения партии, отказ и сбой предложения ничьей; чистые функции ladderOutcomeMessage и
-// botCommentMessage (сообщение об итоге лестницы по коду, реплика бота по ключу каталога). Сервер — стаб fetch
-// с кодами ответов, бот отвечает заготовленными ходами, время — фальшивые таймеры.
+// Server answers in a game with a bot (useBotGame.ts through Chessboard.tsx): a game result that the server judged differently,
+// a refusal and a failure to save the game, a refusal and a failure of a draw offer; the pure functions ladderOutcomeMessage and
+// botCommentMessage (a ladder result message by code, a bot remark by catalogue key). The server is a fetch stub
+// with response codes, the bot answers with prepared moves, time is fake timers.
 
 import {act, fireEvent, render, screen, waitFor} from '@testing-library/react';
 import {MemoryRouter} from 'react-router-dom';
@@ -36,7 +36,7 @@ interface ServerStub {
 const json = (body: unknown, status = 200) =>
     ({ok: status < 400, status, json: async () => body, text: async () => JSON.stringify(body)}) as Response;
 
-/** Партия белыми против бота; ответы /bots/save-game и /bots/draw-offer задаёт тест. */
+/** A game as White against the bot; the answers of /bots/save-game and /bots/draw-offer are set by the test. */
 async function startBotGame(replies: Array<{ uci: string; san: string }>, server: ServerStub = {}) {
     let call = 0;
     vi.stubGlobal('fetch', vi.fn(async (input: string | URL | Request) => {
@@ -60,7 +60,7 @@ async function startBotGame(replies: Array<{ uci: string; san: string }>, server
     );
     await openBots();
     await act(async () => {
-        fireEvent.click(await screen.findByRole('button', {name: /Белыми/}));
+        fireEvent.click(await screen.findByRole('button', {name: /White/}));
     });
 }
 
@@ -91,23 +91,23 @@ afterEach(() => {
     localStorage.clear();
 });
 
-describe('итог партии с ботом по ответу сервера', () => {
-    it('если сервер рассудил иначе, на экране остаётся его итог', async () => {
+describe('game result by the server answer', () => {
+    it('if the server judged differently, its result stays on the screen', async () => {
         await startBotGame(FOOLS_MATE_REPLIES, {saveGame: () => json({game_id: 999, status: 'finished', result: '1/2-1/2'})});
         await playFoolsMate();
-        await waitFor(() => expect(screen.getByText('Итог по правилам ФИДЕ: 1/2-1/2')).toBeInTheDocument());
+        await waitFor(() => expect(screen.getByText('Result under FIDE rules: 1/2-1/2')).toBeInTheDocument());
     });
 
-    it('сбой сохранения партии пишется в журнал и не ломает доску', async () => {
+    it('a failure to save the game is written to the log and does not break the board', async () => {
         const errors = vi.spyOn(console, 'error').mockImplementation(() => undefined);
         await startBotGame(FOOLS_MATE_REPLIES, {saveGame: () => Promise.reject(new Error('offline'))});
         await playFoolsMate();
         await waitFor(() => expect(errors).toHaveBeenCalledWith('Failed to save the bot game:', expect.any(Error)));
-        expect(screen.getByText(/Партия против .* окончена/)).toBeInTheDocument();
+        expect(screen.getByText(/The game against .* is over/)).toBeInTheDocument();
     });
 });
 
-describe('предложение ничьей боту', () => {
+describe('a draw offer to the bot', () => {
     async function offerDraw() {
         await playMove('e2', 'e4');
         await botReplies();
@@ -118,41 +118,41 @@ describe('предложение ничьей боту', () => {
         });
     }
 
-    it('отказ сервера — сообщение, партия продолжается', async () => {
+    it('a server refusal — a message, the game continues', async () => {
         await startBotGame(FOOLS_MATE_REPLIES, {drawOffer: () => json({}, 500)});
         await offerDraw();
-        await waitFor(() => expect(screen.getByText(/не смог ответить на предложение ничьей/)).toBeInTheDocument());
+        await waitFor(() => expect(screen.getByText(/could not answer the draw offer/)).toBeInTheDocument());
         expect(screen.getByTestId('bot-offer-draw')).toBeInTheDocument();
     });
 
-    it('сетевой сбой — то же сообщение', async () => {
+    it('a network failure — the same message', async () => {
         await startBotGame(FOOLS_MATE_REPLIES, {drawOffer: () => Promise.reject(new Error('offline'))});
         await offerDraw();
-        await waitFor(() => expect(screen.getByText(/не смог ответить на предложение ничьей/)).toBeInTheDocument());
+        await waitFor(() => expect(screen.getByText(/could not answer the draw offer/)).toBeInTheDocument());
     });
 });
 
-describe('ladderOutcomeMessage и botCommentMessage', () => {
+describe('ladderOutcomeMessage and botCommentMessage', () => {
     const paramsOf = (m: ReturnType<typeof ladderOutcomeMessage>) => (m as {params?: Record<string, unknown>}).params;
     const base = {counted: true, reason: null, delta: 12, rating: 1512, step: 3, promoted: false, opponent: 'x'};
 
-    it('не засчитана: причина — из каталога по коду, незнакомая — как есть, пустая — пусто', () => {
-        // Известный код — не строка, а ссылка на сообщение каталога (текст соберёт клиент на языке игрока).
+    it('not counted: the reason is from the catalogue by code, an unknown one as is, an empty one — empty', () => {
+        // A known code is not a string but a reference to a catalogue message (the client assembles the text in the player\'s language).
         expect(typeof paramsOf(ladderOutcomeMessage({...base, counted: false, reason: 'takeback'}))?.reason).toBe('object');
         expect(paramsOf(ladderOutcomeMessage({...base, counted: false, reason: 'new_reason'}))).toEqual({reason: 'new_reason'});
         expect(paramsOf(ladderOutcomeMessage({...base, counted: false, reason: null}))).toEqual({reason: ''});
         expect(ladderOutcomeMessage({...base, counted: false, reason: 'takeback'}).key).toBe('ladder.notCounted');
     });
 
-    it('засчитана: знак изменения и повышение', () => {
+    it('counted: the sign of the change and the promotion', () => {
         expect(ladderOutcomeMessage(base)).toMatchObject({key: 'ladder.result', params: {rating: 1512, delta: '+12'}});
         expect(ladderOutcomeMessage({...base, delta: -8, promoted: true}))
             .toMatchObject({key: 'ladder.resultPromoted', params: {delta: '-8'}});
     });
 
-    it('реплика бота: незнакомый ключ и не объект — без реплики', () => {
+    it('bot remark: an unknown key and a non-object — no remark', () => {
         expect(botCommentMessage(null)).toBeNull();
-        expect(botCommentMessage('текст')).toBeNull();
+        expect(botCommentMessage('text')).toBeNull();
         expect(botCommentMessage({key: 'no_such_key_at_all', params: {}})).toBeNull();
         expect(botCommentMessage({key: 7, params: {}})).toBeNull();
     });

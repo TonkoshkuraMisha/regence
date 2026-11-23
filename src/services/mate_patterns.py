@@ -1,24 +1,25 @@
 # --- FILE: src/services/mate_patterns.py ---
 """
-Именные матовые конструкции по финальной позиции (таск 13.4): у задач базы lichess нет тегов для части матов
-раздела F каталога — их распознаёт этот модуль по расположению фигур в матовой позиции. Распознаются только
-конструкции с однозначным определением; спорные (мат Пильсбери, мат Легаля как последовательность) не
-угадываются — лучше без пометки, чем с ошибочной.
+Named mating patterns by the final position (task 13.4): lichess database puzzles have no tags for some of the mates
+of catalogue section F -- this module recognises them by the arrangement of pieces in the mating position. Only
+patterns with an unambiguous definition are recognised; disputed ones (Pillsbury's mate, Legal's mate as a sequence) are not
+guessed -- better without a tag than with a wrong one.
 
-* ``queen_kiss_mate`` — ферзь матует вплотную к королю и защищён своей фигурой;
-* ``damiano_mate`` — то же, ферзь на крайней вертикали защищён пешкой;
-* ``lolli_mate`` — то же, ферзь не на краю защищён пешкой;
-* ``epaulette_mate`` — ферзь матует с двух полей по вертикали, по бокам короля — его же фигуры (не пешки);
-* ``opera_mate`` — ладья матует вплотную по последней горизонтали короля, защищена слоном;
-* ``corridor_mate`` — ладья/ферзь матует вдоль крайней вертикали, выход в сторону закрыт своими фигурами;
-* ``greco_mate`` — король в углу, ладья/ферзь матует по крайней вертикали, слон отнимает поле рядом;
-* ``morphy_mate`` — король в углу, мат слоном, ладья отнимает соседнюю вертикаль;
-* ``blackburne_mate`` — мат слоном королю на последней горизонтали после короткой рокировки (вертикали f–h): второй
-  слон и конь отнимают у него соседние поля.
+* ``queen_kiss_mate`` -- the queen mates adjacent to the king and is protected by its own piece;
+* ``damiano_mate`` -- the same, the queen on the edge file protected by a pawn;
+* ``lolli_mate`` -- the same, the queen not on the edge protected by a pawn;
+* ``epaulette_mate`` -- the queen mates from two squares on a file, at the king's sides are its own pieces (not pawns);
+* ``opera_mate`` -- a rook mates adjacent to the king along its back rank, protected by a bishop;
+* ``corridor_mate`` -- a rook/queen mates along the edge file, the exit to the side is closed by its own pieces;
+* ``greco_mate`` -- the king in the corner, a rook/queen mates along the edge file, a bishop takes away the neighbouring
+  square;
+* ``morphy_mate`` -- the king in the corner, mate by a bishop, a rook takes away the neighbouring file;
+* ``blackburne_mate`` -- a bishop mate to a king on the back rank after short castling (files f-h): the second
+  bishop and a knight take away its neighbouring squares.
 
-Одна позиция может получить несколько пометок (``queen_kiss_mate`` всегда сопровождает ``damiano_mate`` и
-``lolli_mate``). Кто вызывает: импорт задач (src/services/puzzle_import.py) и сборка дополнительной выборки тем
-(scripts/dev/build_theme_extra.py) — пометки записываются темами задачи в puzzle_themes.
+One position may get several tags (``queen_kiss_mate`` always accompanies ``damiano_mate`` and
+``lolli_mate``). Who calls it: the puzzle import (src/services/puzzle_import.py) and the build of the extra theme sample
+(scripts/dev/build_theme_extra.py) -- the tags are written as the puzzle's themes in puzzle_themes.
 """
 
 import chess
@@ -32,15 +33,18 @@ def _distance(a: chess.Square, b: chess.Square) -> int:
 
 
 def _flights(board: chess.Board, king: chess.Square) -> list[chess.Square]:
-    """Все поля вплотную к королю — и занятые, и атакованные: свободны ли они, решает каждая проверка сама."""
+    """
+    All squares adjacent to the king -- both occupied and attacked: whether they are free is decided by each check itself.
+    """
     return [s for s in chess.SQUARES if _distance(s, king) == 1]
 
 
 def mate_patterns(board: chess.Board, last_move: chess.Move) -> list[str]:
     """
-    Именные конструкции матовой позиции (после ``last_move``); не мат — пусто. Матующей считается фигура, которая
-    сделала последний ход: объявляет ли шах именно она, не проверяется (вскрытый мат — редкий случай, который может
-    дать неточную пометку). Её защитники — фигуры матующей стороны, бьющие на её поле.
+    Named patterns of a mating position (after ``last_move``); not a mate -- empty. The mating piece is taken to be the one
+    that
+    made the last move: whether it is the one giving check is not verified (a discovered mate is a rare case that may
+    give an inaccurate tag). Its defenders are pieces of the mating side that attack its square.
     """
     if not board.is_checkmate():
         return []
@@ -98,7 +102,7 @@ def mate_patterns(board: chess.Board, last_move: chess.Move) -> list[str]:
 
 
 def patterns_for_solution(fen: str, moves: list[str]) -> list[str]:
-    """Конструкции финальной позиции решения задачи (если решение кончается матом)."""
+    """Patterns of the final position of a puzzle solution (if the solution ends with mate)."""
     board = chess.Board(fen)
     for uci in moves:
         board.push_uci(uci)

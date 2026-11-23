@@ -1,32 +1,32 @@
 // --- FILE: frontend/src/test/setup.ts ---
-// Общая настройка окружения для тестов компонентов (React Testing Library + jsdom).
-// jsdom не реализует часть API, которые реально использует Chessboard.tsx — подставляем
-// минимальные заглушки один раз здесь, а не в каждом тестовом файле.
+// Shared environment setup for component tests (React Testing Library + jsdom).
+// jsdom does not implement some of the APIs that Chessboard.tsx really uses — we put in
+// minimal stubs once here, and not in every test file.
 
 import '@testing-library/jest-dom/vitest';
 import {afterEach, beforeEach} from 'vitest';
 import {cleanup, configure} from '@testing-library/react';
 
-// Ожидания (findBy*, waitFor) по умолчанию сдаются через 1 с. Когда все файлы тестов идут параллельно
-// под замером покрытия — а на раннере CI ядер меньше, — тяжёлые компоненты (GameViewer с графиком
-// recharts) изредка не успевали отрисоваться, и тест падал при рабочем коде. Ожидание завершается сразу,
-// как только условие выполнено, поэтому запас времени не замедляет зелёные тесты.
+// Expectations (findBy*, waitFor) give up after 1 s by default. When all test files run in parallel
+// under coverage measurement — and the CI runner has fewer cores — heavy components (GameViewer with a
+// recharts chart) occasionally did not manage to render, and the test failed with working code. A wait finishes at once
+// as soon as the condition is met, so the extra time does not slow down green tests.
 configure({asyncUtilTimeout: 5000});
 
 import {setLanguage} from '../i18n';
 import {clearToken} from '../services/authToken';
 import {clearBotGameSnapshot} from '../services/botGameSnapshot';
 
-// Тесты компонентов написаны против русского интерфейса: язык задаётся явно, а не берётся из jsdom
-// (там en-US). Отдельные тесты переключают язык сами — тогда проверяется и английский, и украинский.
+// Component tests are written against the English interface: the language is set explicitly and is not taken from jsdom
+// (which has en-US). Individual tests switch the language themselves — that is how Ukrainian is checked too.
 beforeEach(() => {
-    setLanguage('ru', {persist: false});
+    setLanguage('en', {persist: false});
 });
 
 afterEach(() => {
     cleanup();
-    clearBotGameSnapshot();  // снимок партии с ботом (пишется и при размонтировании) не должен «продолжить» чужой тест
-    clearToken();  // токен входа живёт в памяти модуля (таск 17.5) — между тестами не переносится
+    clearBotGameSnapshot();  // the bot game snapshot (also written on unmount) must not "continue" someone else's test
+    clearToken();  // the login token lives in the module memory (task 17.5) — it is not carried over between tests
 });
 
 if (!Element.prototype.scrollIntoView) {
@@ -34,9 +34,9 @@ if (!Element.prototype.scrollIntoView) {
     };
 }
 
-// recharts (ResponsiveContainer) подписывается на ResizeObserver в эффекте, которого в jsdom нет. Заглушка —
-// на весь прогон, а не в beforeEach теста: vi.unstubAllGlobals() в afterEach снимал её, и отложенный эффект
-// графика, срабатывающий под нагрузкой уже при размонтировании, падал с «ResizeObserver is not defined».
+// recharts (ResponsiveContainer) subscribes to ResizeObserver in an effect, which jsdom does not have. The stub is
+// for the whole run, and not in a test's beforeEach: vi.unstubAllGlobals() in afterEach removed it, and the deferred effect of the
+// chart, firing under load already on unmount, failed with "ResizeObserver is not defined".
 if (!('ResizeObserver' in globalThis)) {
     class ResizeObserverStub {
         observe() {

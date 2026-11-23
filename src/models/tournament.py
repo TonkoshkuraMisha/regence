@@ -1,10 +1,12 @@
 # --- FILE: src/models/tournament.py ---
 """
-Турниры с историческими мастерами (таск 15.1). Правила — src/services/tournament_rules.py, ход турнира —
-src/services/tournaments.py. Номер участника (seat) — его посев: 1 — сильнейший по рейтингу на старте.
-Участник — игрок-владелец турнира, исторический бот, архетип мастерской или персоналия игрока (её имя и конфиг
-копируются в турнир: удаление или правка персоналии не меняет уже идущий турнир). Мастер прошлого из «Машины
-времени» (src/services/bots/guests.py) записывается как персоналия с ключом «guest:<id>» в bot_key.
+Tournaments with historical masters (task 15.1). The rules are in src/services/tournament_rules.py, the tournament flow -
+src/services/tournaments.py. A participant number (seat) is its seed: 1 is the strongest by rating at the start.
+A participant is the tournament owner player, a historical bot, a workshop archetype or a player's personality (its name and
+config
+are copied into the tournament: deleting or editing the personality does not change a tournament already in progress). A master
+of the past from the "Time
+Machine" (src/services/bots/guests.py) is recorded as a personality with the key "guest:<id>" in bot_key.
 """
 
 from datetime import datetime
@@ -14,20 +16,21 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from src.models.base import Base, one_of
 
-# Формат турнира (src/services/tournaments.py, Format) и его состояние.
+# The tournament format (src/services/tournaments.py, Format) and its state.
 TOURNAMENT_FORMATS = ("round_robin", "knockout", "swiss")
 TOURNAMENT_STATUSES = ("active", "finished")
-# Кто занимает место: игрок, бот, архетип новичка, персоналия (своя или мастер прошлого).
+# Who takes the seat: a player, a bot, a beginner archetype, a personality (one's own or a master of the past).
 TOURNAMENT_PLAYER_KINDS = ("user", "bot", "archetype", "personality")
-# Партия нокаут-матча (tournament_rules.Stage) и её итог (tournament_rules.Result; «*» здесь не бывает).
+# A knockout match game (tournament_rules.Stage) and its result (tournament_rules.Result; "*" does not occur here).
 TOURNAMENT_STAGES = ("main", "rematch", "armageddon")
 TOURNAMENT_RESULTS = ("1-0", "0-1", "1/2-1/2")
 
 
 class Tournament(Base):
     """
-    Турнир игрока с ботами: формат (круговой, на выбывание или швейцарка), контроль времени и статус. Итоговое
-    место игрока хранится в его строке tournament_players.place.
+    A player's tournament with bots: the format (round-robin, knockout or Swiss), the time control and the status. The player's
+    final
+    place is stored in their row tournament_players.place.
     """
     __tablename__ = "tournaments"
     __table_args__ = (
@@ -44,22 +47,26 @@ class Tournament(Base):
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="active", index=True)
     base_time_ms: Mapped[int] = mapped_column(Integer, nullable=False)
     increment_ms: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    # Текущий круг турнира на выбывание (у кругового все туры созданы сразу).
+    # The current round of a knockout tournament (in a round-robin all rounds are created at once).
     current_round: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    # Игрок сдал турнир (таск A.3): его оставшиеся партии — поражения, боты доигрывают; новый турнир можно начать.
+    # The player withdrew from the tournament (task A.3): their remaining games are losses, bots finish playing; a new
+    # tournament can be started.
     withdrawn_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    # Турнир карьеры (таск 15.4): ключ этапа лестницы (src/services/tournament_career.py); пусто — свой турнир.
+    # A career tournament (task 15.4): the key of a ladder stage (src/services/tournament_career.py); empty - one's own
+    # tournament.
     career_stage: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
-    # «Машина времени» (таск 28.2): ключ знаменитого турнира из src/services/time_machine.py; пусто — обычный турнир.
+    # "Time Machine" (task 28.2): the key of a famous tournament from src/services/time_machine.py; empty - an ordinary
+    # tournament.
     event_key: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
 
 
 class TournamentPlayer(Base):
     """
-    Участник турнира под номером посева (seat): сам игрок или бот. Имя и настройки бота скопированы в турнир и не
-    зависят от последующих правок.
+    A tournament participant under a seed number (seat): the player themselves or a bot. The bot's name and settings are copied
+    into the tournament and do not
+    depend on later edits.
     """
     __tablename__ = "tournament_players"
     __table_args__ = (
@@ -76,22 +83,23 @@ class TournamentPlayer(Base):
     kind: Mapped[str] = mapped_column(String(16), nullable=False)
     user_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True,
                                                 index=True)
-    # id исторического бота («morphy»), ключ архетипа («archetype:rusher») или мастера прошлого («guest:<id>»).
+    # The id of a historical bot ("morphy"), an archetype key ("archetype:rusher") or a master of the past ("guest:<id>").
     bot_key: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    # Персоналия мастерской — копия имени и конфига на момент создания турнира.
+    # A workshop personality - a copy of the name and config at the time the tournament was created.
     personality_name: Mapped[str | None] = mapped_column(String(30), nullable=True)
     config_json: Mapped[str | None] = mapped_column(Text, nullable=True)
-    # Рейтинг на старте — по нему посев.
+    # The rating at the start - the seeding is by it.
     rating: Mapped[int] = mapped_column(Integer, nullable=False)
     place: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    # Турнир на выбывание: круг (с 1), в котором участник выбыл.
+    # A knockout tournament: the round (from 1) in which the participant was eliminated.
     eliminated_round: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
 
 class TournamentGame(Base):
     """
-    Партия турнира: тур, участники по номерам посева и результат. Партию игрока записывает сохранение сыгранной
-    партии, партию ботов между собой — симуляция.
+    A tournament game: the round, participants by seed numbers and the result. The player's game is written by saving the
+    played
+    game, a bot-vs-bot game - by the simulation.
     """
     __tablename__ = "tournament_games"
     __table_args__ = (
@@ -104,20 +112,21 @@ class TournamentGame(Base):
         Integer, ForeignKey("tournaments.id", ondelete="CASCADE"), nullable=False, index=True,
     )
     round: Mapped[int] = mapped_column(Integer, nullable=False)
-    # Номер пары в туре (у турнира на выбывание — номер матча в сетке).
+    # The pairing number in the round (for a knockout tournament - the match number in the bracket).
     board: Mapped[int] = mapped_column(Integer, nullable=False)
-    # main | rematch | armageddon (на выбывание; у кругового всегда main)
+    # main | rematch | armageddon (knockout; always main in a round-robin)
     stage: Mapped[str] = mapped_column(String(16), nullable=False, default="main")
     white_seat: Mapped[int] = mapped_column(Integer, nullable=False)
     black_seat: Mapped[int] = mapped_column(Integer, nullable=False)
     base_time_ms: Mapped[int] = mapped_column(Integer, nullable=False)
     increment_ms: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    # 1-0 | 0-1 | 1/2-1/2; пусто — партия ещё не сыграна.
+    # 1-0 | 0-1 | 1/2-1/2; empty - the game has not been played yet.
     result: Mapped[str | None] = mapped_column(String(8), nullable=True)
     game_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("games.id", ondelete="SET NULL"), nullable=True,
                                                 index=True)
-    # Партию начали: ботов — забрал воркер (таск 15.2), игрока — он сам нажал «Играть» (таск A.2).
+    # The game has been started: for bots - picked up by the worker (task 15.2), for the player - they pressed "Play"
+    # themselves (task A.2).
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    # Партию ботов поставили в очередь (таск A.1): повторно — только если давно поставлена и так и не начата.
+    # A bot game was queued (task A.1): again - only if it was queued long ago and still not started.
     queued_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)

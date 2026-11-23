@@ -1,5 +1,5 @@
-// Большой курс (таск 27.6): уровни, ветви, пустые модули видны только в каркасе; автозачёт модулей по выполненным
-// шагам (задача 6 плана 18.11) и ручная отметка «модуль пройден» у модулей без проверяемых шагов.
+// The big course (task 27.6): levels, branches, empty modules are visible only in the skeleton; auto-credit of modules by completed
+// steps (task 6 of the 18.11 plan) and a manual "module passed" mark for modules without checkable steps.
 
 import {act, fireEvent, render, screen} from '@testing-library/react';
 import {MemoryRouter} from 'react-router-dom';
@@ -7,7 +7,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {SupercoursePage} from '../SupercoursePage';
 import {setToken} from '../../../services/authToken';
 
-// Все модули курса наполнены; чтобы проверить режим «каркас», модуль T3.2 подменяется пустым, а у E3.1 шаги — в работе.
+// All course modules are filled in; to check the "skeleton" mode, module T3.2 is replaced with an empty one, and E3.1 has steps in progress.
 vi.mock('../../../content/supercourse', async (importOriginal) => {
     const original = await importOriginal<typeof import('../../../content/supercourse')>();
     return {
@@ -23,14 +23,14 @@ afterEach(() => {
     setToken(null);
 });
 
-describe('Большой курс', () => {
-    it('уровень 1, каркас и отметка модуля', async () => {
+describe('The big course', () => {
+    it('level 1, the skeleton and a module mark', async () => {
         const calls: [string, RequestInit | undefined][] = [];
         vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
             calls.push([String(url), init]);
             const body = init?.method === 'PUT' ? {lesson_id: 'course-o1-3', step: 0, steps_total: 1, completed: true}
                 : String(url).includes('/course-progress') ? {
-                    // Автозачёт: T1.1 — урок и три темы вилки выполнены; у T1.4 сделан только урок.
+                    // Auto-credit: T1.1 — the lesson and three fork themes are done; for T1.4 only the lesson is done.
                     lessons: ['tactics-double-attack', 'tactics-skewer'], themes: ['fork', 'fork_knight', 'fork_pawn'],
                     trainers: [], exams: {}}
                 : String(url).includes('/exam') ? {results: {level0: {estimate: 900}, level1: {estimate: 950}}}
@@ -41,40 +41,40 @@ describe('Большой курс', () => {
             return {ok: true, json: async () => body} as Response;
         }));
         await act(async () => render(<MemoryRouter><SupercoursePage/></MemoryRouter>));
-        expect(screen.getByTestId('course-module-T0.0')).toHaveTextContent('Доска, фигуры и взятие');
-        // Экзамен уровня 0 сдан (≥ 800), уровня 1 — нет (< 1000).
-        expect(screen.getByTestId('course-exam-target-0')).toHaveTextContent('Уровень пройден');
+        expect(screen.getByTestId('course-module-T0.0')).toHaveTextContent('Board, pieces and captures');
+        // The level 0 exam is passed (≥ 800), level 1 is not (< 1000).
+        expect(screen.getByTestId('course-exam-target-0')).toHaveTextContent('Level passed');
         await act(async () => fireEvent.click(screen.getByTestId('course-level-1')));
-        // T1.2 отмечен вручную раньше, T1.1 закрыт автозачётом, T1.4 — нет (тема не сдана).
+        // T1.2 was marked manually earlier, T1.1 is closed by auto-credit, T1.4 is not (the theme is not passed).
         expect(screen.getByTestId('course-level-1')).toHaveTextContent('2/');
         expect(screen.getByTestId('course-step-done-T1.1-1')).toBeTruthy();
         expect(screen.getByTestId('course-step-done-T1.4-0')).toBeTruthy();
         expect(screen.queryByTestId('course-step-done-T1.4-1')).toBeNull();
-        // У модулей с проверяемыми шагами ручной отметки нет.
+        // Modules with checkable steps have no manual mark.
         expect(screen.queryByTestId('course-done-T1.1')).toBeNull();
         expect(screen.queryByTestId('course-done-T1.4')).toBeNull();
         await act(async () => fireEvent.click(screen.getByTestId('course-level-3')));
-        expect(screen.queryByTestId('course-module-T3.2')).toBeNull();  // модуль без шагов скрыт
-        expect(screen.queryByTestId('course-module-E3.1')).toBeNull();  // черновик игроку не виден
+        expect(screen.queryByTestId('course-module-T3.2')).toBeNull();  // a module without steps is hidden
+        expect(screen.queryByTestId('course-module-E3.1')).toBeNull();  // a draft is not visible to the player
         expect(screen.queryByTestId('course-coverage')).toBeNull();
         fireEvent.click(screen.getByTestId('course-skeleton'));
-        expect(screen.getByTestId('course-module-T3.2')).toHaveTextContent('скоро');
-        // Каркас для автора: шаги в работе — с пометкой, покрытие по уровням и ветвям.
-        expect(screen.getByTestId('course-draft-E3.1')).toHaveTextContent('черновик');
-        expect(screen.getByTestId('course-module-E3.1')).not.toHaveTextContent('скоро');
-        expect(screen.getByTestId('coverage-3-E')).toHaveTextContent('черновиков 1');
-        expect(screen.getByTestId('coverage-3-T')).toHaveTextContent('пусто 1');
+        expect(screen.getByTestId('course-module-T3.2')).toHaveTextContent('coming soon');
+        // Skeleton for the author: steps in progress are marked, coverage by levels and branches.
+        expect(screen.getByTestId('course-draft-E3.1')).toHaveTextContent('draft');
+        expect(screen.getByTestId('course-module-E3.1')).not.toHaveTextContent('coming soon');
+        expect(screen.getByTestId('coverage-3-E')).toHaveTextContent('1 draft');
+        expect(screen.getByTestId('coverage-3-T')).toHaveTextContent('1 empty');
         await act(async () => fireEvent.click(screen.getByTestId('course-level-1')));
-        expect(screen.getByTestId('course-exam-target-1')).toHaveTextContent('не ниже 1000');
-        expect(screen.getByTestId('course-step-empty-pin')).toHaveTextContent('задач пока нет');  // T1.2: в теме нет задач
-        // Модуль только из репертуара проверить нечем — его игрок отмечает сам.
+        expect(screen.getByTestId('course-exam-target-1')).toHaveTextContent('at least 1000');
+        expect(screen.getByTestId('course-step-empty-pin')).toHaveTextContent('no puzzles yet');  // T1.2: the theme has no puzzles
+        // A module made only of a repertoire has nothing to check — the player marks it themselves.
         await act(async () => fireEvent.click(screen.getByTestId('course-done-O1.3')));
         const put = calls.find(([, init]) => init?.method === 'PUT')!;
         expect(put[0]).toContain('/learn/progress/course-o1-3');
         expect(screen.queryByTestId('course-done-O1.3')).toBeNull();
     });
 
-    it('ссылка ?level=N&module=КОД из итога партии открывает уровень и подсвечивает модуль', async () => {
+    it('a ?level=N&module=CODE link from the game summary opens the level and highlights the module', async () => {
         vi.stubGlobal('fetch', vi.fn(async () => ({ok: true, json: async () => []}) as unknown as Response));
         await act(async () => render(<MemoryRouter initialEntries={['/learn/course?level=1&module=T1.1']}><SupercoursePage/></MemoryRouter>));
         expect(screen.getByTestId('course-level-1').getAttribute('aria-selected')).toBe('true');

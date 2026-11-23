@@ -1,15 +1,15 @@
 // --- FILE: frontend/src/components/chessboard/scrollMove.ts ---
-// Список ходов — отдельное окно со своей прокруткой, текущий ход держится в его середине (так устроены доски
-// анализа на шахматных сайтах). Прокручивается только сам список: Element.scrollIntoView двигает ещё и страницу,
-// и при листании партии стрелками доска «прыгала» вверх-вниз вслед за ходом.
+// The move list is a separate window with its own scrolling, and the current move is kept in its middle (this is how analysis boards
+// on chess sites work). Only the list itself scrolls: Element.scrollIntoView also moves the page,
+// and when paging through a game with arrows the board "jumped" up and down following the move.
 
-/** Куда прокрутить список высотой viewHeight, чтобы строка (itemTop от начала содержимого, itemHeight) встала посередине. */
+/** Where to scroll a list of height viewHeight so that a row (itemTop from the start of the content, itemHeight) ends up in the middle. */
 export function centeredScrollTop(itemTop: number, itemHeight: number, viewHeight: number, contentHeight: number): number {
     const target = itemTop - (viewHeight - itemHeight) / 2;
     return Math.round(Math.max(0, Math.min(target, Math.max(0, contentHeight - viewHeight))));
 }
 
-/** Ставит ход в середину списка, не трогая прокрутку страницы. */
+/** Puts the move in the middle of the list without touching the page scroll. */
 export function scrollMoveIntoList(list: HTMLElement, move: HTMLElement): void {
     const listBox = list.getBoundingClientRect();
     const moveBox = move.getBoundingClientRect();

@@ -1,89 +1,89 @@
 // --- FILE: frontend/src/services/arenas.ts ---
-// Арены — турниры между людьми (таск 17.2): расписание, вход, «Играть» (ожидание пары), таблица, напоминание.
-// Все запросы — к /api/v1/arenas (маршруты src/api/arenas.py); правила, очки, статусы и таблицу считает сервер
-// (src/services/arena.py), расписание по конференциям — src/services/arena_schedule.py. Клиент только показывает.
+// Arenas — tournaments between humans (task 17.2): schedule, joining, «Play» (waiting for a pairing), standings, reminder.
+// All requests go to /api/v1/arenas (routes in src/api/arenas.py); rules, points, statuses and standings are computed by the server
+// (src/services/arena.py), the per-conference schedule — src/services/arena_schedule.py. The client only displays.
 
 import {apiRequest} from './http';
 
-/** closing (33.1): пар больше нет — доигрываются последние партии или идёт время до конца; итоги — в finished. */
+/** closing (33.1): no more pairings — the last games are finishing or time until the end is running; results — in finished. */
 export type ArenaStatus = 'scheduled' | 'running' | 'closing' | 'finished';
 
 /**
- * Карточка арены — как её собирает сервер (arena.view в src/services/arena.py). Приходит в списке (GET /arenas),
- * в анонсе лобби (GET /arenas/current) и как основа страницы арены (ArenaDetail).
+ * Arena card — as the server builds it (arena.view in src/services/arena.py). Comes in the list (GET /arenas),
+ * in the lobby announcement (GET /arenas/current) and as the basis of the arena page (ArenaDetail).
  */
 export interface ArenaInfo {
     id: number;
-    /** Ключ слота расписания; null — арена создана не расписанием. */
+    /** Schedule slot key; null — the arena was not created by the schedule. */
     schedule_key: string | null;
-    /** arena — по времени, swiss — по турам (17.2). */
+    /** arena — by time, swiss — by rounds (17.2). */
     format?: 'arena' | 'swiss' | 'match';
-    /** Только у швейцарки: всего туров и номер идущего. */
+    /** Swiss only: total rounds and the number of the current one. */
     rounds?: number;
     current_round?: number;
     base_time_ms: number;
     increment_ms: number;
-    /** Начало и конец — ISO-время с зоной (UTC); статус сервер вычисляет по ним и по числу идущих партий. */
+    /** Start and end — ISO time with zone (UTC); the server derives the status from them and from the number of running games. */
     starts_at: string;
     ends_at: string;
     status: ArenaStatus;
-    /** Число участников: есть в списке и в анонсе, на странице арены его заменяет длина таблицы. */
+    /** Number of participants: present in the list and the announcement; on the arena page the standings length replaces it. */
     players?: number;
-    /** В партиях арены доступен «берсерк» (33.3): половина времени без добавки ради лишнего очка за победу. */
+    /** «Berserk» is available in arena games (33.3): half the time without increment for an extra point for a win. */
     berserk?: boolean;
-    /** Последний старт: до него создаются пары (только у формата arena). */
+    /** Last start: pairings are created until then (arena format only). */
     last_start_at?: string;
-    /** Идущих партий арены — итоги ждут их. */
+    /** Running arena games — the results wait for them. */
     open_games?: number;
-    /** Деление при переполнении (33.2): 1 — основное. */
+    /** Division on overflow (33.2): 1 — the main one. */
     division?: number;
-    /** Основная арена, от которой отделено это деление; null — это и есть основная. */
+    /** The main arena this division was split from; null — this is the main one. */
     parent_id?: number | null;
-    /** Конференция, по расписанию которой идёт арена (33.4): central | western | northern | southern | eastern. */
+    /** Conference whose schedule the arena follows (33.4): central | western | northern | southern | eastern. */
     conference?: string | null;
-    /** Матч конференций: конференция-гость (хозяин — conference). */
+    /** Conference match: the guest conference (the host is conference). */
     opponent_conference?: string | null;
-    /** Вечерняя арена 5+3 — главная арена дня своей конференции (33.4). */
+    /** Evening 5+3 arena — the main arena of the day for its conference (33.4). */
     evening?: boolean;
 }
 
-/** Ключи пяти конференций — те же, что на сервере (src/services/conferences.py); названия — каталог conferences. */
+/** Keys of the five conferences — the same as on the server (src/services/conferences.py); names — the conferences catalog. */
 export const CONFERENCES = ['central', 'western', 'northern', 'southern', 'eastern'] as const;
 export type ConferenceKey = typeof CONFERENCES[number];
 
-/** Строка сервера → ключ конференции; null — пусто или ключ, которого клиент не знает (сервер новее). */
+/** Server string → conference key; null — empty or a key the client does not know (the server is newer). */
 export function conferenceKey(value: string | null | undefined): ConferenceKey | null {
     return (CONFERENCES as readonly string[]).includes(value ?? '') ? value as ConferenceKey : null;
 }
 
-/** Строка таблицы арены (arena.standings на сервере): места уже расставлены сервером. */
+/** Arena standings row (arena.standings on the server): places are already assigned by the server. */
 export interface ArenaStanding {
     place: number;
     username: string;
-    /** Очки арены: победа 2, ничья 1; в серии «огня» — вдвое. */
+    /** Arena points: win 2, draw 1; during a «fire» streak — doubled. */
     score: number;
     games: number;
     wins: number;
-    /** «Огонь»: серия побед, при которой очки следующей партии удваиваются. */
+    /** «Fire»: the win streak at which the next game's points are doubled. */
     fire: boolean;
-    /** Рейтинг игрока в контроле арены на момент входа. */
+    /** The player's rating in the arena's time control at the moment of joining. */
     rating: number;
-    /** Перформанс в арене — первый показатель при равенстве очков. */
+    /** Performance in the arena — the first tiebreak on equal points. */
     performance?: number | null;
-    /** Конференция игрока на момент входа в арену (33.6); null — страна в профиле не указана. */
+    /** The player's conference at the moment of joining the arena (33.6); null — no country in the profile. */
     conference?: string | null;
 }
 
-/** Строка зачёта конференций арены (33.6): сумма очков лучших участников конференции. */
+/** Conference standings row of an arena (33.6): the sum of points of the conference's best participants. */
 export interface ArenaConferenceRow {
     conference: string;
     score: number;
-    /** Сколько игроков вошло в зачёт и сколько игроков конференции в арене всего. */
+    /** How many players count toward the standings and how many players of the conference are in the arena in total. */
     counted: number;
     players: number;
 }
 
-/** Игрок на доске матча конференций: очки — в единицах матча (победа 1, ничья ½). */
+/** Player on a conference match board: points in match units (win 1, draw ½). */
 export interface MatchSeat {
     username: string;
     rating: number;
@@ -91,8 +91,8 @@ export interface MatchSeat {
 }
 
 /**
- * Матч конференций (arena.match_view на сервере): хозяин и гость, счёт, сколько записалось с каждой стороны, открыта ли
- * запись и доски (до старта — предварительный состав по рейтингу).
+ * Conference match (arena.match_view on the server): host and guest, score, how many signed up on each side, whether
+ * sign-up is open, and boards (before the start — a provisional lineup by rating).
  */
 export interface MatchDetail {
     home: string;
@@ -105,18 +105,18 @@ export interface MatchDetail {
     boards: { board: number; home: MatchSeat; guest: MatchSeat }[];
 }
 
-/** Страница арены (GET /arenas/{id}): карточка, таблица, зачёт конференций и состояние вошедшего игрока. */
+/** Arena page (GET /arenas/{id}): card, standings, conference standings and the joined player's state. */
 export interface ArenaDetail extends ArenaInfo {
     standings: ArenaStanding[];
     conferences?: ArenaConferenceRow[];
-    /** Только у матча конференций (format 'match'). */
+    /** Only for a conference match (format 'match'). */
     match?: MatchDetail | null;
     /**
-     * Состояние игрока; null — запрос без входа. waiting — ждёт пару, current_game_id — его идущая партия арены.
-     * division_arena_id: игрок в другом делении этой арены — клиент переходит туда (33.2).
-     * reminder: игрок просил напомнить о начале этой арены (33.4).
-     * podium_place: призовое место 1–3 после окончательных итогов (33.5); null — не призёр или итогов ещё нет.
-     * username: имя игрока — по нему экран итогов подсвечивает его строку в таблице.
+     * Player state; null — request without login. waiting — waiting for a pairing, current_game_id — their running arena game.
+     * division_arena_id: the player is in another division of this arena — the client navigates there (33.2).
+     * reminder: the player asked to be reminded of this arena's start (33.4).
+     * podium_place: prize place 1–3 after the final results (33.5); null — not a prizewinner or no results yet.
+     * username: the player's name — the results screen uses it to highlight their row in the standings.
      */
     me: {
         username?: string;
@@ -125,67 +125,67 @@ export interface ArenaDetail extends ArenaInfo {
     } | null;
 }
 
-/** Категория контроля лиги (как категории рейтинга). */
+/** League time-control category (like the rating categories). */
 export type LeagueCategory = 'bullet' | 'blitz' | 'rapid' | 'classical';
 
-/** Строка месячной лиги арен (src/services/arena_league.py): места расставлены сервером. */
+/** Row of the monthly arena league (src/services/arena_league.py): places are assigned by the server. */
 export interface LeagueRow {
     place: number;
     username: string;
-    /** Сумма очков арен сезона в категории. */
+    /** Sum of the season's arena points in the category. */
     score: number;
-    /** Очки лучшей арены — первый показатель при равенстве суммы. */
+    /** Points of the best arena — the first tiebreak on equal sums. */
     best: number;
-    /** В скольких аренах игрок сыграл хотя бы одну партию. */
+    /** In how many arenas the player played at least one game. */
     arenas: number;
 }
 
-/** Ответ GET /arenas/league: лига сезона «ГГГГ-ММ» в категории; me — строка вошедшего игрока или null. */
+/** Response of GET /arenas/league: the season's league «YYYY-MM» in a category; me — the joined player's row or null. */
 export interface ArenaLeague {
     season: string;
     category: LeagueCategory;
-    /** Категории, в которых расписание ставит арены, — вкладки лиги. */
+    /** Categories in which the schedule sets up arenas — the league tabs. */
     categories: LeagueCategory[];
-    /** Сколько игроков в лиге всего (в table — только первые строки). */
+    /** How many players are in the league in total (table has only the first rows). */
     players: number;
     table: LeagueRow[];
     me: LeagueRow | null;
 }
 
-/** Запрос к /api/v1/arenas через общую обёртку http.ts (токен, JSON, ошибки). */
+/** Request to /api/v1/arenas through the shared http.ts wrapper (token, JSON, errors). */
 const call = <T>(path: string, init: RequestInit = {}) => apiRequest<T>(`/arenas${path}`, init);
 
-/** Эндпоинты арен. list, current, get и league открыты без входа; остальные требуют токен. */
+/** Arena endpoints. list, current, get and league are open without login; the rest require a token. */
 export const arenasApi = {
-    /** Идущие, ближайшие (на 6 часов вперёд) и недавно законченные арены. */
+    /** Running, upcoming (6 hours ahead) and recently finished arenas. */
     list: () => call<{ arenas: ArenaInfo[] }>(''),
-    /** Анонс для лобби: идущая арена с наибольшим числом игроков, иначе ближайшая по началу; null — арен нет. */
+    /** Lobby announcement: the running arena with the most players, otherwise the nearest by start; null — no arenas. */
     current: () => call<{ arena: ArenaInfo | null }>('/current'),
     get: (id: number) => call<ArenaDetail>(`/${id}`),
-    /** Месячная лига арен текущего сезона в категории контроля. */
+    /** Monthly arena league of the current season in a time-control category. */
     league: (category: LeagueCategory) => call<ArenaLeague>(`/league?category=${category}`),
-    /** arena_id — деление, куда попал игрок (при переполнении — не та арена, что запрошена). */
+    /** arena_id — the division the player landed in (on overflow — not the arena that was requested). */
     join: (id: number) => call<{ joined: boolean; arena_id?: number }>(`/${id}/join`, {method: 'POST'}),
-    /** «Играть»: либо сразу пара (game_id), либо ожидание (waiting) — тогда клиент повторяет запрос. */
+    /** «Play»: either an immediate pairing (game_id) or waiting (waiting) — then the client repeats the request. */
     ready: (id: number) => call<{ waiting?: boolean; game_id?: number }>(`/${id}/ready`, {method: 'POST'}),
-    /** Уйти из ожидания пары, оставаясь участником арены. */
+    /** Leave the pairing queue while remaining an arena participant. */
     leaveWaiting: (id: number) => call<{ waiting: boolean }>(`/${id}/leave-waiting`, {method: 'POST'}),
-    /** «Напомнить»: незадолго до начала арены придёт уведомление; forgetReminder — отменить. */
+    /** «Remind»: a notification arrives shortly before the arena starts; forgetReminder — cancel. */
     remind: (id: number) => call<{ reminder: boolean }>(`/${id}/remind`, {method: 'POST'}),
     forgetReminder: (id: number) => call<{ reminder: boolean }>(`/${id}/remind`, {method: 'DELETE'}),
 };
 
-/** Контроль времени подписью «минуты+секунды добавки», например «3+2». */
+/** Time control as a label «minutes+increment seconds», for example «3+2». */
 export function controlLabel(a: Pick<ArenaInfo, 'base_time_ms' | 'increment_ms'>): string {
     return `${Math.round(a.base_time_ms / 60000)}+${Math.round(a.increment_ms / 1000)}`;
 }
 
-/** Секунд до момента (не меньше нуля). */
+/** Seconds until a moment (not less than zero). */
 export function secondsUntil(iso: string, now = Date.now()): number {
     return Math.max(0, Math.round((new Date(iso).getTime() - now) / 1000));
 }
 
-/** Секунды → «м:сс», а от часа — «ч:мм:сс» (обратный отсчёт до начала и до конца арены). */
+/** Seconds → «m:ss», and from one hour — «h:mm:ss» (countdown to the start and end of an arena). */
 export function clock(seconds: number): string {
     const h = Math.floor(seconds / 3600);
     const m = Math.floor((seconds % 3600) / 60);

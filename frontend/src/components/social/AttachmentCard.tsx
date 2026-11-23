@@ -1,9 +1,9 @@
 // --- FILE: frontend/src/components/social/AttachmentCard.tsx ---
-// Карточка вложения личного сообщения (таск 30.1): партия, позиция, задача, урок, турнир. Позиция и задача —
-// маленькой диаграммой на доске и фигурах игрока, остальное — строкой со ссылкой.
-// Данные: вложение Attachment из services/messages.ts (его же использует лента); ссылку даёт attachmentLink, внешний вид
-// диаграммы — тема доски и набор фигур из настроек игрока (config/boardAppearance.ts, localStorage). Используют
-// MessagesPage.tsx и FeedPage.tsx; подписи — каталог dm.*.
+// Direct message attachment card (task 30.1): a game, a position, a puzzle, a lesson, a tournament. A position and a puzzle are
+// a small diagram on the player's board and pieces, the rest is a line with a link.
+// Data: an Attachment from services/messages.ts (the feed uses it too); the link is given by attachmentLink, the diagram's
+// look is the board theme and piece set from the player's settings (config/boardAppearance.ts, localStorage). Used by
+// MessagesPage.tsx and FeedPage.tsx; labels are the dm.* catalog.
 
 import {useMemo} from 'react';
 import {Link} from 'react-router-dom';
@@ -16,12 +16,12 @@ import {lessonById, localized} from '../../content/lessons';
 import {attachmentLink} from '../../services/messages';
 import type {Attachment, AttachmentKind} from '../../services/messages';
 
-// Значок карточки по виду вложения.
+// Card icon by attachment kind.
 const ICONS: Record<AttachmentKind, typeof Swords> = {
     game: Swords, position: Crown, puzzle: Puzzle, lesson: BookOpen, tournament: Trophy, library: Library, achievement: Award,
 };
 
-/** Диаграмма позиции без взаимодействия; некорректный FEN — пустая доска не рисуется вовсе. */
+/** Position diagram without interaction; an invalid FEN gives no empty board at all. */
 export function MiniDiagram({fen, size = 160}: { fen: string; size?: number }) {
     const board = useMemo(() => {
         try {
@@ -46,12 +46,12 @@ export function MiniDiagram({fen, size = 160}: { fen: string; size?: number }) {
     );
 }
 
-/** Чья очередь ходить по FEN: по умолчанию белые. */
+/** Whose turn it is by the FEN: White by default. */
 function sideToMove(fen: string): 'w' | 'b' {
     return fen.split(' ')[1] === 'b' ? 'b' : 'w';
 }
 
-/** Карточка вложения: значок и строка описания, для позиции и задачи — диаграмма с указателем стороны и ссылка «Открыть». */
+/** Attachment card: an icon and a description line; for a position and a puzzle, a diagram with a side marker and an "Open" link. */
 export function AttachmentCard({attachment}: { attachment: Attachment }) {
     const {t, language} = useI18n();
     const Icon = ICONS[attachment.kind];

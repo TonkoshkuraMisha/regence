@@ -1,9 +1,9 @@
 // --- FILE: frontend/src/components/chessboard/LadderPanel.tsx ---
-// Клубная лестница: ступени от слабого соперника к сильному, рейтинг лестницы игрока и кнопка партии со следующим
-// соперником. Состояние — GET /bots/ladder, начало партии — POST /bots/ladder/start (сервер выбирает соперника и
-// цвет при «случайном»). Сама партия идёт как обычная партия с ботом (useBotGame), итог приходит в ответе на её
-// сохранение (/bots/save-game, поле ladder). Честность партии проверяет сервер (src/services/ladder.py): подсказка,
-// анализ, возврат хода или подмена соперника — партия не засчитывается.
+// Club ladder: rungs from a weak opponent to a strong one, the player's ladder rating and a button for a game against the next
+// opponent. State is GET /bots/ladder, game start is POST /bots/ladder/start (the server picks the opponent and
+// colour when "random"). The game itself runs as an ordinary bot game (useBotGame), the result arrives in the response to its
+// save (/bots/save-game, the ladder field). The server checks fair play (src/services/ladder.py): a hint,
+// analysis, take-back or opponent substitution means the game is not counted.
 
 import {useCallback, useEffect, useState} from 'react';
 import {CheckCircle2, CircleDashed, Lock, Swords} from 'lucide-react';
@@ -18,17 +18,17 @@ import {ladderOpponentName} from '../../config/players';
 import {getToken} from '../../services/authToken';
 
 export interface LadderPanelProps {
-    /** Уже идёт партия (с человеком или ботом) — новую начать нельзя. */
+    /** A game (against a human or a bot) is already in progress: a new one cannot be started. */
     playDisabled: boolean;
-    /** Сервер открыл партию: вызывающий запускает её на доске с присланным соперником и цветом. */
+    /** The server opened a game: the caller starts it on the board with the given opponent and colour. */
     onStart: (start: LadderStart) => void;
-    /** Меняется после каждой сохранённой партии лестницы — панель перечитывает прогресс. */
+    /** Changes after every saved ladder game: the panel re-reads progress. */
     lastOutcome: LadderOutcome | null;
 }
 
 /**
- * Клубная лестница: отдельный рейтинг в партиях с ботами без подсказок движка и возвратов хода,
- * соперники от слабого к сильному. Партию открывает сервер — он же проверяет её честность.
+ * Club ladder: a separate rating in games against bots without engine hints and take-backs,
+ * opponents from weak to strong. The server opens the game and also checks its fairness.
  */
 export function LadderPanel({playDisabled, onStart, lastOutcome}: LadderPanelProps) {
     const {t} = useI18n();
@@ -48,7 +48,7 @@ export function LadderPanel({playDisabled, onStart, lastOutcome}: LadderPanelPro
         }
     }, [token]);
 
-    // Прогресс читается при открытии вкладки и заново — после каждой сохранённой партии лестницы (lastOutcome).
+    // Progress is read when the tab opens and again after every saved ladder game (lastOutcome).
     useEffect(() => {
         load();
     }, [load, lastOutcome]);

@@ -19,7 +19,7 @@ from src.services.matchmaker import matchmaker
 
 
 def test_opening_book_source_recognized_in_thinking_time():
-    """Проверяет, что source='opening_book' из HistoricalBot.choose_move распознаётся как книжный ход."""
+    """Checks that source='opening_book' from HistoricalBot.choose_move is recognized as a book move."""
     board = chess.Board()
     for _ in range(20):
         ms = calculate_authentic_thinking_time_ms("morphy", board, "e2e4", "opening_book")
@@ -28,7 +28,7 @@ def test_opening_book_source_recognized_in_thinking_time():
 
 @pytest.mark.asyncio
 async def test_anticheat_idempotency_prevents_double_penalty(db_session):
-    """Повторный вызов evaluate_game_telemetry для одной и той же партии не штрафует игрока дважды."""
+    """A repeated call of evaluate_game_telemetry for the same game does not penalize the player twice."""
     u1 = User(
         username="moderate_blur_user", hashed_password="pw", bullet_rating=1500, blitz_rating=1500,
         rapid_rating=1500, classical_rating=1500, trust_factor=100, is_cheater=False
@@ -60,7 +60,7 @@ async def test_anticheat_idempotency_prevents_double_penalty(db_session):
             move_number=idx + 8,
             notation="g1f3",
             san="Nf3",
-            # Ровный «машинный» ритм: одна лишь потеря фокуса больше не штрафует.
+            # A steady "machine" rhythm: focus loss alone no longer incurs a penalty.
             time_taken_ms=4500 + (idx % 2) * 100,
             window_blurred_before_move=(idx % 2 == 0),
             is_premove=False,
@@ -83,7 +83,7 @@ async def test_anticheat_idempotency_prevents_double_penalty(db_session):
 
 @pytest.mark.asyncio
 async def test_fide_dynamic_k_factor_for_new_player(db_session):
-    """Новый игрок (< 30 партий) получает K=40 (+20 при победе над равным соперником)."""
+    """A new player (< 30 games) gets K=40 (+20 for a win over an equal opponent)."""
     newbie = User(
         username="newbie_k40", hashed_password="pw", bullet_rating=1200,
         blitz_rating=1200, rapid_rating=1200, classical_rating=1200
@@ -119,7 +119,7 @@ async def test_fide_dynamic_k_factor_for_new_player(db_session):
 
 @pytest.mark.asyncio
 async def test_concurrent_private_invite_redemption_is_atomic():
-    """При одновременном принятии приватной ссылки двумя игроками срабатывает ровно один вызов."""
+    """When two players accept a private link at the same time, exactly one call succeeds."""
     invite = await matchmaker.create_private_invite(
         user_id=500,
         username="host_player",
@@ -142,10 +142,10 @@ async def test_concurrent_private_invite_redemption_is_atomic():
 @pytest.mark.asyncio
 async def test_http_matchmaking_join_accept_and_active_game_sync(db_session):
     """
-    Проверяет полный цикл PvP-вызова через HTTP-эндпоинты:
-    1. Игрок ps1 публикует вызов (/matchmaking/join).
-    2. Игрок ps2 принимает вызов (/matchmaking/accept/{ps1.id}).
-    3. Оба игрока получают активную партию через /games/my-active с противоположными цветами ('white' и 'black').
+    Checks the full PvP challenge cycle through HTTP endpoints:
+    1. Player ps1 publishes a challenge (/matchmaking/join).
+    2. Player ps2 accepts the challenge (/matchmaking/accept/{ps1.id}).
+    3. Both players get an active game via /games/my-active with opposite colors ('white' and 'black').
     """
     ps1 = User(
         username="ps1_test", hashed_password="pw", bullet_rating=1200,
@@ -204,7 +204,7 @@ async def test_http_matchmaking_join_accept_and_active_game_sync(db_session):
 
 @pytest.mark.asyncio
 async def test_connection_manager_multi_socket_resilience():
-    """Проверяет, что закрытие первого сокета (например, в React StrictMode) не роняет второй сокет игрока."""
+    """Checks that closing the first socket (for example, in React StrictMode) does not drop the player's second socket."""
     cm = ConnectionManager()
     sent_messages: list[str] = []
 

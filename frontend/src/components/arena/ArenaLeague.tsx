@@ -1,8 +1,8 @@
 // --- FILE: frontend/src/components/arena/ArenaLeague.tsx ---
-// Месячная лига арен (таск 33.5) на странице /arenas: игроки по сумме очков арен месяца в одной категории контроля.
-// Таблицу считает сервер (GET /api/v1/arenas/league, src/services/arena_league.py): только арены, без швейцарок,
-// вкладки категорий — те, в которых расписание ставит арены. На рейтинг лига не влияет. Вошедший игрок видит свою
-// строку под таблицей, даже если он ниже первых мест.
+// Monthly arena league (task 33.5) on the /arenas page: players by the sum of the month's arena points in one time control category.
+// The table is computed by the server (GET /api/v1/arenas/league, src/services/arena_league.py): arenas only, no Swiss events,
+// the category tabs are those in which the schedule creates arenas. The league does not affect the rating. A signed-in player sees their own
+// row under the table even if they are below the top places.
 
 import {useEffect, useState} from 'react';
 import {Medal} from 'lucide-react';
@@ -11,10 +11,10 @@ import {arenasApi} from '../../services/arenas';
 import type {ArenaLeague as LeagueData, LeagueCategory, LeagueRow} from '../../services/arenas';
 import {EmptyState, SegmentedControl, Section} from '../ui';
 
-// Категория контроля времени, с которой открывается лига (если сервер не отдал других вкладок).
+// Time control category the league opens with (if the server gave no other tabs).
 const DEFAULT_CATEGORY: LeagueCategory = 'blitz';
 
-/** Блок месячной лиги арен: вкладки категорий (если их больше одной), таблица и своя строка под ней. Рисуется в ArenasPage. */
+/** Monthly arena league block: category tabs (if there is more than one), the table and one's own row under it. Rendered in ArenasPage. */
 export function ArenaLeague() {
     const {t} = useI18n();
     const [category, setCategory] = useState<LeagueCategory>(DEFAULT_CATEGORY);

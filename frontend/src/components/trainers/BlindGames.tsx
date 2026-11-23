@@ -1,7 +1,7 @@
 // --- FILE: frontend/src/components/trainers/BlindGames.tsx ---
-// Задачи вслепую и «Где фигура?» (таск 19.6): BLIND_ROUNDS заданий за попытку. Позиция показывается, пока игрок не
-// нажмёт «Запомнил»; затем ходы объявляются по одному, и ответ даётся на пустой доске (видны поля и координаты).
-// Данные: партии классики (content/classics) и чистые правила trainers/blindPuzzles.ts; ответ оценивается scoreStop. Запускается из TrainersPage.tsx.
+// Blindfold puzzles and "Where is the piece?" (task 19.6): BLIND_ROUNDS tasks per attempt. The position is shown until the player
+// presses "Memorised"; then moves are announced one by one, and the answer is given on an empty board (squares and coordinates visible).
+// Data: classic games (content/classics) and pure rules trainers/blindPuzzles.ts; the answer is scored by scoreStop. Launched from TrainersPage.tsx.
 
 import {useEffect, useMemo, useState} from 'react';
 import {useI18n} from '../../i18n';
@@ -12,18 +12,18 @@ import {blindTask, whereQuestion} from '../../trainers/blindPuzzles';
 import {useClassics} from './trainerGame';
 import type {TrainerGameProps} from './trainerGame';
 
-/** Заданий в одной попытке. */
+/** Tasks in one attempt. */
 export const BLIND_ROUNDS = 5;
-/** Пауза между объявляемыми ходами (мс): время удержать позицию в голове. */
+/** Pause between announced moves (ms): time to hold the position in one's head. */
 const MOVE_STEP_MS = 1400;
-/** Ответ ниже этих баллов (из 100) считается ошибкой. */
+/** An answer below this score (out of 100) counts as a mistake. */
 const PASS_SCORE = 80;
-/** Буква фигуры chess.js → ключ названия фигуры в каталоге сообщений. */
+/** chess.js piece letter -> piece name key in the message catalogue. */
 const PIECE_NAMES = {k: 'king', q: 'queen', r: 'rook', b: 'bishop', n: 'knight', p: 'pawn'} as const;
 
 /**
- * Фазы: look (позиция на виду) → moves (ходы по одному, доска скрыта) → answer (ход или поле на пустой доске) → review.
- * Ответ ниже PASS_SCORE баллов считается ошибкой.
+ * Phases: look (position in view) -> moves (moves one by one, board hidden) -> answer (a move or a square on an empty board) -> review.
+ * An answer below PASS_SCORE points counts as a mistake.
  */
 export function BlindGame({mode, level, seed, onFinish}: TrainerGameProps & { mode: 'move' | 'where' }) {
     const {t} = useI18n();

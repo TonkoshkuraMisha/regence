@@ -1,24 +1,24 @@
 # --- FILE: src/services/conference_match_rules.py ---
 """
-Матчи конференций (таск 33.6, «позже»; схема утверждена владельцем 18.11.2026). Чистые правила без базы и сети —
-их проверяет простой тест (tests/test_conference_matches.py); партии и таблицы ведёт src/services/arena.py (формат
-арены "match"), создаёт матчи по расписанию arena.ensure_schedule.
+Conference matches (task 33.6, "later"; scheme approved by the owner on 18.11.2026). Pure rules with no database or network --
+a simple test checks them (tests/test_conference_matches.py); games and standings are handled by src/services/arena.py (arena
+format "match"), and matches are created on schedule by arena.ensure_schedule.
 
-* Расписание: раз в неделю — матч двух конференций по круговой системе. Пять конференций — PAIRS (десять пар),
-  круг — десять недель. Неделя считается от EPOCH (понедельник); в нечётном круге хозяин и гость меняются местами,
-  чтобы каждая конференция принимала матчи по очереди.
-* Время: суббота MATCH_WEEKDAY, вечер, удобный обеим. Ищется самый ранний час EVENING_HOURS по времени хозяина, который
-  и у гостя приходится на вечер; если общего вечера нет — DEFAULT_HOUR по времени хозяина (а хозяин чередуется по
-  кругам — значит, в следующей встрече этих двух конференций матч будет в вечер другой).
-* Запись: любой игрок одной из двух конференций (страна в профиле), без порогов по силе (правило 7 CLAUDE.md:
-  конференция — это команда, а не деление по силе). Запись закрывается за LINEUP_BEFORE до начала: тогда составы уже
-  известны.
-* Составы: записавшиеся каждой стороны по рейтингу на входе (при равенстве — раньше записавшийся); доска 1 играет с
-  доской 1 и так далее, досок — по меньшей стороне, остальные — запасные без партий.
-* Партии: два тура, на каждой доске — партия белыми и партия чёрными (в первом туре хозяин белыми на нечётных досках,
-  во втором цвета меняются). Контроль MATCH_SLOT (5+3), партии рейтинговые.
-* Счёт: победа — 1, ничья — ½; счёт матча — сумма по доскам. В arena_players очки хранятся в единицах арены
-  (победа 2, ничья 1), поэтому счёт стороны — их сумма, делённая на POINTS_PER_WIN.
+* Schedule: once a week -- a match between two conferences in a round-robin. Five conferences give PAIRS (ten pairs),
+  so a cycle is ten weeks. The week is counted from EPOCH (a Monday); in an odd cycle host and guest swap places,
+  so that every conference hosts matches in turn.
+* Time: Saturday MATCH_WEEKDAY, evening, convenient for both. The earliest EVENING_HOURS hour in the host's time that is
+  also evening for the guest is chosen; if there is no common evening -- DEFAULT_HOUR in the host's time (and the host
+  alternates by cycle, so the next meeting of these two conferences will be in the other side's evening).
+* Sign-up: any player of one of the two conferences (country in the profile), no strength thresholds (rule 7 of CLAUDE.md:
+  a conference is a team, not a division by strength). Sign-up closes LINEUP_BEFORE before the start: by then the
+  line-ups are already known.
+* Line-ups: each side's sign-ups by rating at entry (ties -- earlier sign-up first); board 1 plays board 1 and so on,
+  boards -- by the smaller side, the rest are reserves with no games.
+* Games: two rounds, on each board one game as White and one as Black (in the first round the host has White on odd boards,
+  in the second the colours swap). Time control MATCH_SLOT (5+3), games are rated.
+* Score: win -- 1, draw -- 1/2; the match score is the sum over boards. In arena_players points are stored in arena units
+  (win 2, draw 1), so a side's score is their sum divided by POINTS_PER_WIN.
 """
 
 from collections.abc import Sequence
@@ -29,30 +29,31 @@ from zoneinfo import ZoneInfo
 
 from src.services.arena_schedule import CONFERENCE_ZONES, Slot
 
-# Контроль, длительность (плановое окно двух туров) и число туров матча.
+# Time control, duration (planned window of the two rounds) and number of rounds of a match.
 MATCH_SLOT = Slot("match-5+3", 300_000, 3_000, timedelta(hours=2), "match", 2)
-# Понедельник, от которого считаются недели круга.
+# The Monday from which the weeks of the cycle are counted.
 EPOCH = date(2026, 1, 5)
-# День матча — суббота (date.weekday(): понедельник — 0).
+# Match day is Saturday (date.weekday(): Monday is 0).
 MATCH_WEEKDAY = 5
-# Вечерние часы начала по местному времени (18:00–22:00) и час по умолчанию, если общего вечера нет.
+# Evening start hours in local time (18:00-22:00) and the default hour when there is no common evening.
 EVENING_HOURS = range(18, 23)
 DEFAULT_HOUR = 19
-# За сколько до начала закрывается запись и становятся известны составы.
+# How long before the start sign-up closes and line-ups become known.
 LINEUP_BEFORE = timedelta(hours=1)
-# На сколько вперёд создаются матчи расписания: следующий матч виден для записи всю неделю.
+# How far ahead schedule matches are created: the next match is visible for sign-up all week.
 MATCH_LOOKAHEAD = timedelta(days=8)
-# Очков арены за победу: счёт матча = очки арены / POINTS_PER_WIN (победа 1, ничья ½).
+# Arena points per win: match score = arena points / POINTS_PER_WIN (win 1, draw 1/2).
 POINTS_PER_WIN = 2
 
-# Конференции в порядке CONFERENCE_ZONES (arena_schedule): от него зависит состав и порядок пар круга.
+# Conferences in CONFERENCE_ZONES order (arena_schedule): the line-up and the order of the cycle's pairs depend on it.
 _ORDER = tuple(CONFERENCE_ZONES)
 
 
 def round_robin(teams: Sequence[str]) -> tuple[tuple[str, str], ...]:
     """
-    Все пары круга методом круга: первая команда на месте, остальные (с пустым местом при нечётном числе) вращаются;
-    пары туров идут подряд, поэтому в соседние недели играют разные конференции.
+    All pairs of the cycle by the circle method: the first team stays put, the others (with an empty slot for odd count)
+    rotate;
+    pairs of the rounds go in sequence, so different conferences play in adjacent weeks.
     """
     seats: list[str | None] = [*teams, None] if len(teams) % 2 else list(teams)
     rest, pairs = seats[1:], []
@@ -66,18 +67,20 @@ def round_robin(teams: Sequence[str]) -> tuple[tuple[str, str], ...]:
     return tuple(pairs)
 
 
-# Десять пар круга пяти конференций (у каждой с каждой — один матч за круг).
+# The ten pairs of the cycle of five conferences (each plays each other once per cycle).
 PAIRS = round_robin(_ORDER)
 
 
 def fixture(week: int) -> tuple[str, str]:
-    """(хозяин, гость) матча недели номер week от EPOCH; в нечётном круге стороны меняются."""
+    """(host, guest) of the match of week number week from EPOCH; in an odd cycle the sides swap."""
     home, guest = PAIRS[week % len(PAIRS)]
     return (guest, home) if (week // len(PAIRS)) % 2 else (home, guest)
 
 
 def match_start(home: str, guest: str, saturday: date) -> datetime:
-    """Начало матча в UTC: самый ранний вечерний час хозяина, который и у гостя вечер; иначе DEFAULT_HOUR хозяина."""
+    """
+    Match start in UTC: the host's earliest evening hour that is also evening for the guest; else the host's DEFAULT_HOUR.
+    """
     home_zone, guest_zone = ZoneInfo(CONFERENCE_ZONES[home]), ZoneInfo(CONFERENCE_ZONES[guest])
     for hour in EVENING_HOURS:
         moment = datetime(saturday.year, saturday.month, saturday.day, hour, tzinfo=home_zone)
@@ -88,7 +91,7 @@ def match_start(home: str, guest: str, saturday: date) -> datetime:
 
 @dataclass(frozen=True)
 class PlannedMatch:
-    """Матч расписания: ключ, хозяин, гость, начало в UTC."""
+    """A schedule match: key, host, guest, start in UTC."""
     schedule_key: str
     home: str
     guest: str
@@ -96,14 +99,15 @@ class PlannedMatch:
 
     @property
     def ends_at(self) -> datetime:
-        """Плановый конец матча: начало + длительность окна MATCH_SLOT."""
+        """Planned end of the match: start + duration of the MATCH_SLOT window."""
         return self.starts_at + MATCH_SLOT.duration
 
 
 def planned_matches(now: datetime, horizon: timedelta, active: Sequence[str] = _ORDER) -> list[PlannedMatch]:
     """
-    Матчи, которые идут сейчас или начнутся в ближайшие horizon. Матч пары, где одна из конференций не в active
-    (настройка ARENA_CONFERENCES), не создаётся.
+    Matches that are running now or start within the next horizon. A match of a pair where one of the conferences is not in
+    active
+    (the ARENA_CONFERENCES setting) is not created.
     """
     out = []
     today = now.astimezone(UTC).date()
@@ -120,12 +124,12 @@ def planned_matches(now: datetime, horizon: timedelta, active: Sequence[str] = _
 
 
 def entry_open(starts_at: datetime, now: datetime) -> bool:
-    """Запись открыта: до начала больше LINEUP_BEFORE."""
+    """Sign-up is open: more than LINEUP_BEFORE remains until the start."""
     return now < starts_at - LINEUP_BEFORE
 
 
 class Member(Protocol):
-    """Записавшийся игрок (ArenaPlayer): только поля, нужные правилам."""
+    """A signed-up player (ArenaPlayer): only the fields the rules need."""
     user_id: int
     rating: int
     conference: str | None
@@ -134,8 +138,8 @@ class Member(Protocol):
 def lineup(members: Sequence[Member], home: str, guest: str,
            joined_order: Sequence[int] | None = None) -> list[tuple[Member, Member]]:
     """
-    Доски матча: [(игрок хозяина, игрок гостя)] — стороны по рейтингу на входе (при равенстве — по joined_order,
-    списку user_id в порядке записи), досок — по меньшей стороне.
+    Match boards: [(host's player, guest's player)] -- sides by rating at entry (ties -- by joined_order,
+    the list of user_ids in sign-up order), boards -- by the smaller side.
     """
     rank = {uid: i for i, uid in enumerate(joined_order or [m.user_id for m in members])}
 
@@ -147,10 +151,13 @@ def lineup(members: Sequence[Member], home: str, guest: str,
 
 
 def board_colors(board: int, round_no: int) -> bool:
-    """Хозяин доски board (с 1) в туре round_no (с 1) играет белыми: нечётные доски в первом туре, чётные — во втором."""
+    """
+    Whether the host of board board (from 1) in round round_no (from 1) plays White: odd boards in round one, even in round
+    two.
+    """
     return (board % 2 == 1) == (round_no % 2 == 1)
 
 
 def side_score(points: int) -> float:
-    """Очки арены стороны → счёт матча (победа 1, ничья ½)."""
+    """Arena points of a side -> match score (win 1, draw 1/2)."""
     return points / POINTS_PER_WIN

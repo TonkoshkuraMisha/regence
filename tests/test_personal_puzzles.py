@@ -1,5 +1,5 @@
 # --- FILE: tests/test_personal_puzzles.py ---
-"""Задачи из партий игрока (таск 13.5): отбор решаемых моментов, повторение с интервалами, API, фоновый разбор."""
+"""Puzzles from the player's own games (task 13.5): picking solvable moments, spaced repetition, API, background analysis."""
 
 import datetime as dt
 import json
@@ -19,7 +19,7 @@ from src.services.engine_pool import EngineUnavailableError
 from src.services.puzzles import PuzzleError
 
 API = "/api/v1/puzzles"
-# 1. e4 e5 2. Bc4 Nc6 3. Qh5 Nf6?? 4. Qxf7# — чёрные зевают мат на 6-м полуходе (лучше 3...g6).
+# 1. e4 e5 2. Bc4 Nc6 3. Qh5 Nf6?? 4. Qxf7# - Black blunders into mate on ply 6 (3...g6 was better).
 UCI = ["e2e4", "e7e5", "f1c4", "b8c6", "d1h5", "g8f6", "h5f7"]
 PGN = '[Event "t"]\n[Result "1-0"]\n\n1. e4 e5 2. Bc4 Nc6 3. Qh5 Nf6 4. Qxf7# 1-0'
 
@@ -46,7 +46,7 @@ async def game(db_session, test_user_1, test_user_2):
 
 @pytest.fixture
 def engine(monkeypatch):
-    """Подменённый движок: два лучших хода с заданным отрывом."""
+    """Stubbed engine: the two best moves with a given gap."""
     state = {"top": [("g7g6", 0), ("d8e7", -350)]}
     monkeypatch.setattr(service, "top_two", lambda board: state["top"])
     return state
@@ -58,13 +58,13 @@ async def test_blunder_becomes_a_personal_puzzle(db_session, game, engine, test_
     assert puzzle.user_id == test_user_1.id and puzzle.ply == 6
     assert puzzle.solution == "g7g6" and puzzle.played == "g8f6" and puzzle.previous_move == "d1h5"
     assert chess.Board(puzzle.fen).turn == chess.BLACK
-    # Повторный разбор ничего не дублирует.
+    # Re-analysing does not duplicate anything.
     assert await service.extract_for_game(db_session, game.id) == 0
     assert await db_session.scalar(select(func.count()).select_from(PersonalPuzzle)) == 1
 
 
 async def test_guessable_moments_are_skipped(db_session, game, engine):
-    engine["top"] = [("g7g6", 0), ("d8e7", -120)]  # второй ход почти не хуже — это угадывание
+    engine["top"] = [("g7g6", 0), ("d8e7", -120)]  # the second move is hardly worse: this is guessing
     assert await service.extract_for_game(db_session, game.id) == 0
 
 
@@ -85,8 +85,8 @@ def test_obvious_capture_is_not_a_puzzle():
     assert not service.is_solvable(board, capture, [("e3d5", 300), ("e1d2", 0)])
     quiet = chess.Move.from_uci("e1d2")
     assert service.is_solvable(board, quiet, [("e1d2", 400), ("e3c4", 50)])
-    assert not service.is_solvable(board, quiet, [("e1d2", 400)])  # единственный ход — решать нечего
-    assert service.is_solvable(board, quiet, [("e1d2", 9_995), ("e3c4", 3_000)])  # мат против «просто выигрыша»
+    assert not service.is_solvable(board, quiet, [("e1d2", 400)])  # the only move: nothing to solve
+    assert service.is_solvable(board, quiet, [("e1d2", 9_995), ("e3c4", 3_000)])  # mate versus "just winning"
 
 
 async def test_spaced_repetition(db_session, game, engine, test_user_1):
@@ -99,7 +99,7 @@ async def test_spaced_repetition(db_session, game, engine, test_user_1):
     assert wrong["correct"] is False and wrong["solution"] == "g7g6" and wrong["played"] == "g8f6"
     due = dt.datetime.fromisoformat(wrong["next_due_at"])
     assert dt.timedelta(hours=23) < due - dt.datetime.now(dt.UTC) < dt.timedelta(hours=25)
-    assert await service.next_due(db_session, user) is None  # до завтра — не показывается
+    assert await service.next_due(db_session, user) is None  # not shown until tomorrow
 
     first = await service.answer(db_session, user, puzzle.id, "g7g6")
     assert first["correct"] and not first["done"] and first["solved_streak"] == 1
@@ -116,11 +116,11 @@ async def test_api(client, db_session, game, engine, token_user_1, token_user_2)
     assert client.get(f"{API}/personal", headers=auth).json()["due"] == 1
     view = client.get(f"{API}/personal/next", headers=auth).json()
     assert view["color"] == "black" and view["previous_move"] == "d1h5" and "solution" not in view
-    # Откуда ошибка (таск B.3): соперник и дата партии.
+    # Where the mistake came from (task B.3): the opponent and the game date.
     assert isinstance(view["opponent"], str) and view["opponent"] and view["opponent_is_bot"] is False
     assert dt.datetime.fromisoformat(view["played_at"]).tzinfo is not None
     assert client.get(f"{API}/personal/game/{game.id}", headers=auth).json()["plies"] == [6]
-    # Чужая задача недоступна, чужой разбор значков не показывает.
+    # Another player's puzzle is unavailable, and another player's analysis shows no badges.
     other = {"Authorization": f"Bearer {token_user_2}"}
     assert client.post(f"{API}/personal/{view['id']}/answer", json={"move": "g7g6"}, headers=other).status_code == 404
     assert client.get(f"{API}/personal/game/{game.id}", headers=other).json()["plies"] == []
@@ -145,13 +145,13 @@ def test_bot_game_is_analysed_in_the_background(client, token_user_1, no_celery_
     assert saved.json()["game_id"] in no_celery_publish
 
 
-# --- Дополнительное покрытие: движок (подмена), отказы извлечения, источник задачи, ответы ---
+# --- Extra coverage: engine (stub), extraction refusals, puzzle source, answers ---
 
 
 
 
 class _Pool:
-    """Пул движка-заглушка: analyse отдаёт заранее заданный ответ."""
+    """Stub engine pool: analyse returns a predefined answer."""
 
     def __init__(self, info):
         self.info = info
@@ -181,18 +181,18 @@ def test_top_two_without_engine_and_with_single_line(monkeypatch):
     monkeypatch.setattr(service, "resolve_stockfish_path", lambda *a, **k: None)
     assert service.top_two(chess.Board()) is None
     monkeypatch.setattr(service, "resolve_stockfish_path", lambda *a, **k: "sf")
-    monkeypatch.setattr(service, "get_engine_pool", lambda path: _Pool(_info("e2e4", 30)))  # не список
+    monkeypatch.setattr(service, "get_engine_pool", lambda path: _Pool(_info("e2e4", 30)))  # not a list
     assert service.top_two(chess.Board()) == [("e2e4", 30)]
     monkeypatch.setattr(service, "get_engine_pool", lambda path: _Pool([_info("e2e4", 30), {"score": None}]))
-    assert service.top_two(chess.Board()) == [("e2e4", 30)]  # линия без хода отбрасывается
+    assert service.top_two(chess.Board()) == [("e2e4", 30)]  # a line without a move is dropped
 
 
 def test_is_solvable_edge_cases():
     board = chess.Board()
     best = chess.Move.from_uci("e2e4")
-    assert not service.is_solvable(board, best, [])  # движок ничего не отдал
-    assert not service.is_solvable(board, best, [("d2d4", 0), ("e2e4", -300)])  # лучший не первый
-    assert not service.is_solvable(board, best, [("e2e4", 0)])  # единственный ход — решать нечего
+    assert not service.is_solvable(board, best, [])  # the engine returned nothing
+    assert not service.is_solvable(board, best, [("d2d4", 0), ("e2e4", -300)])  # the best move is not first
+    assert not service.is_solvable(board, best, [("e2e4", 0)])  # the only move: nothing to solve
     capture = chess.Board("4k3/8/8/3p4/4P3/8/8/4K3 w - - 0 1")
     assert not service.is_solvable(capture, chess.Move.from_uci("e4d5"), [("e4d5", 0), ("e1e2", -400)])
 
@@ -207,9 +207,9 @@ async def _imported(db_session, user, analysis: str | None, pgn: str = PGN, colo
 
 
 async def test_extract_for_imported_game(db_session, engine, test_user_1):
-    assert await service.extract_for_imported(db_session, 999999) == 0  # партии нет
+    assert await service.extract_for_imported(db_session, 999999) == 0  # no such game
     bare = await _imported(db_session, test_user_1, None)
-    assert await service.extract_for_imported(db_session, bare.id) == 0  # разбора нет
+    assert await service.extract_for_imported(db_session, bare.id) == 0  # no analysis
     record = await _imported(db_session, test_user_1, _analysis(), pgn=PGN + " ")
     assert await service.extract_for_imported(db_session, record.id) == 1
     puzzle = await db_session.scalar(select(PersonalPuzzle).where(PersonalPuzzle.imported_game_id == record.id))
@@ -217,7 +217,7 @@ async def test_extract_for_imported_game(db_session, engine, test_user_1):
     context = await service.game_context(db_session, puzzle, test_user_1)
     assert context["opponent"] == "Rival" and context["source"] == "lichess" and context["played_at"].startswith("2026-01-02")
     assert await service.plies_for_imported(db_session, record.id, test_user_1) == [6]
-    # Импортная партия удалена — источник неизвестен, а не ошибка.
+    # The imported game was deleted: the source is unknown, not an error.
     await db_session.delete(record)
     await db_session.commit()
     gone = await service.game_context(db_session, puzzle, test_user_1)
@@ -225,17 +225,17 @@ async def test_extract_for_imported_game(db_session, engine, test_user_1):
 
 
 async def test_extract_stops_on_bad_data_and_unavailable_engine(db_session, game, monkeypatch, test_user_1):
-    broken = await _imported(db_session, test_user_1, "{не json")
+    broken = await _imported(db_session, test_user_1, "{not json")
     assert await service.extract_for_imported(db_session, broken.id) == 0
     no_pgn = await _imported(db_session, test_user_1, _analysis(), pgn="")
     assert await service.extract_for_imported(db_session, no_pgn.id) == 0
 
     def busy(board):
-        raise EngineUnavailableError("пул занят")
+        raise EngineUnavailableError("pool busy")
 
     monkeypatch.setattr(service, "top_two", busy)
     assert await service.extract_for_game(db_session, game.id) == 0
-    monkeypatch.setattr(service, "top_two", lambda board: None)  # движка нет совсем
+    monkeypatch.setattr(service, "top_two", lambda board: None)  # no engine at all
     assert await service.extract_for_game(db_session, game.id) == 0
 
 
@@ -244,7 +244,7 @@ async def test_game_context_for_human_bot_and_missing_game(db_session, game, eng
     puzzle = await db_session.scalar(select(PersonalPuzzle))
     human = await service.game_context(db_session, puzzle, test_user_1)
     assert human["opponent"] == test_user_2.username and human["opponent_is_bot"] is False
-    # Соперник — бот со своей персоналией: показывается её имя, бот-флаг снимается.
+    # The opponent is a bot with its own personality: its name is shown, the bot flag is cleared.
     opponent = await db_session.get(User, test_user_2.id)
     opponent.is_bot = True
     game.personality_name = "Persona"
@@ -264,7 +264,7 @@ async def test_answer_rejects_unknown_puzzle_and_bad_moves(db_session, game, eng
     with pytest.raises(PuzzleError):
         await service.answer(db_session, test_user_1, 999999, "g7g6")
     with pytest.raises(PuzzleError):
-        await service.answer(db_session, test_user_2, puzzle.id, "g7g6")  # чужая задача
+        await service.answer(db_session, test_user_2, puzzle.id, "g7g6")  # another player's puzzle
     with pytest.raises(DomainValueError):
         await service.answer(db_session, test_user_1, puzzle.id, "zzzz")
     with pytest.raises(DomainValueError):

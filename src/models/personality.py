@@ -1,7 +1,7 @@
 # --- FILE: src/models/personality.py ---
 """
-Соперники, собранные игроками в мастерской (таблица bot_personalities): имя и настройки характера. Правила имён и
-лимиты — src/api/personalities.py, как из настроек получается стиль игры — src/services/bots/personality.py.
+Opponents built by players in the workshop (the bot_personalities table): a name and character settings. Name rules and
+limits - src/api/personalities.py, how a play style is obtained from the settings - src/services/bots/personality.py.
 """
 
 from datetime import datetime
@@ -13,7 +13,7 @@ from src.models.base import Base
 
 
 class BotPersonality(Base):
-    """Соперник, собранный игроком в мастерской: имя и BotPersonalityConfig в JSON."""
+    """An opponent built by a player in the workshop: a name and BotPersonalityConfig in JSON."""
 
     __tablename__ = "bot_personalities"
     __table_args__ = (UniqueConstraint("owner_id", "name_key", name="uq_bot_personalities_owner_name"),)
@@ -23,7 +23,7 @@ class BotPersonality(Base):
         Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True,
     )
     name: Mapped[str] = mapped_column(String(30), nullable=False)
-    # Имя без учёта регистра — уникально в пределах владельца.
+    # The name is case-insensitively unique within an owner.
     name_key: Mapped[str] = mapped_column(String(30), nullable=False)
     config_json: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)

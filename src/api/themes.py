@@ -1,5 +1,6 @@
 # --- FILE: src/api/themes.py ---
-"""Реестр тактических приёмов (таск 13.0): клиент получает коды, разделы, родителей и минимумы; тексты — у него."""
+"""The registry of tactical themes (task 13.0): the client gets codes, sections, parents and minimums; the texts are on its
+side."""
 
 from fastapi import APIRouter
 
@@ -10,5 +11,5 @@ router = APIRouter()
 
 @router.get("")
 async def list_themes() -> dict:
-    """Разделы A–L и все темы реестра в порядке каталога."""
+    """Sections A-L and all registry themes in catalogue order."""
     return {"sections": list(SECTIONS), "themes": registry_payload()}

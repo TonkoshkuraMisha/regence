@@ -1,29 +1,29 @@
 # --- FILE: src/api/fair_play.py ---
 """
-Честная игра: подсказки движка недоступны, пока у игрока идёт партия с человеком — рейтинговая или товарищеская
-(напротив сидит человек, и подсказка против него нечестна в обоих случаях).
+Fair play: engine hints are unavailable while the player has a game with a human in progress - rated or casual
+(a human sits on the other side, and a hint against them is unfair in both cases).
 
-Зависимость `forbid_engine_help_during_game` подключается ко всем эндпоинтам, которые отдают
-оценку позиции или ход движка: /analysis/position, /tablebase, /find-mate, /opening-explorer, /advice, /hint,
-/check-move; /bots/move, /bots/custom-move, /bots/draw-offer; /chess960/move и /bot-move;
-/repertoires/{id}/opponent; импорт и разбор своих партий (/imports/*). Проверка идёт на сервере: скрыть кнопку в
-интерфейсе недостаточно, эндпоинт можно вызвать напрямую.
+The dependency `forbid_engine_help_during_game` is attached to all endpoints that give out
+a position evaluation or an engine move: /analysis/position, /tablebase, /find-mate, /opening-explorer, /advice, /hint,
+/check-move; /bots/move, /bots/custom-move, /bots/draw-offer; /chess960/move and /bot-move;
+/repertoires/{id}/opponent; import and review of one's own games (/imports/*). The check is on the server: hiding the button in
+the interface is not enough, the endpoint can be called directly.
 
-Откуда данные (всё в Redis): идущая партия игрока — ключ user:{id}:current_game (пишет
-src/services/game_state.py); адреса игроков — множества fairplay:ip:{адрес} с id игроков, которые подключались
-с этого адреса по WebSocket за последние PLAYER_IP_TTL_S; сигналы античиту — счётчики
-fairplay:engine_requests:{id партии}:{id игрока} (читает src/services/anticheat.py). Партии лестницы и турнира
-с ботами отмечаются отдельно — в их сессиях (src/services/ladder.py).
+Where the data comes from (all in Redis): the player's game in progress - key user:{id}:current_game (written by
+src/services/game_state.py); player addresses - sets fairplay:ip:{address} with the ids of players who connected
+from this address by WebSocket during the last PLAYER_IP_TTL_S; anti-cheat signals - counters
+fairplay:engine_requests:{game id}:{player id} (read by src/services/anticheat.py). Ladder and tournament games
+with bots are noted separately - in their sessions (src/services/ladder.py).
 
-Что проверяется:
-* запрос с токеном игрока, у которого идёт партия, — отказ (409);
-* запрос без токена с адреса, с которого сейчас кто-то играет, — отказ: иначе запрет
-  обходился бы простым «не отправлять токен»;
-* запрос с другим аккаунтом с того же адреса — разрешён (в одной сети могут быть разные
-  люди), но засчитывается игроку как сигнал для античита. Сам по себе он не штрафует.
+What is checked:
+* a request with the token of a player who has a game in progress - refusal (409);
+* a request without a token from an address from which someone is currently playing - refusal: otherwise the ban
+  could be bypassed by simply "not sending the token";
+* a request with another account from the same address - allowed (different people can be on the same
+  network), but counted against the player as an anti-cheat signal. By itself it does not penalise.
 
-При недоступном Redis проверка пропускает запрос (fail-open), как и ограничение частоты:
-лучше на время потерять защиту, чем отказать в анализе всем.
+When Redis is unavailable the check lets the request through (fail-open), like the rate limit:
+it is better to lose protection for a while than to refuse analysis to everyone.
 """
 
 import logging
@@ -39,10 +39,10 @@ from src.db.session import get_db
 
 logger = logging.getLogger(__name__)
 
-# Сколько помним, с какого адреса подключался игрок (обновляется при каждом подключении).
+# How long we remember which address a player connected from (refreshed on every connection).
 PLAYER_IP_TTL_S = 12 * 60 * 60
-# Сколько хранится счётчик запросов движка с адреса игрока во время его партии: античит читает его сразу после
-# партии, сутки — запас.
+# How long the counter of engine requests from the player's address is kept during their game: anti-cheat reads it right after
+# the game, a day is a margin.
 ENGINE_SIGNAL_TTL_S = 24 * 60 * 60
 
 
@@ -57,8 +57,8 @@ def _engine_signal_key(game_id: int, user_id: int) -> str:
 
 async def remember_player_ip(user_id: int, ip: str | None) -> None:
     """
-    Запоминает адрес, с которого игрок открыл игровое соединение (вызывает src/api/websockets.py при каждом
-    подключении). Сбой Redis только записывается в журнал: подключение из-за него не срывается.
+    Remembers the address from which the player opened a game connection (called by src/api/websockets.py on every
+    connection). A Redis failure is only written to the log: the connection is not broken because of it.
     """
     if not ip or ip == "unknown":
         return
@@ -72,10 +72,10 @@ async def remember_player_ip(user_id: int, ip: str | None) -> None:
 
 async def active_rated_game_id(user_id: int) -> int | None:
     """
-    id идущей партии игрока с человеком. Товарищеские партии тоже считаются: рейтинг в них не
-    меняется, но напротив сидит человек, и подсказки движка против него так же нечестны.
-    Имя функции говорит о рейтинговой партии, но возвращается любая идущая партия с человеком
-    (state_manager.get_active_game_id, ключ Redis user:{id}:current_game).
+    The id of the player's game in progress with a human. Casual games count too: the rating in them does not
+    change, but a human sits on the other side, and engine hints against them are equally unfair.
+    The function name speaks of a rated game, but any game in progress with a human is returned
+    (state_manager.get_active_game_id, Redis key user:{id}:current_game).
     """
     from src.services.game_state import state_manager
 
@@ -83,7 +83,7 @@ async def active_rated_game_id(user_id: int) -> int | None:
 
 
 async def engine_requests_during_game(game_id: int, user_id: int) -> int:
-    """Сколько раз с адреса игрока запрашивали движок во время его партии (сигнал для античита)."""
+    """How many times the engine was requested from the player's address during their game (an anti-cheat signal)."""
     try:
         return int(await redis_module.redis_client.get(_engine_signal_key(game_id, user_id)) or 0)
     except Exception as exc:
@@ -93,8 +93,9 @@ async def engine_requests_during_game(game_id: int, user_id: int) -> int:
 
 async def _record_engine_signal(game_id: int, user_id: int, requester: int) -> None:
     """
-    Сигнал античиту: во время партии игрока user_id с его адреса движок запросил другой аккаунт (requester).
-    Запрос при этом выполняется; счётчик читает анализ партии после её конца.
+    An anti-cheat signal: during the game of player user_id another account (requester) requested the engine from their
+    address.
+    The request is still served; the counter is read by the game analysis after the game ends.
     """
     key = _engine_signal_key(game_id, user_id)
     if await redis_module.redis_client.incr(key) == 1:
@@ -107,8 +108,8 @@ async def _record_engine_signal(game_id: int, user_id: int, requester: int) -> N
 
 async def optional_user_id(request: Request, db: AsyncSession) -> int | None:
     """
-    id игрока, если запрос пришёл с действующим токеном, иначе None — для эндпоинтов, открытых и гостям.
-    Отозванный или просроченный токен не даёт отказа: запрос просто считается гостевым.
+    The player id if the request came with a valid token, otherwise None - for endpoints open to guests too.
+    A revoked or expired token does not cause a refusal: the request is simply treated as a guest one.
     """
     scheme, _, token = request.headers.get("authorization", "").partition(" ")
     if scheme.lower() != "bearer" or not token:
@@ -119,10 +120,11 @@ async def optional_user_id(request: Request, db: AsyncSession) -> int | None:
 
 async def forbid_engine_help_during_game(request: Request, db: AsyncSession = Depends(get_db)) -> None:
     """
-    Зависимость FastAPI: 409, если запрос движка совпадает по времени с партией с человеком — своей
-    (engine_locked_in_game) или, для запроса без токена, чьей-то с того же адреса (engine_locked_guest_ip).
-    Запрос другого аккаунта с адреса играющего пропускается, но записывается сигналом античиту. Любой сбой самой
-    проверки (Redis, база) запрос не блокирует.
+    FastAPI dependency: 409 if the engine request coincides in time with a game with a human - one's own
+    (engine_locked_in_game) or, for a request without a token, someone's from the same address (engine_locked_guest_ip).
+    A request of another account from the address of the player in a game is let through, but recorded as an anti-cheat signal.
+    Any failure of the check
+    itself (Redis, database) does not block the request.
     """
     try:
         requester_id = await optional_user_id(request, db)

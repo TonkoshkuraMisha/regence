@@ -1,17 +1,17 @@
 // --- FILE: frontend/src/services/clientErrors.ts ---
-// Отчёты об ошибках страницы на сервер (POST /api/v1/client-errors, src/api/client_errors.py). К каждому отчёту
-// прикладывается след последних событий — «хлебные крошки» (breadcrumbs.ts: запросы с номером X-Request-ID, сообщения и
-// закрытия WebSocket, смены страниц). Крошки ПЕРЕЖИВАЮТ перезагрузку страницы: если страница внезапно перезагрузилась
-// (сбой, обновление сборки, ошибка), первый же отчёт новой страницы (kind «reload») несёт то, что происходило до неё.
+// Page error reports to the server (POST /api/v1/client-errors, src/api/client_errors.py). Each report
+// carries a trail of the latest events — «breadcrumbs» (breadcrumbs.ts: requests with an X-Request-ID number, WebSocket messages and
+// closes, page changes). The breadcrumbs SURVIVE a page reload: if the page suddenly reloaded
+// (crash, build update, error), the very first report of the new page (kind «reload») carries what happened before it.
 //
-// Что уходит: вид сбоя, короткое сообщение, стек, адрес страницы и крошки — без тел запросов, токенов и личных данных.
-// Не чаще MAX_REPORTS отчётов за загрузку страницы и без повторов одного и того же сообщения. Сервер сверх своего лимита
-// отчёты отбрасывает молча. Установка — installClientErrorReporting() в main.tsx; сеть — только через http.ts.
+// What is sent: the failure kind, a short message, the stack, the page address and breadcrumbs — without request bodies, tokens or personal data.
+// No more than MAX_REPORTS reports per page load and without repeats of the same message. The server silently drops reports
+// above its limit. Installation — installClientErrorReporting() in main.tsx; network — only through http.ts.
 
 import {addBreadcrumb, CLIENT_ERRORS_PATH, getBreadcrumbs} from './breadcrumbs';
 import {apiFetch} from './http';
 
-/** Вид отчёта — совпадает с ClientErrorIn.kind на сервере. */
+/** Report kind — matches ClientErrorIn.kind on the server. */
 export type ReportKind = 'render' | 'error' | 'unhandledrejection' | 'socket' | 'reload';
 const MAX_REPORTS = 10;
 const MAX_MESSAGE = 500;
@@ -21,13 +21,13 @@ const MAX_URL = 300;
 let reportsSent = 0;
 const reportedMessages = new Set<string>();
 
-/** Сброс счётчиков отчётов — только для тестов. */
+/** Reset of the report counters — tests only. */
 export function resetClientErrorsForTests() {
     reportsSent = 0;
     reportedMessages.clear();
 }
 
-/** Отправляет отчёт (не бросает: сбой отчёта не должен вызывать новый сбой). Возвращает, ушёл ли он. */
+/** Sends a report (does not throw: a report failure must not cause a new failure). Returns whether it went out. */
 export async function reportClientError(kind: ReportKind, message: string, stack?: string): Promise<boolean> {
     const text = (message || 'unknown error').slice(0, MAX_MESSAGE);
     const key = `${kind}:${text}`;
@@ -51,7 +51,7 @@ export async function reportClientError(kind: ReportKind, message: string, stack
     }
 }
 
-/** Тип перехода на страницу: 'reload' — обновление, 'navigate' — обычный заход, 'back_forward' и т. п. */
+/** Navigation type: 'reload' — refresh, 'navigate' — ordinary visit, 'back_forward', etc. */
 function navigationType(): string {
     const entry = typeof performance !== 'undefined' && performance.getEntriesByType
         ? performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined
@@ -60,8 +60,8 @@ function navigationType(): string {
 }
 
 /**
- * Подключает сбор: window error и unhandledrejection, запись открытия страницы в крошки и, если страницу обновили
- * (reload), отчёт «reload» со следом до обновления. Вызывается один раз из main.tsx.
+ * Enables collection: window error and unhandledrejection, writing the page opening into the breadcrumbs and, if the page was refreshed
+ * (reload), a «reload» report with the trail from before the refresh. Called once from main.tsx.
  */
 export function installClientErrorReporting() {
     const type = navigationType();

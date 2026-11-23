@@ -656,12 +656,10 @@
   }
  ],
  "intro": {
-  "ru": "Защита Нимцовича, вариант Земиша. До 27-го хода силы равны, но взятие 27...Bxc4 открывает белым дорогу к королю.",
   "uk": "Захист Німцовича, варіант Земіша. До 27-го ходу сили рівні, але взяття 27...Bxc4 відкриває білим дорогу до короля.",
   "en": "A Nimzo-Indian Defence, Sämisch Variation. The game is level until move 27, but the capture 27...Bxc4 opens the road to the king for White."
  },
  "summary": {
-  "ru": "Белые отвечают серией ударов с шахами: 28.Nxf6+, 29.Qxg5+, 32.Qxg7+ — пешечное прикрытие короля чёрных снесено, и материал переходит к белым. Урок: если соперник отвлёкся на пешку, проверьте, нет ли атаки шахами и взятиями.",
   "uk": "Білі відповідають серією ударів із шахами: 28.Nxf6+, 29.Qxg5+, 32.Qxg7+ — пішакове прикриття короля чорних знесене, і матеріал переходить до білих. Урок: якщо суперник відволікся на пішака, перевірте, чи немає атаки шахами та взяттями.",
   "en": "White answers with a series of blows with check: 28.Nxf6+, 29.Qxg5+, 32.Qxg7+ — Black's king loses its pawn cover and the material goes to White. Lesson: if the opponent has been distracted by a pawn, look for an attack with checks and captures."
  }

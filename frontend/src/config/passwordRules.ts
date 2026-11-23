@@ -1,7 +1,7 @@
 // --- FILE: frontend/src/config/passwordRules.ts ---
-// Правила пароля, которые клиент проверяет до запроса, чтобы сразу показать ошибку. Решает сервер: min_length
-// в схемах регистрации, смены и сброса пароля — PASSWORD_MIN_LENGTH в src/schemas/user.py.
-// Используют страница настроек (Settings.tsx) и страница сброса пароля по ссылке из письма (EmailLinkPages.tsx).
+// Password rules the client checks before the request, to show the error immediately. The server decides: min_length
+// in the registration, change and reset password schemas - PASSWORD_MIN_LENGTH in src/schemas/user.py.
+// Used by the settings page (Settings.tsx) and the password reset page opened from an email link (EmailLinkPages.tsx).
 
-/** Наименьшая длина нового пароля; должна совпадать с min_length на сервере. */
+/** Minimum length of a new password; must match min_length on the server. */
 export const MIN_PASSWORD_LENGTH = 8;

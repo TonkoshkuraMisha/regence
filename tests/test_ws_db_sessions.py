@@ -1,10 +1,10 @@
 # --- FILE: tests/test_ws_db_sessions.py ---
 """
-WebSocket не должен держать соединение пула БД, пока игрок просто подключён.
+WebSocket A WebSocket must not hold a DB pool connection while the player is merely connected.
 
-Раньше обработчик брал одну сессию на всё соединение: первый запрос (проверка токена) открывал
-транзакцию, и соединение пула оставалось занятым до отключения игрока. При пуле на N соединений
-(N+1)-й подключившийся игрок ждал pool_timeout и получал ошибку.
+Previously the handler took one session for the whole connection: the first query (token check) opened
+a transaction, and the pool connection stayed busy until the player disconnected. With a pool of N connections
+(N+1)-the (N+1)-th connecting player waited for pool_timeout and got an error.
 """
 
 import asyncio
@@ -26,7 +26,7 @@ _CLOSE = object()
 
 
 class QueueSocket:
-    """WebSocket-заглушка: входящие сообщения — из очереди, исходящие складываются в список."""
+    """WebSocket-WebSocket stub: incoming messages come from a queue, outgoing ones are appended to a list."""
 
     def __init__(self):
         self.incoming: asyncio.Queue = asyncio.Queue()
@@ -72,7 +72,7 @@ async def _make_users(url: str, count: int) -> list[tuple[int, str]]:
 
 
 async def _issue_ticket(user_id: int) -> str:
-    """Как POST /auth/ws-ticket: одноразовый тикет в Redis (token_version новых пользователей — 0)."""
+    """Like POST /auth/ws-ticket: a one-time ticket in Redis (token_version of new users is 0)."""
     ticket = f"ticket-{user_id}"
     await redis_module.redis_client.set(f"ws_ticket:{ticket}", f"{user_id}:0", ex=30)
     return ticket
@@ -83,7 +83,7 @@ async def test_connected_players_do_not_hold_pool_connections(tmp_path):
     created = await _make_users(url, 3)
     names = [name for _, name in created]
 
-    # Пул на одно соединение: при старой схеме второй подключившийся уже не прошёл бы аутентификацию.
+    # A pool of one connection: under the old scheme the second connecting player would not have passed authentication.
     engine = create_async_engine(
         url, poolclass=AsyncAdaptedQueuePool, pool_size=1, max_overflow=0, pool_timeout=1,
     )
@@ -96,7 +96,7 @@ async def test_connected_players_do_not_hold_pool_connections(tmp_path):
             for user_id, _ in created
         ]
         assert engine.pool.checkedout() == 0
-        assert users[0].username == names[0]  # объект отсоединён от сессии, но поля загружены
+        assert users[0].username == names[0]  # the object is detached from the session, but the fields are loaded
 
         await state_manager.initialize_game(
             game_id=77, white_id=users[0].id, black_id=users[1].id, base_time_ms=60000, increment_ms=0,
@@ -107,26 +107,26 @@ async def test_connected_players_do_not_hold_pool_connections(tmp_path):
             sockets.append(socket)
             tasks.append(asyncio.create_task(matchmaking_endpoint(socket, user, session_factory)))
 
-        # Все трое одновременно подключены и выполняют действие, которому нужна БД.
+        # All three are connected at once and perform an action that needs the DB.
         for socket in sockets:
             socket.incoming.put_nowait({"action": "spectate_game", "game_id": 77})
         for socket in sockets:
             started = await socket.wait_for("spectate_started")
             assert started["white_username"] == names[0]
 
-        # Соединения открыты, но ни одно соединение пула не занято.
+        # The connections are open, but no pool connection is busy.
         assert engine.pool.checkedout() == 0
     finally:
         for socket in sockets:
             socket.incoming.put_nowait(_CLOSE)
-        # Отключение обрабатывает сам эндпоинт (manager.disconnect в ветке WebSocketDisconnect).
+        # The endpoint itself handles disconnect (manager.disconnect in the WebSocketDisconnect branch).
         await asyncio.gather(*tasks, return_exceptions=True)
         await engine.dispose()
 
 
 @pytest.mark.parametrize("action_name", ["leave_queue", "spectate_game"])
 async def test_each_action_gets_its_own_closed_session(action_name):
-    """Каждое действие — своя сессия, закрытая к моменту, когда обработчик вернул управление."""
+    """Each action gets its own session, closed by the time the handler returned control."""
     from src.api.websockets import ACTION_HANDLERS, _dispatch_action
 
     opened: list = []

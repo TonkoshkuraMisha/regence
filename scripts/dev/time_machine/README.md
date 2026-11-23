@@ -1,62 +1,55 @@
-# Содержимое «Машины времени»: как добавляется турнир
+# "Time Machine" content: how a tournament is added
 
-Турниры и мастера прошлого хранятся в коде (`src/services/time_machine.py`, `src/services/bots/guests.py`) и в трёх
-каталогах клиента. Руками эти файлы не правят: новая запись — это **партия** (JSON), которую применяет скрипт, а
-итоговую таблицу сверяет с источником другой скрипт. Все команды — из корня репозитория.
+Tournaments and masters of the past are stored in code (`src/services/time_machine.py`, `src/services/bots/guests.py`) and in the three
+client catalogs. These files are not edited by hand: a new entry is a **batch** (JSON) that a script applies, and
+the final table is checked against the source by another script. All commands run from the repository root.
 
-## Шаги
+## Steps
 
-1. **Скачать страницу-источник** в локальный кэш (`.cache/`, в репозиторий не попадает):
+1. **Download the source page** into the local cache (`.cache/`, not committed to the repository):
 
    ```
    python scripts/dev/time_machine/wiki_fetch.py scripts/dev/time_machine/.cache "Hastings 1895 chess tournament"
-   python scripts/dev/time_machine/wiki_fetch_ru.py scripts/dev/time_machine/.cache "ru_baden_baden_1925=Баден-Баден 1925"
    ```
 
-   В русской Википедии есть страницы турниров, которых нет в английской (список — поиск «шахматный турнир» в
-   названии). Формат таблиц там другой — для него `ru_tables.py`:
-   `python scripts/dev/time_machine/ru_tables.py scripts/dev/time_machine/.cache/ru_baden_baden_1925.txt`
-   печатает строки таблицы и помечает участников, которых ещё нет среди мастеров (`NEW`).
+2. **Write a batch** `batches/batchN.json`: new masters (id, PGN name, life years, strength, character, a name and
+   a line about the master in three languages) and tournaments (key, year, format, rounds, a "participant - score" table, title, place,
+   a story and the real result in three languages). A sample is any of the finished batches.
 
-2. **Написать партию** `batches/batchN.json`: новые мастера (id, имя для PGN, годы жизни, сила, характер, имя и
-   строка о мастере на трёх языках) и турниры (ключ, год, формат, круги, таблица «участник — очки», заголовок, место,
-   рассказ и настоящий итог на трёх языках). Образец — любая из готовых партий.
+   - Life years come from the first line of the master's article, not from memory: on 17.11 memory failed four times.
+   - Only long-dead masters: the death year is no later than 1995. Without life years only participants of tournaments before 1905.
+   - Namesakes are separate entries (Jacques Schwarz is not Adolf Schwarz, Frantisek Treybal is not Karel Treybal).
+   - The line about a master contains only what the source confirms.
 
-   - Годы жизни — по первой строке статьи о мастере, а не по памяти: за 17.11 память подвела четыре раза.
-   - Только давно умершие мастера: год смерти не позже 1995. Без годов жизни — лишь участники турниров до 1905 года.
-   - Однофамильцы — отдельные записи (Жак Шварц ≠ Адольф Шварц, Франтишек Трейбал ≠ Карел Трейбал).
-   - В строке о мастере — только то, что подтверждает источник.
-
-3. **Сверить таблицу с источником до применения:**
+3. **Check the table against the source before applying:**
 
    ```
-   python scripts/dev/time_machine/verify_batch.py scripts/dev/time_machine/batches/batch8.json      # английский источник
-   python scripts/dev/time_machine/verify_batch_ru.py scripts/dev/time_machine/batches/batch12.json  # русский источник
+   python scripts/dev/time_machine/verify_batch.py scripts/dev/time_machine/batches/batch8.json
    ```
 
-   В каждой строке — тот же игрок, те же очки, сумма ячеек строки равна очкам. Соответствие «ключ турнира → файл
-   кэша и номер таблицы» — словарь `SOURCES` в начале скрипта. Если очки финала складываются с перенесёнными из
-   предварительного турнира — `verify_carried_scores.py`.
+   In every row - the same player, the same score, the sum of the row's cells equals the score. The mapping "tournament key -> cache
+   file and table number" is the `SOURCES` dict at the start of the script. If the final's scores add up with ones carried over from a
+   preliminary tournament - `verify_carried_scores.py`.
 
-4. **Применить партию** к реестрам сервера и каталогам клиента: `python scripts/dev/time_machine/apply_batch.py
+4. **Apply the batch** to the server registries and client catalogs: `python scripts/dev/time_machine/apply_batch.py
    scripts/dev/time_machine/batches/batchN.json`.
 
-5. **Проверить:** `uv run pytest tests/test_time_machine.py tests/test_time_machine_play.py -q` (общие проверки любой
-   записи: порядок и делёж мест, сумма очков, вход в турнир, имена и тексты на трёх языках) и клиентские тесты.
+5. **Check:** `uv run pytest tests/test_time_machine.py tests/test_time_machine_play.py -q` (general checks of any
+   entry: order and sharing of places, sum of scores, entering the tournament, names and texts in three languages) and the client tests.
 
-## Что такое готовые партии
+## What the finished batches are
 
-`batches/batch2…13.json` — запись того, что и в каком виде было добавлено. Позднейшие исправления (годы жизни,
-строки о мастерах, фирменные дебюты) вносились прямо в реестры и каталоги, поэтому источник истины — они, а не
-партии: применять старую партию повторно не нужно, скрипт откажется добавить существующую запись.
+`batches/batch2...13.json` - a record of what was added and in what form. Later corrections (life years,
+lines about masters, signature openings) were made directly in the registries and catalogs, so they are the source of truth, not the
+batches: there is no need to apply an old batch again, the script will refuse to add an existing entry.
 
-## Перепроверка всего реестра
+## Re-checking the whole registry
 
-`PYTHONPATH=. uv run python scripts/dev/time_machine/verify_registry.py` сверяет уже добавленные турниры с
-английскими источниками строже: фамилия **и имя** участника, очки, сумма ячеек строки. Разная запись имени одного
-и того же человека (Wilhelm/William Steinitz, Dawid/David Janowski, Gersz/Georg Salwe) и опечатки самих источников
-(Видмар в Карлсбаде 1911: в таблице 15½, по строке и общему итогу — 15; ячейки Шифферса и Шовальтера в Вене 1898)
-занесены в списки `KNOWN_SPELLINGS` и `KNOWN_SOURCE_TYPOS` в начале скрипта — он должен печатать `ALL OK`.
+`PYTHONPATH=. uv run python scripts/dev/time_machine/verify_registry.py` checks the already added tournaments against the
+English sources more strictly: the participant's surname **and first name**, the score, the sum of the row's cells. Different spellings of the same
+person's name (Wilhelm/William Steinitz, Dawid/David Janowski, Gersz/Georg Salwe) and typos in the sources themselves
+(Vidmar at Carlsbad 1911: the table has 15½, by the row and the overall total - 15; the Schiffers and Schowalter cells at Vienna 1898)
+are entered into the `KNOWN_SPELLINGS` and `KNOWN_SOURCE_TYPOS` lists at the start of the script - it must print `ALL OK`.
 
-Тексты Википедии распространяются по лицензии CC BY-SA; в репозиторий берутся только факты (состав и очки),
-рассказы о турнирах написаны заново.
+Wikipedia texts are distributed under the CC BY-SA licence; only facts (the field and scores) are taken into the repository,
+the tournament stories are written anew.
