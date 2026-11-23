@@ -9,7 +9,7 @@ development proceeds, without breaking what is already done (the procedure is at
 Each theme has:
 
 * a **code** (`snake_case`, English) - an immutable key in the database, API and message catalogs;
-* a **name and explanation** in three languages - in the catalogs (`themes.<code>.name`, `.short`, `.explain`), not in code;
+* a **name and explanation** in two languages (en, uk) - in the catalogs (`themes.<code>.name`, `.short`, `.explain`), not in code;
 * a **section** (A-L below) and a **parent** (for example, "knight fork" → "fork");
 * a **tagging source**: the motif detector (task 11.1) - `D`; a tag of the open lichess puzzle database - `L` (the correspondence of
   tags is checked at import, task 13.1); manual tagging only - `M`;
@@ -207,7 +207,7 @@ Each theme has:
 1. **A new theme**: an entry in the registry `src/services/themes.py` (code, section, parent, tagging sources, lichess
    tags, detector codes) + the keys `themes.<code>.name / .short / .explain` in all three catalogs
    (`frontend/src/i18n/messages/*.ts`; the explanation is 2-4 sentences, as a coach to a student) + a row in this document.
-   `tests/test_themes.py` checks the codes, sections, parents, texts in three languages and that the theme is present here.
+   `tests/test_themes.py` checks the codes, sections, parents, texts in two languages (en, uk) and that the theme is present here.
    The client receives the registry through `GET /api/v1/themes`; a theme without texts is simply not shown by an old client.
 2. **New puzzles**: import from the open database by tag (`L`), automatic tagging by the detector (`D`) or a file
    of manual puzzles in the repository (`M`: FEN, solution, themes, step, source). A check script (in CI): the moves are legal,

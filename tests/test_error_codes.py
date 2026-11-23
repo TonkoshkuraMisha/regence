@@ -28,7 +28,7 @@ from src.core.errors import (
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 CATALOGS = ROOT / "frontend" / "src" / "i18n" / "messages"
-LANGUAGES = ("en", "uk", "ru")
+LANGUAGES = ("en", "uk")
 
 
 def _catalog_section(language: str, section: str) -> dict[str, str]:

@@ -28,7 +28,7 @@ components is the `/design` page (it is not in the menu).
 4. **A grid instead of a long list:** sections and courses use `CardGrid` (1 / 2 / 3 columns), not a column of wide cards.
 5. **Colors only through components.** New shades are not introduced on a page; if a new variant is needed, it is added
    to the component and changes everywhere.
-6. **Texts come from the catalogs of the three languages**, as everywhere (CLAUDE.md, rule 1).
+6. **Texts come from the catalogs of the two languages (en, uk)**, as everywhere (CLAUDE.md, rule 1).
 
 ## Order of migrating the pages (owner's plan of 18.11)
 

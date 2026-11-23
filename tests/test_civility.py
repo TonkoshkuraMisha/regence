@@ -40,26 +40,26 @@ async def veterans(db_session, test_user_1, test_user_2):
 
 
 @pytest.mark.parametrize("text", [
-    "ты идиот", "Ты ИДИОООТ!", "ид1от", "you are an idiot", "f*ck off".replace("*", "u"), "иди нахуй",
-    "кил yourself".replace("кил", "kill"), "ти ідіот", "дeбил",  # Latin "e" inside a Cyrillic word
-    "убей себя",
+    "ти ідіот", "Ти ІДІООООТ!", "you are an idiot", "f*ck off".replace("*", "u"),
+    "кил yourself".replace("кил", "kill"), "дeбіл",  # Latin "e" inside a Cyrillic word
+    "вбий себе",
 ])
 def test_offensive_texts(text):
     assert civility.offensive(text) is True
 
 
 @pytest.mark.parametrize("text", [
-    "Отличная партия!", "колебание в эндшпиле", "застрахуй ладью", "Great game, well played", "лохматый конь",
-    "assess the position", "Scunthorpe", "уродился же такой ход", "",
+    "Чудова партія!", "коливання в ендшпілі", "застрахуй туру", "Great game, well played", "лохматий кінь",
+    "assess the position", "Scunthorpe", "",
 ])
 def test_harmless_texts(text):
     assert civility.offensive(text) is False
 
 
 async def test_dm_flagged_then_held_until_released(client, token_user_1, token_user_2, moderator, db_session):
-    flagged = client.post(f"{MSG}/with/player2", json={"body": "ты идиот"}, headers=auth(token_user_1))
+    flagged = client.post(f"{MSG}/with/player2", json={"body": "ти ідіот"}, headers=auth(token_user_1))
     assert flagged.status_code == 409 and flagged.json()["detail"]["code"] == "text_flagged"
-    sent = client.post(f"{MSG}/with/player2", json={"body": "ты идиот", "send_anyway": True}, headers=auth(token_user_1))
+    sent = client.post(f"{MSG}/with/player2", json={"body": "ти ідіот", "send_anyway": True}, headers=auth(token_user_1))
     assert sent.status_code == 200 and sent.json()["held"] is True
     # The sender sees their own held message, the recipient does not (and does not count it as unread).
     assert [m["held"] for m in client.get(f"{MSG}/with/player2", headers=auth(token_user_1)).json()["messages"]] == [True]
@@ -68,22 +68,22 @@ async def test_dm_flagged_then_held_until_released(client, token_user_1, token_u
 
     queue = client.get(f"{MOD}/queue", headers=auth(moderator)).json()["reports"]
     assert [(r["kind"], r["subject"], r["message_text"], r["target"]) for r in queue] == [
-        ("held", f"dm:{sent.json()['id']}", "ты идиот", "player1")]
+        ("held", f"dm:{sent.json()['id']}", "ти ідіот", "player1")]
     client.post(f"{MOD}/reports/{queue[0]['id']}/resolve", json={"action": "release"}, headers=auth(moderator))
     released = client.get(f"{MSG}/with/player1", headers=auth(token_user_2)).json()["messages"]
-    assert [m["body"] for m in released] == ["ты идиот"]
+    assert [m["body"] for m in released] == ["ти ідіот"]
 
 
 async def test_held_post_and_comment_then_hidden(client, token_user_1, token_user_2, moderator, db_session):
-    refused = client.post(FEED, json={"body": "все дебилы"}, headers=auth(token_user_1))
+    refused = client.post(FEED, json={"body": "всі дебіли"}, headers=auth(token_user_1))
     assert refused.json()["detail"]["code"] == "text_flagged"
-    held = client.post(FEED, json={"body": "все дебилы", "send_anyway": True}, headers=auth(token_user_1)).json()
+    held = client.post(FEED, json={"body": "всі дебіли", "send_anyway": True}, headers=auth(token_user_1)).json()
     assert held["held"] is True
     assert client.get(f"{FEED}/user/player1").json()["posts"] == []           # not visible to others
     assert [p["held"] for p in client.get(f"{FEED}/user/player1", headers=auth(token_user_1)).json()["posts"]] == [True]
 
     post_id = client.post(FEED, json={"body": "A beautiful study"}, headers=auth(token_user_1)).json()["id"]
-    comment = client.post(f"{FEED}/posts/{post_id}/comments", json={"body": "сука", "send_anyway": True},
+    comment = client.post(f"{FEED}/posts/{post_id}/comments", json={"body": "курва", "send_anyway": True},
                           headers=auth(token_user_2)).json()
     assert comment["held"] is True
     assert client.get(f"{FEED}/posts/{post_id}", headers=auth(token_user_1)).json()["comments"] == []

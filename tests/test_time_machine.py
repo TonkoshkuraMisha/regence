@@ -219,7 +219,7 @@ def test_client_catalogs_have_names_and_texts_for_everything():
     import re
 
     root = pathlib.Path(__file__).resolve().parent.parent / "frontend" / "src" / "i18n" / "messages"
-    for language in ("en", "uk", "ru"):
+    for language in ("en", "uk"):
         text = (root / f"{language}.ts").read_text(encoding="utf-8")
         guests = text[text.index("        guests: {\n"):]
         guests = guests[:guests.index("\n        },\n")]

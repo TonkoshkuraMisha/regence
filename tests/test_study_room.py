@@ -63,7 +63,7 @@ def test_missing_room(client, token_user_1):
 
 
 def test_materials(client, token_user_1, token_user_2):
-    lesson = {"steps": [{"type": "text", "fen": AFTER_E4, "text": {"en": "a", "uk": "a", "ru": "a"}}]}
+    lesson = {"steps": [{"type": "text", "fen": AFTER_E4, "text": {"en": "a", "uk": "a"}}]}
     saved = client.post(f"{API}/materials", json={"title": " Review  e4 ", "lesson": lesson}, headers=auth(token_user_1))
     assert saved.status_code == 201 and saved.json()["title"] == "Review e4"
     listed = client.get(f"{API}/materials", headers=auth(token_user_1)).json()["materials"]

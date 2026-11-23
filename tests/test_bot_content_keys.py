@@ -2,7 +2,7 @@
 """
 Bot content reaches the client as keys (task 11.0c): every line key, archetype id and ladder reason code
 the server can emit has text in the client catalog, and the catalog has nothing extra. The sameness of
-the three catalogs (en/uk/ru) is checked by TypeScript and client tests; English is enough here.
+the two catalogs (en/uk) is checked by TypeScript and client tests; English is enough here.
 """
 
 import ast

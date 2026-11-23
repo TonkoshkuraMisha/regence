@@ -45,8 +45,8 @@ def test_parse_strips_comments_and_variations():
 
 
 def test_open_pgn_reads_cp1251(tmp_path):
-    path = tmp_path / "ru.pgn"
-    path.write_bytes('[White "Ботвинник"]\n[Black "Эйве"]\n\n1. e4 e5 *\n'.encode("cp1251"))
+    path = tmp_path / "cp1251.pgn"
+    path.write_bytes('[White "Ботвинник"]\n[Black "Ласкер"]\n\n1. e4 e5 *\n'.encode("cp1251"))
     with library.open_pgn(str(path)) as handle:
         parsed = library.parse_game(next(library.read_games(handle)))
     assert parsed.white == "Ботвинник"

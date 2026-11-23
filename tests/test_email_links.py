@@ -79,9 +79,9 @@ async def test_email_needs_password_and_cannot_be_taken_twice(
 
 async def test_password_reset_by_link(client, db_session, test_user_1, token_user_1, outbox):
     await verified(client, db_session, test_user_1, token_user_1, outbox)
-    assert client.post(f"{API}/password-reset", json={"email": "alice@example.com", "language": "ru"}).status_code == 202
+    assert client.post(f"{API}/password-reset", json={"email": "alice@example.com", "language": "uk"}).status_code == 202
     to, subject, body = outbox[-1]
-    assert subject == "Сброс пароля regence" and "/reset-password?token=" in body
+    assert subject == "Скидання пароля regence" and "/reset-password?token=" in body
     token = link_token(body)
 
     assert client.post(f"{API}/password-reset/confirm",

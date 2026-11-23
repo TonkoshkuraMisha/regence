@@ -242,7 +242,7 @@ async def test_weekly_digest(db_session, test_user_1):
     since = until - timedelta(days=7)
 
     def item(days_ago: float, message: str, status: str = "new", page: str | None = "/puzzles/1", user_id: int | None = None):
-        return Feedback(message=message, status=status, page=page, user_id=user_id, app_version="1.2.2", language="ru",
+        return Feedback(message=message, status=status, page=page, user_id=user_id, app_version="1.2.2", language="uk",
                         screen="390x844", created_at=until - timedelta(days=days_ago))
 
     db_session.add_all([
@@ -272,7 +272,7 @@ async def test_weekly_digest(db_session, test_user_1):
     # Open reports are checkbox items with the text on one line; closed ones form a separate list.
     newest = digest.items[3].id
     assert (f"- [ ] #{newest} `/puzzles/1` — Puzzle not counted / although the move is right "
-            "(player1, ru, 390x844, v1.2.2)") in text
+            "(player1, uk, 390x844, v1.2.2)") in text
     assert f"- [x] #{digest.items[2].id} `/` — Clock runs fast" in text
     assert "Spam" in text and "Old but" not in text and "next week" not in text
 

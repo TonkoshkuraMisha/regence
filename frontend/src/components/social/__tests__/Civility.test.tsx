@@ -108,6 +108,6 @@ describe('report and hide', () => {
         expect(page).toHaveTextContent('People speak freely here.');
         expect(page).toHaveTextContent('We do not police taste or tone.');
         expect(page).toHaveTextContent('Do not go after a person');
-        expect(screen.getAllByRole('listitem')).toHaveLength(6);
+        expect(screen.getAllByRole('listitem')).toHaveLength(8);
     });
 });

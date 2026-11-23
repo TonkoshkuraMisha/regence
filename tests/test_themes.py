@@ -66,7 +66,7 @@ def test_detector_codes_exist():
         assert set(theme.detector) <= known, theme.code
 
 
-@pytest.mark.parametrize("lang", ["en", "uk", "ru"])
+@pytest.mark.parametrize("lang", ["en", "uk"])
 def test_every_theme_has_texts(lang):
     texts = _theme_texts(lang)
     assert set(texts) == set(THEMES_BY_CODE), set(texts) ^ set(THEMES_BY_CODE)
@@ -79,9 +79,9 @@ def test_every_theme_has_texts(lang):
 
 
 def test_texts_differ_between_languages():
-    en, uk, ru = (_theme_texts(lang) for lang in ("en", "uk", "ru"))
+    en, uk = (_theme_texts(lang) for lang in ("en", "uk"))
     for code in THEMES_BY_CODE:
-        assert en[code]["explain"] != ru[code]["explain"] != uk[code]["explain"], code
+        assert en[code]["explain"] != uk[code]["explain"], code
 
 
 def test_doc_lists_every_theme():

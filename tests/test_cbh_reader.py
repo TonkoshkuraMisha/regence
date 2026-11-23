@@ -156,7 +156,7 @@ def test_database_headers_and_skips(tmp_path):
     base.with_name(base.name + ".cbh").write_bytes(bytes(index))
     base.with_name(base.name + ".cbg").write_bytes(bytes(games))
     base.with_name(base.name + ".cbp").write_bytes(_names([("Ботвинник".encode("cp1251"), "Михаил".encode("cp1251")),
-                                                 ("Эйве".encode("cp1251"), b"")], cbh.PLAYER_RECORD, ((9, 39), (39, 59))))
+                                                 ("Ласкер".encode("cp1251"), b"")], cbh.PLAYER_RECORD, ((9, 39), (39, 59))))
     base.with_name(base.name + ".cbt").write_bytes(_names([("Гастингс".encode("cp1251"), b"Hastings")], cbh.TOURNAMENT_RECORD,
                                                 ((9, 49), (49, 79))))
     db = cbh.Database.open(base.with_name(base.name + ".cbh"))
@@ -164,7 +164,7 @@ def test_database_headers_and_skips(tmp_path):
     assert db.encoding == "cp1251"
     assert [g.headers["Result"] for g in found] == ["1-0", "1/2-1/2"]
     first = found[0]
-    assert (first.headers["White"], first.headers["Black"]) == ("Ботвинник, Михаил", "Эйве")
+    assert (first.headers["White"], first.headers["Black"]) == ("Ботвинник, Михаил", "Ласкер")
     assert (first.headers["Event"], first.headers["Site"], first.headers["Date"]) == ("Гастингс", "Hastings", "1934.05.17")
     assert (first.headers["Round"], first.headers["WhiteElo"], "BlackElo" in first.headers) == ("3", "2600", False)
     assert sans(list(first.mainline_moves())) == "1. e4 e5 2. Nf3"

@@ -3,7 +3,7 @@
 Development working document. All the study programs from the owner's library (overview:
 `docs/research/books-library-review.md`) are merged into one program and built into what the platform already has.
 The course is a **skeleton**: levels, branches, modules and empty cells. The cells are filled gradually - with puzzles, positions,
-questions, games from the library (27.1), lessons in the 14.1 format. The texts are our own, in three languages; from the books we took
+questions, games from the library (27.1), lessons in the 14.1 format. The texts are our own, in two languages (en, uk); from the books we took
 only the topics, the order and the kinds of exercises.
 
 The working title is "The Big Course", at `/learn/course`. It does not replace the existing sections but links them into

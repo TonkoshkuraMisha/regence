@@ -7,7 +7,7 @@ Development working document: data model, API, editor and order of work, so that
 statuses `auto / draft / review / approved`), the annotation in the `GET /library/games/{id}` response (`auto` and `approved` are visible
 to everyone, drafts to moderators), the "Mentor comments" panel in the library game viewer
 (`frontend/src/components/library/LibraryAnnotationPanel.tsx`) and mentor drafts via the offline script
-`scripts/annotate_library.py`. Not done: the editor and version history (stage 3), own texts in three languages on top of the
+`scripts/annotate_library.py`. Not done: the editor and version history (stage 3), own texts in two languages (en, uk) on top of the
 mentor comments, import of comments from the owner's PGN (stage 5). The questions to the owner at the end of the document
 remain open.
 
@@ -26,7 +26,7 @@ An annotation is a set of notes on the moves of one game (`library_games.id`) in
   (verified by the owner) -> back to `review` when edited after verification;
 * **edit history**: every saved version is a full snapshot (annotations are small, <= 50 KB), with the author and time.
 
-Texts are in three languages (en / uk / ru, project rule 1). We write in one language, the other two are translations marked
+Texts are in two languages (en, uk) (en / uk, project rule 1). We write in one language, the other two are translations marked
 "translation not verified"; the viewer shows the interface language and, when a translation is missing, the original with a note.
 
 ## Data model (new tables, one migration)
@@ -87,7 +87,7 @@ The engine is not called (rule 2 is not affected); the mentor draft is computed 
 
 For each game an offline script (`scripts/draft_annotations.py`) builds a draft the same way as the classics explanations
 14.7: engine evaluation per move (through `get_engine_pool`), detector 11.1 motifs and positional features, texts assembled
-from the `coach.*` keys in three languages. Only "moments" go into the draft: mistakes (evaluation drop >= 150 cp),
+from the `coach.*` keys in two languages (en, uk). Only "moments" go into the draft: mistakes (evaluation drop >= 150 cp),
 the best move in a critical position, detector tactics, a change of pawn structure (27.5). Such a draft is `draft`,
 the author is the service user "Mentor"; after that we edit it and the owner verifies it.
 

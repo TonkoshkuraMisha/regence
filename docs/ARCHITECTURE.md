@@ -39,7 +39,7 @@ a proxy to the API), `api`, `worker`, `worker-simulation`, `beat` (the Celery sc
    `src/models/`.
 4. The response is data and **codes**, not texts. A failure is a code from the registry `src/core/errors.py` with
    parameters; the client assembles the text in the player's language from the catalogs
-   `frontend/src/i18n/messages/{en,uk,ru}.ts`.
+   `frontend/src/i18n/messages/{en,uk}.ts`.
 
 The list of all routes is assembled by `src/main.py` (`create_app`); in development they are visible at `/docs`.
 
@@ -102,8 +102,8 @@ covered by a database snapshot: a Redis reset signs everyone out.
 | `src/services/bots/calibration.json` | Measured bot strength | `scripts/calibrate_bots.py` |
 | `src/services/civility_lexicon.txt` | Dictionary of the insult filter | by hand |
 | `frontend/src/content/endgames.json` | Exercises of the endgame trainer, checked against tablebases | `scripts/build_endgames.py` |
-| `frontend/src/content/lessons/*.json` | School lessons in three languages | by hand; checked by `validate.ts` and `scripts/verify_lessons.py` |
-| `frontend/src/i18n/messages/{en,uk,ru}.ts` | All interface texts in three languages | by hand; keys are checked by a test |
+| `frontend/src/content/lessons/*.json` | School lessons in two languages (en, uk) | by hand; checked by `validate.ts` and `scripts/verify_lessons.py` |
+| `frontend/src/i18n/messages/{en,uk}.ts` | All interface texts in two languages (en, uk) | by hand; keys are checked by a test |
 
 Puzzles are loaded into the database by the `migrate` service at every deployment (`scripts/import_puzzles.py`). The
 owner's library games and the masters' archive are not part of the repository — they are loaded by scripts (`DEPLOY.md`,
@@ -445,13 +445,13 @@ broadcast at once, and if the broker is unavailable the review can be computed l
 
 | Rule | Check |
 |---|---|
-| Not a single player-facing string on the server or in component markup | `tests/test_no_russian_in_api.py`, the client catalog tests |
+| Not a single player-facing string on the server or in component markup | `tests/test_language_policy.py`, the client catalog tests |
 | The server's error codes and the client catalogs match | `tests/test_error_codes.py` |
 | Engine endpoints are closed during a game | `tests/test_fair_play.py`, `test_engine_endpoints.py` |
 | The engine only through the pool, with a process limit | `tests/test_engine_endpoints.py`, `test_engine_budget.py` |
 | Models and migrations match | `alembic check` in CI |
 | Assets have a free licence and an entry in `ATTRIBUTION.md` | `tests/test_assets_licensing.py` |
-| The layout does not break on a phone and in three languages | `frontend/e2e/layout.e2e.ts` |
+| The layout does not break on a phone and in two languages (en, uk) | `frontend/e2e/layout.e2e.ts` |
 | Entry to an arena is open to any registered player (no selection by strength) | `tests/test_arena_groups.py` |
 
 ## 8. How to check for yourself

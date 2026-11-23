@@ -64,7 +64,7 @@ def _coach_catalog(language: str) -> dict[str, str]:
     return texts
 
 
-@pytest.mark.parametrize("language", ["en", "uk", "ru"])
+@pytest.mark.parametrize("language", ["en", "uk"])
 def test_catalog_has_every_template_variant_and_only_known_params(language):
     catalog = _coach_catalog(language)
     expected = all_message_keys()

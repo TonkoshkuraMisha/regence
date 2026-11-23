@@ -19,7 +19,7 @@ What came out of it:
 ## The boundary: what we take and what we do not (rule 5 of Part II)
 
 * **We take ideas and methodology**: kinds of exercises, the order of teaching, the classification of techniques, the design of tests. This is not
-  protected. We write the texts ourselves in three languages, and take the positions as our own (from our CC0 puzzle database, from the archive, from
+  protected. We write the texts ourselves in two languages (en, uk), and take the positions as our own (from our CC0 puzzle database, from the archive, from
   generators) or from games.
 * **We take games** - moves and headers (players, place, year, result). These are facts. Comments, evaluations and variations
   from the files are cut off at import; our own comments will appear later (task 27.4).

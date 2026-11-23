@@ -7,7 +7,7 @@
 // time and the "hourglass" move are computed by the server (src/services/odds.py, game_state.py), the client only shows them.
 
 /** Odds kinds (with a bot and with a person); labels - catalog odds.kinds.*. */
-export const ODDS = ['none', 'knight', 'rook', 'queen', 'pawn', 'time', 'hourglass'] as const;
+export const ODDS = ['none', 'knight', 'rook', 'queen', 'pawn', 'time', 'tempo', 'hourglass'] as const;
 export type OddsKind = typeof ODDS[number];
 export type OddsGiver = 'me' | 'opponent';
 
@@ -17,6 +17,12 @@ export interface OddsChoice {
     giver: OddsGiver;
 }
 
+// "Two moves in a row": the rules have no pass, so the position where the receiver has already played e4+d4 (e5+d5);
+// the key is the giver's colour (src/services/odds.py, TEMPO_FEN).
+const TEMPO_FEN = {
+    white: 'rnbqkbnr/ppp2ppp/8/3pp3/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+    black: 'rnbqkbnr/pppppppp/8/8/3PP3/8/PPP2PPP/RNBQKBNR b KQkq - 0 1',
+} as const;
 const START = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 // The square of the removed piece: [white, black].
 const REMOVED: Partial<Record<OddsKind, [string, string]>> = {
@@ -28,6 +34,7 @@ const REMOVED: Partial<Record<OddsKind, [string, string]>> = {
 
 /** Starting position with material odds; null - the odds are not material. */
 export function oddsFen(kind: OddsKind, giver: 'white' | 'black'): string | null {
+    if (kind === 'tempo') return TEMPO_FEN[giver];
     const squares = REMOVED[kind];
     if (!squares) return null;
     const square = squares[giver === 'white' ? 0 : 1];

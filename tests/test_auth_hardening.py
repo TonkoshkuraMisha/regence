@@ -49,7 +49,7 @@ def test_invalid_usernames_are_rejected(client, name):
     assert _register(client, name).status_code == 422
 
 
-@pytest.mark.parametrize("name", ["Misha_K", "misha-2006", "Пётр", "ёжик_1"])
+@pytest.mark.parametrize("name", ["Misha_K", "misha-2006", "Петро", "їжак_1"])
 def test_valid_usernames_are_accepted(client, name):
     assert _register(client, name).status_code == 201
 
@@ -62,7 +62,7 @@ def test_reserved_usernames_are_rejected(client, name):
     assert res.json()["detail"]["code"] == "username_reserved"
 
 
-@pytest.mark.parametrize("first, second", [("Misha", "misha"), ("Пётр", "пётр"), ("ёжик", "ЁЖИК")])
+@pytest.mark.parametrize("first, second", [("Misha", "misha"), ("Петро", "петро"), ("їжак", "ЇЖАК")])
 def test_usernames_are_unique_regardless_of_case(client, first, second):
     assert _register(client, first).status_code == 201
     res = _register(client, second)
@@ -71,9 +71,9 @@ def test_usernames_are_unique_regardless_of_case(client, first, second):
 
 
 async def test_registered_user_gets_username_key(client, db_session):
-    assert _register(client, "Пётр").status_code == 201
-    user = (await db_session.execute(select(User).where(User.username == "Пётр"))).scalars().one()
-    assert user.username_key == "пётр"
+    assert _register(client, "Петро").status_code == 201
+    user = (await db_session.execute(select(User).where(User.username == "Петро"))).scalars().one()
+    assert user.username_key == "петро"
 
 
 # --- Login ----------------------------------------------------------------------------------

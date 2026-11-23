@@ -20,8 +20,8 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 # Russian-only letters: yo, hard sign, yery, e-reversed (both cases) - none of them exists in Ukrainian.
-RUSSIAN_ONLY = re.compile("[ЁёЪъЫыЭэ]")
-CYRILLIC = re.compile("[Ѐ-ӿ]")
+RUSSIAN_ONLY = re.compile("[\u0401\u0451\u042a\u044a\u042b\u044b\u042d\u044d]")
+CYRILLIC = re.compile("[\u0400-\u04ff]")
 
 TEXT_SUFFIXES = {
     ".py", ".ts", ".tsx", ".js", ".json", ".md", ".txt", ".yml", ".yaml", ".toml", ".html", ".css", ".conf",
