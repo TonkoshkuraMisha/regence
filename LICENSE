@@ -1,0 +1,11 @@
+Copyright (c) 2026 {{COPYRIGHT_HOLDER}}. All rights reserved.
+
+This software and its content (source code, lessons, courses, texts, designs, data files produced by the project)
+are proprietary. No licence is granted to copy, modify, distribute, sublicense, host or use them, in whole or in
+part, except with the written permission of the copyright holder.
+
+Third-party components remain under their own licences, which are listed in THIRD_PARTY_NOTICES.md and
+ATTRIBUTION.md. Nothing in this file limits the rights those licences give you for those components.
+
+DRAFT: replace {{COPYRIGHT_HOLDER}} with the legal name of the owner. To open the code instead, replace this file with
+the AGPL-3.0 text (see docs/owner-decisions/02-legal-and-licenses.md, section 1.7).
