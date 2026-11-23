@@ -89,7 +89,7 @@ export const COURSE: CourseModule[] = [
     mod('M2.2', 'M', [l('king-rook-knight-mates'), l('king-bishop-mates')]),
     mod('M2.3', 'M', [l('king-exposed'), th('exposed_king')]),
     mod('E2.1', 'E', [l('endgame-key-squares'), th('triangulation'), th('outflanking'), th('shouldering'), e('two_pawns'), e('two_pawns_connected')]),
-    mod('E2.2', 'E', [e('lucena'), e('philidor'), th('rook_behind_passer')]),
+    mod('E2.2', 'E', [l('endgame-lucena'), e('lucena'), e('philidor'), th('rook_behind_passer')]),
     mod('E2.3', 'E', [e('wrong_bishop'), e('rook_pawn_def')]),
     mod('E2.4', 'E', MUST_KNOW[0].map(e)),
     mod('S2.1', 'S', [th('open_file'), th('seventh_rank')]),
