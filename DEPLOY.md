@@ -289,7 +289,7 @@ Prometheus только показывает сработавшие правил
 
 Access-токен живёт `ACCESS_TOKEN_EXPIRE_MINUTES` (15) и хранится только в памяти страницы; долгий вход — refresh-токен
 в cookie `regence_refresh` (HttpOnly, SameSite=Strict, путь `/api/v1/auth`, `REFRESH_TOKEN_EXPIRE_DAYS` = 30), его хэш —
-в Redis (до 19.11.2026 кука называлась `michess_refresh` — её ещё принимает `/auth/refresh` и заменяет новой). Флаг Secure ставится при `ENVIRONMENT=production` (переопределяется `COOKIE_SECURE`): за nginx нужен HTTPS (раздел 4).
+в Redis (до 19.11.2026 кука называлась `michess_refresh` — под этим именем она больше не читается: сайт не выкладывался, боевых сессий нет). Флаг Secure ставится при `ENVIRONMENT=production` (переопределяется `COOKIE_SECURE`): за nginx нужен HTTPS (раздел 4).
 Если фронтенд и API на разных адресах, адрес фронтенда должен быть в `CORS_ORIGINS` — запросы идут с
 `credentials: 'include'`. Сброс Redis выкидывает всех из долгих сессий: войти заново.
 

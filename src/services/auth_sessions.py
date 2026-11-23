@@ -29,10 +29,6 @@ logger = logging.getLogger(__name__)
 
 # Имя cookie с refresh-токеном и начало ключа Redis, под которым хранится запись сессии.
 REFRESH_COOKIE = "regence_refresh"
-# Прежнее имя куки (до переименования платформы, 19.11.2026). Её ещё принимает read_refresh_cookie, а первый же
-# /auth/refresh ставит куку под новым именем и стирает старую — игроки не выходят из аккаунта. Убрать константу можно,
-# когда истечёт срок самых старых сессий (REFRESH_TOKEN_EXPIRE_DAYS после выкладки).
-LEGACY_REFRESH_COOKIE = "michess_refresh"
 REFRESH_PREFIX = "refresh:"
 
 
@@ -51,8 +47,8 @@ def cookie_secure() -> bool:
 
 
 def read_refresh_cookie(cookies: Mapping[str, str]) -> str | None:
-    """Refresh-токен из cookie запроса: под новым именем, а если его нет — под прежним (LEGACY_REFRESH_COOKIE)."""
-    return cookies.get(REFRESH_COOKIE) or cookies.get(LEGACY_REFRESH_COOKIE)
+    """Refresh-токен из cookie запроса. Прежнее имя (michess_refresh) не читается: сайт не выкладывался, сессий под ним нет."""
+    return cookies.get(REFRESH_COOKIE)
 
 
 def set_refresh_cookie(response: Response, token: str) -> None:
