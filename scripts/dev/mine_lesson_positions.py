@@ -12,7 +12,9 @@
   rook_lift    — ладья поднимается с первой горизонтали на третью к королю соперника;
   pawn_storm   — штурм пешками (g/h) короля соперника при рокировках в разные стороны;
   blockade     — фигура блокирует проходную пешку соперника;
-  quiet_move   — тихий ход (не взятие и не шах), который сильно лучше остальных.
+  quiet_move   — тихий ход (не взятие и не шах), который сильно лучше остальных;
+  overload     — у соперника перегруженная фигура (детектор наставника), ход бьёт её или одну из её целей;
+  remove_defender — взятие единственного защитника чужой фигуры, после чего она остаётся без защиты.
 
     python -m scripts.dev.mine_lesson_positions --rule interference --limit 12 --out interference.json
 """
@@ -27,6 +29,7 @@ import chess.engine
 import chess.pgn
 
 from src.services.bots.base import resolve_stockfish_path
+from src.services.mentor_service import detect_motifs
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 PGN_GLOB = str(ROOT / "data" / "pgns" / "**" / "*.pgn")
@@ -117,8 +120,36 @@ def rule_quiet_move(board: chess.Board, move: chess.Move) -> bool:
             and not board.gives_check(move) and move.promotion is None and board.fullmove_number >= 12)
 
 
+def rule_overload(board: chess.Board, move: chess.Move) -> bool:
+    """У соперника есть перегруженная фигура (мотив наставника ``overloaded``), и ход берёт её или одну из её целей."""
+    if not board.is_capture(move):
+        return False
+    return any(motif.code == "overloaded" and motif.color == board.turn
+               and (move.to_square == motif.square or move.to_square in motif.targets)
+               for motif in detect_motifs(board))
+
+
+def rule_remove_defender(board: chess.Board, move: chess.Move) -> bool:
+    """Ход берёт фигуру, которая единственная защищала другую фигуру соперника; та остаётся атакованной и без защиты."""
+    mover, enemy = board.turn, not board.turn
+    if not board.is_capture(move):
+        return False
+    captured = move.to_square
+    after = board.copy(stack=False)
+    after.push(move)
+    for target in chess.SquareSet(board.occupied_co[enemy]):
+        piece = board.piece_at(target)
+        if target == captured or piece is None or piece.piece_type in (chess.KING, chess.PAWN):
+            continue
+        if (list(board.attackers(enemy, target)) == [captured] and after.attackers(mover, target)
+                and not after.attackers(enemy, target)):
+            return True
+    return False
+
+
 RULES = {"interference": rule_interference, "rook_lift": rule_rook_lift, "pawn_storm": rule_pawn_storm,
-         "blockade": rule_blockade, "quiet_move": rule_quiet_move}
+         "blockade": rule_blockade, "quiet_move": rule_quiet_move, "overload": rule_overload,
+         "remove_defender": rule_remove_defender}
 
 
 def candidates(rule_name: str):
