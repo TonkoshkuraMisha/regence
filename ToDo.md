@@ -2,8 +2,7 @@
 
 ## ▶ Сейчас (handoff, перезаписывается каждую сессию)
 - **Regence** (решение владельца 18.11): репозиторий `TonkoshkuraMisha/regence`, папка и `origin` — `regence`; локальная база и
-  `.env` на `regence_db`/`regence_user`, compose-проект `name: regence`. Убрать `LEGACY_REFRESH_COOKIE` через 30 дней после
-  выкладки. Свой движок regence-engine — у владельца (разбор и промт: claude.ai/artifact/GYLfhv2zgNDD7omE1dnMxM; профиль силы ботов по фазам — `docs/research/bot_phase_profile.md`); подстройку ботов под Stockfish (2.1) не делаем.
+  `.env` на `regence_db`/`regence_user`, compose-проект `name: regence`. `LEGACY_REFRESH_COOKIE` убрана 23.11 (сайт не выкладывался, сессий под старым именем нет). Свой движок regence-engine — у владельца (разбор и промт: claude.ai/artifact/GYLfhv2zgNDD7omE1dnMxM; профиль силы ботов по фазам — `docs/research/bot_phase_profile.md`); подстройку ботов под Stockfish (2.1) не делаем.
 - **21.11 слито в `dev`:** полный перевод инфраструктуры на regence (#244); 23.2 — проверка восстановления бэкапов, вебхук,
   `offsite` (rclone); 23.1 — согласие при регистрации и `/privacy` (#245); журналы и Sentry (#246): json-журнал с
   `request_id`, отчёты страницы `/client-errors`, `scripts/trace_logs.py`, проекты `regence-api` / `regence-web`.
