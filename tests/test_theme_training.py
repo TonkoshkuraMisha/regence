@@ -67,7 +67,7 @@ async def test_stage_advances_after_eight_clean_of_ten(client, token_user_1, for
 async def test_overview_lists_progress_and_availability(client, token_user_1, fork_puzzles):
     _solve(client, token_user_1)
     body = client.get(f"{API}/training", headers=_auth(token_user_1)).json()
-    assert body["window"] == 10 and body["pass"] == 8 and len(body["themes"]) == 126
+    assert body["window"] == 10 and body["pass"] == 8 and len(body["themes"]) == 127
     fork_knight = next(t for t in body["themes"] if t["code"] == "fork_knight")
     assert fork_knight["stage"] == 1 and fork_knight["recent"] == "1" and fork_knight["solved"] == 1
     assert fork_knight["available"] == [12, 3, 0, 0] and fork_knight["ready"] is False

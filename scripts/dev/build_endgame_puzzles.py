@@ -65,7 +65,7 @@ def place(pieces: dict[chess.Square, chess.Piece], turn: chess.Color) -> chess.B
     return board if board.is_valid() and not board.is_check() else None
 
 
-K, P, B = chess.KING, chess.PAWN, chess.BISHOP
+K, P, B, R, N = chess.KING, chess.PAWN, chess.BISHOP, chess.ROOK, chess.KNIGHT
 W, BL = chess.WHITE, chess.BLACK
 
 
@@ -131,6 +131,15 @@ def key_squares(pawn: chess.Square) -> set[chess.Square]:
     return {s for rank in ranks for file in (f - 1, f, f + 1) if (s := sq(file, rank)) is not None}
 
 
+def gen_rook_vs_minor(rng: random.Random) -> chess.Board | None:
+    """Защита: у белых ладья, у чёрных слон или конь (оба без пешек); ход чёрных."""
+    wk, wr, bk, minor = (rng.randrange(64) for _ in range(4))
+    if len({wk, wr, bk, minor}) < 4 or chess.square_distance(wk, bk) < 2:
+        return None
+    return place({wk: chess.Piece(K, W), wr: chess.Piece(R, W), bk: chess.Piece(K, BL),
+                  minor: chess.Piece(rng.choice([B, N]), BL)}, BL)
+
+
 def classify(board: chess.Board, move: chess.Move, kind: str) -> str | None:
     """Тема задачи по виду окончания и единственному ходу."""
     after = board.copy(stack=False)
@@ -157,6 +166,8 @@ def classify(board: chess.Board, move: chess.Move, kind: str) -> str | None:
         return "wrong_bishop" if piece == K else None
     if kind == "opposite_bishops":
         return "opposite_bishops" if piece in (B, K) else None
+    if kind == "rook_vs_minor":  # взятие ладьи — не техника, а подарок: единственный ход «побей» задачей не считаем
+        return None if board.is_capture(move) else "rook_vs_minor"
     return None
 
 
@@ -217,11 +228,11 @@ def extend(board: chess.Board, move: chess.Move, reply: str, limit: int) -> tupl
 
 
 GENERATORS = {"kpk": (gen_kpk, "win"), "square": (gen_square, "win"), "wrong_bishop": (gen_wrong_bishop, "draw"),
-              "opposite_bishops": (gen_opposite_bishops, "draw")}
+              "opposite_bishops": (gen_opposite_bishops, "draw"), "rook_vs_minor": (gen_rook_vs_minor, "draw")}
 THEMES = {"opposition": "kpk", "key_squares": "kpk", "outflanking": "kpk", "square_rule": "square",
-          "wrong_bishop": "wrong_bishop", "opposite_bishops": "opposite_bishops"}
+          "wrong_bishop": "wrong_bishop", "opposite_bishops": "opposite_bishops", "rook_vs_minor": "rook_vs_minor"}
 TAGS = {"kpk": "endgame pawnEndgame", "square": "endgame pawnEndgame", "wrong_bishop": "endgame equality",
-        "opposite_bishops": "endgame equality"}
+        "opposite_bishops": "endgame equality", "rook_vs_minor": "endgame equality"}
 
 
 def save(path: pathlib.Path, found: dict[str, list[dict]]) -> int:

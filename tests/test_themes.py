@@ -45,7 +45,7 @@ def _theme_texts(lang: str) -> dict[str, dict[str, str]]:
 
 def test_registry_is_consistent():
     codes = [t.code for t in THEMES]
-    assert len(codes) == len(set(codes)) == 126
+    assert len(codes) == len(set(codes)) == 127
     for theme in THEMES:
         assert CODE.match(theme.code), theme.code
         assert theme.section in SECTIONS, theme.code
@@ -111,7 +111,7 @@ def test_motifs_map_to_themes():
 def test_api_lists_the_registry(client):
     body = client.get("/api/v1/themes").json()
     assert body["sections"] == list(SECTIONS)
-    assert len(body["themes"]) == 126
+    assert len(body["themes"]) == 127
     fork_knight = next(t for t in body["themes"] if t["code"] == "fork_knight")
     assert fork_knight == {"code": "fork_knight", "section": "A", "parent": "fork", "sources": ["D"],
                            "minimums": [25, 25, 20, 15], "goal": None}
