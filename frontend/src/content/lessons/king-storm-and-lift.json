@@ -1,0 +1,259 @@
+{
+  "id": "king-storm-and-lift",
+  "course": "king-attack",
+  "order": 8,
+  "title": {
+    "en": "Pawn storm and rook lift",
+    "uk": "Штурм пішаками та підйом тури",
+    "ru": "Штурм пешками и подъём ладьи"
+  },
+  "summary": {
+    "en": "Two ways to bring more attackers to the enemy king: pawns that break its shelter and a rook that climbs to the third rank.",
+    "uk": "Два способи привести більше нападників до короля суперника: пішаки, що руйнують його укриття, і тура, що піднімається на третю горизонталь.",
+    "ru": "Два способа привести больше нападающих к королю соперника: пешки, разрушающие его укрытие, и ладья, поднимающаяся на третью горизонталь."
+  },
+  "steps": [
+    {
+      "type": "text",
+      "fen": "1k1r3r/ppp4p/1np2p2/q3P1p1/P3P3/1R2QN2/2P2PPP/1R4K1 b - - 0 19",
+      "highlights": [
+        "g5",
+        "f3"
+      ],
+      "arrows": [
+        {
+          "from": "g5",
+          "to": "g4",
+          "color": "green"
+        }
+      ],
+      "text": {
+        "en": "When the kings castle on opposite wings, nobody needs to hold back: each side throws pawns at the enemy king, because opened files and diagonals are worth more than the pawns themselves. A pawn storm starts with a pawn push that attacks a defender or opens a line. Here Black plays g5-g4 against the knight on f3, the key defender of the white king.",
+        "uk": "Коли королі стоять у різних флангах, стримуватися нема чого: кожен кидає пішаків на короля суперника, бо відкриті лінії та діагоналі цінніші за самі пішаки. Штурм пішаками починається ходом, що атакує захисника або відкриває лінію. Тут чорні грають g5-g4 проти коня f3, ключового захисника білого короля.",
+        "ru": "Когда короли стоят на разных флангах, сдерживаться незачем: каждый бросает пешки на короля соперника, потому что открытые линии и диагонали ценнее самих пешек. Штурм пешками начинается ходом, который атакует защитника или открывает линию. Здесь чёрные играют g5-g4 против коня f3, ключевого защитника белого короля."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "1k1r3r/ppp4p/1np2p2/q3P1p1/P3P3/1R2QN2/2P2PPP/1R4K1 b - - 0 19",
+      "text": {
+        "en": "Black to move. The kings are on opposite wings. Find the move that starts the pawn storm.",
+        "uk": "Чорні ходять. Королі на різних флангах. Знайдіть хід, що починає штурм пішаками.",
+        "ru": "Ход чёрных. Короли на разных флангах. Найдите ход, начинающий штурм пешками."
+      },
+      "highlights": [
+        "f3"
+      ],
+      "hint": {
+        "en": "Which pawn can attack the white knight?",
+        "uk": "Який пішак може атакувати білого коня?",
+        "ru": "Какая пешка может атаковать белого коня?"
+      },
+      "line": [
+        {
+          "answers": [
+            "g5g4"
+          ],
+          "correct": {
+            "en": "Right! The pawn attacks the knight f3, and after it moves the white king loses its cover while the pawn gains the squares in front of it.",
+            "uk": "Правильно! Пішак атакує коня f3, і після його відходу білий король втрачає прикриття, а пішак здобуває поля попереду.",
+            "ru": "Верно! Пешка атакует коня f3, и после его ухода белый король теряет прикрытие, а пешка завоёвывает поля впереди."
+          }
+        }
+      ]
+    },
+    {
+      "type": "find_move",
+      "fen": "2kr2r1/ppp1qp2/2p1bn2/4Q1p1/3P3p/2N4P/PPP2PPB/R3R1K1 b - - 1 17",
+      "text": {
+        "en": "Black to move. White has castled short, Black long. Open lines towards the white king with a pawn move.",
+        "uk": "Чорні ходять. Білі рокірувалися в короткий бік, чорні — у довгий. Відкрийте лінії до білого короля ходом пішака.",
+        "ru": "Ход чёрных. Белые рокировались в короткую сторону, чёрные — в длинную. Откройте линии к белому королю ходом пешки."
+      },
+      "highlights": [
+        "g8",
+        "h2"
+      ],
+      "hint": {
+        "en": "The rook on g8 stands behind the g-pawn: clear its way.",
+        "uk": "Тура g8 стоїть за пішаком g: розчистіть їй шлях.",
+        "ru": "Ладья g8 стоит за пешкой g: расчистите ей путь."
+      },
+      "line": [
+        {
+          "answers": [
+            "g5g4"
+          ],
+          "correct": {
+            "en": "Correct! The pawns g4 and h4 break up the white king's shelter, and the rook g8 is already waiting on the opened file.",
+            "uk": "Правильно! Пішаки g4 і h4 руйнують укриття білого короля, а тура g8 уже чекає на відкритій лінії.",
+            "ru": "Верно! Пешки g4 и h4 разрушают укрытие белого короля, а ладья g8 уже ждёт на открытой линии."
+          }
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "fen": "r5rk/p3Pqpp/1b1p1pn1/1p3B1Q/2pBPP2/3n4/P3N1PP/R4R1K w - - 3 29",
+      "highlights": [
+        "f1",
+        "f3",
+        "h3",
+        "h7"
+      ],
+      "arrows": [
+        {
+          "from": "f1",
+          "to": "f3",
+          "color": "green"
+        },
+        {
+          "from": "f3",
+          "to": "h3",
+          "color": "green"
+        }
+      ],
+      "text": {
+        "en": "The second weapon of a king attack is the rook lift. The rook cannot get to the attack along the crowded first rank, so it climbs to the third rank (Rf1-f3) and swings sideways (Rf3-h3) to join the queen against the pawn h7. A lift needs only one free file and a king that has no easy way out.",
+        "uk": "Друга зброя атаки на короля — підйом тури. Тура не може потрапити в атаку по переповненій першій горизонталі, тож піднімається на третю (Rf1-f3) і хитається вбік (Rf3-h3), щоб приєднатися до ферзя проти пішака h7. Для підйому потрібна лише одна вільна вертикаль і король, якому нікуди втекти.",
+        "ru": "Второе оружие атаки на короля — подъём ладьи. Ладья не может попасть в атаку по забитой первой горизонтали, поэтому поднимается на третью (Rf1-f3) и переходит вбок (Rf3-h3), чтобы присоединиться к ферзю против пешки h7. Для подъёма нужна лишь одна свободная вертикаль и король, которому некуда убежать."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "r5rk/p3Pqpp/1b1p1pn1/1p3B1Q/2pBPP2/3n4/P3N1PP/R4R1K w - - 3 29",
+      "text": {
+        "en": "White to move. The queen is already on h5. Bring the second attacker into play with a rook lift.",
+        "uk": "Білі ходять. Ферзь уже на h5. Введіть у гру другого нападника підйомом тури.",
+        "ru": "Ход белых. Ферзь уже на h5. Введите в игру второго нападающего подъёмом ладьи."
+      },
+      "highlights": [
+        "h7"
+      ],
+      "hint": {
+        "en": "The rook on f1 needs a route to the h-file.",
+        "uk": "Турі f1 потрібен шлях до лінії h.",
+        "ru": "Ладье f1 нужен путь к линии h."
+      },
+      "line": [
+        {
+          "answers": [
+            "f1f3"
+          ],
+          "correct": {
+            "en": "Right! The rook goes to f3 and next to h3, and the queen and rook together threaten mate on h7.",
+            "uk": "Правильно! Тура йде на f3, а далі на h3, і ферзь з турою разом загрожують матом на h7.",
+            "ru": "Верно! Ладья идёт на f3, а затем на h3, и ферзь с ладьёй вместе грозят матом на h7."
+          }
+        }
+      ]
+    }
+  ],
+  "exam": [
+    {
+      "type": "find_move",
+      "fen": "rnbq1rk1/4bppp/p2p1n2/1pp5/4P1P1/2N1BN1P/PPPQ1P2/2KR1B1R w - - 0 11",
+      "text": {
+        "en": "White to move; the kings are on opposite wings. Which pawn push starts the attack?",
+        "uk": "Білі ходять; королі на різних флангах. Який хід пішаком починає атаку?",
+        "ru": "Ход белых; короли на разных флангах. Какой ход пешкой начинает атаку?"
+      },
+      "line": [
+        {
+          "answers": [
+            "g4g5"
+          ],
+          "correct": {
+            "en": "Right! The pawn drives the knight away from the defence of the king.",
+            "uk": "Правильно! Пішак проганяє коня від захисту короля.",
+            "ru": "Верно! Пешка прогоняет коня от защиты короля."
+          }
+        }
+      ]
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "When is a pawn storm against the king the right plan?",
+        "uk": "Коли штурм пішаками проти короля — правильний план?",
+        "ru": "Когда штурм пешками против короля — правильный план?"
+      },
+      "options": [
+        {
+          "correct": true,
+          "text": {
+            "en": "When the kings have castled on opposite wings.",
+            "uk": "Коли королі рокірувалися в різні боки.",
+            "ru": "Когда короли рокировались в разные стороны."
+          }
+        },
+        {
+          "text": {
+            "en": "When both kings have castled on the same wing.",
+            "uk": "Коли обидва королі рокірувалися в один бік.",
+            "ru": "Когда оба короля рокировались в одну сторону."
+          },
+          "feedback": {
+            "en": "Then your own pawns are also close to the fight and pushing them weakens your king.",
+            "uk": "Тоді ваші пішаки теж біля битви, і їх рух послаблює вашого короля.",
+            "ru": "Тогда ваши пешки тоже рядом с боем, и их движение ослабляет вашего короля."
+          }
+        },
+        {
+          "text": {
+            "en": "Only in the endgame.",
+            "uk": "Лише в ендшпілі.",
+            "ru": "Только в эндшпиле."
+          },
+          "feedback": {
+            "en": "A storm needs enemy pieces near the king and queens on the board.",
+            "uk": "Штурму потрібні фігури суперника біля короля та ферзі на дошці.",
+            "ru": "Штурму нужны фигуры соперника у короля и ферзи на доске."
+          }
+        }
+      ]
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "What does a rook lift do?",
+        "uk": "Що дає підйом тури?",
+        "ru": "Что даёт подъём ладьи?"
+      },
+      "options": [
+        {
+          "correct": true,
+          "text": {
+            "en": "The rook reaches the attack along the third rank and joins the queen against the king.",
+            "uk": "Тура потрапляє в атаку по третій горизонталі та приєднується до ферзя проти короля.",
+            "ru": "Ладья попадает в атаку по третьей горизонтали и присоединяется к ферзю против короля."
+          }
+        },
+        {
+          "text": {
+            "en": "It protects the pawns on the second rank.",
+            "uk": "Вона захищає пішаки на другій горизонталі.",
+            "ru": "Она защищает пешки на второй горизонтали."
+          },
+          "feedback": {
+            "en": "That is not the aim: the lift is an attacking manoeuvre.",
+            "uk": "Мета не в цьому: підйом — атакуючий маневр.",
+            "ru": "Цель не в этом: подъём — атакующий манёвр."
+          }
+        },
+        {
+          "text": {
+            "en": "It prepares castling.",
+            "uk": "Він готує рокіровку.",
+            "ru": "Он готовит рокировку."
+          },
+          "feedback": {
+            "en": "The lift is played after castling.",
+            "uk": "Підйом грають після рокіровки.",
+            "ru": "Подъём играют после рокировки."
+          }
+        }
+      ]
+    }
+  ]
+}

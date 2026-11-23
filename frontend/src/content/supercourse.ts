@@ -116,7 +116,7 @@ export const COURSE: CourseModule[] = [
     mod('T3.7', 'T', [th('combination')]),
     mod('T3.8', 'T', [th('equality'), th('save_by_perpetual'), th('save_by_stalemate'), th('perpetual_check'), th('stalemate_trick'), th('fortress'), th('desperado')]),
     mod('M3.1', 'M', [l('king-greek-gift'), th('greek_gift'), th('double_bishop_sacrifice')]),
-    mod('M3.2', 'M', [th('pawn_storm'), th('rook_lift')]),
+    mod('M3.2', 'M', [l('king-storm-and-lift'), th('pawn_storm'), th('rook_lift')]),
     mod('M3.3', 'M', [th('kingside_attack'), th('queenside_attack')]),
     mod('M3.4', 'M', [th('sacrifice')]),
     mod('E3.1', 'E', [l('endgame-bishop-vs-knight'), e('bishop_vs_knight')]),
