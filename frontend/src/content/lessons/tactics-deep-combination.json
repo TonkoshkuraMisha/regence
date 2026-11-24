@@ -1,0 +1,205 @@
+{
+  "id": "tactics-deep-combination",
+  "course": "tactics",
+  "order": 25,
+  "title": {
+    "en": "Deep combinations",
+    "uk": "Глибокі комбінації"
+  },
+  "summary": {
+    "en": "Several sacrifices in a row, every reply forced, ending in mate: the calculation that separates a candidate master from a club player.",
+    "uk": "Кілька жертв поспіль, кожна відповідь вимушена, завершення матом: розрахунок, що відрізняє кандидата в майстри від клубного гравця."
+  },
+  "steps": [
+    {
+      "type": "text",
+      "fen": "r7/1p4R1/4Nk2/r2pN3/1qpP1PP1/2p1P3/1n6/2K5 w - - 7 32",
+      "highlights": [
+        "f6",
+        "g7",
+        "e6"
+      ],
+      "arrows": [
+        {
+          "from": "g7",
+          "to": "f7",
+          "color": "green"
+        }
+      ],
+      "text": {
+        "en": "In a deep combination every sacrifice is a check or a capture, so the opponent has one or two replies. Calculate in the order: sacrifice, forced reply, next forcing move, and so on to the mate. If at any step the opponent has a quiet escape, the line is not forced. Here White has two pieces attacking the king on f6.",
+        "uk": "У глибокій комбінації кожна жертва — шах або взяття, тож у суперника одна-дві відповіді. Рахуйте в такому порядку: жертва, вимушена відповідь, наступний форсований хід і так до мату. Якщо на якомусь кроці в суперника є тихий вихід, варіант не форсований. Тут у білих дві фігури атакують короля на f6."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "r7/1p4R1/4Nk2/r2pN3/1qpP1PP1/2p1P3/1n6/2K5 w - - 7 32",
+      "text": {
+        "en": "White to move. Mate in three.",
+        "uk": "Хід білих. Мат у три ходи."
+      },
+      "line": [
+        {
+          "answers": [
+            "g7f7"
+          ],
+          "reply": "f6e6",
+          "correct": {
+            "en": "The rook gives check; the knight e6 is hanging, but it is the king that must move.",
+            "uk": "Тура дає шах; кінь e6 під боєм, але ходити мусить король."
+          }
+        },
+        {
+          "answers": [
+            "f4f5"
+          ],
+          "reply": "e6d6",
+          "correct": {
+            "en": "A pawn check: the king is driven forward.",
+            "uk": "Шах пішаком: короля женуть уперед."
+          }
+        },
+        {
+          "answers": [
+            "f7d7"
+          ],
+          "correct": {
+            "en": "Checkmate.",
+            "uk": "Мат."
+          }
+        }
+      ],
+      "hint": {
+        "en": "Start with the rook check on f7.",
+        "uk": "Почніть із шаху турою на f7."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "r3k2r/ppp2ppp/1nb1p3/3nN3/3Pq3/1QP3P1/P3PPBP/R1B2RK1 b kq - 8 14",
+      "text": {
+        "en": "Black to move. Mate in three.",
+        "uk": "Хід чорних. Мат у три ходи."
+      },
+      "line": [
+        {
+          "answers": [
+            "e4g2"
+          ],
+          "reply": "g1g2",
+          "correct": {
+            "en": "The queen is given up: the king must take.",
+            "uk": "Ферзя віддано: король мусить узяти."
+          }
+        },
+        {
+          "answers": [
+            "d5f4"
+          ],
+          "reply": "g2g1",
+          "correct": {
+            "en": "The knight checks; the king goes back.",
+            "uk": "Кінь дає шах; король іде назад."
+          }
+        },
+        {
+          "answers": [
+            "f4e2"
+          ],
+          "correct": {
+            "en": "Checkmate.",
+            "uk": "Мат."
+          }
+        }
+      ],
+      "hint": {
+        "en": "Sacrifice the queen on g2.",
+        "uk": "Пожертвуйте ферзем на g2."
+      }
+    },
+    {
+      "type": "text",
+      "text": {
+        "en": "Notice the shape: a queen or rook sacrifice drags the king to a square where a knight finishes it. The final mate is usually quiet in look but forced in fact. Train by finding the mating square first.",
+        "uk": "Зверніть увагу на малюнок: жертва ферзя чи тури заганяє короля на поле, де його добиває кінь. Завершальний мат зазвичай тихий на вигляд, але форсований насправді. Тренуйтеся, спершу знаходячи поле мату."
+      }
+    }
+  ],
+  "exam": [
+    {
+      "type": "find_move",
+      "fen": "7r/5pp1/4P2p/8/R3RPPK/3r4/P4k1P/8 b - - 0 39",
+      "text": {
+        "en": "Black to move. Mate in three.",
+        "uk": "Хід чорних. Мат у три ходи."
+      },
+      "line": [
+        {
+          "answers": [
+            "g7g5"
+          ],
+          "reply": "f4g5",
+          "correct": {
+            "en": "A pawn sacrifice that opens the file and the diagonal.",
+            "uk": "Жертва пішака, що відкриває вертикаль і діагональ."
+          }
+        },
+        {
+          "answers": [
+            "d3h3"
+          ],
+          "reply": "h4h3",
+          "correct": {
+            "en": "The rook is given up on h3.",
+            "uk": "Туру віддано на h3."
+          }
+        },
+        {
+          "answers": [
+            "h6g5"
+          ],
+          "correct": {
+            "en": "Checkmate.",
+            "uk": "Мат."
+          }
+        }
+      ]
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "What makes a long combination reliable?",
+        "uk": "Що робить довгу комбінацію надійною?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "Every move is a check or a capture, and the replies are forced",
+            "uk": "Кожен хід — шах або взяття, а відповіді вимушені"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "It looks beautiful",
+            "uk": "Вона гарно виглядає"
+          },
+          "feedback": {
+            "en": "Beauty is a result, not a proof.",
+            "uk": "Краса — наслідок, а не доказ."
+          }
+        },
+        {
+          "text": {
+            "en": "It starts with a quiet move",
+            "uk": "Вона починається з тихого ходу"
+          },
+          "feedback": {
+            "en": "A quiet move gives the opponent time to escape.",
+            "uk": "Тихий хід дає суперникові час піти від удару."
+          }
+        }
+      ]
+    }
+  ]
+}

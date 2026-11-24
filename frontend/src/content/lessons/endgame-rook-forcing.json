@@ -1,0 +1,185 @@
+{
+  "id": "endgame-rook-forcing",
+  "course": "endgame",
+  "order": 20,
+  "title": {
+    "en": "Rook endings: checks and passed pawns",
+    "uk": "Тури в ендшпілі: шахи й прохідні"
+  },
+  "summary": {
+    "en": "In rook endings activity beats material: use checks to drive the king away and push the passed pawn with tempo.",
+    "uk": "В ендшпілі з турами активність важить більше за матеріал: шахами відганяйте короля й просувайте прохідного пішака з темпом."
+  },
+  "steps": [
+    {
+      "type": "text",
+      "fen": "8/1p6/p3P1R1/4K3/1k6/3r4/8/8 w - - 0 56",
+      "highlights": [
+        "e6",
+        "e7",
+        "d3"
+      ],
+      "arrows": [
+        {
+          "from": "g6",
+          "to": "g4",
+          "color": "green"
+        }
+      ],
+      "text": {
+        "en": "Three rules of rook endings: the rook belongs behind a passed pawn; a check is stronger than a pawn if it drives the enemy king away from the key square; activity matters more than a single pawn. In this position White's pawn e6 is far advanced, and the enemy king is cut off.",
+        "uk": "Три правила турових ендшпілів: тура стоїть за прохідним пішаком; шах сильніший за пішака, якщо він відганяє ворожого короля від ключового поля; активність важить більше за одного пішака. У цій позиції пішак e6 білих далеко просунутий, а ворожий король відрізаний."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "8/1p6/p3P1R1/4K3/1k6/3r4/8/8 w - - 0 56",
+      "text": {
+        "en": "White to move. Find the strongest move.",
+        "uk": "Хід білих. Знайдіть найсильніший хід."
+      },
+      "line": [
+        {
+          "answers": [
+            "g6g4"
+          ],
+          "reply": "b4c5",
+          "correct": {
+            "en": "The check drives the king to the side and the pawn gets a free path.",
+            "uk": "Шах відганяє короля вбік, і пішак отримує вільний шлях."
+          }
+        },
+        {
+          "answers": [
+            "e6e7"
+          ],
+          "correct": {
+            "en": "The pawn runs and the rook d3 has to give itself up.",
+            "uk": "Пішак біжить, і тура d3 мусить віддатися."
+          }
+        }
+      ],
+      "hint": {
+        "en": "Use a check first.",
+        "uk": "Спершу скористайтеся шахом."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "8/p2P4/6k1/1R6/4p3/4P3/P5pr/4K3 w - - 0 60",
+      "text": {
+        "en": "White to move. Find the move that wins.",
+        "uk": "Хід білих. Знайдіть виграшний хід."
+      },
+      "line": [
+        {
+          "answers": [
+            "b5g5"
+          ],
+          "reply": "g6g5",
+          "correct": {
+            "en": "The rook is given up with check: the king takes and the pawn promotes with check.",
+            "uk": "Туру віддано з шахом: король бере, а пішак перетворюється з шахом."
+          }
+        },
+        {
+          "answers": [
+            "d7d8q"
+          ],
+          "correct": {
+            "en": "The new queen comes with check.",
+            "uk": "Новий ферзь приходить із шахом."
+          }
+        }
+      ],
+      "hint": {
+        "en": "The rook can be sacrificed to open the way.",
+        "uk": "Туру можна віддати, щоб відкрити шлях."
+      }
+    },
+    {
+      "type": "text",
+      "text": {
+        "en": "In both positions a check carried the decision: it moved the enemy king to a worse square and gave the pawn a tempo. Before you push a passed pawn, look for a check that improves its path.",
+        "uk": "В обох позиціях рішення ніс шах: він переводив ворожого короля на гірше поле й давав пішаку темп. Перш ніж штовхати прохідного, шукайте шах, що покращує його шлях."
+      }
+    }
+  ],
+  "exam": [
+    {
+      "type": "find_move",
+      "fen": "8/8/8/5K2/5R1p/6k1/3r2P1/8 b - - 7 58",
+      "text": {
+        "en": "Black to move. Find the strongest move.",
+        "uk": "Хід чорних. Знайдіть найсильніший хід."
+      },
+      "line": [
+        {
+          "answers": [
+            "d2d5"
+          ],
+          "reply": "f5e4",
+          "correct": {
+            "en": "The check drives the king forward, and the rook swap leaves Black with a won pawn ending.",
+            "uk": "Шах заганяє короля вперед, і обмін тур залишає чорним виграний пішаковий ендшпіль."
+          }
+        },
+        {
+          "answers": [
+            "d5d4"
+          ],
+          "reply": "e4d4",
+          "correct": {
+            "en": "The exchange of rooks.",
+            "uk": "Обмін тур."
+          }
+        },
+        {
+          "answers": [
+            "g3f4"
+          ],
+          "correct": {
+            "en": "Black wins the pawn ending.",
+            "uk": "Чорні виграють пішаковий ендшпіль."
+          }
+        }
+      ]
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "Where does the rook belong relative to a passed pawn?",
+        "uk": "Де має стояти тура щодо прохідного пішака?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "Behind it",
+            "uk": "Позаду нього"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "In front of it",
+            "uk": "Попереду нього"
+          },
+          "feedback": {
+            "en": "In front the rook is blocked by its own pawn's path.",
+            "uk": "Попереду тура заважає шляху власного пішака."
+          }
+        },
+        {
+          "text": {
+            "en": "It does not matter",
+            "uk": "Не має значення"
+          },
+          "feedback": {
+            "en": "It matters a lot: from behind the rook works along the whole path.",
+            "uk": "Ще й як: ззаду тура працює вздовж усього шляху."
+          }
+        }
+      ]
+    }
+  ]
+}
