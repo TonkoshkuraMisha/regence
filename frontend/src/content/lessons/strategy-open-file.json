@@ -1,0 +1,233 @@
+{
+  "id": "strategy-open-file",
+  "course": "strategy",
+  "order": 15,
+  "title": {
+    "en": "The open file",
+    "uk": "Відкрита лінія"
+  },
+  "summary": {
+    "en": "A file with no pawns is a highway for rooks: how to recognise it, take it and fight for it.",
+    "uk": "Вертикаль без пішаків — магістраль для тур: як її впізнати, зайняти й вести за неї боротьбу."
+  },
+  "steps": [
+    {
+      "type": "text",
+      "fen": "r1b2rk1/pp2bppp/2p1pn2/8/4P3/2N1BN2/PPP2PPP/R4RK1 w - - 0 1",
+      "highlights": [
+        "d1",
+        "d2",
+        "d3",
+        "d4",
+        "d5",
+        "d6",
+        "d7",
+        "d8"
+      ],
+      "arrows": [
+        {
+          "from": "f1",
+          "to": "d1",
+          "color": "green"
+        }
+      ],
+      "text": {
+        "en": "A file is open when there are no pawns on it at all — neither yours nor the opponent's. Here that is the d-file. If only the enemy has pawns on it, the file is half-open for you. Rooks need open lines: from the d-file a rook can enter the enemy camp on d7 or d8.",
+        "uk": "Лінія відкрита, коли на ній немає жодного пішака — ні вашого, ні суперника. Тут це лінія d. Якщо пішаки на ній лише в суперника, лінія для вас напіввідкрита. Турам потрібні відкриті лінії: з лінії d тура може вдертися в табір суперника на d7 або d8."
+      }
+    },
+    {
+      "type": "choice",
+      "fen": "r1b2rk1/pp2bppp/2p1pn2/8/4P3/2N1BN2/PPP2PPP/R4RK1 w - - 0 1",
+      "highlights": [
+        "d1",
+        "d2",
+        "d3",
+        "d4",
+        "d5",
+        "d6",
+        "d7",
+        "d8"
+      ],
+      "text": {
+        "en": "White to move. Which rook move puts a rook on the open file?",
+        "uk": "Хід білих. Який хід турою виводить туру на відкриту лінію?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "Rfd1",
+            "uk": "Тfd1"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "Rfe1",
+            "uk": "Тfe1"
+          },
+          "feedback": {
+            "en": "The e-file is closed: there are pawns on e4 and e6. The rook would have nothing to attack.",
+            "uk": "Лінія e закрита: на e4 і e6 стоять пішаки. Тура не мала б що атакувати."
+          }
+        },
+        {
+          "text": {
+            "en": "Rab1",
+            "uk": "Тab1"
+          },
+          "feedback": {
+            "en": "The b-file is closed by the pawns b2 and b7.",
+            "uk": "Лінія b закрита пішаками b2 і b7."
+          }
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "fen": "r1b2rk1/pp2bppp/2p1pn2/8/4P3/2N1BN2/PPP2PPP/R2R2K1 b - - 0 1",
+      "highlights": [
+        "d1",
+        "d2",
+        "d3",
+        "d4",
+        "d5",
+        "d6",
+        "d7",
+        "d8"
+      ],
+      "arrows": [
+        {
+          "from": "d1",
+          "to": "d8",
+          "color": "red"
+        }
+      ],
+      "text": {
+        "en": "White has taken the open file and eyes the entry squares d7 and d8. A rook on an open file is worth much more than on a closed one, so the side that does not fight for the file gradually loses ground.",
+        "uk": "Білі зайняли відкриту лінію й націлилися на поля вторгнення d7 і d8. Тура на відкритій лінії коштує значно більше, ніж на закритій, тож сторона, що не бореться за лінію, поступово здає позиції."
+      }
+    },
+    {
+      "type": "choice",
+      "fen": "r1b2rk1/pp2bppp/2p1pn2/8/4P3/2N1BN2/PPP2PPP/R2R2K1 b - - 0 1",
+      "highlights": [
+        "d1",
+        "d2",
+        "d3",
+        "d4",
+        "d5",
+        "d6",
+        "d7",
+        "d8"
+      ],
+      "text": {
+        "en": "Black to move. How should Black react to White's rook on the d-file?",
+        "uk": "Хід чорних. Як чорним відповісти на туру білих на лінії d?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "Rfd8 — contest the file with a rook of their own",
+            "uk": "Тfd8 — оскаржити лінію власною турою"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "Rfe8",
+            "uk": "Тfe8"
+          },
+          "feedback": {
+            "en": "This does not fight for the file: White keeps it and can double rooks on d1 and d2.",
+            "uk": "Це не оскаржує лінію: білі залишають її за собою й можуть подвоїти тури."
+          }
+        },
+        {
+          "text": {
+            "en": "Rab8",
+            "uk": "Тab8"
+          },
+          "feedback": {
+            "en": "The rook goes to a closed file and leaves the open one to the opponent.",
+            "uk": "Тура йде на закриту лінію й віддає відкриту суперникові."
+          }
+        }
+      ]
+    }
+  ],
+  "exam": [
+    {
+      "type": "choice",
+      "text": {
+        "en": "What is an open file?",
+        "uk": "Що таке відкрита лінія?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "A file with no pawns of either side",
+            "uk": "Вертикаль без пішаків обох сторін"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "A file with only the opponent's pawns",
+            "uk": "Вертикаль лише з пішаками суперника"
+          },
+          "feedback": {
+            "en": "That is a half-open file for you: still useful, but not fully open.",
+            "uk": "Це напіввідкрита лінія для вас: корисна, але не повністю відкрита."
+          }
+        },
+        {
+          "text": {
+            "en": "Any file where your rook stands",
+            "uk": "Будь-яка вертикаль, де стоїть ваша тура"
+          },
+          "feedback": {
+            "en": "A rook can stand on a closed file too, only it will be passive.",
+            "uk": "Тура може стояти й на закритій лінії, лише пасивно."
+          }
+        }
+      ]
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "Why does a rook on an open file matter?",
+        "uk": "Чому тура на відкритій лінії важлива?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "It can enter the enemy camp (7th and 8th ranks) and attack weaknesses",
+            "uk": "Вона може вдертися в табір суперника (7-ма й 8-ма горизонталі) й атакувати слабкості"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "It is safe from every attack",
+            "uk": "Вона недосяжна для будь-яких атак"
+          },
+          "feedback": {
+            "en": "No piece is immune: a rook on an open file can be attacked and exchanged.",
+            "uk": "Недоторканих фігур немає: туру на відкритій лінії можна атакувати й розміняти."
+          }
+        },
+        {
+          "text": {
+            "en": "It protects the king better",
+            "uk": "Вона краще захищає короля"
+          },
+          "feedback": {
+            "en": "Its job is activity, not king safety.",
+            "uk": "Її завдання — активність, а не безпека короля."
+          }
+        }
+      ]
+    }
+  ]
+}
