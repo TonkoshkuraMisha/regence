@@ -1,0 +1,198 @@
+{
+  "id": "strategy-weak-squares",
+  "course": "strategy",
+  "order": 18,
+  "title": {
+    "en": "Weak squares",
+    "uk": "Слабкі поля"
+  },
+  "summary": {
+    "en": "A square that pawns can no longer defend: how pawn moves create it and how to occupy it.",
+    "uk": "Поле, яке пішаки вже не можуть захистити: як його створюють ходи пішаків і як його зайняти."
+  },
+  "steps": [
+    {
+      "type": "text",
+      "fen": "r1bq1rk1/pp2pp1p/2np1np1/8/3NP3/2N1B3/PPP1QPPP/R4RK1 w - - 0 1",
+      "highlights": [
+        "h6",
+        "f6",
+        "g7"
+      ],
+      "arrows": [
+        {
+          "from": "e3",
+          "to": "h6",
+          "color": "green"
+        }
+      ],
+      "text": {
+        "en": "A pawn can never go backwards, so every pawn move leaves squares behind that it no longer guards. A square that your pawns cannot defend any more is a weak square. Here Black has played ...g6 and has no dark-squared bishop: the dark squares around the king, g7 and h6, are weak.",
+        "uk": "Пішак не ходить назад, тож кожен хід пішака залишає позаду поля, які він більше не охороняє. Поле, яке ваші пішаки більше не можуть захистити, — слабке. Тут чорні зіграли …g6 і не мають темнопольного слона: темні поля біля короля, g7 і h6, слабкі."
+      }
+    },
+    {
+      "type": "choice",
+      "fen": "r1bq1rk1/pp2pp1p/2np1np1/8/3NP3/2N1B3/PPP1QPPP/R4RK1 w - - 0 1",
+      "highlights": [
+        "h6",
+        "g7"
+      ],
+      "text": {
+        "en": "White to move. Which move exploits the weak dark squares?",
+        "uk": "Хід білих. Який хід використовує слабкі темні поля?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "Bh6",
+            "uk": "Сh6"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "a3",
+            "uk": "a3"
+          },
+          "feedback": {
+            "en": "A quiet pawn move on the queenside does not touch the weakened squares.",
+            "uk": "Тихий хід пішака на ферзевому фланзі не зачіпає послаблені поля."
+          }
+        },
+        {
+          "text": {
+            "en": "h3",
+            "uk": "h3"
+          },
+          "feedback": {
+            "en": "This only spends a tempo; the weak squares stay unused.",
+            "uk": "Це лише втрата темпу; слабкі поля лишаються невикористаними."
+          }
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "fen": "r1bq1rk1/pp2pp1p/2np1np1/8/3NP3/2N1B3/PPP1QPPP/R4RK1 w - - 0 1",
+      "highlights": [
+        "h6"
+      ],
+      "text": {
+        "en": "The bishop on h6 attacks the rook, and Black cannot challenge it: there is no dark-squared bishop to exchange and no pawn can attack h6. That is the point of a weak square: you can place a piece on it for good. Before pushing a pawn, ask which squares it will leave undefended.",
+        "uk": "Слон на h6 атакує туру, і чорні не можуть його оскаржити: немає темнопольного слона для обміну, а пішак не може атакувати h6. У цьому суть слабкого поля: на нього можна поставити фігуру надовго. Перш ніж ходити пішаком, подумайте, які поля він залишить без захисту."
+      }
+    },
+    {
+      "type": "choice",
+      "fen": "r1bq1rk1/pp2pp1p/2np1np1/8/3NP3/2N1B3/PPP1QPPP/R4RK1 w - - 0 1",
+      "text": {
+        "en": "What should you ask yourself before a pawn move?",
+        "uk": "Про що варто спитати себе перед ходом пішака?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "Which squares will it leave undefended for good?",
+            "uk": "Які поля він залишить без захисту назавжди?"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "Nothing: pawn moves are always safe",
+            "uk": "Ні про що: ходи пішаків завжди безпечні"
+          },
+          "feedback": {
+            "en": "A pawn cannot return, so its move can create a lasting weakness.",
+            "uk": "Пішак не повертається, тож його хід може створити постійну слабкість."
+          }
+        },
+        {
+          "text": {
+            "en": "Only whether the pawn can be captured",
+            "uk": "Лише про те, чи можна його взяти"
+          },
+          "feedback": {
+            "en": "That matters too, but the squares left behind matter more in the long run.",
+            "uk": "Це теж важливо, але поля, що залишилися позаду, у довгостроковій перспективі важливіші."
+          }
+        }
+      ]
+    }
+  ],
+  "exam": [
+    {
+      "type": "choice",
+      "text": {
+        "en": "What is a weak square?",
+        "uk": "Що таке слабке поле?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "A square that your pawns can no longer defend",
+            "uk": "Поле, яке ваші пішаки більше не можуть захистити"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "A square occupied by a weak piece",
+            "uk": "Поле, зайняте слабкою фігурою"
+          },
+          "feedback": {
+            "en": "The weakness is about the lack of pawn protection, not about the piece.",
+            "uk": "Слабкість — це відсутність захисту пішаками, а не фігура."
+          }
+        },
+        {
+          "text": {
+            "en": "Any square on the edge of the board",
+            "uk": "Будь-яке поле на краю дошки"
+          },
+          "feedback": {
+            "en": "Edge squares are not weak by themselves.",
+            "uk": "Поля на краю самі по собі не слабкі."
+          }
+        }
+      ]
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "Why can't a weak square be repaired by a pawn later?",
+        "uk": "Чому слабке поле не виправити пішаком пізніше?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "Pawns cannot move backwards",
+            "uk": "Пішаки не ходять назад"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "Pawns are too slow",
+            "uk": "Пішаки надто повільні"
+          },
+          "feedback": {
+            "en": "Speed is not the problem: a pawn simply cannot return to guard the square.",
+            "uk": "Річ не в швидкості: пішак просто не може повернутися, щоб охороняти поле."
+          }
+        },
+        {
+          "text": {
+            "en": "The rules forbid it",
+            "uk": "Правила це забороняють"
+          },
+          "feedback": {
+            "en": "Nothing forbids a pawn move; it just cannot cover a square behind it.",
+            "uk": "Ходи пішаків ніщо не забороняє; просто він не може прикрити поле позаду себе."
+          }
+        }
+      ]
+    }
+  ]
+}

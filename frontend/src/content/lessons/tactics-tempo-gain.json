@@ -1,0 +1,199 @@
+{
+  "id": "tactics-tempo-gain",
+  "course": "tactics",
+  "order": 18,
+  "title": {
+    "en": "Gain of tempo",
+    "uk": "Виграш темпу"
+  },
+  "summary": {
+    "en": "Develop a piece with a threat, so the opponent must spend a move answering it.",
+    "uk": "Розвивайте фігуру із загрозою, щоб суперник мусив витратити хід на відповідь."
+  },
+  "steps": [
+    {
+      "type": "text",
+      "fen": "rnb1kbnr/ppp1pppp/8/3q4/8/8/PPPP1PPP/RNBQKBNR w KQkq - 0 3",
+      "highlights": [
+        "d5",
+        "c3"
+      ],
+      "arrows": [
+        {
+          "from": "b1",
+          "to": "c3",
+          "color": "green"
+        }
+      ],
+      "text": {
+        "en": "A tempo is one move. When you attack an enemy piece with a move you wanted to make anyway, the opponent has to spend a move on the answer, and you are ahead in development. Here Black's queen came out early, and the knight developing to c3 attacks it.",
+        "uk": "Темп — це один хід. Коли ви атакуєте фігуру суперника ходом, який і так хотіли зробити, суперник мусить витратити хід на відповідь, а ви випереджаєте його в розвитку. Тут чорний ферзь вийшов рано, і кінь, що розвивається на c3, нападає на нього."
+      }
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "White to move. Which developing move attacks the queen?",
+        "uk": "Хід білих. Який хід розвитку атакує ферзя?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "Nc3",
+            "uk": "Кc3"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "Nf3",
+            "uk": "Кf3"
+          },
+          "feedback": {
+            "en": "It develops a piece, but the queen is not attacked, so no tempo is gained.",
+            "uk": "Це розвиває фігуру, але ферзя не атаковано, тож темпу не виграно."
+          }
+        },
+        {
+          "text": {
+            "en": "h3",
+            "uk": "h3"
+          },
+          "feedback": {
+            "en": "A pawn move that neither develops a piece nor attacks anything.",
+            "uk": "Хід пішака, що не розвиває фігуру й нічого не атакує."
+          }
+        }
+      ],
+      "highlights": [
+        "c3"
+      ],
+      "fen": "rnb1kbnr/ppp1pppp/8/3q4/8/8/PPPP1PPP/RNBQKBNR w KQkq - 0 3"
+    },
+    {
+      "type": "text",
+      "fen": "rnbqkb1r/pppppppp/8/3nP3/8/8/PPPP1PPP/RNBQKBNR w KQkq - 1 3",
+      "highlights": [
+        "d5"
+      ],
+      "text": {
+        "en": "A pawn can gain a tempo too. Here the pawn e5 has driven the knight to d5, and White continues with a pawn move that attacks it again, gaining space and time.",
+        "uk": "Темп може виграти й пішак. Тут пішак e5 прогнав коня на d5, і білі продовжують ходом пішака, що знову на нього нападає, виграючи простір і час."
+      }
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "White to move. Which move attacks the knight with a pawn?",
+        "uk": "Хід білих. Який хід атакує коня пішаком?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "c4",
+            "uk": "c4"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "Nf3",
+            "uk": "Кf3"
+          },
+          "feedback": {
+            "en": "A fine developing move, but it does not attack the knight.",
+            "uk": "Гарний хід розвитку, але він не атакує коня."
+          }
+        },
+        {
+          "text": {
+            "en": "Be2",
+            "uk": "Сe2"
+          },
+          "feedback": {
+            "en": "It develops a piece without a threat, so no tempo is gained.",
+            "uk": "Розвиває фігуру без загрози, тож темпу не виграно."
+          }
+        }
+      ],
+      "highlights": [
+        "c4"
+      ],
+      "fen": "rnbqkb1r/pppppppp/8/3nP3/8/8/PPPP1PPP/RNBQKBNR w KQkq - 1 3"
+    }
+  ],
+  "exam": [
+    {
+      "type": "choice",
+      "text": {
+        "en": "What is gaining a tempo?",
+        "uk": "Що таке виграш темпу?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "Developing or improving a piece with a threat, so the opponent must respond",
+            "uk": "Розвиток чи покращення фігури із загрозою, на яку суперник мусить відповісти"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "Making a move faster on the clock",
+            "uk": "Зробити хід швидше за годинником"
+          },
+          "feedback": {
+            "en": "Here a tempo means a move on the board, not time on the clock.",
+            "uk": "Тут темп — це хід на дошці, а не час на годиннику."
+          }
+        },
+        {
+          "text": {
+            "en": "Moving the same piece twice",
+            "uk": "Походити тією самою фігурою двічі"
+          },
+          "feedback": {
+            "en": "That usually loses tempi, unless each move carries a threat.",
+            "uk": "Це зазвичай втрачає темпи, якщо кожен хід не несе загрози."
+          }
+        }
+      ]
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "Why does an early queen often lose time?",
+        "uk": "Чому рання поява ферзя часто втрачає час?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "It can be attacked by developing moves, and then it has to run",
+            "uk": "Її можна атакувати ходами розвитку, і тоді вона мусить тікати"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "Queens cannot move early",
+            "uk": "Ферзі не можуть ходити рано"
+          },
+          "feedback": {
+            "en": "They can, but it is risky.",
+            "uk": "Можуть, але це ризиковано."
+          }
+        },
+        {
+          "text": {
+            "en": "It is worth less in the opening",
+            "uk": "Вона коштує менше в дебюті"
+          },
+          "feedback": {
+            "en": "Its value does not change; the danger is being chased.",
+            "uk": "Її вартість не змінюється; небезпека в тому, що її проженуть."
+          }
+        }
+      ]
+    }
+  ]
+}
