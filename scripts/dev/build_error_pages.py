@@ -28,7 +28,6 @@ LANDING_OUT = ROOT / "ops" / "landing" / "src" / "page.js"
 
 # Public domain and CC0 only (ATTRIBUTION.md, portraits section): no attribution is required on the page.
 LANDING_PHOTOS = ["morphy", "Capablanca", "Alekhine", "Steinitz", "Tal", "Tarrasch", "Pillsbury", "anderssen"]
-LANDING_NARROW = {0, 3, 7}  # indices of the landing photos kept on narrow screens (above and below the text)
 MAINTENANCE_PHOTOS = ["philidor", "staunton", "zukertort", "Marshall", "Keres", "Rubinstein", "paulsen", "labourdonnais"]
 
 PHOTO_SIZE = (150, 190)  # pixels: the photo is seen small, no headroom for retina screens is needed - the background is muted
@@ -147,24 +146,33 @@ def note(text: str, style: str) -> str:
     return f'<div class="note" style="{style}" aria-hidden="true">{text}</div>'
 
 
+# Waiting-page layout (owner's request 24.11): three rows of photos kept symmetric about the vertical axis. The outer columns hug the
+# corners, the middle photos sit a little further in and higher, and the inner top ones keep a gap from the brand name (they are
+# hidden below 1400px, where there is no room for them). Nothing touches the text block (about 880px wide).
+LANDING_INNER = "min(24%, calc(50% - 440px - 36px - 170px))"
+LANDING_NARROW = {0, 1, 2, 3}  # the four corner photos stay on narrow screens (above and below the text)
+
+
 def landing_collage(photos: list[str]) -> str:
     """Waiting page: photos along the sides, like on a club wall; pieces and moves between them."""
-    spots = [  # (left/right, top %, angle)
-        ("left:3%", 8, -7), ("left:13%", 52, 5), ("left:2%", 70, -4), ("right:4%", 6, 6),
-        ("right:14%", 48, -6), ("right:3%", 68, 4), ("left:24%", 4, 3), ("right:25%", 78, -5),
+    spots = [  # (side, offset, top %, angle, inner): the corners, the middle pair, the inner top pair
+        ("left", "3%", 7, -6, False), ("right", "3%", 7, 6, False),
+        ("left", "4%", 67, -4, False), ("right", "4%", 67, 4, False),
+        ("left", "9%", 37, 5, False), ("right", "9%", 37, -5, False),
+        ("left", LANDING_INNER, 4, 3, True), ("right", LANDING_INNER, 4, -3, True),
     ]
-    # On a phone the text has no veil under it, so only photos clear of the text stay: the top corners and the bottom one.
-    parts = [photo(src, f"{side};top:{top}%;transform:rotate({angle}deg)", narrow=i in LANDING_NARROW)
-             for i, (src, (side, top, angle)) in enumerate(zip(photos, spots, strict=False))]
+    parts = [photo(src, f"{side}:{offset};top:{top}%;transform:rotate({angle}deg)", narrow=i in LANDING_NARROW,
+                   extra="inner" if inner else "")
+             for i, (src, (side, offset, top, angle, inner)) in enumerate(zip(photos, spots, strict=True))]
     parts += [
-        piece("king", "width:120px;left:30%;top:60%;transform:rotate(-8deg)"),
-        piece("rook", "width:100px;right:32%;top:14%;transform:rotate(9deg)"),
-        piece("queen", "width:130px;left:6%;top:36%;transform:rotate(-12deg)"),
-        piece("bishop", "width:110px;right:7%;top:30%;transform:rotate(10deg)"),
-        note("1.e4 e5 2.Nf3 Nc6\n3.Bb5 a6 4.Ba4 Nf6", "left:8%;top:90%;transform:rotate(-3deg)"),
-        note("1.d4 Nf6 2.c4 e6\n3.Nc3 Bb4", "right:8%;top:90%;transform:rotate(2deg)"),
-        note("Qxf7#", "left:36%;top:6%;transform:rotate(4deg);font-size:1.6rem"),
-        note("O-O-O", "right:34%;top:88%;transform:rotate(-5deg);font-size:1.3rem"),
+        piece("king", "width:110px;left:25%;top:66%;transform:rotate(-8deg)"),
+        piece("rook", "width:100px;right:25%;top:66%;transform:rotate(9deg)"),
+        piece("queen", "width:120px;left:4%;top:30%;transform:rotate(-12deg)"),
+        piece("bishop", "width:105px;right:4%;top:30%;transform:rotate(10deg)"),
+        note("1.e4 e5 2.Nf3 Nc6\n3.Bb5 a6 4.Ba4 Nf6", "left:8%;top:91%;transform:rotate(-3deg)"),
+        note("1.d4 Nf6 2.c4 e6\n3.Nc3 Bb4", "right:8%;top:91%;transform:rotate(2deg)"),
+        note("Qxf7#", "left:36%;top:5%;transform:rotate(4deg);font-size:1.6rem"),
+        note("O-O-O", "right:36%;top:90%;transform:rotate(-5deg);font-size:1.3rem"),
     ]
     return '<div class="collage" aria-hidden="true">' + "".join(parts) + "</div>"
 
@@ -172,7 +180,8 @@ def landing_collage(photos: list[str]) -> str:
 # Maintenance layout: the photos sit symmetrically about the vertical axis. The outer ones hug the corners; the inner ones sit
 # halfway but never closer to the centre than the brand name (about 15vw wide on each side, 213px at most) plus a gap, so the
 # text is never covered. Below 1400px the inner ones are hidden (.inner): there is no longer room for four per row without crowding the outer ones.
-MAINTENANCE_EDGE = "4%"
+MAINTENANCE_EDGE = "calc(4% + 24px)"
+MAINTENANCE_INSET = "44px"  # how far the photos are moved in from the top and bottom edges: whole faces stay visible
 MAINTENANCE_INNER = "min(24%, calc(50% - min(15.2vw, 213px) - 48px - 170px))"
 
 
@@ -181,9 +190,9 @@ def maintenance_collage(photos: list[str]) -> str:
     # (side, offset, tilt, inner): left to right, mirrored tilts for the mirrored photos.
     slots = [("left", MAINTENANCE_EDGE, -3, False), ("left", MAINTENANCE_INNER, 3, True),
              ("right", MAINTENANCE_INNER, -3, True), ("right", MAINTENANCE_EDGE, 3, False)]
-    top = [photo(src, f"{side}:{offset};top:-34px;transform:rotate({tilt}deg)", narrow=not inner, extra="inner" if inner else "")
+    top = [photo(src, f"{side}:{offset};top:{MAINTENANCE_INSET};transform:rotate({tilt}deg)", narrow=not inner, extra="inner" if inner else "")
            for src, (side, offset, tilt, inner) in zip(photos[:4], slots, strict=True)]
-    bottom = [photo(src, f"{side}:{offset};bottom:-34px;transform:rotate({-tilt}deg)", narrow=not inner,
+    bottom = [photo(src, f"{side}:{offset};bottom:{MAINTENANCE_INSET};transform:rotate({-tilt}deg)", narrow=not inner,
                     extra="inner" if inner else "")
               for src, (side, offset, tilt, inner) in zip(photos[4:8], slots, strict=True)]
     parts = top + bottom + [
