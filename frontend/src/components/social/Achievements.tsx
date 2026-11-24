@@ -11,11 +11,13 @@ import {getToken} from '../../services/authToken';
 import {fetchAchievements, socialApi} from '../../services/social';
 import type {AchievementsData} from '../../services/social';
 import {useI18n} from '../../i18n';
+import {useKidMode} from '../../services/kidMode';
 import type {MessageKey} from '../../i18n';
 
 /** Profile achievements block: unlocked first, then locked with progress; for someone else's profile without the "share" button. */
 export function Achievements({username}: { username: string }) {
     const {t} = useI18n();
+    const kidMode = useKidMode();
     const navigate = useNavigate();
     const [data, setData] = useState<AchievementsData | null>(null);
     // One's own unlocked achievements can be shared in the feed (task 30.2).
@@ -53,7 +55,7 @@ export function Achievements({username}: { username: string }) {
                             {a.earned_at ? <Award size={13} className="text-amber-400"/> : <Lock size={12}/>}
                             {t(`achievements.items.${a.code}.name` as MessageKey)}
                             {a.new && <span className="text-xs text-emerald-300">{t('achievements.new')}</span>}
-                            {own && a.earned_at && (
+                            {own && a.earned_at && !kidMode && (
                                 <button type="button" aria-label={t('feed.share')} title={t('feed.share')} data-testid={`ach-share-${a.code}`}
                                         onClick={() => navigate('/feed', {state: {attach: {kind: 'achievement', ref: a.code}}})}
                                         className="ml-auto text-amber-300 hover:text-amber-100 font-normal">

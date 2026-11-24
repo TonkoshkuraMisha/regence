@@ -200,6 +200,17 @@ def test_review_cheater_flags(monkeypatch, count):
     assert tasks.review_cheater_flags() == count
 
 
+@pytest.mark.parametrize("count", [0, 3])
+def test_purge_deleted_accounts(monkeypatch, count):
+    from src.services import account
+    from src.worker.celery_app import celery_app
+
+    monkeypatch.setattr(account, "purge_due", _recorder([], "p", result=count))
+    assert tasks.purge_deleted_accounts() == count
+    assert celery_app.conf.beat_schedule["purge-deleted-accounts"]["task"] == "purge_deleted_accounts"
+    assert celery_app.conf.task_routes["purge_deleted_accounts"] == {"queue": "analysis"}
+
+
 @pytest.mark.parametrize("count", [0, 1])
 def test_arena_awards(monkeypatch, count):
     from src.services import arena_awards

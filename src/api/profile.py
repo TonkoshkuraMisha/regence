@@ -41,7 +41,7 @@ from src.db.session import get_db
 from src.models.game import Game, GameStatus
 from src.models.user import RATING_CATEGORIES, RatingCategory, User
 from src.schemas.user import username_key
-from src.services import arena_awards
+from src.services import account_state, arena_awards
 from src.services.conferences import conference_of
 from src.services.ladder import current_rung as ladder_current_rung
 from src.services.ladder import rungs as ladder_rungs
@@ -65,9 +65,10 @@ class QueueJoinRequest(BaseModel):
 
 
 async def _resolve_user(db: AsyncSession, username: str) -> User | None:
-    """The player by the name from the address; a deleted account (task 17.5) has no public profile or games."""
+    """The player by the name from the address; a deleted or closed account (tasks 17.5, 23.1) has no public profile or
+    games."""
     user = await _find_user(db, username)
-    return None if user is None or user.deleted_at is not None else user
+    return None if account_state.is_closed(user) else user
 
 
 async def _find_user(db: AsyncSession, username: str) -> User | None:
@@ -193,6 +194,9 @@ async def get_my_profile(current_user: User = Depends(get_current_user)):
         # Conference (task 33.6): the country from the profile and its conference; chosen via PUT /conferences/me.
         "country": current_user.country,
         "conference": conference_of(current_user.country),
+        # Kid mode (task 23.1, src/services/kid_mode.py) and whether turning it off needs the guardian code.
+        "kid_mode": current_user.kid_mode,
+        "kid_guardian_code": current_user.kid_guardian_hash is not None,
     }
 
 
@@ -248,7 +252,7 @@ async def get_leaderboard(
     rating_column = _LEADERBOARD_RATING_COLUMN[category]
     query = (
         select(User)
-        .where(User.is_cheater == False, User.is_bot == False, User.deleted_at.is_(None))  # noqa: E712
+        .where(User.is_cheater == False, User.is_bot == False, *account_state.open_account())  # noqa: E712
         .order_by(desc(rating_column))
         .limit(limit)
     )
@@ -464,6 +468,8 @@ async def get_user_profile(username: str, db: AsyncSession = Depends(get_db)):
         "id": user.id,
         "username": user.username,
         "avatar": user.avatar,
+        # Kid mode (task 23.1): the client hides "Message" and the feed; the server refuses them anyway.
+        "kid_mode": user.kid_mode,
         "bullet_rating": user.bullet_rating,
         "blitz_rating": user.blitz_rating,
         "rapid_rating": user.rapid_rating,

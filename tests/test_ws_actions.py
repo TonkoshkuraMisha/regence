@@ -209,6 +209,22 @@ async def test_chat_rules(duo, db_session):
     assert banned.codes() == ["chat_banned"]
 
 
+async def test_chat_with_a_kid_takes_only_quick_phrases(duo, db_session):
+    """Kid mode (task 23.1): in a game with a kid neither side sends free text; quick phrases still go through."""
+    white, black, _ = duo
+    kid = await db_session.get(User, black.id)
+    kid.kid_mode = True
+    await db_session.commit()
+    preset = next(iter(ws_module.CHAT_PRESETS))
+    socket = await _run(white, [
+        {"action": "chat_message", "game_id": GID, "text": "hello"},
+        {"action": "chat_message", "game_id": GID, "preset": preset},
+    ])
+    assert socket.codes() == ["chat_kid_mode"]
+    sent = socket.events("chat_message")
+    assert len(sent) == 1 and sent[0]["preset"] == preset
+
+
 # --- Cancel, berserk ----------------------------------------------------------------------
 
 async def test_abort_branches(duo, monkeypatch):

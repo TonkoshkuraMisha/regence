@@ -203,6 +203,7 @@ describe('registration by invitation', () => {
     function fill(username: string, password: string) {
         fireEvent.change(screen.getByPlaceholderText('e.g. string1'), {target: {value: username}});
         fireEvent.change(screen.getByPlaceholderText('••••••••'), {target: {value: password}});
+        fireEvent.click(screen.getByTestId('auth-age-adult'));  // the age (task 23.1)
         fireEvent.click(screen.getByTestId('auth-terms'));  // consent to the terms (task 23.1)
     }
 

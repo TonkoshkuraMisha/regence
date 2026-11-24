@@ -91,6 +91,7 @@ import {
 } from 'lucide-react';
 import {isLanguage, useI18n} from './i18n';
 import {saveProfileSettings, setTranslationHelper} from './services/profileSettings';
+import {setKidModeOn, useKidMode} from './services/kidMode';
 import {applyPreset, findPreset, getSavedPresetId} from './config/themePresets';
 import {TranslationHelper} from './components/social/TranslationHelper';
 import {PlayerAvatar} from './components/PlayerAvatar';
@@ -114,6 +115,8 @@ interface UserProfile {
     theme_preset?: string | null;
     /** Avatar from the own set (task 18.4). */
     avatar?: string | null;
+    /** Kid mode (task 23.1): no free-text chat, messages or feed. */
+    kid_mode?: boolean;
 }
 
 /** How long to wait for sign-in restoration before showing the page without it. */
@@ -131,6 +134,8 @@ export default function App() {
     const [profileRetry, setProfileRetry] = useState(0);
 
     const [isProfileOpen, setIsProfileOpen] = useState(false);
+    // Kid mode hides the feed and messages in the menu (the server refuses them anyway).
+    const kidMode = useKidMode();
     // The language is stored in the profile (task 17.7): on sign-in the profile language is applied (so it moves between devices),
     // if the profile has none yet, the current one is written there; after that every language change is saved on the server.
     const languageSyncedFor = useRef<number | null>(null);
@@ -138,9 +143,11 @@ export default function App() {
         if (!token || !userProfile) {
             languageSyncedFor.current = null;
             setTranslationHelper(false);
+            setKidModeOn(false);
             return;
         }
         setTranslationHelper(!!userProfile.translation_helper);
+        setKidModeOn(!!userProfile.kid_mode);
         if (languageSyncedFor.current !== userProfile.id) {
             languageSyncedFor.current = userProfile.id;
             if (isLanguage(userProfile.language) && userProfile.language !== language) {
@@ -629,6 +636,7 @@ export default function App() {
                                         >
                                             <Shield size={16} className="text-amber-500"/> {t('teams.title')}
                                         </button>
+                                        {!kidMode && <>
                                         <button
                                             onClick={() => {
                                                 setIsProfileOpen(false);
@@ -647,6 +655,7 @@ export default function App() {
                                         >
                                             <MessageSquare size={16} className="text-amber-500"/> {t('dm.title')}
                                         </button>
+                                        </>}
                                         <button
                                             onClick={() => {
                                                 setIsProfileOpen(false);

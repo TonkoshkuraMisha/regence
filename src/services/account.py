@@ -5,35 +5,57 @@ Player account (tasks 17.5 and 23.1, GDPR): export of one's own data and account
 The export (export_data, games_pgn) reads the tables games, bot_personalities, lesson_progress, theme_progress,
 puzzle_attempts, personal_puzzles, drill_records, tournaments and imported_games; routes are in src/api/account.py.
 
-Deletion is anonymisation, not row removal: games are shared with opponents and stay in their history, but without the
-player's name (deleted_<id>). Personal data is erased: personas, lesson and puzzle progress, personal puzzles, imported games,
-records, tournaments with bots, email links (email_tokens), product events, arena reminders, e-mail and
-country in the profile, ladder and tournament sessions in Redis. The password is replaced with an unusable hash, all tokens are
-revoked
-(users.token_version + 1), open WebSockets are closed. The exact list of erased tables is the tuple in delete_account;
-tables not listed there are left untouched by deletion.
+Deletion has two steps, after the practice of large chess sites (a waiting period, then erasure; games stay with the
+opponents):
+1. request_deletion (POST /account/delete with the password): the account is closed at once - users.deletion_requested_at
+   is set, all tokens are revoked (users.token_version + 1), open WebSockets are closed, fair-play sessions in Redis are
+   dropped. A closed account is hidden from others (src/services/account_state.py) and cannot log in; logging in with the
+   password during the grace period answers account_deletion_pending, and POST /auth/restore with the same password
+   cancels the request (restore). A game in progress or awaiting start refuses the request (409 account_in_game).
+2. purge_due (the daily task purge_deleted_accounts, src/worker/tasks.py) anonymises the accounts whose grace period
+   (ACCOUNT_DELETION_GRACE_DAYS) has passed: anonymise.
+
+Anonymisation is not row removal: games are shared with opponents and stay in their history and rating, but without the
+player's name (deleted_<id>). Everything personal is erased - the tables in PERSONAL_TABLES (progress, puzzles, records,
+tournaments with bots, repertoires, achievements, study materials, bot memory of the player, email links, product events,
+arena reminders, timed puzzle scores) and the social ones in SOCIAL_TABLES (follows both ways, notifications, direct
+messages both ways, blocks, hidden conversations, posts with their comments and likes, own comments and likes, team
+membership); in the profile - e-mail, country, kid mode and the guardian code. The password becomes an unusable hash.
+Moderation reports and arena results stay: they are other players' records too. Tables not listed are left untouched.
 """
 
 from __future__ import annotations
 
+import logging
 import secrets
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.core.config import settings
 from src.core.errors import ApiError
 from src.core.security import get_password_hash
+from src.models.achievement import UserAchievement
 from src.models.arena import ArenaReminder
+from src.models.bot_memory import BotRival, BotRivalStat
 from src.models.email_token import EmailToken
 from src.models.game import Game, GameStatus
 from src.models.imported_game import ImportedGame
 from src.models.lesson import LessonProgress
 from src.models.personality import BotPersonality
 from src.models.product_event import ProductEvent
-from src.models.puzzle import DrillRecord, PersonalPuzzle, PuzzleAttempt, ThemeProgress
+from src.models.puzzle import DrillRecord, PersonalPuzzle, PuzzleAttempt, PuzzleTimedScore, ThemeProgress
+from src.models.repertoire import Repertoire
+from src.models.social import Block, DirectMessage, Follow, HiddenConversation, Notification, Post, PostComment, PostLike
+from src.models.study import StudyMaterial
+from src.models.team import TeamMember
 from src.models.tournament import Tournament
+from src.models.trainer import ExamResult, TrainerResult
 from src.models.user import User
+from src.services.account_state import delete_after
+
+logger = logging.getLogger(__name__)
 
 # Version of the export document structure ("format" field): bumped when the set or meaning of the fields changes.
 EXPORT_FORMAT = 1
@@ -157,13 +179,32 @@ async def games_pgn(db: AsyncSession, user: User, offset: int = 0) -> tuple[str,
     return (text + "\n" if text else ""), total
 
 
-async def delete_account(db: AsyncSession, user: User) -> None:
-    """
-    Anonymises the account and erases personal data; a game in progress or awaiting start is refused with 409 account_in_game
-    (it must be finished first). The users row stays: name and username_key become deleted_<id>, deleted_at is set, a new
-    random password is assigned; bumping token_version revokes all issued tokens. After the database write, the fair-play
-    sessions in Redis are dropped and the player's open connections are closed.
-    """
+# Tables whose rows belong to the player alone: (model, owner column). Erased by anonymise.
+PERSONAL_TABLES = (
+    (BotPersonality, BotPersonality.owner_id), (LessonProgress, LessonProgress.user_id),
+    (ThemeProgress, ThemeProgress.user_id), (PuzzleAttempt, PuzzleAttempt.user_id),
+    (PersonalPuzzle, PersonalPuzzle.user_id), (ImportedGame, ImportedGame.user_id),
+    (DrillRecord, DrillRecord.user_id), (PuzzleTimedScore, PuzzleTimedScore.user_id),
+    (Tournament, Tournament.owner_id), (EmailToken, EmailToken.user_id),
+    (ProductEvent, ProductEvent.user_id), (ArenaReminder, ArenaReminder.user_id),
+    (Repertoire, Repertoire.user_id), (UserAchievement, UserAchievement.user_id),
+    (StudyMaterial, StudyMaterial.owner_id), (TrainerResult, TrainerResult.user_id),
+    (ExamResult, ExamResult.user_id), (BotRival, BotRival.user_id), (BotRivalStat, BotRivalStat.user_id),
+)
+# Social rows: (model, columns - a row goes when any of them is the player). Comments and likes go before posts; posts
+# take the rest of their comments and likes with them (ON DELETE CASCADE).
+SOCIAL_TABLES = (
+    (Follow, (Follow.follower_id, Follow.followee_id)), (Notification, (Notification.user_id,)),
+    (DirectMessage, (DirectMessage.sender_id, DirectMessage.recipient_id)),
+    (Block, (Block.blocker_id, Block.blocked_id)),
+    (HiddenConversation, (HiddenConversation.user_id, HiddenConversation.other_id)),
+    (PostComment, (PostComment.author_id,)), (PostLike, (PostLike.user_id,)), (Post, (Post.author_id,)),
+    (TeamMember, (TeamMember.user_id,)),
+)
+
+
+async def _ensure_not_in_game(db: AsyncSession, user: User) -> None:
+    """409 account_in_game while the player has a game in progress or awaiting start: it must be finished first."""
     active = await db.scalar(select(Game.id).where(
         or_(Game.white_player_id == user.id, Game.black_player_id == user.id),
         Game.status.in_((GameStatus.PENDING, GameStatus.IN_PROGRESS)),
@@ -171,25 +212,23 @@ async def delete_account(db: AsyncSession, user: User) -> None:
     if active is not None:
         raise ApiError(409, "account_in_game")
 
-    for model, column in (
-            (BotPersonality, BotPersonality.owner_id), (LessonProgress, LessonProgress.user_id),
-            (ThemeProgress, ThemeProgress.user_id), (PuzzleAttempt, PuzzleAttempt.user_id),
-            (PersonalPuzzle, PersonalPuzzle.user_id), (ImportedGame, ImportedGame.user_id),
-            (DrillRecord, DrillRecord.user_id),
-            (Tournament, Tournament.owner_id), (EmailToken, EmailToken.user_id),
-            (ProductEvent, ProductEvent.user_id), (ArenaReminder, ArenaReminder.user_id),
-    ):
-        await db.execute(delete(model).where(column == user.id))
 
-    anonymous = f"deleted_{user.id}"
-    user.username = anonymous
-    user.username_key = anonymous
-    user.email = None
-    # Country from the profile (task 33.6) is personal data; points already earned for a conference in arenas stay.
-    user.country = None
-    user.country_season = None
-    user.hashed_password = get_password_hash(secrets.token_urlsafe(32))
-    user.deleted_at = datetime.now(UTC)
+def deletion_date(user: User) -> datetime | None:
+    """When a requested deletion will be carried out; None - no deletion is requested."""
+    if user.deletion_requested_at is None:
+        return None
+    return delete_after(user.deletion_requested_at, settings.ACCOUNT_DELETION_GRACE_DAYS)
+
+
+async def request_deletion(db: AsyncSession, user: User, now: datetime | None = None) -> datetime:
+    """
+    Step 1: closes the account and schedules its anonymisation after the grace period; returns that moment. The data stays
+    until then. All tokens are revoked, open connections are closed and fair-play sessions are dropped, so the player is
+    logged out everywhere at once.
+    """
+    await _ensure_not_in_game(db, user)
+    requested = now or datetime.now(UTC)
+    user.deletion_requested_at = requested
     user.token_version = (user.token_version or 0) + 1
     await db.commit()
 
@@ -200,3 +239,59 @@ async def delete_account(db: AsyncSession, user: User) -> None:
     for scope in ladder.SCOPES:
         await ladder.clear_session(user.id, scope)
     await manager.revoke_sessions(user.id)
+    return delete_after(requested, settings.ACCOUNT_DELETION_GRACE_DAYS)
+
+
+async def restore(db: AsyncSession, user: User) -> None:
+    """Cancels a requested deletion; the caller has checked the password. An anonymised account is not touched."""
+    if user.deleted_at is None:
+        user.deletion_requested_at = None
+        await db.commit()
+
+
+async def anonymise(db: AsyncSession, user: User, now: datetime | None = None) -> None:
+    """
+    Step 2: erases personal and social data and anonymises the users row (see the module description). The row stays so
+    that games keep their opponent; its name becomes deleted_<id>.
+    """
+    for model, column in PERSONAL_TABLES:
+        await db.execute(delete(model).where(column == user.id))
+    for social_model, columns in SOCIAL_TABLES:
+        await db.execute(delete(social_model).where(or_(*(column == user.id for column in columns))))
+
+    anonymous = f"deleted_{user.id}"
+    user.username = anonymous
+    user.username_key = anonymous
+    user.email = None
+    # Country from the profile (task 33.6) is personal data; points already earned for a conference in arenas stay.
+    user.country = None
+    user.country_season = None
+    user.kid_mode = False
+    user.kid_guardian_hash = None
+    user.hashed_password = get_password_hash(secrets.token_urlsafe(32))
+    user.deleted_at = now or datetime.now(UTC)
+    user.token_version = (user.token_version or 0) + 1
+    await db.commit()
+
+
+async def purge_due(db: AsyncSession, now: datetime | None = None) -> int:
+    """
+    The daily purge: anonymises every account whose grace period has passed and returns how many. An account that is
+    somehow in a game is skipped until the next run.
+    """
+    moment = now or datetime.now(UTC)
+    cutoff = moment - timedelta(days=settings.ACCOUNT_DELETION_GRACE_DAYS)
+    # populate_existing: a player already in the session is re-read, so the erasure sees the current profile.
+    due = (await db.execute(select(User).where(
+        User.deletion_requested_at.is_not(None), User.deletion_requested_at <= cutoff, User.deleted_at.is_(None),
+    ).execution_options(populate_existing=True))).scalars().all()
+    done = 0
+    for user in due:
+        try:
+            await _ensure_not_in_game(db, user)
+        except ApiError:
+            logger.info("account purge postponed: a game is in progress", extra={"user_id": user.id})
+            continue
+        await anonymise(db, user, moment)
+        done += 1
+    return done

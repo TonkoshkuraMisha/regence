@@ -18,7 +18,7 @@ from src.core.errors import ApiError
 from src.db.session import get_db
 from src.models.social import Follow
 from src.models.user import User
-from src.services import notifications
+from src.services import account_state, notifications
 from src.services.connection_manager import manager
 from src.services.matchmaker import matchmaker
 
@@ -29,8 +29,8 @@ SEARCH_LIMIT = 10
 
 
 def _real_players():
-    """Live players: not bots, not the masters archive, not deleted."""
-    return (User.is_bot.is_(False), User.hashed_password != ARCHIVE_PASSWORD, User.deleted_at.is_(None))
+    """Live players: not bots, not the masters archive, not deleted or waiting for deletion."""
+    return (User.is_bot.is_(False), User.hashed_password != ARCHIVE_PASSWORD, *account_state.open_account())
 
 
 async def _player(db: AsyncSession, username: str) -> User:

@@ -1,5 +1,10 @@
 # --- FILE: src/api/study.py ---
-"""Joint review and a coaching session (task 17.3): the room (src/services/study_room.py) and the club materials."""
+"""
+Joint review and a coaching session (task 17.3): the room (src/services/study_room.py) and the club materials.
+
+Kid mode (src/services/kid_mode.py): a kid sees the board, the arrows and the coach's questions, but the room chat is
+neither shown to them (an empty list) nor open for writing (chat_kid_mode).
+"""
 
 import json
 
@@ -14,13 +19,15 @@ from src.core.errors import ApiError, DomainError
 from src.db.session import get_db
 from src.models.study import StudyMaterial
 from src.models.user import User
+from src.services import kid_mode
 from src.services import study_room as room
 
 router = APIRouter(dependencies=[Depends(rate_limit("study", "RATE_LIMIT_PUZZLES"))])
 
 MAX_LESSON_BYTES = 200_000
 MAX_STEPS = 60
-_CODES = {"study_room_not_found": status.HTTP_404_NOT_FOUND, "study_host_only": status.HTTP_403_FORBIDDEN}
+_CODES = {"study_room_not_found": status.HTTP_404_NOT_FOUND, "study_host_only": status.HTTP_403_FORBIDDEN,
+          "chat_kid_mode": status.HTTP_403_FORBIDDEN}
 
 
 def _http(exc: DomainError):
@@ -101,7 +108,7 @@ async def poll_room(code: str, response: Response, since: int = Query(0, ge=0), 
     if data is None:
         response.status_code = status.HTTP_204_NO_CONTENT
         return None
-    return data
+    return {**data, "chat": []} if kid_mode.is_kid(user) else data
 
 
 @router.put("/{code}/board")
@@ -115,6 +122,7 @@ async def set_board(code: str, payload: BoardIn, user: User = Depends(get_curren
 @router.post("/{code}/chat")
 async def chat(code: str, payload: ChatIn, user: User = Depends(get_current_user)):
     try:
+        kid_mode.ensure_not_kid(user, "chat_kid_mode")
         return await room.say(code, user.id, user.username, payload.text)
     except DomainError as exc:
         raise _http(exc) from None

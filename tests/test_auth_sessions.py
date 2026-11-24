@@ -70,7 +70,7 @@ def test_deleted_account_cannot_refresh(client):
     token = _login(client).json()["access_token"]
     res = client.post("/api/v1/account/delete", headers={"Authorization": f"Bearer {token}"},
                       json={"password": PASSWORD})
-    assert res.status_code == 204
+    assert res.status_code == 200 and "delete_after" in res.json()
     assert client.post(REFRESH).status_code == 401
 
 

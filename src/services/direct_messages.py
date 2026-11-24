@@ -13,7 +13,8 @@ only writes the message; deliver is called after it by the route (src/api/messag
 Tables: direct_messages (messages; pair_key is the conversation key of two players), blocks (block list),
 hidden_conversations (hidden conversations), follows (for the setting "only those I follow may write to me");
 the recipient's setting is users.dm_policy. The abuse filter and quotas are in src/services/civility.py, the chat ban is in
-src/services/moderation.py.
+src/services/moderation.py. Kid mode (src/services/kid_mode.py): a kid neither writes nor is written to; a closed or
+deleted account (src/services/account.py) is not a correspondent.
 """
 
 import logging
@@ -25,7 +26,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.errors import DomainError
 from src.models.social import Block, DirectMessage, Follow, HiddenConversation
 from src.models.user import User
-from src.services import civility, moderation
+from src.services import account_state, civility, kid_mode, moderation
 from src.services.attachments import build_attachment, clean_text
 
 logger = logging.getLogger(__name__)
@@ -57,12 +58,16 @@ async def is_blocked(db: AsyncSession, blocker_id: int, blocked_id: int) -> bool
 async def check_write(db: AsyncSession, sender: User, recipient: User) -> None:
     """Whether sender may write to recipient; if not -- a DomainError with the reason code. The recipient's block list
     answers with the same dm_closed as a closed setting: a blocked user does not learn that they were blocked.
-    Other codes: cannot_message_self; dm_chat_banned -- the sender has a chat ban from a moderator; dm_you_blocked --
-    the sender blocked the recipient themselves. The following setting lets through only those the recipient follows."""
+    Other codes: cannot_message_self; dm_chat_banned -- the sender has a chat ban from a moderator; dm_kid_mode -- the
+    sender is in kid mode; dm_you_blocked -- the sender blocked the recipient themselves. The following setting lets through
+    only those the recipient follows; a recipient in kid mode or with a closed account answers dm_closed."""
     if sender.id == recipient.id:
         raise DomainError("cannot_message_self")
     if moderation.chat_banned(sender):
         raise DomainError("dm_chat_banned")
+    kid_mode.ensure_not_kid(sender, "dm_kid_mode")
+    if kid_mode.is_kid(recipient) or account_state.is_closed(recipient):
+        raise DomainError("dm_closed")
     if await is_blocked(db, sender.id, recipient.id):
         raise DomainError("dm_you_blocked")
     policy = recipient.dm_policy or "all"
@@ -197,7 +202,7 @@ async def conversations(db: AsyncSession, me: User) -> list[dict]:
     for m in lasts:
         other_id = m.recipient_id if m.sender_id == me.id else m.sender_id
         other = users.get(other_id)
-        if other is None or other.deleted_at is not None or m.id <= hidden.get(other_id, 0):
+        if other is None or account_state.is_closed(other) or m.id <= hidden.get(other_id, 0):
             continue
         out.append({"username": other.username, "avatar": other.avatar, "last": view(m, me.id),
                     "unread": unread.get(other_id, 0), "blocked": other_id in blocked})

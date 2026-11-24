@@ -49,7 +49,7 @@ from src.core.logging_setup import (
 )
 from src.db.session import get_session_factory
 from src.models.user import User
-from src.services import moderation, notifications
+from src.services import kid_mode, moderation, notifications
 from src.services.anticheat import trusted_premove
 from src.services.connection_manager import manager
 from src.services.game_engine import game_variant, start_fen_of
@@ -452,7 +452,8 @@ async def _chat_message(ctx: ActionContext, data: dict) -> None:
     game
     can write; both players and spectators receive the message. The chat is not stored in the database, the insult filter
     (src/services/civility.py) is not applied to it - a message can be reported to a moderator. A player whose chat
-    was disabled by a moderator gets the refusal chat_banned.
+    was disabled by a moderator gets the refusal chat_banned. In a game where either player is in kid mode only quick
+    phrases pass; free text gets chat_kid_mode (src/services/kid_mode.py).
     """
     preset = data.get("preset")
     raw_text = str(data.get("text", "")).strip()
@@ -472,6 +473,12 @@ async def _chat_message(ctx: ActionContext, data: dict) -> None:
         # must not spam or suggest moves.
         await ctx.error("chat_forbidden")
         return
+    if preset is None:
+        players = [await ctx.db.get(User, player_id) for player_id in (game.white_id, game.black_id)]
+        refusal = kid_mode.free_chat_refusal(players)
+        if refusal is not None:
+            await ctx.error(refusal)
+            return
 
     await game.broadcast({
         "event": "chat_message",

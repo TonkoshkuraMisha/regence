@@ -2,14 +2,15 @@
 """
 Direct messages (task 30.1): the list of conversations, a conversation with a player, sending (text and/or a card of a game,
 position,
-puzzle, lesson, tournament), read marks, the "who can write to me" setting and the block list.
+puzzle, lesson, tournament), read marks, the "who can write to me" setting and the block list. The section is closed in
+kid mode (403 dm_kid_mode, src/services/kid_mode.py).
 """
 
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.deps import get_current_user
+from src.api.deps import get_current_user, refuse_kid_mode
 from src.api.rate_limit import rate_limit
 from src.api.social import _player
 from src.core.errors import DomainError
@@ -17,10 +18,12 @@ from src.db.session import get_db
 from src.models.user import User
 from src.services import direct_messages as dm
 
-router = APIRouter(dependencies=[Depends(rate_limit("messages", "RATE_LIMIT_PUZZLES"))])
+router = APIRouter(dependencies=[Depends(rate_limit("messages", "RATE_LIMIT_PUZZLES")),
+                                 Depends(refuse_kid_mode("dm_kid_mode"))])
 
 _CODES = {"dm_closed": status.HTTP_403_FORBIDDEN, "dm_you_blocked": status.HTTP_403_FORBIDDEN,
-          "dm_chat_banned": status.HTTP_403_FORBIDDEN, "text_flagged": status.HTTP_409_CONFLICT,
+          "dm_chat_banned": status.HTTP_403_FORBIDDEN, "dm_kid_mode": status.HTTP_403_FORBIDDEN,
+          "text_flagged": status.HTTP_409_CONFLICT,
           "posting_limited": status.HTTP_429_TOO_MANY_REQUESTS}
 
 

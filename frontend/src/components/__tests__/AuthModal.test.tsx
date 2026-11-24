@@ -19,7 +19,9 @@ function stubFetch(reply: Response) {
 function fillAndSubmit(username: string, password: string, submitLabel: RegExp) {
     fireEvent.change(screen.getByPlaceholderText('e.g. string1'), {target: {value: username}});
     fireEvent.change(screen.getByPlaceholderText('••••••••'), {target: {value: password}});
-    // Consent to the rules and privacy (task 23.1) exists only in the registration mode.
+    // The age and consent to the rules and privacy (task 23.1) exist only in the registration mode.
+    const adult = screen.queryByTestId('auth-age-adult');
+    if (adult && !screen.queryByTestId('auth-guardian')) fireEvent.click(adult);
     const terms = screen.queryByTestId('auth-terms');
     if (terms) fireEvent.click(terms);
     fireEvent.click(screen.getByRole('button', {name: submitLabel}));
@@ -45,6 +47,46 @@ describe('AuthModal: consent to the terms (task 23.1)', () => {
 
 afterEach(() => {
     vi.unstubAllGlobals();
+});
+
+describe('AuthModal: age and kid mode (task 23.1)', () => {
+    it('under 16 — a guardian agrees and sets a code, sent with the registration', async () => {
+        const fetchMock = vi.fn(async (url: string) => (String(url).endsWith('/auth/login')
+            ? response(200, {access_token: 'jwt-kid'}) : response(201, {id: 2, username: 'kid', blitz_rating: 1200})));
+        vi.stubGlobal('fetch', fetchMock);
+        render(<AuthModal onSuccess={vi.fn()}/>);
+        fireEvent.click(screen.getByRole('button', {name: 'No account? Sign up'}));
+        expect(screen.getByTestId('auth-age-adult')).toBeRequired();
+        expect(screen.queryByTestId('auth-guardian')).toBeNull();
+
+        fireEvent.click(screen.getByTestId('auth-age-under16'));
+        expect(screen.getByTestId('auth-guardian-consent')).toBeRequired();
+        fireEvent.click(screen.getByTestId('auth-guardian-consent'));
+        fireEvent.change(screen.getByTestId('auth-guardian-code'), {target: {value: '4711'}});
+        fillAndSubmit('kid', 'secret-pass', /Sign up/);
+
+        await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled());
+        const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+        expect(JSON.parse(String(init.body))).toMatchObject({
+            username: 'kid', accept_terms: true, under_16: true, guardian_consent: true, guardian_code: '4711',
+        });
+    });
+
+    it('an account waiting for deletion — the date and a button that restores it and logs in', async () => {
+        const fetchMock = vi.fn(async (url: string) => (String(url).endsWith('/auth/restore')
+            ? response(200, {access_token: 'jwt-back'})
+            : response(403, {detail: {code: 'account_deletion_pending', params: {delete_after: '2026-12-04'}, message: '…'}})));
+        vi.stubGlobal('fetch', fetchMock);
+        const onSuccess = vi.fn();
+        render(<AuthModal onSuccess={onSuccess}/>);
+
+        fillAndSubmit('alice', 'secret-pass', /Log in/);
+
+        expect(await screen.findByText(/scheduled for deletion on 2026-12-04/)).toBeInTheDocument();
+        fireEvent.click(screen.getByTestId('auth-restore'));
+        await vi.waitFor(() => expect(onSuccess).toHaveBeenCalledWith('jwt-back'));
+        expect(String((fetchMock.mock.calls[1] as unknown as [string])[0])).toMatch(/\/api\/v1\/auth\/restore$/);
+    });
 });
 
 describe('AuthModal: login', () => {

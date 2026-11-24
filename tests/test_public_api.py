@@ -14,6 +14,7 @@ from src.core.security import get_password_hash
 from src.models.game import Game, GameStatus
 from src.models.imported_game import ImportedGame
 from src.models.puzzle import PersonalPuzzle
+from src.services import account
 from src.services.bots import calibration
 
 PUBLIC = "/api/v1/public"
@@ -167,12 +168,15 @@ async def test_export_includes_imported_games(client, db_session, test_user_1, t
 
 
 async def test_deleting_the_account_removes_imported_games(client, db_session, test_user_1, token_user_1):
-    """The account is anonymised, not deleted - the cascade will not fire; a nickname from another site must not remain."""
+    """The account is anonymised, not deleted - the cascade will not fire; a nickname from another site must not remain
+    once the grace period is over (task 23.1)."""
     await _imported(db_session, test_user_1.id)
     test_user_1.hashed_password = get_password_hash("secret-pass-1")
     await db_session.commit()
     response = client.post("/api/v1/account/delete", headers=_auth(token_user_1), json={"password": "secret-pass-1"})
-    assert response.status_code == 204
+    assert response.status_code == 200
+    later = dt.datetime.now(dt.UTC) + dt.timedelta(days=settings.ACCOUNT_DELETION_GRACE_DAYS, minutes=1)
+    assert await account.purge_due(db_session, now=later) == 1
     db_session.expire_all()
     assert await db_session.scalar(select(func.count()).select_from(ImportedGame)) == 0
     assert await db_session.scalar(select(func.count()).select_from(PersonalPuzzle)) == 0

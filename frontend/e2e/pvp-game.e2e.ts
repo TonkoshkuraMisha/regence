@@ -22,6 +22,7 @@ async function newPlayer(browser: Browser, username: string): Promise<Page> {
     await page.getByRole('button', {name: 'No account? Sign up'}).click();
     await page.getByPlaceholder('e.g. string1').fill(username);
     await page.getByPlaceholder('••••••••').fill(PASSWORD);
+    await page.getByTestId('auth-age-adult').check();  // the age: 16 or older (task 23.1)
     await page.getByTestId('auth-terms').check();  // consent to the rules and privacy (task 23.1)
     await page.getByRole('button', {name: 'Sign up'}).click();
 

@@ -4,6 +4,7 @@ Registration and login (/auth).
 * Registration: username rules - src/schemas/user.py; route names, bot names and champion names are reserved
   (RESERVED_USERNAMES, reserved_bot_usernames). With REGISTRATION_INVITE_ONLY a valid invite code is required
   (src/services/beta.py). Answers to two optional questions give the starting rating (src/services/onboarding.py).
+  A player under 16 is registered in kid mode with a guardian code (src/services/legal.py, src/services/kid_mode.py).
 * Login: the password is checked against the hash (src/core/security.py). Brute force is limited twice - all attempts from one
 address and
   failed attempts per account (settings RATE_LIMIT_LOGIN_*). For a non-existent name a dummy
@@ -12,6 +13,8 @@ address and
   /refresh issues a new access token, /logout ends the session on this device, /logout-all and a password change
   revoke all tokens and close the player's open WebSockets.
 * /ws-ticket - a one-time ticket for connecting a WebSocket (see src/api/deps.py).
+* An account waiting for deletion (src/services/account.py) does not log in: /login answers 403 account_deletion_pending
+  with the date, and /restore with the same name and password cancels the deletion and logs in.
 """
 
 import secrets
@@ -33,7 +36,8 @@ from src.db import redis as redis_module
 from src.db.session import get_db
 from src.models.user import RATING_CATEGORIES, User
 from src.schemas.user import PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, UserCreate, UserResponse, username_key
-from src.services import auth_sessions, beta, legal, product_metrics
+from src.services import account as account_service
+from src.services import auth_sessions, beta, kid_mode, legal, product_metrics
 from src.services.onboarding import starting_rating
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -85,6 +89,7 @@ async def register_user(user_in: UserCreate, request: Request, db: AsyncSession 
     )
 
     legal.require_consent(user_in.accept_terms, settings.REQUIRE_TERMS_CONSENT)
+    legal.require_guardian(user_in.under_16, user_in.guardian_consent, user_in.guardian_code)
 
     # Closed registration (task 24.4): without an invite code we go no further - and do not reveal whether names are taken.
     invite_code = beta.normalize_code(user_in.invite_code)
@@ -120,6 +125,8 @@ async def register_user(user_in: UserCreate, request: Request, db: AsyncSession 
         **ratings,
     )
     legal.record_consent(new_user, user_in.accept_terms)
+    if user_in.under_16:
+        kid_mode.enable(new_user, user_in.guardian_code)
     db.add(new_user)
     # The code is consumed in the same transaction as account creation. With open registration the code is optional:
     # a valid one is counted (it shows who came by invitation), an invalid one does not interfere.
@@ -150,17 +157,9 @@ async def _find_login_user(db: AsyncSession, username: str) -> User | None:
     return user
 
 
-@router.post("/login")
-async def login(
-        request: Request,
-        response: Response,
-        form_data: OAuth2PasswordRequestForm = Depends(),
-        db: AsyncSession = Depends(get_db)
-):
+async def _authenticate(request: Request, form_data: OAuth2PasswordRequestForm, db: AsyncSession) -> User:
     """
-    Login by name and password (OAuth2 form: fields username and password). Returns a short access token and sets
-    the long-login refresh cookie (src/services/auth_sessions.py). A wrong name or password - the same response
-    401 login_failed.
+    The player by name and password, or 401 login_failed for a wrong name or password (the same answer for both).
 
     Password guessing is limited twice: all attempts from one IP (brute force across many accounts)
     and failed attempts per account (brute force of one password from many addresses).
@@ -170,9 +169,9 @@ async def login(
         settings.RATE_LIMIT_LOGIN_PER_IP, settings.RATE_LIMIT_LOGIN_WINDOW_S,
         "too_many_login_attempts",
     )
-    account = f"account:{username_key(form_data.username)}"
+    account_key = f"account:{username_key(form_data.username)}"
     await ensure_below_limit(
-        "login_failures", account,
+        "login_failures", account_key,
         settings.RATE_LIMIT_LOGIN_FAILURES_PER_ACCOUNT, settings.RATE_LIMIT_LOGIN_FAILURES_WINDOW_S,
         "account_login_locked",
     )
@@ -181,16 +180,50 @@ async def login(
     password_ok = verify_password(form_data.password, user.hashed_password if user else _DUMMY_PASSWORD_HASH)
 
     if user is None or not password_ok:
-        await record_attempt("login_failures", account, settings.RATE_LIMIT_LOGIN_FAILURES_WINDOW_S)
+        await record_attempt("login_failures", account_key, settings.RATE_LIMIT_LOGIN_FAILURES_WINDOW_S)
         raise ApiError(status.HTTP_401_UNAUTHORIZED, "login_failed", headers={"WWW-Authenticate": "Bearer"})
+    return user
 
-    access_token = create_user_token(user)
+
+async def _open_session(response: Response, user: User) -> dict:
+    """A short access token in the body and the long-login refresh cookie (src/services/auth_sessions.py)."""
     auth_sessions.set_refresh_cookie(response, await auth_sessions.issue(user.id, user.token_version or 0))
+    return {"access_token": create_user_token(user), "token_type": "bearer"}
 
-    return {
-        "access_token": access_token,
-        "token_type": "bearer"
-    }
+
+@router.post("/login")
+async def login(
+        request: Request,
+        response: Response,
+        form_data: OAuth2PasswordRequestForm = Depends(),
+        db: AsyncSession = Depends(get_db)
+):
+    """
+    Login by name and password (OAuth2 form: fields username and password). Returns a short access token and sets
+    the long-login refresh cookie. A wrong name or password - 401 login_failed; an account waiting for deletion -
+    403 account_deletion_pending with the deletion date (the client offers /auth/restore).
+    """
+    user = await _authenticate(request, form_data, db)
+    when = account_service.deletion_date(user)
+    if when is not None and user.deleted_at is None:
+        raise ApiError(status.HTTP_403_FORBIDDEN, "account_deletion_pending", delete_after=when.date().isoformat())
+    return await _open_session(response, user)
+
+
+@router.post("/restore")
+async def restore_account(
+        request: Request,
+        response: Response,
+        form_data: OAuth2PasswordRequestForm = Depends(),
+        db: AsyncSession = Depends(get_db)
+):
+    """
+    Cancels a requested account deletion during the grace period and logs in (the same form and limits as /login). For an
+    account that is not waiting for deletion it is a plain login.
+    """
+    user = await _authenticate(request, form_data, db)
+    await account_service.restore(db, user)
+    return await _open_session(response, user)
 
 
 @router.post("/refresh")

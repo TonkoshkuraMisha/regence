@@ -122,18 +122,26 @@ For each section: what it does → files → where the data comes from → how i
 
 ### 4.1. Sign-in and account
 
-- **What.** Registration by name and password, sign-in, long-lived session, password change, optional e-mail with
-  password reset, export of one's own data, account deletion (anonymisation: the games stay with the opponents without
-  a name).
-- **Files.** `src/api/auth.py`, `src/api/account.py`, `src/core/security.py` (password hash, JWT),
-  `src/services/auth_sessions.py`, `email_links.py`, `mailer.py`, `account.py`, `onboarding.py`, `legal.py` (consent to
-  the terms at registration, `/privacy`); client — `services/authToken.ts`, `services/account.ts` (sign-in,
-  registration, e-mail, password, export, deletion), `components/AuthModal.tsx`, `components/Settings.tsx`,
-  `components/EmailLinkPages.tsx`.
+- **What.** Registration by name and password (age 16+; a younger player only in kid mode, registered by a guardian
+  with a guardian code), sign-in, long-lived session, password change, optional e-mail with password reset, export of
+  one's own data, kid mode, account deletion with a grace period (the account closes at once, can be restored by
+  logging in for `ACCOUNT_DELETION_GRACE_DAYS` = 10 days, then it is anonymised: personal and social data erased, the
+  games stay with the opponents without a name).
+- **Files.** `src/api/auth.py` (`/login`, `/restore`), `src/api/account.py` (`/delete`, `/kid-mode`),
+  `src/api/deps.py` (`refuse_kid_mode`), `src/core/security.py` (password hash, JWT), `src/services/auth_sessions.py`,
+  `email_links.py`, `mailer.py`, `account.py` (request, restore, daily purge `purge_deleted_accounts`),
+  `account_state.py` (one rule "the account is open" for profiles, search, leaderboards, feeds and messages),
+  `kid_mode.py` (what kid mode closes: free-text game chat, messages, the feed, the study room chat), `onboarding.py`,
+  `legal.py` (consent and the age rule at registration, `/privacy`, `/terms`); client — `services/authToken.ts`,
+  `services/account.ts` (sign-in, restore, registration, e-mail, password, export, deletion, kid mode),
+  `services/kidMode.ts` (the shared flag that hides social UI), `components/AuthModal.tsx`, `components/Settings.tsx`,
+  `components/settings/KidModeSection.tsx`, `components/EmailLinkPages.tsx`.
 - **How.** A short-lived access token (15 minutes) lives only in the page's memory; the long-lived sign-in keeps a
-  refresh token in an HttpOnly cookie, and only its hash is stored in Redis. A password change and "sign out
-  everywhere" increment `users.token_version` — all previous tokens stop working.
-- **Tests.** `auth_sessions`, `auth_hardening`, `token_lifecycle`, `account`, `email_links`, `onboarding`.
+  refresh token in an HttpOnly cookie, and only its hash is stored in Redis. A password change, "sign out
+  everywhere" and a deletion request increment `users.token_version` — all previous tokens stop working. Data:
+  `users.deletion_requested_at`, `users.kid_mode`, `users.kid_guardian_hash` (bcrypt, like a password).
+- **Tests.** `auth_sessions`, `auth_hardening`, `token_lifecycle`, `account`, `kid_mode`, `email_links`, `onboarding`,
+  `legal_consent`.
 
 ### 4.2. A game between humans
 
