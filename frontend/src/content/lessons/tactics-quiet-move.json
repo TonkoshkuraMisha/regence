@@ -1,0 +1,175 @@
+{
+  "id": "tactics-quiet-move",
+  "course": "tactics",
+  "order": 22,
+  "title": {
+    "en": "The quiet move",
+    "uk": "Тихий хід"
+  },
+  "summary": {
+    "en": "A strong move that is not a check or a capture: it creates an unstoppable threat or takes away the opponent's only defence.",
+    "uk": "Сильний хід, що не є ні шахом, ні взяттям: він створює невідворотну загрозу або забирає єдиний захист суперника."
+  },
+  "steps": [
+    {
+      "type": "text",
+      "fen": "r3qrk1/1ppbbp1n/p6Q/8/4Pp2/2NB3P/PPP3P1/R4RK1 w - - 0 17",
+      "highlights": [
+        "e5",
+        "h7",
+        "g8"
+      ],
+      "arrows": [
+        {
+          "from": "e4",
+          "to": "e5",
+          "color": "green"
+        }
+      ],
+      "text": {
+        "en": "After a series of checks and captures there often comes a moment where the best move is quiet: it threatens something so strong that the opponent cannot parry it. Such a move is easy to miss, because we look at forcing moves first. When the forcing moves run out, ask: what does the opponent want, and which quiet move stops it or adds a threat?",
+        "uk": "Після серії шахів і взяттів часто настає момент, коли найкращий хід тихий: він загрожує чимось таким сильним, що суперник не може його відбити. Такий хід легко пропустити, бо ми спершу дивимося на форсовані ходи. Коли форсовані ходи закінчились, спитайте: чого хоче суперник і який тихий хід це зупиняє або додає загрозу?"
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "r3qrk1/1ppbbp1n/p6Q/8/4Pp2/2NB3P/PPP3P1/R4RK1 w - - 0 17",
+      "text": {
+        "en": "White to move. Find the quiet move.",
+        "uk": "Хід білих. Знайдіть тихий хід."
+      },
+      "line": [
+        {
+          "answers": [
+            "e4e5"
+          ],
+          "reply": "f7f5",
+          "correct": {
+            "en": "The pawn cuts the bishop e7 off from the kingside and opens the way for the queen: threats everywhere.",
+            "uk": "Пішак відсікає слона e7 від королівського флангу й відкриває шлях ферзю: загрози скрізь."
+          }
+        },
+        {
+          "answers": [
+            "e5f6"
+          ],
+          "correct": {
+            "en": "White is winning material.",
+            "uk": "Білі виграють матеріал."
+          }
+        }
+      ],
+      "hint": {
+        "en": "A pawn move, not a check.",
+        "uk": "Хід пішака, а не шах."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "7k/1pp4P/6K1/p7/1b2N3/8/1n6/8 w - - 2 48",
+      "text": {
+        "en": "White to move. Mate in two.",
+        "uk": "Хід білих. Мат у два ходи."
+      },
+      "line": [
+        {
+          "answers": [
+            "e4g5"
+          ],
+          "reply": "a5a4",
+          "correct": {
+            "en": "The knight is not giving check: it threatens Nf7 mate.",
+            "uk": "Кінь не дає шаху: він загрожує матом на f7."
+          }
+        },
+        {
+          "answers": [
+            "g5f7"
+          ],
+          "correct": {
+            "en": "Checkmate.",
+            "uk": "Мат."
+          }
+        }
+      ],
+      "hint": {
+        "en": "Prepare the mate with a quiet knight move.",
+        "uk": "Підготуйте мат тихим ходом коня."
+      }
+    },
+    {
+      "type": "text",
+      "text": {
+        "en": "In both positions the winning move was not forcing, yet it left the opponent without a defence. A quiet move is good when you can show a concrete threat behind it. Name the threat before you play it.",
+        "uk": "В обох позиціях виграшний хід не був форсованим, але залишив суперника без захисту. Тихий хід хороший, коли за ним можна показати конкретну загрозу. Назвіть загрозу, перш ніж грати."
+      }
+    }
+  ],
+  "exam": [
+    {
+      "type": "find_move",
+      "fen": "rr4k1/2pp3p/4p1nQ/5pB1/p2Pq3/2P4P/R1P3P1/5RK1 w - - 0 31",
+      "text": {
+        "en": "White to move. Find the quiet move.",
+        "uk": "Хід білих. Знайдіть тихий хід."
+      },
+      "line": [
+        {
+          "answers": [
+            "g5f6"
+          ],
+          "reply": "g8f7",
+          "correct": {
+            "en": "The bishop takes away g7 and threatens Qg7 mate.",
+            "uk": "Слон забирає g7 і загрожує матом на g7."
+          }
+        },
+        {
+          "answers": [
+            "h6g7"
+          ],
+          "correct": {
+            "en": "Check: White wins.",
+            "uk": "Шах: білі виграють."
+          }
+        }
+      ]
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "What should stand behind a quiet move?",
+        "uk": "Що має стояти за тихим ходом?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "A concrete threat the opponent cannot parry",
+            "uk": "Конкретна загроза, яку суперник не може відбити"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "A hope that the opponent will err",
+            "uk": "Надія, що суперник помилиться"
+          },
+          "feedback": {
+            "en": "Hope is not a plan.",
+            "uk": "Надія — не план."
+          }
+        },
+        {
+          "text": {
+            "en": "Nothing: quiet moves are always safe",
+            "uk": "Нічого: тихі ходи завжди безпечні"
+          },
+          "feedback": {
+            "en": "A quiet move that threatens nothing gives the opponent a free tempo.",
+            "uk": "Тихий хід без загрози дарує суперникові вільний темп."
+          }
+        }
+      ]
+    }
+  ]
+}

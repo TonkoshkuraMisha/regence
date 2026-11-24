@@ -1,0 +1,194 @@
+{
+  "id": "calc-long-lines",
+  "course": "calculation",
+  "order": 7,
+  "title": {
+    "en": "Long lines",
+    "uk": "Довгі варіанти"
+  },
+  "summary": {
+    "en": "Calculate five or six plies without losing the thread: keep a list of forced moves and check every reply of the opponent.",
+    "uk": "Рахувати п'ять-шість напівходів, не втрачаючи нитки: тримайте список вимушених ходів і перевіряйте кожну відповідь суперника."
+  },
+  "steps": [
+    {
+      "type": "text",
+      "fen": "r2r2k1/5pb1/1p4p1/2p3P1/p1PnPqBQ/3P3R/P5K1/7R w - - 0 40",
+      "highlights": [
+        "h8",
+        "g8"
+      ],
+      "arrows": [
+        {
+          "from": "h4",
+          "to": "h8",
+          "color": "green"
+        }
+      ],
+      "text": {
+        "en": "A long line is calculated like a chain: write down each forced move, then each reply, and never skip a reply that looks 'obvious'. Long lines are only possible when every move is a check or a capture, so the opponent's choice is tiny. Count the plies first: here it is five.",
+        "uk": "Довгий варіант рахують як ланцюжок: записуйте кожен вимушений хід, а тоді кожну відповідь, і не пропускайте відповідь, що здається «очевидною». Довгі варіанти можливі, лише коли кожен хід — шах або взяття, тож у суперника вибір крихітний. Спершу порахуйте напівходи: тут їх п'ять."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "r2r2k1/5pb1/1p4p1/2p3P1/p1PnPqBQ/3P3R/P5K1/7R w - - 0 40",
+      "text": {
+        "en": "White to move. Mate in three.",
+        "uk": "Хід білих. Мат у три ходи."
+      },
+      "line": [
+        {
+          "answers": [
+            "h4h8"
+          ],
+          "reply": "g7h8",
+          "correct": {
+            "en": "The queen is sacrificed: the bishop must take.",
+            "uk": "Ферзя віддано: слон мусить узяти."
+          }
+        },
+        {
+          "answers": [
+            "h3h8"
+          ],
+          "reply": "g8g7",
+          "correct": {
+            "en": "The rook takes with check.",
+            "uk": "Тура бере з шахом."
+          }
+        },
+        {
+          "answers": [
+            "h1h7"
+          ],
+          "correct": {
+            "en": "Checkmate.",
+            "uk": "Мат."
+          }
+        }
+      ],
+      "hint": {
+        "en": "Open the h-file with a queen sacrifice.",
+        "uk": "Відкрийте вертикаль h жертвою ферзя."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "4r3/p4q2/2p5/3p3R/3P2k1/1P1Q2p1/P5K1/8 w - - 0 33",
+      "text": {
+        "en": "White to move. Mate in three.",
+        "uk": "Хід білих. Мат у три ходи."
+      },
+      "line": [
+        {
+          "answers": [
+            "d3d1"
+          ],
+          "reply": "e8e2",
+          "correct": {
+            "en": "Check; Black blocks with the rook.",
+            "uk": "Шах; чорні перекривають турою."
+          }
+        },
+        {
+          "answers": [
+            "d1e2"
+          ],
+          "reply": "f7f3",
+          "correct": {
+            "en": "The queen takes with check.",
+            "uk": "Ферзь бере з шахом."
+          }
+        },
+        {
+          "answers": [
+            "e2f3"
+          ],
+          "correct": {
+            "en": "Checkmate.",
+            "uk": "Мат."
+          }
+        }
+      ],
+      "hint": {
+        "en": "Start with a queen check.",
+        "uk": "Почніть із шаху ферзем."
+      }
+    }
+  ],
+  "exam": [
+    {
+      "type": "choice",
+      "text": {
+        "en": "When can you calculate a long line safely?",
+        "uk": "Коли можна безпечно рахувати довгий варіант?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "When the moves are checks and captures, so the replies are few",
+            "uk": "Коли ходи — шахи й взяття, тож відповідей мало"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "When the moves are quiet and look natural",
+            "uk": "Коли ходи тихі й виглядають природно"
+          },
+          "feedback": {
+            "en": "Quiet moves multiply the opponent's replies.",
+            "uk": "Тихі ходи множать відповіді суперника."
+          }
+        },
+        {
+          "text": {
+            "en": "Never: only short lines are reliable",
+            "uk": "Ніколи: надійні лише короткі варіанти"
+          },
+          "feedback": {
+            "en": "Forcing lines can be long and fully reliable.",
+            "uk": "Форсовані варіанти можуть бути довгими й цілком надійними."
+          }
+        }
+      ]
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "What do you do after writing down your move in a line?",
+        "uk": "Що робите, записавши свій хід у варіанті?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "Check every reply of the opponent, not only the obvious one",
+            "uk": "Перевіряю кожну відповідь суперника, а не лише очевидну"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "Move on to the next move at once",
+            "uk": "Одразу переходжу до наступного ходу"
+          },
+          "feedback": {
+            "en": "A skipped reply is where lines fall apart.",
+            "uk": "Саме пропущена відповідь руйнує варіанти."
+          }
+        },
+        {
+          "text": {
+            "en": "Play the move",
+            "uk": "Граю хід"
+          },
+          "feedback": {
+            "en": "First finish the calculation.",
+            "uk": "Спершу завершіть розрахунок."
+          }
+        }
+      ]
+    }
+  ]
+}
