@@ -13,6 +13,7 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from src.core.errors import validation_error
+from src.services.kid_mode import GUARDIAN_CODE_MAX_LENGTH, GUARDIAN_CODE_MIN_LENGTH
 from src.services.onboarding import Experience, StrengthBand
 
 USERNAME_MIN_LENGTH = 3
@@ -67,6 +68,11 @@ class UserCreate(BaseModel):
     invite_code: str | None = Field(None, max_length=64)
     # Consent to the terms (task 23.1): required with REQUIRE_TERMS_CONSENT, otherwise 400 terms_not_accepted.
     accept_terms: bool = False
+    # A player under 16 (task 23.1, the owner's decision: the site is for 16+): only in kid mode, with a parent's or
+    # guardian's consent and a guardian code that alone turns kid mode off (src/services/kid_mode.py).
+    under_16: bool = False
+    guardian_consent: bool = False
+    guardian_code: str | None = Field(None, min_length=GUARDIAN_CODE_MIN_LENGTH, max_length=GUARDIAN_CODE_MAX_LENGTH)
 
     @field_validator("username")
     @classmethod

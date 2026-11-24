@@ -18,6 +18,7 @@ import {errorMessage} from '../../services/apiErrors';
 import {getToken} from '../../services/authToken';
 import {downloadText} from '../../services/pgnExport';
 import {studyApi} from '../../services/study';
+import {useKidMode} from '../../services/kidMode';
 import type {ArrowColor, StudyBoard, StudyRoom} from '../../services/study';
 import {PuzzleBoard} from '../puzzles/PuzzleBoard';
 import {validateLesson} from '../../content/lessons/validate';
@@ -111,6 +112,8 @@ export function StudyRoomPage() {
     const [color, setColor] = useState<ArrowColor>('green');
     const [arrowFrom, setArrowFrom] = useState<string | null>(null);
     const [message, setMessage] = useState('');
+    // Kid mode (task 23.1): the room chat is off - the server sends it empty and refuses messages.
+    const kidMode = useKidMode();
     const [fenInput, setFenInput] = useState('');
     const [note, setNote] = useState('');
     const [steps, setSteps] = useState<Record<string, unknown>[]>([]);
@@ -342,7 +345,11 @@ export function StudyRoomPage() {
                             )}
                         </section>
                     )}
-                    <section className="bg-black/30 rounded p-3 flex flex-col gap-2" data-testid="study-chat">
+                    {kidMode ? (
+                        <p className="bg-black/30 rounded p-3 text-xs text-boxwood/70 italic" data-testid="study-chat-kid-mode">
+                            {t('study.chatKidMode')}
+                        </p>
+                    ) : <section className="bg-black/30 rounded p-3 flex flex-col gap-2" data-testid="study-chat">
                         <div className="max-h-48 overflow-y-auto flex flex-col gap-0.5">
                             {room.chat.map((m, i) => <p key={i}><span className="text-amber-300">{m.from}:</span> {m.text}</p>)}
                         </div>
@@ -354,7 +361,7 @@ export function StudyRoomPage() {
                                    placeholder={t('study.chatPlaceholder')} className="flex-1 bg-black/40 rounded px-2 py-1"/>
                             <button type="submit" aria-label={t('study.send')} className="px-2 py-1 rounded bg-black/40 border border-amber-800/60"><Send size={14}/></button>
                         </form>
-                    </section>
+                    </section>}
                 </div>
             </div>
         </div>

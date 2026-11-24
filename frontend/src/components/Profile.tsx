@@ -272,7 +272,7 @@ export default function Profile() {
                     {/* A long name (up to 30 characters, without spaces) wraps inside the card: on a tablet the column is narrow,
                         and the name on one line stuck out past its edges. */}
                     <h1 className="text-3xl font-bold text-amber-200 z-10 max-w-full break-all">{displayPlayerName(profile.username, t)}</h1>
-                    <ProfileSocial username={profile.username}/>
+                    <ProfileSocial username={profile.username} kidMode={profile.kid_mode}/>
 
                     <div className="flex items-center gap-2 mt-3 text-boxwood-light/80 text-sm z-10">
                         <Calendar size={16} className="text-amber-600"/>

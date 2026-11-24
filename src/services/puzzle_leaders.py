@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.puzzle import PuzzleTimedScore
 from src.models.user import User
+from src.services import account_state
 
 # Run lengths the table is kept for (as puzzles.TIMED_MINUTES), and the standings.
 MINUTES = (3, 5)
@@ -29,7 +30,7 @@ def week_start(day: dt.date) -> dt.date:
 
 def _eligible():
     """Who enters the table: live players without a violator mark."""
-    return (User.is_cheater == False, User.is_bot == False, User.deleted_at.is_(None))  # noqa: E712
+    return (User.is_cheater == False, User.is_bot == False, *account_state.open_account())  # noqa: E712
 
 
 async def record_week(db: AsyncSession, user_id: int, minutes: int, score: int, today: dt.date | None = None) -> None:

@@ -1,7 +1,8 @@
 // --- FILE: frontend/src/components/Settings.tsx ---
 // Settings: appearance (theme sets, board, pieces, page background, sound), avatar, language, the "translation
-// helper" mode, e-mail for password reset, password change with ending sessions on other devices, export and deletion of
-// one's own data. Appearance is stored in localStorage (config/boardAppearance.ts, pageBackground.ts, boardPrefs.ts);
+// helper" mode, e-mail for password reset, password change with ending sessions on other devices, kid mode
+// (settings/KidModeSection.tsx), export and deletion of one's own data (deletion closes the account at once and erases it
+// after a grace period). Appearance is stored in localStorage (config/boardAppearance.ts, pageBackground.ts, boardPrefs.ts);
 // the avatar, theme set and translation mode are in the profile on the server (services/profileSettings.ts, GET /profile/me);
 // password, e-mail and deletion are /auth/change-password and /account/*. Route is App.tsx.
 
@@ -40,6 +41,7 @@ import type {UiMessage} from '../i18n';
 import LanguageSwitcher from './LanguageSwitcher';
 import {InstallAppSection} from './settings/InstallAppSection';
 import {InviteFriend} from './InviteFriend';
+import {KidModeSection} from './settings/KidModeSection';
 import {downloadMyGamesPgn} from '../services/transparency';
 import {saveProfileSettings, setTranslationHelper} from '../services/profileSettings';
 import {clearToken, setToken} from '../services/authToken';
@@ -134,6 +136,9 @@ export default function Settings({token, username, onTokenChange, onLogoutEveryw
     const [helper, setHelper] = useState(false);
     // Avatar from the own set (task 18.4) is stored in the profile.
     const [avatar, setAvatar] = useState<string | null>(null);
+    // Kid mode (task 23.1) and whether turning it off needs the guardian code.
+    const [kidMode, setKidMode] = useState(false);
+    const [guardianCodeSet, setGuardianCodeSet] = useState(false);
 
     useEffect(() => {
         if (!token) return;
@@ -143,6 +148,8 @@ export default function Settings({token, username, onTokenChange, onLogoutEveryw
                 setEmail(me?.email ?? null);
                 setHelper(!!me?.translation_helper);
                 setAvatar(me?.avatar ?? null);
+                setKidMode(!!me?.kid_mode);
+                setGuardianCodeSet(!!me?.kid_guardian_code);
             } catch {
                 // The address could not be learned: the section will show "not linked", one can still link it.
             }
@@ -628,6 +635,13 @@ export default function Settings({token, username, onTokenChange, onLogoutEveryw
                         {emailNotice && <p className="text-sm text-emerald-300 mt-2" role="status">{renderUiMessage(emailNotice, t)}</p>}
                         {emailError && <p className="text-sm text-red-300 mt-2" role="alert">{renderUiMessage(emailError, t)}</p>}
                     </section>
+
+                    <KidModeSection sectionClass={sectionClass} headingClass={headingClass} inputClass={inputClass}
+                                    enabled={kidMode} guardianCodeSet={guardianCodeSet}
+                                    onChange={(enabled, codeSet) => {
+                                        setKidMode(enabled);
+                                        setGuardianCodeSet(codeSet);
+                                    }}/>
 
                     <section className={sectionClass} data-testid="settings-my-data">
                         <h2 className={headingClass}><Download size={18} className="text-amber-400"/> {t('settings.myData')}</h2>

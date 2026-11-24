@@ -276,6 +276,28 @@ def review_cheater_flags() -> int:
     return created
 
 
+async def _purge_deleted_accounts_async() -> int:
+    engine = create_async_engine(_task_database_url(), poolclass=NullPool)
+    try:
+        async with async_sessionmaker(engine, expire_on_commit=False)() as db:
+            from src.services import account
+
+            return await account.purge_due(db)
+    finally:
+        await engine.dispose()
+
+
+@celery_app.task(name="purge_deleted_accounts", ignore_result=True)
+def purge_deleted_accounts() -> int:
+    """
+    Accounts whose deletion grace period has passed are anonymised (task 23.1, account.purge_due) - once a day.
+    """
+    purged = asyncio.run(_purge_deleted_accounts_async())
+    if purged:
+        logger.info("Deleted accounts anonymised: %s", purged)
+    return purged
+
+
 async def _arena_awards_async() -> int:
     engine = create_async_engine(_task_database_url(), poolclass=NullPool)
     try:

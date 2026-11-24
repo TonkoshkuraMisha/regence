@@ -77,6 +77,7 @@ import {MoveList} from './gameViewer/MoveList';
 import {scrollMoveIntoList} from './chessboard/scrollMove';
 import {NavigationControls} from './gameViewer/NavigationControls';
 import {ViewerAppearancePanel} from './gameViewer/ViewerAppearancePanel';
+import {useKidMode} from '../services/kidMode';
 
 /**
  * library is a library game (task 27.1): PGN from /library, no engine review, no "Guess the move" and no own mistakes,
@@ -86,6 +87,8 @@ import {ViewerAppearancePanel} from './gameViewer/ViewerAppearancePanel';
  */
 export default function GameViewer({library = false, imported = false}: { library?: boolean; imported?: boolean }) {
     const {t, dateLocale} = useI18n();
+    // Kid mode (task 23.1): no sharing to the feed.
+    const kidMode = useKidMode();
     const {gameId} = useParams<{ gameId: string }>();
     const location = useLocation();
     const navigate = useNavigate();
@@ -915,7 +918,7 @@ export default function GameViewer({library = false, imported = false}: { librar
                         <Download size={16}/> {t('viewer.downloadPgnFile')}
                     </a>
                     {/* Share to the feed (task 30.2): one's own or someone else's portal game, a library game; imported ones are private. */}
-                    {!imported && gameId && getToken() && (
+                    {!imported && gameId && getToken() && !kidMode && (
                         <Link to="/feed" state={{attach: {kind: library ? 'library' : 'game', ref: gameId}}} data-testid="share-to-feed"
                               className="flex items-center justify-center gap-2 w-full px-4 py-2 bg-room-dark text-amber-400 font-bold text-sm rounded-md hover:bg-black transition shadow border border-amber-800/60">
                             <Share2 size={16}/> {t('feed.share')}

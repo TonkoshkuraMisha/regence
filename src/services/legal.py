@@ -8,6 +8,10 @@ TERMS_VERSION is the edition date of the documents. It changes with every edit o
 users.terms_version and users.terms_accepted_at; archive players from PGN and bots do not have it (NULL). The check is
 enabled by
 the REQUIRE_TERMS_CONSENT setting (src/core/config.py): tests and closed environments may disable it.
+
+Age (the owner's decision of 24.11.2026, the default age of digital consent in the GDPR): the site is for players aged 16
+and over, confirmed by the consent checkbox; no date of birth is collected. A player under 16 registers only in kid mode
+(src/services/kid_mode.py), with a parent's or guardian's consent and a guardian code (require_guardian).
 """
 
 from datetime import UTC, datetime
@@ -23,6 +27,12 @@ def require_consent(accepted: bool, required: bool) -> None:
     """Registration refusal without consent (400 terms_not_accepted) if the check is enabled by the setting."""
     if required and not accepted:
         raise ApiError(400, "terms_not_accepted")
+
+
+def require_guardian(under_16: bool, guardian_consent: bool, guardian_code: str | None) -> None:
+    """A player under 16 needs the guardian's consent and a guardian code, otherwise 400 guardian_consent_required."""
+    if under_16 and not (guardian_consent and guardian_code):
+        raise ApiError(400, "guardian_consent_required")
 
 
 def record_consent(user: User, accepted: bool, now: datetime | None = None) -> None:

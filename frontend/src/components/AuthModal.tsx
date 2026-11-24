@@ -1,12 +1,15 @@
 // --- FILE: frontend/src/components/AuthModal.tsx ---
 // Sign-in and registration window. Registration: a name and password (name rules are checked by the server, src/schemas/user.py), two
 // optional questions about experience and strength, by which the server sets the starting rating, and an invitation code if registration is
-// closed (the beta programme). Server refusals arrive as codes and are shown as text from the serverErrors catalog. After
-// sign-in the access token is kept only in page memory (services/authToken.ts).
+// closed (the beta programme). The age is asked explicitly (task 23.1, the site is for 16+): a player under 16 is registered
+// by a parent or guardian, who agrees on their behalf and sets a guardian code - the account starts in kid mode. An account
+// waiting for deletion does not log in: the window offers to restore it (POST /auth/restore). Server refusals arrive as
+// codes and are shown as text from the serverErrors catalog. After sign-in the access token is kept only in page memory
+// (services/authToken.ts).
 
 import {useEffect, useState} from 'react';
 import {LogIn, UserPlus, X} from 'lucide-react';
-import {accountApi} from '../services/account';
+import {accountApi, isDeletionPending} from '../services/account';
 import {errorMessage, serverErrorMessage} from '../services/apiErrors';
 import {offerGuestPersonalityTransfer} from '../services/personalities';
 import {EXPERIENCES, PROVISIONAL_GAMES, STRENGTH_BANDS} from '../services/onboarding';
@@ -44,6 +47,12 @@ export default function AuthModal({onSuccess, onClose: onCloseProp, onFirstGame,
     const [invite, setInvite] = useState(inviteCode ?? '');
     // Consent to the rules and privacy policy (task 23.1): without the mark, registration is not submitted.
     const [acceptTerms, setAcceptTerms] = useState(false);
+    // Age (task 23.1): not chosen yet, 16 or older, or under 16 with a guardian's consent and code.
+    const [age, setAge] = useState<'' | 'adult' | 'under16'>('');
+    const [guardianConsent, setGuardianConsent] = useState(false);
+    const [guardianCode, setGuardianCode] = useState('');
+    // The login answered "waiting for deletion": the window offers to restore the account with the same password.
+    const [canRestore, setCanRestore] = useState(false);
     // The code from the link is checked at once: it is better to learn about an invalid invitation before filling in the form.
     const [inviteValid, setInviteValid] = useState<boolean | null>(null);
     useEffect(() => {
@@ -94,9 +103,9 @@ export default function AuthModal({onSuccess, onClose: onCloseProp, onFirstGame,
     };
 
     /** Sign-in by name and password from the form: the token is saved, guest opponents are offered for transfer. */
-    const signIn = async (): Promise<string> => {
+    const signIn = async (restore = false): Promise<string> => {
         // An OAuth2 form and the refresh cookie of a long sign-in (task 17.5); 429 says how long to wait, not "wrong password".
-        const accessToken = await accountApi.login(username, password);
+        const accessToken = await (restore ? accountApi.restore : accountApi.login)(username, password);
         setToken(accessToken);
         // Opponents built by a guest in this browser: offer to transfer them to the profile.
         offerGuestPersonalityTransfer(accessToken)
@@ -120,6 +129,7 @@ export default function AuthModal({onSuccess, onClose: onCloseProp, onFirstGame,
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setFeedback(null);
+        setCanRestore(false);
         setLoading(true);
 
         try {
@@ -129,6 +139,7 @@ export default function AuthModal({onSuccess, onClose: onCloseProp, onFirstGame,
                 // Registration; strength answers are optional (task 17.8): the server sets the starting rating from them.
                 const created = await accountApi.register({
                     username, password, accept_terms: acceptTerms,
+                    ...(age === 'under16' ? {under_16: true, guardian_consent: guardianConsent, guardian_code: guardianCode} : {}),
                     ...(experience ? {experience} : {}),
                     ...(strength && experience !== 'new' ? {strength} : {}),
                     ...(showInvite && invite.trim() ? {invite_code: invite.trim()} : {}),
@@ -141,6 +152,20 @@ export default function AuthModal({onSuccess, onClose: onCloseProp, onFirstGame,
                     setFeedback({tone: 'success', message: uiMessage('auth.registered')});
                 }
             }
+        } catch (err) {
+            const message = errorMessage(err, 'common.noConnection');
+            setCanRestore(isLogin && isDeletionPending(message));
+            setFeedback({tone: 'error', message});
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    /** Restore an account waiting for deletion (task 23.1) with the name and password already typed, then sign in. */
+    const restoreAccount = async () => {
+        setLoading(true);
+        try {
+            onSuccess(await signIn(true));
         } catch (err) {
             setFeedback({tone: 'error', message: errorMessage(err, 'common.noConnection')});
         } finally {
@@ -197,6 +222,12 @@ export default function AuthModal({onSuccess, onClose: onCloseProp, onFirstGame,
                         role={feedback.tone === 'error' ? 'alert' : 'status'}
                         className={`p-3 mb-4 rounded text-xs text-center border ${feedback.tone === 'success' ? 'bg-emerald-950/60 border-emerald-600/50 text-emerald-200' : 'bg-red-950/80 border-red-800/50 text-red-200'}`}>
                         {renderUiMessage(feedback.message, t)}
+                        {canRestore && (
+                            <button type="button" onClick={() => void restoreAccount()} disabled={loading} data-testid="auth-restore"
+                                    className="block mx-auto mt-2 px-3 py-1 rounded bg-amber-700 text-white font-bold hover:bg-amber-600 disabled:opacity-50">
+                                {t('auth.restoreAccount')}
+                            </button>
+                        )}
                     </div>
                 )}
 
@@ -316,6 +347,32 @@ export default function AuthModal({onSuccess, onClose: onCloseProp, onFirstGame,
                                     </select>
                                 </div>
                             )}
+                            <fieldset className="flex flex-col gap-1 text-xs text-boxwood/85" data-testid="auth-age">
+                                <legend className="text-boxwood/80 mb-1">{t('auth.ageLabel')}</legend>
+                                {(['adult', 'under16'] as const).map((value) => (
+                                    <label key={value} className="flex items-start gap-2">
+                                        <input type="radio" name="auth-age" value={value} required checked={age === value}
+                                               onChange={() => setAge(value)} data-testid={'auth-age-' + value} className="mt-0.5"/>
+                                        {t(value === 'adult' ? 'auth.age16Plus' : 'auth.ageUnder16')}
+                                    </label>
+                                ))}
+                            </fieldset>
+                            {age === 'under16' && (
+                                <div className="flex flex-col gap-2 p-2 rounded border border-amber-800/50 bg-black/20" data-testid="auth-guardian">
+                                    <label className="flex items-start gap-2 text-xs text-boxwood/85">
+                                        <input type="checkbox" required checked={guardianConsent} data-testid="auth-guardian-consent"
+                                               onChange={(e) => setGuardianConsent(e.target.checked)} className="mt-0.5"/>
+                                        <span>{t('auth.guardianConsent')}</span>
+                                    </label>
+                                    <div>
+                                        <label htmlFor="auth-guardian-code" className="block text-xs text-boxwood/80 mb-1">{t('auth.guardianCode')}</label>
+                                        <input id="auth-guardian-code" type="password" autoComplete="off" required minLength={4} maxLength={32}
+                                               value={guardianCode} onChange={(e) => setGuardianCode(e.target.value)} data-testid="auth-guardian-code"
+                                               className="w-full px-3 py-2 bg-black/40 border border-amber-900/60 rounded text-amber-100 text-sm focus:outline-none focus:border-amber-600"/>
+                                        <p className="text-xs text-boxwood/65 mt-1">{t('auth.guardianCodeNote')}</p>
+                                    </div>
+                                </div>
+                            )}
                             <label className="flex items-start gap-2 text-xs text-boxwood/85" htmlFor="auth-terms">
                                 <input id="auth-terms" type="checkbox" required checked={acceptTerms} data-testid="auth-terms"
                                        onChange={(e) => setAcceptTerms(e.target.checked)} className="mt-0.5"/>
@@ -358,6 +415,7 @@ export default function AuthModal({onSuccess, onClose: onCloseProp, onFirstGame,
                             setIsLogin(!isLogin);
                             setForgot(false);
                             setFeedback(null);
+                            setCanRestore(false);
                         }}
                         className="text-amber-400 hover:underline"
                     >

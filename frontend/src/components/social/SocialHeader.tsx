@@ -14,6 +14,7 @@ import {controlLabel} from '../../services/arenas';
 import {gameSocket} from '../../services/gameSocket';
 import {messagesApi} from '../../services/messages';
 import {notificationLink, socialApi} from '../../services/social';
+import {useKidMode} from '../../services/kidMode';
 import type {AppNotification, Inbox, PlayerCard} from '../../services/social';
 import {PLAYER_SEARCH_MAX} from '../../config/textLimits';
 
@@ -108,11 +109,14 @@ export function NotificationBell() {
     const [dmUnread, setDmUnread] = useState(0);
     const [open, setOpen] = useState(false);
     const alive = useRef(true);
+    // Kid mode (task 23.1): messages are closed, so neither the unread count nor the link is shown.
+    const kidMode = useKidMode();
 
     const refresh = useCallback(() => {
         socialApi.notifications().then((r) => alive.current && setInbox(r)).catch(() => undefined);
-        messagesApi.unread().then((r) => alive.current && setDmUnread(r.unread)).catch(() => undefined);
-    }, []);
+        if (kidMode) setDmUnread(0);
+        else messagesApi.unread().then((r) => alive.current && setDmUnread(r.unread)).catch(() => undefined);
+    }, [kidMode]);
 
     useEffect(() => {
         alive.current = true;
@@ -155,11 +159,11 @@ export function NotificationBell() {
             {open && (
                 <div className="absolute right-0 top-11 w-72 max-h-96 overflow-y-auto bg-[#1A120B] border border-amber-900/60 rounded-md shadow-xl p-2 z-50"
                      data-testid="notification-list">
-                    <Link to="/messages" onClick={() => setOpen(false)} data-testid="notification-messages"
+                    {!kidMode && <Link to="/messages" onClick={() => setOpen(false)} data-testid="notification-messages"
                           className="flex items-center justify-between gap-2 px-2 py-1.5 mb-1 rounded hover:bg-black/40 text-sm border-b border-amber-900/40">
                         <span className="flex items-center gap-1.5"><MessageSquare size={14}/> {t('dm.title')}</span>
                         {dmUnread > 0 && <span className="text-xs text-rose-300">{t('dm.newCount', {count: dmUnread})}</span>}
-                    </Link>
+                    </Link>}
                     {inbox.items.length === 0 && <p className="text-sm text-boxwood/70 px-2 py-1">{t('social.noNotifications')}</p>}
                     {inbox.items.map((n) => (
                         <button key={n.id} type="button" onClick={() => {

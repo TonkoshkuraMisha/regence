@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.deps import get_current_user
+from src.api.deps import get_current_user, refuse_kid_mode
 from src.api.library import optional_user
 from src.api.rate_limit import rate_limit
 from src.api.social import _player
@@ -18,10 +18,13 @@ from src.db.session import get_db
 from src.models.user import User
 from src.services import feed, notifications
 
-router = APIRouter(dependencies=[Depends(rate_limit("feed", "RATE_LIMIT_PUZZLES"))])
+# The feed is closed in kid mode (403 feed_kid_mode, src/services/kid_mode.py) - reading included, as on Lichess.
+router = APIRouter(dependencies=[Depends(rate_limit("feed", "RATE_LIMIT_PUZZLES")),
+                                 Depends(refuse_kid_mode("feed_kid_mode"))])
 
 _CODES = {"post_not_found": status.HTTP_404_NOT_FOUND, "comment_not_found": status.HTTP_404_NOT_FOUND,
-          "posting_banned": status.HTTP_403_FORBIDDEN, "comment_closed": status.HTTP_403_FORBIDDEN,
+          "posting_banned": status.HTTP_403_FORBIDDEN, "feed_kid_mode": status.HTTP_403_FORBIDDEN,
+          "comment_closed": status.HTTP_403_FORBIDDEN,
           "text_flagged": status.HTTP_409_CONFLICT, "posting_limited": status.HTTP_429_TOO_MANY_REQUESTS}
 
 

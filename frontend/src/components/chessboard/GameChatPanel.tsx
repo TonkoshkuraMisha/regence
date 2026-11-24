@@ -10,6 +10,7 @@ import {Flag, MessageSquare, Send} from 'lucide-react';
 import {moderationApi} from '../../services/moderation';
 import {useI18n} from '../../i18n';
 import {QUICK_CHAT_PRESETS} from './types';
+import {useKidMode} from '../../services/kidMode';
 import {CHAT_TEXT_MAX} from './gameChat';
 import type {ChatMessageItem, ChatPresetId} from './types';
 
@@ -32,6 +33,9 @@ export function GameChatPanel({
     messages, chatInput, onChatInputChange, onSendMessage, onSendPreset, isSpectator, onLeaveSpectate, myName, gameId,
 }: GameChatPanelProps) {
     const {t} = useI18n();
+    // Kid mode (task 23.1): only quick phrases - free text is neither shown nor typed (the server refuses it in such a game).
+    const kidMode = useKidMode();
+    const shown = kidMode ? messages.filter((msg) => msg.preset) : messages;
     // Numbers of messages that have already been reported: a mark instead of the flag (also when sending failed).
     const [reported, setReported] = useState<Set<number>>(new Set());
     const report = (index: number, sender: string, text: string) => {
@@ -58,12 +62,12 @@ export function GameChatPanel({
 
             <div
                 className="h-16 overflow-y-auto bg-black/40 rounded p-2 text-xs space-y-1 font-sans border border-amber-950/50 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-amber-900/50">
-                {messages.length === 0 ? (
+                {shown.length === 0 ? (
                     <div className="h-full flex items-center justify-center text-xs text-boxwood/45 italic">
                         {t(isSpectator ? 'chat.emptySpectator' : 'chat.emptyPlayer')}
                     </div>
                 ) : (
-                    messages.map((msg, i) => (
+                    shown.map((msg, i) => (
                         <div key={i} className="leading-snug wrap-break-word">
                             <span className="font-bold text-amber-300 mr-1.5">{msg.sender}:</span>
                             <span className="text-boxwood-light">{msg.preset ? t(`chat.presets.${msg.preset}`) : msg.text}</span>
@@ -98,7 +102,11 @@ export function GameChatPanel({
                 ))}
             </div>}
 
-            {!isSpectator && <form
+            {!isSpectator && kidMode && (
+                <div className="text-xs text-boxwood/60 italic" data-testid="chat-kid-mode">{t('chat.kidModeNote')}</div>
+            )}
+
+            {!isSpectator && !kidMode && <form
                 onSubmit={(e) => {
                     e.preventDefault();
                     onSendMessage();

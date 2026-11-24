@@ -14,6 +14,8 @@ export interface UserProfile {
     id: number;
     username: string;
     avatar?: string | null;
+    /** Kid mode (task 23.1): messages to this player are closed, so "Message" is hidden. */
+    kid_mode?: boolean;
     bullet_rating: number;
     blitz_rating: number;
     rapid_rating: number;

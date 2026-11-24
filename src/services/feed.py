@@ -7,7 +7,8 @@ player's feed in the profile, comments and "like" marks.
 Rules: a chat ban by a moderator also closes posts and comments; one cannot comment on a player who put
 you on their block list (refusal comment_closed without mentioning the block -- like dm_closed for direct messages: the block
 is not revealed); posts of players I blocked are not shown in my feed; a post hidden by a moderator or held back by the
-filter is visible only to its author; posts and comments of deleted accounts are not shown. A new
+filter is visible only to its author; posts and comments of deleted or closed accounts and of players in kid mode
+(src/services/kid_mode.py) are not shown to others, and a kid cannot post or comment (feed_kid_mode). A new
 comment on a post is a notification to the author (except own and held-back comments).
 
 Tables: posts, post_comments, post_likes; subscriptions -- follows, block list -- blocks. Attachment cards --
@@ -22,7 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.errors import DomainError
 from src.models.social import Block, Follow, Post, PostComment, PostLike
 from src.models.user import User
-from src.services import civility, moderation, notifications
+from src.services import account_state, civility, kid_mode, moderation, notifications
 from src.services.attachments import POST_KINDS, build_attachment, clean_text
 
 # Maximum length of a post and comment text in characters (the excess is truncated).
@@ -76,7 +77,8 @@ def _visible(viewer: User | None):
 
 
 def _not_deleted_author():
-    return select(User.id).where(User.deleted_at.is_(None))
+    """Authors whose posts others see: open accounts not in kid mode (a kid's posts stay with the kid)."""
+    return select(User.id).where(*account_state.open_account(), User.kid_mode.is_(False))
 
 
 async def create(db: AsyncSession, author: User, body: str | None, attachment: tuple[str, str] | None,
@@ -88,6 +90,7 @@ async def create(db: AsyncSession, author: User, body: str | None, attachment: t
     """
     if moderation.chat_banned(author):
         raise DomainError("posting_banned")
+    kid_mode.ensure_not_kid(author, "feed_kid_mode")
     text = clean_text(body, BODY_MAX)
     card = await build_attachment(db, *attachment, author=author, kinds=POST_KINDS) if attachment else None
     if not text and card is None:
@@ -176,7 +179,8 @@ async def comments(db: AsyncSession, post_id: int, viewer: User | None) -> list[
     """
     post = await _post(db, post_id, viewer)
     rows = (await db.execute(select(PostComment, User).join(User, User.id == PostComment.author_id)
-                             .where(PostComment.post_id == post.id, User.deleted_at.is_(None),
+                             .where(PostComment.post_id == post.id, *account_state.open_account(),
+                                    or_(User.kid_mode.is_(False), User.id == (viewer.id if viewer else 0)),
                                     or_(PostComment.held.is_(False), PostComment.author_id == (viewer.id if viewer else 0)))
                              .order_by(PostComment.id).limit(COMMENTS_PAGE))).all()
     return [_comment_view(c, u, viewer, post) for c, u in rows]
@@ -193,6 +197,7 @@ async def add_comment(db: AsyncSession, post_id: int, viewer: User, body: str | 
     post = await _post(db, post_id, viewer)
     if moderation.chat_banned(viewer):
         raise DomainError("posting_banned")
+    kid_mode.ensure_not_kid(viewer, "feed_kid_mode")
     blocked = await db.scalar(select(Block.id).where(Block.blocker_id == post.author_id, Block.blocked_id == viewer.id))
     if blocked is not None:
         raise DomainError("comment_closed")

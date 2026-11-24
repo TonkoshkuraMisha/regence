@@ -51,6 +51,15 @@ class User(Base):
     # unusable, personal data
     # is erased; games stay with the opponents without their name.
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # The player asked to delete the account (task 23.1): the account is closed at once (no login, hidden from others) and is
+    # anonymised after the grace period (ACCOUNT_DELETION_GRACE_DAYS); logging in with the password during that period can
+    # restore it (src/services/account.py). The index serves the daily purge.
+    deletion_requested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+    # Kid mode (task 23.1, src/services/kid_mode.py): no free-text chat, messages or feed. Turned on at registration for
+    # players under 16 (with a guardian's consent) or by the player in the settings. kid_guardian_hash is the bcrypt hash of
+    # the guardian code: when set, only that code turns kid mode off.
+    kid_mode: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
+    kid_guardian_hash: Mapped[str | None] = mapped_column(String, nullable=True)
     # The confirmed e-mail (task 17.5) - optional; needed for password reset. Only a confirmed one is stored:
     # an address that has not been confirmed yet lives in a one-time link (EmailToken), so someone else's address cannot be
     # taken this way.

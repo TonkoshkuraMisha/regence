@@ -201,6 +201,9 @@ class Settings(BaseSettings):
     # Consent to the "Community Rules" and "Privacy" at registration (task 23.1, src/services/legal.py):
     # without the mark the registration is rejected with the code terms_not_accepted.
     REQUIRE_TERMS_CONSENT: bool = True
+    # Account deletion (task 23.1, src/services/account.py): days between the request and the anonymisation; during them the
+    # account is closed and logging in with the password restores it (the same 10 days as on large chess sites).
+    ACCOUNT_DELETION_GRACE_DAYS: int = 10
     COMMUNITY_URL: str = ""
     # "Report a problem": reports per window from an address (or per player); invite code checks - from an address.
     RATE_LIMIT_FEEDBACK: int = 5

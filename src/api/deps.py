@@ -8,9 +8,10 @@ Login checks - route dependencies.
 * get_current_user_ws - for WebSocket: login by a one-time ticket. The ticket is issued by POST /auth/ws-ticket and put into
   Redis (key ws_ticket:<ticket>, TTL WS_TICKET_TTL_S); here it is taken by the GETDEL command and therefore works
   exactly once. A token in the WebSocket address is not used: addresses end up in server and proxy logs.
+* refuse_kid_mode - a router dependency that closes a whole section to players in kid mode (src/services/kid_mode.py).
 """
 
-from fastapi import Depends, Query, WebSocketException, status
+from fastapi import Depends, Query, Request, WebSocketException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -22,7 +23,7 @@ from src.core.security import InvalidTokenError, decode_user_token
 from src.db import redis as redis_module
 from src.db.session import get_db, get_session_factory
 from src.models.user import User
-from src.services import product_metrics
+from src.services import kid_mode, product_metrics
 
 # The scheme for extracting the token from the Authorization: Bearer header
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/login")
@@ -98,3 +99,18 @@ async def get_current_user_ws(
     if user is None or str(user.token_version) != version_str:
         raise rejected
     return user
+
+
+def refuse_kid_mode(code: str):
+    """
+    A router dependency: 403 with the given code for a player in kid mode (the messages and feed sections). A guest or an
+    invalid token passes - the routes themselves decide whether a login is needed.
+    """
+    async def guard(request: Request, db: AsyncSession = Depends(get_db)) -> None:
+        scheme, _, token = request.headers.get("authorization", "").partition(" ")
+        if scheme.lower() != "bearer" or not token:
+            return
+        if kid_mode.is_kid(await user_from_token(db, token)):
+            raise ApiError(status.HTTP_403_FORBIDDEN, code)
+
+    return guard

@@ -294,3 +294,31 @@ describe('Settings: e-mail (task 17.5)', () => {
         expect(screen.getByTestId('settings-email-current').textContent).toBe('No e-mail linked.');
     });
 });
+
+describe('Settings: kid mode (task 23.1)', () => {
+    it('turning it on with the password and a guardian code, then only the code turns it off', async () => {
+        const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+            if (url.includes('/profile/me')) return response(200, {email: null, kid_mode: false, kid_guardian_code: false});
+            const body = JSON.parse(String(init?.body));
+            return response(200, body.enabled ? {kid_mode: true, kid_guardian_code: true} : {kid_mode: false, kid_guardian_code: false});
+        });
+        vi.stubGlobal('fetch', fetchMock);
+        renderSettings();
+        expect(await screen.findByText('Kid mode is off.')).toBeInTheDocument();
+
+        fireEvent.change(screen.getByTestId('settings-kid-password'), {target: {value: 'secret-pass'}});
+        fireEvent.change(screen.getByTestId('settings-kid-code'), {target: {value: '4711'}});
+        fireEvent.click(screen.getByTestId('settings-kid-toggle'));
+        expect(await screen.findByText('Kid mode is on.')).toBeInTheDocument();
+        const call = fetchMock.mock.calls.find(([url]) => String(url).endsWith('/account/kid-mode'));
+        expect(JSON.parse(String((call as unknown as [string, RequestInit])[1].body)))
+            .toEqual({enabled: true, password: 'secret-pass', guardian_code: '4711'});
+
+        // With a guardian code set, the form asks only for the code.
+        expect(screen.queryByTestId('settings-kid-password')).toBeNull();
+        expect(screen.getByTestId('settings-kid-toggle')).toBeDisabled();
+        fireEvent.change(screen.getByTestId('settings-kid-code'), {target: {value: '4711'}});
+        fireEvent.click(screen.getByTestId('settings-kid-toggle'));
+        expect(await screen.findByText('Kid mode is off.')).toBeInTheDocument();
+    });
+});
