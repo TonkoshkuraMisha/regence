@@ -171,7 +171,7 @@ def strip(items: list[str], css_class: str = "strip") -> str:
 # Waiting page: two side columns (three photos, a piece and a score scrap each), mirrored about the vertical axis. A photo is as wide as
 # the free side width allows (the text block is 900px), but no taller than the window allows for three of them plus the extras.
 LANDING_CSS = """
-.landing { --w: clamp(90px, min(calc((100vw - 900px) / 2 - 70px), 15vh), 240px); }
+.landing { --w: clamp(100px, min(calc((100vw - 900px) / 2 - 60px), 17vh), 270px); }
 """
 
 
@@ -187,7 +187,7 @@ def landing_collage(photos: list[str]) -> Layout:
 
 # Maintenance: a strip of four frames above and below the text, symmetric, with a piece and a game form on the sides of the text.
 MAINTENANCE_CSS = """
-.maintenance { --w: clamp(70px, min(12vw, 12.5vh), 200px); }
+.maintenance { --w: clamp(78px, min(13.5vw, 14vh), 230px); }
 """
 
 
@@ -223,7 +223,7 @@ def narrow_css() -> str:
 }
 @media (max-height: 720px) {
     .emblem { display: none; }
-    .maintenance { --w: clamp(60px, min(12vw, 10vh), 200px); }
+    .maintenance { --w: clamp(66px, min(13.5vw, 11vh), 230px); }
 }
 """
 
