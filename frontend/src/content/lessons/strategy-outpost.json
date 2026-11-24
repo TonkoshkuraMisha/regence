@@ -1,0 +1,217 @@
+{
+  "id": "strategy-outpost",
+  "course": "strategy",
+  "order": 16,
+  "title": {
+    "en": "The outpost",
+    "uk": "Форпост"
+  },
+  "summary": {
+    "en": "A square deep in the opponent's half, guarded by your pawn and out of reach of enemy pawns: where to find it and how to use it.",
+    "uk": "Поле глибоко в таборі суперника, що охороняється вашим пішаком і недосяжне для його пішаків: де його знайти й як використати."
+  },
+  "steps": [
+    {
+      "type": "text",
+      "fen": "r1b2rk1/pp2bppp/3p4/8/4P3/2N1B3/PPP2PPP/R4RK1 w - - 0 1",
+      "highlights": [
+        "d5"
+      ],
+      "arrows": [
+        {
+          "from": "c3",
+          "to": "d5",
+          "color": "green"
+        },
+        {
+          "from": "e4",
+          "to": "d5",
+          "color": "blue"
+        }
+      ],
+      "text": {
+        "en": "An outpost is a square in the enemy half that your pawn protects and that no enemy pawn can ever attack. Here Black has no c-pawn and no e-pawn, so a knight on d5 can never be driven away by a pawn; the pawn e4 supports it.",
+        "uk": "Форпост — поле на половині суперника, яке захищає ваш пішак і яке ніколи не зможе атакувати жоден пішак суперника. Тут у чорних немає ні c-, ні e-пішака, тож коня на d5 пішаки не проженуть; його підтримує пішак e4."
+      }
+    },
+    {
+      "type": "choice",
+      "fen": "r1b2rk1/pp2bppp/3p4/8/4P3/2N1B3/PPP2PPP/R4RK1 w - - 0 1",
+      "highlights": [
+        "d5",
+        "b5",
+        "a4"
+      ],
+      "text": {
+        "en": "White to move. Where should the knight on c3 go?",
+        "uk": "Хід білих. Куди піти коню з c3?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "Nd5",
+            "uk": "Кd5"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "Nb5",
+            "uk": "Кb5"
+          },
+          "feedback": {
+            "en": "The pawn a7 can attack this square with ...a6, and nothing of White's supports the knight there.",
+            "uk": "Пішак a7 може атакувати це поле ходом …a6, а власної підтримки в коня там немає."
+          }
+        },
+        {
+          "text": {
+            "en": "Na4",
+            "uk": "Кa4"
+          },
+          "feedback": {
+            "en": "A knight on the rim is far from the action and attacks little.",
+            "uk": "Кінь на краю дошки далеко від подій і атакує мало."
+          }
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "fen": "r1bqnrk1/pp3ppp/3p4/3N4/4P3/4B3/PPP2PPP/R2Q1RK1 b - - 0 1",
+      "highlights": [
+        "d5"
+      ],
+      "arrows": [
+        {
+          "from": "d5",
+          "to": "e7",
+          "color": "green"
+        },
+        {
+          "from": "d5",
+          "to": "c7",
+          "color": "green"
+        }
+      ],
+      "text": {
+        "en": "The knight on d5 attacks e7, c7, b6 and f6 and cramps the opponent. Since pawns cannot remove it, the only way to fight an outpost is to exchange the piece standing on it.",
+        "uk": "Кінь на d5 б'є e7, c7, b6 і f6 та стискає суперника. Оскільки пішаки його прогнати не можуть, єдиний спосіб боротьби з форпостом — обміняти фігуру, що на ньому стоїть."
+      }
+    },
+    {
+      "type": "choice",
+      "fen": "r1bqnrk1/pp3ppp/3p4/3N4/4P3/4B3/PPP2PPP/R2Q1RK1 b - - 0 1",
+      "highlights": [
+        "d5"
+      ],
+      "text": {
+        "en": "Black to move. How can Black challenge the knight on d5?",
+        "uk": "Хід чорних. Як чорним оскаржити коня на d5?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "Be6 — prepare to exchange it",
+            "uk": "Сe6 — підготувати його обмін"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "a6",
+            "uk": "a6"
+          },
+          "feedback": {
+            "en": "The pawn on the a-file cannot reach d5; this move does not touch the knight.",
+            "uk": "Пішак із лінії a не дістане d5; цей хід не зачіпає коня."
+          }
+        },
+        {
+          "text": {
+            "en": "h6",
+            "uk": "h6"
+          },
+          "feedback": {
+            "en": "A pawn move on the kingside does nothing about the outpost.",
+            "uk": "Хід пішака на королівському фланзі нічого не змінює для форпосту."
+          }
+        }
+      ]
+    }
+  ],
+  "exam": [
+    {
+      "type": "choice",
+      "text": {
+        "en": "Which square is a typical outpost for a knight?",
+        "uk": "Яке поле є типовим форпостом для коня?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "A square on the 5th rank protected by your pawn that no enemy pawn can attack",
+            "uk": "Поле на 5-й горизонталі, захищене вашим пішаком, яке не можуть атакувати пішаки суперника"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "Any square on the edge of the board",
+            "uk": "Будь-яке поле на краю дошки"
+          },
+          "feedback": {
+            "en": "On the rim a knight controls few squares; an outpost is the opposite.",
+            "uk": "На краю кінь контролює мало полів; форпост — це протилежність."
+          }
+        },
+        {
+          "text": {
+            "en": "A square the enemy pawns control",
+            "uk": "Поле, яке контролюють пішаки суперника"
+          },
+          "feedback": {
+            "en": "Then the knight would simply be chased away.",
+            "uk": "Тоді коня просто проженуть."
+          }
+        }
+      ]
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "How do you fight an enemy outpost?",
+        "uk": "Як боротися з форпостом суперника?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "Exchange the piece that stands on it",
+            "uk": "Обміняти фігуру, що на ньому стоїть"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "Attack it with a pawn — it always works",
+            "uk": "Атакувати його пішаком — це завжди працює"
+          },
+          "feedback": {
+            "en": "By definition no pawn can attack an outpost.",
+            "uk": "За означенням жоден пішак не може атакувати форпост."
+          }
+        },
+        {
+          "text": {
+            "en": "Ignore it",
+            "uk": "Ігнорувати"
+          },
+          "feedback": {
+            "en": "An unchallenged outpost keeps cramping you for the whole game.",
+            "uk": "Форпост без оскарження стискає вас до кінця партії."
+          }
+        }
+      ]
+    }
+  ]
+}
