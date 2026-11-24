@@ -1,0 +1,174 @@
+{
+  "id": "tactics-sacrifice-for-mate",
+  "course": "tactics",
+  "order": 20,
+  "title": {
+    "en": "Sacrifice for mate",
+    "uk": "Жертва заради мату"
+  },
+  "summary": {
+    "en": "Give up material to rip open the king's shelter or to remove its last defender, when the mate is calculated to the end.",
+    "uk": "Віддати матеріал, щоб зруйнувати прикриття короля або прибрати його останнього захисника, коли мат пораховано до кінця."
+  },
+  "steps": [
+    {
+      "type": "text",
+      "fen": "r5k1/ppQ2ppp/8/3P1n2/8/4r2P/PPP2qBK/5RR1 b - - 2 25",
+      "highlights": [
+        "h2",
+        "h3"
+      ],
+      "arrows": [
+        {
+          "from": "e3",
+          "to": "h3",
+          "color": "green"
+        }
+      ],
+      "text": {
+        "en": "A sacrifice is justified by one thing only: a calculated result. Before you give a rook, answer three questions: what does the sacrifice force, what can the opponent do instead of taking, and does the line end in mate or in a clear gain? Here the white king stands on h2 behind its pawns. Look at the rook and the queen of Black.",
+        "uk": "Жертва виправдана лише одним: порахованим результатом. Перш ніж віддати туру, дайте відповідь на три питання: що жертва форсує, що може зробити суперник замість взяття і чи закінчується варіант матом або явним виграшем? Тут білий король стоїть на h2 за пішаками. Погляньте на туру й ферзя чорних."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "r5k1/ppQ2ppp/8/3P1n2/8/4r2P/PPP2qBK/5RR1 b - - 2 25",
+      "text": {
+        "en": "Black to move. Mate in two.",
+        "uk": "Хід чорних. Мат у два ходи."
+      },
+      "line": [
+        {
+          "answers": [
+            "e3h3"
+          ],
+          "reply": "h2h3",
+          "correct": {
+            "en": "The rook is given up: the king must take, there is no other way out of the check.",
+            "uk": "Туру віддано: король мусить узяти, іншого виходу з шаху нема."
+          }
+        },
+        {
+          "answers": [
+            "f2h4"
+          ],
+          "correct": {
+            "en": "Checkmate.",
+            "uk": "Мат."
+          }
+        }
+      ],
+      "hint": {
+        "en": "Open the king's shelter with a check.",
+        "uk": "Відкрийте прикриття короля шахом."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "1r4k1/3R1ppp/3Qp3/8/8/4qP2/P5PP/2rR3K b - - 4 26",
+      "text": {
+        "en": "Black to move. Mate in two.",
+        "uk": "Хід чорних. Мат у два ходи."
+      },
+      "line": [
+        {
+          "answers": [
+            "e3e1"
+          ],
+          "reply": "d1e1",
+          "correct": {
+            "en": "The queen removes the only defender of the first rank.",
+            "uk": "Ферзь прибирає єдиного захисника першої горизонталі."
+          }
+        },
+        {
+          "answers": [
+            "c1e1"
+          ],
+          "correct": {
+            "en": "Checkmate.",
+            "uk": "Мат."
+          }
+        }
+      ],
+      "hint": {
+        "en": "Which piece guards the back rank?",
+        "uk": "Яка фігура охороняє першу горизонталь?"
+      }
+    },
+    {
+      "type": "text",
+      "text": {
+        "en": "Both sacrifices work for the same reason: the opponent's answer is forced and the next move is mate. When the answer is not forced, the sacrifice is a gamble, and you must count every alternative first.",
+        "uk": "Обидві жертви працюють з тієї самої причини: відповідь суперника вимушена, а наступний хід — мат. Коли відповідь не вимушена, жертва — це азартна гра, і спершу треба порахувати кожну альтернативу."
+      }
+    }
+  ],
+  "exam": [
+    {
+      "type": "find_move",
+      "fen": "3QR3/6kp/8/8/1pP5/1P3n1P/r5r1/1R4BK b - - 0 37",
+      "text": {
+        "en": "Black to move. Mate in two.",
+        "uk": "Хід чорних. Мат у два ходи."
+      },
+      "line": [
+        {
+          "answers": [
+            "g2h2"
+          ],
+          "reply": "g1h2",
+          "correct": {
+            "en": "The bishop must take the rook.",
+            "uk": "Слон мусить узяти туру."
+          }
+        },
+        {
+          "answers": [
+            "a2h2"
+          ],
+          "correct": {
+            "en": "Checkmate.",
+            "uk": "Мат."
+          }
+        }
+      ]
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "When is a sacrifice for mate justified?",
+        "uk": "Коли жертва заради мату виправдана?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "When the line is calculated and the replies are forced",
+            "uk": "Коли варіант пораховано й відповіді вимушені"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "When the king looks weak",
+            "uk": "Коли король здається слабким"
+          },
+          "feedback": {
+            "en": "A weak look is not a calculation.",
+            "uk": "Слабкий вигляд — не розрахунок."
+          }
+        },
+        {
+          "text": {
+            "en": "Whenever you are behind in material",
+            "uk": "Щоразу, коли поступаєтеся в матеріалі"
+          },
+          "feedback": {
+            "en": "Being behind is a reason to calculate, not to gamble.",
+            "uk": "Відставання — привід рахувати, а не ризикувати."
+          }
+        }
+      ]
+    }
+  ]
+}
