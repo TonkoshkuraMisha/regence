@@ -1,0 +1,176 @@
+{
+  "id": "tactics-seventh-rank",
+  "course": "tactics",
+  "order": 17,
+  "title": {
+    "en": "The seventh rank",
+    "uk": "Сьома горизонталь"
+  },
+  "summary": {
+    "en": "A rook on the seventh rank attacks the pawns that have not moved and cramps the king.",
+    "uk": "Тура на сьомій горизонталі б'є пішаки, що не рухалися, і стискає короля."
+  },
+  "steps": [
+    {
+      "type": "text",
+      "fen": "8/1pb1k1pp/p1p2r2/2P5/1P3pB1/7P/P4PK1/3R4 w - - 3 31",
+      "highlights": [
+        "a7",
+        "b7",
+        "c7",
+        "d7",
+        "e7",
+        "f7",
+        "g7",
+        "h7"
+      ],
+      "arrows": [
+        {
+          "from": "d1",
+          "to": "d7",
+          "color": "green"
+        }
+      ],
+      "text": {
+        "en": "On the seventh rank (the second one for Black) stand the pawns that usually have not moved yet, and the king is often cut off there. A rook that gets to this rank attacks them from the side and ties the enemy pieces down. Look for it, especially when the file is open.",
+        "uk": "На сьомій горизонталі (другій — для чорних) стоять пішаки, що зазвичай ще не рухалися, а король часто там відрізаний. Тура, що потрапила на цю горизонталь, нападає на них збоку й зв'язує фігури суперника. Шукайте її, особливо коли лінія відкрита."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "8/1pb1k1pp/p1p2r2/2P5/1P3pB1/7P/P4PK1/3R4 w - - 3 31",
+      "text": {
+        "en": "White to move. Win material.",
+        "uk": "Хід білих. Виграйте матеріал."
+      },
+      "line": [
+        {
+          "answers": [
+            "d1d7"
+          ],
+          "reply": "e7f8",
+          "correct": {
+            "en": "The rook enters with check and attacks the bishop on c7.",
+            "uk": "Тура вдирається з шахом і нападає на слона c7."
+          }
+        },
+        {
+          "answers": [
+            "d7c7"
+          ],
+          "correct": {
+            "en": "The bishop falls: the rook on the seventh does its job.",
+            "uk": "Слон падає: тура на сьомій робить свою справу."
+          }
+        }
+      ],
+      "hint": {
+        "en": "Which rook move comes with check and a fork?",
+        "uk": "Який хід турою з шахом і подвійним ударом?"
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "8/1b1k1pp1/1P5p/r3Pp2/3K1P2/8/8/2R5 w - - 0 43",
+      "text": {
+        "en": "White to move. Win material.",
+        "uk": "Хід білих. Виграйте матеріал."
+      },
+      "line": [
+        {
+          "answers": [
+            "c1c7"
+          ],
+          "reply": "d7e6",
+          "correct": {
+            "en": "The rook invades with check.",
+            "uk": "Тура вдирається з шахом."
+          }
+        },
+        {
+          "answers": [
+            "c7b7"
+          ],
+          "correct": {
+            "en": "The bishop on b7 is lost.",
+            "uk": "Слон b7 втрачений."
+          }
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "fen": "8/3n2k1/2p3pp/R4p2/8/P2BPK2/1r4PP/8 w - - 2 41",
+      "highlights": [
+        "a7"
+      ],
+      "text": {
+        "en": "An invading rook is strongest when it also pins or attacks something: here a rook on a7 pins the knight d7 to the king's rank. Before you enter, make sure the rook cannot be trapped or exchanged at once.",
+        "uk": "Тура-загарбник найсильніша, коли ще й зв'язує чи атакує: тут тура на a7 зв'язує коня d7 на горизонталі короля. Перш ніж вторгатися, переконайтеся, що туру не заженуть у пастку й не розміняють одразу."
+      }
+    }
+  ],
+  "exam": [
+    {
+      "type": "find_move",
+      "fen": "8/3n2k1/2p3pp/R4p2/8/P2BPK2/1r4PP/8 w - - 2 41",
+      "text": {
+        "en": "White to move. Win material.",
+        "uk": "Хід білих. Виграйте матеріал."
+      },
+      "line": [
+        {
+          "answers": [
+            "a5a7"
+          ],
+          "reply": "g7f6"
+        },
+        {
+          "answers": [
+            "a7d7"
+          ],
+          "correct": {
+            "en": "The pinned knight falls.",
+            "uk": "Зв'язаний кінь падає."
+          }
+        }
+      ]
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "Why is a rook on the seventh rank so strong?",
+        "uk": "Чому тура на сьомій горизонталі така сильна?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "It attacks unmoved pawns from the side and cramps the king",
+            "uk": "Вона б'є пішаки, що не рухалися, збоку й стискає короля"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "It cannot be attacked there",
+            "uk": "Там її не можна атакувати"
+          },
+          "feedback": {
+            "en": "It can be attacked: check that it cannot be trapped before entering.",
+            "uk": "Можна: перш ніж вторгатися, перевірте, що її не заженуть у пастку."
+          }
+        },
+        {
+          "text": {
+            "en": "It protects its own king",
+            "uk": "Вона захищає власного короля"
+          },
+          "feedback": {
+            "en": "Its job on the seventh is attack, not defence.",
+            "uk": "Її робота на сьомій — напад, а не захист."
+          }
+        }
+      ]
+    }
+  ]
+}
