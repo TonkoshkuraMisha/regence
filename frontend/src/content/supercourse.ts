@@ -112,7 +112,7 @@ export const COURSE: CourseModule[] = [
     mod('T3.3', 'T', [l('tactics-clearance'), th('clearance')]),
     mod('T3.4', 'T', [th('interference')]),
     mod('T3.5', 'T', [th('blockade')]),
-    mod('T3.6', 'T', [th('quiet_move')]),
+    mod('T3.6', 'T', [l('tactics-quiet-move'), th('quiet_move')]),
     mod('T3.7', 'T', [l('tactics-combination'), th('combination')]),
     mod('T3.8', 'T', [th('equality'), th('save_by_perpetual'), th('save_by_stalemate'), th('perpetual_check'), th('stalemate_trick'), th('fortress'), th('desperado')]),
     mod('M3.1', 'M', [l('king-greek-gift'), th('greek_gift'), th('double_bishop_sacrifice')]),
