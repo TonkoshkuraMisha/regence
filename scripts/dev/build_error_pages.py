@@ -89,7 +89,9 @@ body::after {
    strip of photos, the middle row (side column | text | side column) and an optional strip. Every photo is sized from --w, which
    follows both the free width and the window height, so whatever the aspect ratio, items sit next to each other and never on top. */
 .mid { flex: 1; display: grid; grid-template-columns: 1fr minmax(0, 900px) 1fr; align-items: center; column-gap: 24px; }
-.side { align-self: stretch; display: flex; flex-direction: column; align-items: center; justify-content: space-around; gap: 14px; padding: 8px 0; }
+.side { align-self: stretch; display: flex; justify-content: center; gap: calc(var(--w) * .2); padding: 8px 0; }
+.col { display: flex; flex-direction: column; align-items: center; justify-content: space-around; gap: 12px; }
+.col.low { margin-top: calc(var(--w) * .4); }
 .strip { display: flex; justify-content: space-around; align-items: center; gap: 14px; padding: 6px 4vw; }
 .photo {
     position: relative; flex: none; width: var(--w); box-sizing: border-box;
@@ -164,54 +166,63 @@ class Layout(NamedTuple):
 
 
 def strip(items: list[str], css_class: str = "strip") -> str:
-    """A row (strip) or a column (side) of decorations."""
+    """A row (strip) or a side wall of decorations."""
     return f'<div class="{css_class}" aria-hidden="true">' + "".join(items) + "</div>" if items else ""
 
 
-# Waiting page: two side columns (three photos, a piece and a score scrap each), mirrored about the vertical axis. A photo is as wide as
-# the free side width allows (the text block is 900px), but no taller than the window allows for three of them plus the extras.
+def col(items: list[str], low: bool = False) -> str:
+    """A column of a side wall; the `low` one is shifted down for a staggered look."""
+    return f'<div class="col{" low" if low else ""}">' + "".join(items) + "</div>"
+
+
+# Waiting page: on each side a staggered wall of two columns (four photos, a piece and a score scrap). A photo is as wide as the free
+# side width allows (the text block is 900px), but no taller than the window allows for a column of two photos and a piece.
+# 1240-1500px wide: only the first column of each side fits (the .low column is hidden by narrow_css); below 1240px the sides go away.
 LANDING_CSS = """
-.landing { --w: clamp(100px, min(calc((100vw - 900px) / 2 - 60px), 17vh), 270px); }
+.landing { --w: clamp(100px, min(calc(((100vw - 900px) / 2 - 24px - 40px) / 2.2), 23vh), 300px); }
 """
 
 
 def landing_collage(photos: list[str]) -> Layout:
-    """Waiting page: photos in columns along the sides, like on a club wall."""
-    left = [photo(photos[0], -5), piece("queen", -10), photo(photos[2], 4),
-            note("1.e4 e5 2.Nf3 Nc6\n3.Bb5 a6 4.Ba4 Nf6", -3), photo(photos[4], -3)]
-    right = [photo(photos[1], 5), piece("bishop", 10), photo(photos[3], -4),
-             note("1.d4 Nf6 2.c4 e6\n3.Nc3 Bb4", 3), photo(photos[5], 3)]
+    """Waiting page: photos in staggered columns along the sides, like on a club wall."""
+    left = [col([photo(photos[0], -5), piece("queen", -10), photo(photos[2], 4)]),
+            col([photo(photos[4], 3), note("1.e4 e5 2.Nf3 Nc6\n3.Bb5 a6 4.Ba4 Nf6", -3), photo(photos[6], -4)], low=True)]
+    right = [col([photo(photos[1], 5), piece("bishop", 10), photo(photos[3], -4)]),
+             col([photo(photos[5], -3), note("1.d4 Nf6 2.c4 e6\n3.Nc3 Bb4", 3), photo(photos[7], 4)], low=True)]
     return Layout(left=strip(left, "side"), right=strip(right, "side"),
                   mobile=strip([photo(photos[0], -4), photo(photos[1], 3), photo(photos[2], -3)], "strip mobile"))
 
 
-# Maintenance: a strip of four frames above and below the text, symmetric, with a piece and a game form on the sides of the text.
+# Maintenance: the same staggered walls on the sides, but other pieces, other order and the game form; nothing above or below the text.
 MAINTENANCE_CSS = """
-.maintenance { --w: clamp(78px, min(13.5vw, 14vh), 230px); }
+.maintenance { --w: clamp(100px, min(calc(((100vw - 900px) / 2 - 24px - 40px) / 2.2), 23vh), 300px); }
 """
 
 
 def maintenance_collage(photos: list[str]) -> Layout:
-    """Technical maintenance: strips of frames at the top and bottom and a game form - a different layout from the waiting page."""
-    tilts = [-3, 3, -3, 3]
-    top = [photo(src, t) for src, t in zip(photos[:4], tilts, strict=True)]
-    bottom = [photo(src, -t) for src, t in zip(photos[4:8], tilts, strict=True)]
-    left = [piece("rook", -6), note("White   Black\n1. e4     c5\n2. Nf3    d6\n3. d4     cxd4\n4. Nxd4   Nf6", -2), piece("pawn", 8)]
-    right = [piece("bishop", 7), note("5. Nc3 a6\n6. Be3 e5\n7. Nb3 Be6", 3), piece("queen", -9)]
-    return Layout(top=strip(top), bottom=strip(bottom), left=strip(left, "side"), right=strip(right, "side"),
+    """Technical maintenance: staggered walls of photos on the sides and a game form between them."""
+    left = [col([photo(photos[0], -3), note("White   Black\n1. e4     c5\n2. Nf3    d6\n3. d4     cxd4\n4. Nxd4   Nf6", -2), photo(photos[1], 3)]),
+            col([photo(photos[2], 4), piece("rook", -6), photo(photos[3], -3)], low=True)]
+    right = [col([photo(photos[4], 3), piece("queen", 9), photo(photos[5], -3)]),
+             col([photo(photos[6], -4), note("5. Nc3 a6\n6. Be3 e5\n7. Nb3 Be6", 3), photo(photos[7], 3)], low=True)]
+    return Layout(left=strip(left, "side"), right=strip(right, "side"),
                   mobile=strip([photo(photos[0], -4), photo(photos[1], 3), photo(photos[2], -3)], "strip mobile"))
 
 
 def narrow_css() -> str:
-    """Below 1240px there is no room beside the text: the side columns go away, a short strip of photos stays (and goes on short windows)."""
+    """Below 1500px the second column of each side goes (only one fits); below 1240px the sides go too and a short strip of photos stays."""
     return """
+@media (max-width: 1500px) {
+    .col.low { display: none; }
+    .landing, .maintenance { --w: clamp(90px, min(calc(((100vw - 900px) / 2 - 24px - 20px) / 1.05), 24vh), 240px); }
+}
 @media (max-width: 1240px) {
-    .side, .strip:not(.mobile) { display: none; }
+    .side { display: none; }
     .mid { grid-template-columns: minmax(0, 1fr); }
     .strip.mobile { display: flex; --w: clamp(70px, 20vw, 120px); }
 }
 @media (max-width: 1240px) and (max-height: 640px) { .strip.mobile { display: none; } }
-/* Short windows: the text block shrinks so that it fits between the strips without scrolling. */
+/* Short windows: the text block shrinks so that it fits without scrolling. */
 @media (max-height: 900px) {
     .brand { margin-bottom: 12px; font-size: clamp(1.6rem, 3vw, 2.4rem); }
     .emblem { width: 72px; margin-bottom: 12px; }
@@ -221,10 +232,7 @@ def narrow_css() -> str:
     .copy { font-size: clamp(1.05rem, 1.5vw, 1.3rem); line-height: 1.45; }
     a.retry { margin-top: 20px; padding: 12px 36px; }
 }
-@media (max-height: 720px) {
-    .emblem { display: none; }
-    .maintenance { --w: clamp(66px, min(13.5vw, 11vh), 230px); }
-}
+@media (max-height: 720px) { .emblem { display: none; } }
 """
 
 
