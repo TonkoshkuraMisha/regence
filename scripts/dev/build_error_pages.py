@@ -3,7 +3,8 @@ Builds two service pages with a retro collage: "Technical maintenance" and the w
 
 What it does: takes portraits of masters from frontend/public/assets/champions (public domain and CC0 only - their
 licences are recorded in ATTRIBUTION.md), turns them into small sepia photos, lays them on the background as "photos on a table" together with
-piece silhouettes and scraps of score sheets, and leaves the text over a dark veil so the background does not hinder reading.
+piece silhouettes and scraps of score sheets, and sets large text straight over the collage (no dark veil: a shadow around
+the letters keeps them readable while the photos stay visible).
 It writes two files:
   * frontend/public/maintenance.html - a self-contained 502/503/504 page (nginx and Cloudflare Custom Errors);
   * ops/landing/src/page.js - the HTML of the waiting page for the regence-landing Worker (export PAGE).
@@ -27,6 +28,7 @@ LANDING_OUT = ROOT / "ops" / "landing" / "src" / "page.js"
 
 # Public domain and CC0 only (ATTRIBUTION.md, portraits section): no attribution is required on the page.
 LANDING_PHOTOS = ["morphy", "Capablanca", "Alekhine", "Steinitz", "Tal", "Tarrasch", "Pillsbury", "anderssen"]
+LANDING_NARROW = {0, 3, 7}  # indices of the landing photos kept on narrow screens (above and below the text)
 MAINTENANCE_PHOTOS = ["philidor", "staunton", "zukertort", "Marshall", "Keres", "Rubinstein", "paulsen", "labourdonnais"]
 
 PHOTO_SIZE = (150, 190)  # pixels: the photo is seen small, no headroom for retina screens is needed - the background is muted
@@ -74,11 +76,8 @@ body {
         repeating-conic-gradient(rgba(245, 222, 179, .06) 0 25%, transparent 0 50%) 0 0 / 200px 200px,
         var(--bg);
 }
-/* Veil: darkens the collage under the text, lets go at the edges so the photos are visible without hindering reading. */
-body::before {
-    content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none;
-    background: radial-gradient(ellipse 46% 52% at 50% 50%, rgba(26, 18, 11, .94) 0 55%, rgba(26, 18, 11, .55) 100%);
-}
+/* No veil under the text (owner's request 24.11): the photos and score sheets stay fully visible; the text keeps its
+   contrast through a shadow that hugs the letters (--ink) instead of a dark patch. */
 /* Film grain and vignette: a shared "documentary" look. */
 body::after {
     content: ''; position: absolute; inset: 0; z-index: 3; pointer-events: none; opacity: .5; mix-blend-mode: overlay;
@@ -94,17 +93,20 @@ body::after {
 .photo img { display: block; width: 100%; height: auto; }
 .piece { position: absolute; fill: var(--gold); opacity: .13; }
 .note { position: absolute; font: 600 .95rem/1.5 'Courier New', Courier, monospace; color: #B89A6A; opacity: .5; white-space: pre; }
-main { position: relative; z-index: 2; width: 100%; max-width: 560px; text-align: center; }
-.brand { margin: 0 0 28px; font-size: .78rem; letter-spacing: .42em; text-indent: .42em; text-transform: uppercase; color: var(--gold); }
-.emblem { width: 76px; height: auto; display: block; margin: 0 auto 26px; }
-.status { margin: 0 0 14px; font: 600 .74rem/1 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; letter-spacing: .22em;
-    text-indent: .22em; text-transform: uppercase; color: var(--muted); }
-.rule { width: 56px; height: 1px; margin: 0 auto 28px; background: linear-gradient(90deg, transparent, var(--gold), transparent); }
-h1 { margin: 0 0 12px; font-size: 1.7rem; line-height: 1.3; font-weight: 600; color: var(--wheat); }
-.copy { margin: 0 auto; max-width: 460px; font-size: 1.02rem; line-height: 1.6; color: #CDB894; }
+main {
+    --ink: 0 1px 2px rgba(0, 0, 0, .95), 0 0 10px rgba(0, 0, 0, .85), 0 0 22px rgba(0, 0, 0, .6);
+    position: relative; z-index: 2; width: 100%; max-width: 900px; text-align: center; text-shadow: var(--ink);
+}
+.brand { margin: 0 0 30px; font-size: clamp(1rem, 1.5vw, 1.3rem); letter-spacing: .42em; text-indent: .42em; text-transform: uppercase; color: var(--gold); }
+.emblem { width: clamp(84px, 7vw, 112px); height: auto; display: block; margin: 0 auto 28px; filter: drop-shadow(0 2px 8px rgba(0, 0, 0, .8)); }
+.status { margin: 0 0 18px; font: 600 clamp(.95rem, 1.3vw, 1.15rem)/1.2 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; letter-spacing: .22em;
+    text-indent: .22em; text-transform: uppercase; color: #C9B08A; }
+.rule { width: 80px; height: 2px; margin: 0 auto 30px; background: linear-gradient(90deg, transparent, var(--gold), transparent); }
+h1 { margin: 0 0 18px; font-size: clamp(2.2rem, 4.4vw, 3.6rem); line-height: 1.15; font-weight: 600; color: var(--wheat); }
+.copy { margin: 0 auto; max-width: 760px; font-size: clamp(1.2rem, 1.9vw, 1.55rem); line-height: 1.55; color: #E3CFA8; }
 a.retry {
-    display: inline-block; margin-top: 38px; padding: 12px 34px; border: 1px solid var(--gold); border-radius: 2px;
-    font: 600 .78rem/1 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; letter-spacing: .18em; text-transform: uppercase;
+    display: inline-block; margin-top: 42px; padding: 16px 46px; border: 1px solid var(--gold); border-radius: 2px;
+    font: 600 clamp(.95rem, 1.2vw, 1.1rem)/1 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; letter-spacing: .18em; text-transform: uppercase;
     color: var(--wheat); text-decoration: none; background: rgba(26, 18, 11, .7); transition: background .2s, color .2s;
 }
 a.retry:hover, a.retry:focus-visible { background: var(--gold); color: var(--bg); outline: none; }
@@ -148,7 +150,8 @@ def landing_collage(photos: list[str]) -> str:
         ("left:3%", 8, -7), ("left:13%", 52, 5), ("left:2%", 70, -4), ("right:4%", 6, 6),
         ("right:14%", 48, -6), ("right:3%", 68, 4), ("left:24%", 4, 3), ("right:25%", 78, -5),
     ]
-    parts = [photo(src, f"{side};top:{top}%;transform:rotate({angle}deg)", narrow=i < 4)
+    # On a phone the text has no veil under it, so only photos clear of the text stay: the top corners and the bottom one.
+    parts = [photo(src, f"{side};top:{top}%;transform:rotate({angle}deg)", narrow=i in LANDING_NARROW)
              for i, (src, (side, top, angle)) in enumerate(zip(photos, spots, strict=False))]
     parts += [
         piece("king", "width:120px;left:30%;top:60%;transform:rotate(-8deg)"),
@@ -187,7 +190,6 @@ def narrow_css() -> str:
     .photo:not(.narrow), .note { display: none; }
     .photo { width: 96px; padding: 5px 5px 14px; opacity: .45; }
     .piece { opacity: .09; }
-    body::before { background: radial-gradient(ellipse 90% 60% at 50% 50%, rgba(26, 18, 11, .95) 0 60%, rgba(26, 18, 11, .7) 100%); }
 }
 """
 
