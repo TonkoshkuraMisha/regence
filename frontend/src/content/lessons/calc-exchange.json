@@ -1,0 +1,174 @@
+{
+  "id": "calc-exchange",
+  "course": "calculation",
+  "order": 5,
+  "title": {
+    "en": "Counting an exchange",
+    "uk": "Рахунок розміну"
+  },
+  "summary": {
+    "en": "Before you capture, count who attacks and who defends the square, and what each side gives up.",
+    "uk": "Перш ніж брати, порахуйте, хто атакує поле й хто його захищає та чим кожен жертвує."
+  },
+  "steps": [
+    {
+      "type": "text",
+      "fen": "r1bqkbnr/pppp1ppp/2n5/4p3/3PP3/2N2N2/PPP2PPP/R1BQKB1R w KQkq - 0 4",
+      "highlights": [
+        "e5",
+        "d4",
+        "f3",
+        "c6"
+      ],
+      "arrows": [
+        {
+          "from": "d4",
+          "to": "e5",
+          "color": "green"
+        },
+        {
+          "from": "f3",
+          "to": "e5",
+          "color": "green"
+        },
+        {
+          "from": "c6",
+          "to": "e5",
+          "color": "red"
+        }
+      ],
+      "text": {
+        "en": "An exchange on one square: count the attackers and the defenders, then play the captures in your head, cheapest piece first. Here the pawn e5 is attacked twice (the pawn d4 and the knight f3) and defended once (the knight c6). The side with more attackers, starting with the cheapest piece, wins material.",
+        "uk": "Розмін на одному полі: порахуйте нападників і захисників, а тоді розіграйте взяття в голові, починаючи з найдешевшої фігури. Тут пішак e5 атакований двічі (пішак d4 і кінь f3) і захищений раз (кінь c6). Сторона з більшою кількістю нападників, що починає з найдешевшої фігури, виграє матеріал."
+      }
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "White to move. Does the capture dxe5 win a pawn?",
+        "uk": "Хід білих. Чи виграє взяття dxe5 пішака?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "Yes",
+            "uk": "Так"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "No",
+            "uk": "Ні"
+          },
+          "feedback": {
+            "en": "After dxe5 Nxe5 Nxe5 White comes out a pawn up: two attackers beat one defender.",
+            "uk": "Після dxe5 Кxe5 Кxe5 білі лишаються з пішаком у плюсі: двоє нападників перемагають одного захисника."
+          }
+        }
+      ],
+      "highlights": [
+        "e5"
+      ],
+      "fen": "r1bqkbnr/pppp1ppp/2n5/4p3/3PP3/2N2N2/PPP2PPP/R1BQKB1R w KQkq - 0 4"
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "White to move. Does the capture Nxe5 win a pawn?",
+        "uk": "Хід білих. Чи виграє взяття Кxe5 пішака?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "Yes",
+            "uk": "Так"
+          },
+          "feedback": {
+            "en": "After Nxe5 Nxe5 White has given a knight for a pawn: one attacker against one defender loses material.",
+            "uk": "Після Кxe5 Кxe5 білі віддали коня за пішака: один нападник проти одного захисника програє матеріал."
+          }
+        },
+        {
+          "text": {
+            "en": "No",
+            "uk": "Ні"
+          },
+          "correct": true
+        }
+      ],
+      "highlights": [
+        "e5"
+      ],
+      "fen": "r1bqkbnr/pppp1ppp/2n5/4p3/4P3/2N2N2/PPPP1PPP/R1BQKB1R w KQkq - 0 4"
+    }
+  ],
+  "exam": [
+    {
+      "type": "choice",
+      "text": {
+        "en": "White to move. Does the capture dxe5 win a pawn?",
+        "uk": "Хід білих. Чи виграє взяття dxe5 пішака?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "Yes",
+            "uk": "Так"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "No",
+            "uk": "Ні"
+          },
+          "feedback": {
+            "en": "Count again: the pawn d4 and the knight f3 attack e5, only the knight c6 defends it.",
+            "uk": "Порахуйте ще раз: e5 атакують пішак d4 і кінь f3, захищає лише кінь c6."
+          }
+        }
+      ],
+      "highlights": [
+        "e5"
+      ],
+      "fen": "r1bqkbnr/pppp1ppp/2n5/4p3/3PP3/2N2N2/PPP2PPP/R1BQKB1R w KQkq - 0 4"
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "What do you do first before a capture?",
+        "uk": "Що робите першим перед взяттям?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "Count the attackers and defenders of the square",
+            "uk": "Рахую нападників і захисників поля"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "Take, then see",
+            "uk": "Беру, а там видно"
+          },
+          "feedback": {
+            "en": "That is how pieces are lost for a pawn.",
+            "uk": "Так фігури губляться за пішака."
+          }
+        },
+        {
+          "text": {
+            "en": "Capture with the most valuable piece",
+            "uk": "Беру найціннішою фігурою"
+          },
+          "feedback": {
+            "en": "Start with the cheapest piece.",
+            "uk": "Починайте з найдешевшої фігури."
+          }
+        }
+      ]
+    }
+  ]
+}
