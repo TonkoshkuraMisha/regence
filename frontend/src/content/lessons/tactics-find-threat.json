@@ -1,0 +1,203 @@
+{
+  "id": "tactics-find-threat",
+  "course": "tactics",
+  "order": 19,
+  "title": {
+    "en": "What is the threat?",
+    "uk": "Що загрожує?"
+  },
+  "summary": {
+    "en": "Before every move, ask what the last move of your opponent threatens, and find a move that answers it.",
+    "uk": "Перед кожним ходом питайте, чим загрожує останній хід суперника, і шукайте хід, що на нього відповідає."
+  },
+  "steps": [
+    {
+      "type": "text",
+      "fen": "r1bqkbnr/pppp1ppp/2n5/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 5 3",
+      "highlights": [
+        "f7",
+        "h5",
+        "c4"
+      ],
+      "arrows": [
+        {
+          "from": "h5",
+          "to": "f7",
+          "color": "red"
+        }
+      ],
+      "text": {
+        "en": "The most useful habit in chess is to ask, after every opponent's move: what does it threaten? Check the checks, the captures and the pieces that moved. Here White's queen and bishop both aim at f7, a pawn guarded only by the king.",
+        "uk": "Найкорисніша звичка в шахах — після кожного ходу суперника питати: чим це загрожує? Перевірте шахи, взяття і фігури, що походили. Тут ферзь і слон білих разом цілять у f7 — пішака, якого захищає лише король."
+      }
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "Black to move. What does White threaten?",
+        "uk": "Хід чорних. Чим загрожують білі?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "Qxf7#, checkmate",
+            "uk": "Qxf7#, мат"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "Qxe5+, winning a pawn",
+            "uk": "Qxe5+, виграш пішака"
+          },
+          "feedback": {
+            "en": "The pawn on e5 is guarded by the knight c6, so the capture would just lose the queen.",
+            "uk": "Пішака e5 захищає кінь c6, тож це взяття просто програє ферзя."
+          }
+        },
+        {
+          "text": {
+            "en": "Bxf7+, winning a pawn with check",
+            "uk": "Bxf7+, виграш пішака з шахом"
+          },
+          "feedback": {
+            "en": "That is possible too, but the queen's capture is much stronger: it mates.",
+            "uk": "Це теж можливо, але взяття ферзем набагато сильніше: воно ставить мат."
+          }
+        }
+      ],
+      "highlights": [
+        "f7"
+      ],
+      "fen": "r1bqkbnr/pppp1ppp/2n5/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 5 3"
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "Which move stops the mate?",
+        "uk": "Який хід зупиняє мат?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "Qe7",
+            "uk": "Фe7"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "Nf6",
+            "uk": "Кf6"
+          },
+          "feedback": {
+            "en": "It attacks the queen, but a mate comes first: Qxf7# ends the game. Defend against the threat, do not just counterattack.",
+            "uk": "Він нападає на ферзя, але мат іде першим: Qxf7# завершує партію. Захищайтеся від загрози, а не лише контратакуйте."
+          }
+        },
+        {
+          "text": {
+            "en": "Bc5",
+            "uk": "Сc5"
+          },
+          "feedback": {
+            "en": "It does nothing about f7: Qxf7# is still mate.",
+            "uk": "Він нічого не робить з f7: Qxf7# як і раніше мат."
+          }
+        }
+      ],
+      "highlights": [
+        "f7",
+        "f6"
+      ],
+      "fen": "r1bqkbnr/pppp1ppp/2n5/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 5 3"
+    },
+    {
+      "type": "text",
+      "fen": "r1bqkbnr/pppp1ppp/2n5/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 5 3",
+      "text": {
+        "en": "Note the trap: 3...Nf6 attacks the queen and looks natural, but 4.Qxf7# is mate. A threat of mate beats an attack on your queen. Make the habit automatic: look at the last move, name the threat, check that your answer really stops it, and only then play.",
+        "uk": "Зверніть увагу на пастку: 3…Кf6 нападає на ферзя й виглядає природно, але 4.Qxf7# — мат. Загроза мату сильніша за напад на ферзя. Зробіть звичку автоматичною: гляньте на останній хід, назвіть загрозу, переконайтеся, що ваша відповідь її справді зупиняє, і лише тоді ходіть."
+      }
+    }
+  ],
+  "exam": [
+    {
+      "type": "choice",
+      "text": {
+        "en": "White to move. Black threatens ...Re1#. Which move stops it?",
+        "uk": "Хід білих. Чорні загрожують …Te1#. Який хід це зупиняє?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "h3",
+            "uk": "h3"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "Nb3",
+            "uk": "Кb3"
+          },
+          "feedback": {
+            "en": "It does not give the king a square: ...Re1# is mate.",
+            "uk": "Він не дає королю поля: …Te1# — мат."
+          }
+        },
+        {
+          "text": {
+            "en": "Kh1",
+            "uk": "Крh1"
+          },
+          "feedback": {
+            "en": "The king still has no flight square: ...Re1# is still mate.",
+            "uk": "У короля так само немає поля для втечі: …Te1# як і раніше мат."
+          }
+        }
+      ],
+      "highlights": [
+        "e1",
+        "h2"
+      ],
+      "fen": "4r1k1/5ppp/8/8/3N4/8/5PPP/6K1 w - - 0 1"
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "What should you do first when the opponent has just moved?",
+        "uk": "Що слід зробити першим, коли суперник щойно походив?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "Check what his move threatens",
+            "uk": "Перевірити, чим загрожує його хід"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "Make your planned move at once",
+            "uk": "Одразу зробити запланований хід"
+          },
+          "feedback": {
+            "en": "Your plan may walk into a threat you did not see.",
+            "uk": "Ваш план може наразитися на загрозу, якої ви не побачили."
+          }
+        },
+        {
+          "text": {
+            "en": "Offer a draw",
+            "uk": "Запропонувати нічию"
+          },
+          "feedback": {
+            "en": "First understand the position.",
+            "uk": "Спершу зрозумійте позицію."
+          }
+        }
+      ]
+    }
+  ]
+}
