@@ -19,6 +19,7 @@ import {
     eventTitle, fieldName, fieldShortName, getTimeMachine, guestAbout, scoreText, startHistoricEvent,
 } from '../../services/timeMachine';
 import type {FieldEntry, HistoricEvent} from '../../services/timeMachine';
+import {LegendsWeek} from './LegendsWeek';
 
 // Shared look of a page section card.
 const sectionClass = 'bg-acacia p-4 rounded-lg border-2 border-acacia-dark';
@@ -168,7 +169,7 @@ export function TimeMachinePage() {
     // Bullet is not suitable for a twenty-game tournament; "custom control" is not configured here.
     const controls = ALL_TIME_CONTROLS.filter((c) => !c.isManual && c.base >= 3);
     const chosen = controls.find((c) => c.id === control) ?? controls[0];
-    const start = (event: HistoricEvent) => {
+    const start = (event: { key: string }) => {
         // The timeline is open to a guest too, but the tournament participant is a player: games and place are written to their profile.
         if (!getToken()) {
             setError(uiMessage('timeMachine.loginToEnter'));
@@ -202,6 +203,7 @@ export function TimeMachinePage() {
                 </p>
             </header>
             {error && <p role="alert" className="text-sm text-rose-300">{renderUiMessage(error, t)}</p>}
+            <LegendsWeek busy={busy} onStart={(key) => start({key})}/>
             <div className={`${sectionClass} flex flex-wrap items-center gap-3`}>
                 <label htmlFor="tm-control" className="text-sm">{t('timeMachine.control')}</label>
                 <select id="tm-control" value={chosen.id} data-testid="tm-control"

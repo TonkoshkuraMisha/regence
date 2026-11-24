@@ -18,6 +18,7 @@ from src.core.errors import ApiError, DomainError
 from src.db.session import get_db
 from src.models.tournament import Tournament, TournamentGame, TournamentPlayer
 from src.models.user import User
+from src.services import legends_week as legends_week_service
 from src.services import time_machine
 from src.services import tournament_career as career
 from src.services import tournament_rules as rules
@@ -276,6 +277,15 @@ async def time_machine_overview(request: Request, db: AsyncSession = Depends(get
     tournament.
     """
     return {"events": await time_machine.overview(db, await optional_user_id(request, db))}
+
+
+@router.get("/legends-week")
+async def legends_week(request: Request, db: AsyncSession = Depends(get_db)):
+    """
+    Weekly tournament against the legends (task 26.1): this week's Time Machine event and the table of the best runs. Open to a
+    guest too (a logged-in player also gets their own row); entering is the ordinary time-machine start of the announced event.
+    """
+    return await legends_week_service.standings(db, await optional_user_id(request, db))
 
 
 @router.post("/time-machine/{event_key}", response_model=TournamentOut, status_code=status.HTTP_201_CREATED)

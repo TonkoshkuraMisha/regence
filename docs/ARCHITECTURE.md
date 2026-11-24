@@ -250,9 +250,12 @@ For each section: what it does → files → where the data comes from → how i
 - **Career** (`tournament_career.py`) — a ladder of ready-made tournaments of increasing strength. **"Time Machine"**
   (`time_machine.py`, 50 tournaments) — famous tournaments of the past with the full historical field plus the player;
   the fields and the real results are checked against open sources by the scripts in `scripts/dev/time_machine/` (the
-  procedure for adding a tournament — `scripts/dev/time_machine/README.md`).
+  procedure for adding a tournament — `scripts/dev/time_machine/README.md`). **Legends of the week**
+  (`legends_week.py`, task 26.1) — one Time Machine event per ISO week by a fixed rotation over the registry; each player
+  plays their own run, the weekly table ranks the best finished run by tournament place (derived from `tournaments`,
+  no table of its own); `GET /tournaments/legends-week`, client `components/tournaments/LegendsWeek.tsx`.
 - **Tests.** `ladder`, `tournaments`, `tournament_rules`, `tournament_play`, `tournament_simulation`,
-  `tournament_career`, `tournament_big`, `time_machine`, `time_machine_play`; browser — `e2e/time-machine.e2e.ts`.
+  `tournament_career`, `tournament_big`, `time_machine`, `time_machine_play`, `legends_week`; browser — `e2e/time-machine.e2e.ts`.
 
 ### 4.8. Arenas between humans and conferences
 

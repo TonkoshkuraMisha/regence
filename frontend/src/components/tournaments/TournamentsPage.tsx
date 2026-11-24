@@ -27,6 +27,7 @@ import {
     startMyGame, totalRounds as roundsTotal, withdrawTournament,
 } from '../../services/tournaments';
 import {eventTitle} from '../../services/timeMachine';
+import {LegendsAnnouncement} from './LegendsWeek';
 import {RealResult} from './TimeMachine';
 import type {
     ParticipantKind, RandomOpponents, Tournament, TournamentFormat, TournamentGame, TournamentSummary,
@@ -217,6 +218,7 @@ export function TournamentsPage() {
                     </ul>
                 )}
             </Section>
+            <LegendsAnnouncement/>
             <Career/>
             <CreateTournament/>
         </Page>

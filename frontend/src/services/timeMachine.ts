@@ -124,3 +124,25 @@ export function eventTitle(key: string, t: I18n['t']): string {
     const message = `timeMachine.events.${key}.title`;
     return hasMessage(message) ? t(message as MessageKey) : key;
 }
+
+/** A row of the weekly legends table: the place in the table, the player and the place they took in the tournament. */
+export interface LegendsRow {
+    place: number;
+    username: string;
+    tournament_place: number;
+    me: boolean;
+}
+
+/** The legends event of the week and the table of the best runs (GET /tournaments/legends-week, src/services/legends_week.py). */
+export interface LegendsWeek {
+    event_key: string;
+    /** Monday (UTC) the week starts on and the next Monday, ISO dates. */
+    starts_on: string;
+    ends_on: string;
+    rows: LegendsRow[];
+    me: LegendsRow | null;
+}
+
+/** This week's announcement and table; open to guests too. */
+export const getLegendsWeek = () =>
+    call<LegendsWeek>(`${API_BASE_URL}/api/v1/tournaments/legends-week`, {method: 'GET'}, 'timeMachine.loadFailed');
