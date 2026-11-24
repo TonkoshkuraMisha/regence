@@ -1,0 +1,191 @@
+{
+  "id": "tactics-remove-defender",
+  "course": "tactics",
+  "order": 16,
+  "title": {
+    "en": "Removing the defender",
+    "uk": "Знищення захисника"
+  },
+  "summary": {
+    "en": "Take away the piece that guards the target, then take the target itself. A close relative: the overloaded defender.",
+    "uk": "Приберіть фігуру, що охороняє ціль, і заберіть саму ціль. Близький родич — перевантажений захисник."
+  },
+  "steps": [
+    {
+      "type": "text",
+      "fen": "r2q1rk1/p1p1nppp/2p1b3/b2pN3/3P4/B7/P4PPP/RN1Q1RK1 w - - 0 15",
+      "highlights": [
+        "e7",
+        "c6",
+        "a5"
+      ],
+      "arrows": [
+        {
+          "from": "a3",
+          "to": "e7",
+          "color": "green"
+        },
+        {
+          "from": "e5",
+          "to": "c6",
+          "color": "green"
+        }
+      ],
+      "text": {
+        "en": "Look for a target that is defended only once, and ask: who defends it? If that defender can be captured or chased away, the target falls. Here the knight e7 guards the square c6. Remove it with a capture, and the knight jump to c6 attacks the queen and the bishop at once.",
+        "uk": "Знайдіть ціль, яку захищено лише раз, і спитайте: хто її захищає? Якщо цього захисника можна взяти або прогнати, ціль падає. Тут кінь e7 охороняє поле c6. Заберіть його, і стрибок коня на c6 нападе одразу на ферзя й слона."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "r2q1rk1/p1p1nppp/2p1b3/b2pN3/3P4/B7/P4PPP/RN1Q1RK1 w - - 0 15",
+      "text": {
+        "en": "White to move. Win material.",
+        "uk": "Хід білих. Виграйте матеріал."
+      },
+      "line": [
+        {
+          "answers": [
+            "a3e7"
+          ],
+          "reply": "d8e7",
+          "correct": {
+            "en": "The defender of c6 is gone: the queen had to recapture.",
+            "uk": "Захисника c6 знищено: ферзеві довелося брати назад."
+          }
+        },
+        {
+          "answers": [
+            "e5c6"
+          ],
+          "reply": "e7f6",
+          "correct": {
+            "en": "The knight forks the queen and the bishop on a5.",
+            "uk": "Кінь б'є ферзя й слона a5 одночасно."
+          }
+        },
+        {
+          "answers": [
+            "c6a5"
+          ],
+          "correct": {
+            "en": "White has won a piece.",
+            "uk": "Білі виграли фігуру."
+          }
+        }
+      ],
+      "hint": {
+        "en": "Which piece protects the square c6?",
+        "uk": "Яка фігура охороняє поле c6?"
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "r3k1nr/1pp4p/p1n2p2/3Nb1p1/4Pp1P/1P3P2/PB6/R2K1B1R w kq - 3 14",
+      "text": {
+        "en": "White to move. Win material.",
+        "uk": "Хід білих. Виграйте матеріал."
+      },
+      "line": [
+        {
+          "answers": [
+            "b2e5"
+          ],
+          "reply": "c6e5",
+          "correct": {
+            "en": "The bishop on e5 was the only guard of c7, and it is gone.",
+            "uk": "Слон e5 був єдиним захисником c7, і його вже немає."
+          }
+        },
+        {
+          "answers": [
+            "d5c7"
+          ],
+          "correct": {
+            "en": "A fork on the king and the rook a8.",
+            "uk": "Вилка на короля й туру a8."
+          }
+        }
+      ],
+      "hint": {
+        "en": "The knight on d5 wants to go to c7. Which black piece guards that square?",
+        "uk": "Кінь d5 хоче на c7. Яка чорна фігура охороняє це поле?"
+      }
+    },
+    {
+      "type": "text",
+      "fen": "r3k1nr/1pp4p/p1n2p2/3Nb1p1/4Pp1P/1P3P2/PB6/R2K1B1R w kq - 3 14",
+      "highlights": [
+        "e5",
+        "c7"
+      ],
+      "text": {
+        "en": "A related idea is the overloaded defender: one piece guards two things at once. Attack one of them, and the defender cannot keep both. Ask of every defended piece or square: what else does its defender have to guard?",
+        "uk": "Споріднена ідея — перевантажений захисник: одна фігура охороняє одразу дві речі. Атакуйте одну з них, і захисник не втримає обидві. Про кожну захищену фігуру чи поле питайте: що ще має охороняти її захисник?"
+      }
+    }
+  ],
+  "exam": [
+    {
+      "type": "find_move",
+      "fen": "r7/5pkp/6p1/4p3/BQ1pP3/P1q3PP/5R1K/8 b - - 0 32",
+      "text": {
+        "en": "Black to move. Win material.",
+        "uk": "Хід чорних. Виграйте матеріал."
+      },
+      "line": [
+        {
+          "answers": [
+            "c3b4"
+          ],
+          "reply": "a3b4"
+        },
+        {
+          "answers": [
+            "a8a4"
+          ],
+          "correct": {
+            "en": "The bishop a4 was defended only by the queen.",
+            "uk": "Слона a4 захищав лише ферзь."
+          }
+        }
+      ]
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "What is the first question when you look for a way to win a defended piece?",
+        "uk": "Яке перше питання, коли шукаєте, як виграти захищену фігуру?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "Who defends it, and can that defender be removed?",
+            "uk": "Хто її захищає і чи можна цього захисника прибрати?"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "How many pawns are left?",
+            "uk": "Скільки лишилося пішаків?"
+          },
+          "feedback": {
+            "en": "The material count does not show the target's weak point.",
+            "uk": "Підрахунок матеріалу не показує слабке місце цілі."
+          }
+        },
+        {
+          "text": {
+            "en": "Where is the enemy king?",
+            "uk": "Де король суперника?"
+          },
+          "feedback": {
+            "en": "That matters in other tactics; here the key is the piece that protects the target.",
+            "uk": "Це важливо в інших прийомах; тут ключ — фігура, що захищає ціль."
+          }
+        }
+      ]
+    }
+  ]
+}

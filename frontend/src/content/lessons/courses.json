@@ -58,5 +58,17 @@
             "en": "Typical pawn structures and the plans they give both sides.",
             "uk": "Типові пішакові структури й плани, які вони дають обом сторонам."
         }
+    },
+    {
+        "id": "opening",
+        "order": 5,
+        "title": {
+            "en": "Opening: development and traps",
+            "uk": "Дебют: розвиток і пастки"
+        },
+        "summary": {
+            "en": "The opening in a few simple ideas: develop quickly, fight for the centre, castle and avoid classic traps.",
+            "uk": "Дебют у кількох простих ідеях: швидко розвивайтеся, боріться за центр, рокіруйте й уникайте класичних пасток."
+        }
     }
 ]
