@@ -50,7 +50,7 @@ export const COURSE: CourseModule[] = [
     mod('T0.1', 'T', [b('checkMate')]),
     mod('M0.1', 'M', [b('checkMate'), m('back_rank_mate')]),
     mod('E0.1', 'E', [e('kq_center'), e('kq_far'), e('kr_edge'), e('kr_center')]),
-    mod('T0.2', 'T', [th('hanging_piece')]),
+    mod('T0.2', 'T', [l('tactics-hanging-pieces'), th('hanging_piece')]),
     mod('O0.1', 'O', [b('special'), th('early_queen')]),
     mod('G0.1', 'G', [mini('pawn_war'), mini('king_pawns'), mini('capture_flag')]),
     mod('X0', 'G', [ex('level0')]),
