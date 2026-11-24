@@ -97,11 +97,14 @@ main {
     --ink: 0 1px 2px rgba(0, 0, 0, .95), 0 0 10px rgba(0, 0, 0, .85), 0 0 22px rgba(0, 0, 0, .6);
     position: relative; z-index: 2; width: 100%; max-width: 900px; text-align: center; text-shadow: var(--ink);
 }
-.brand { margin: 0 0 30px; font-size: clamp(1rem, 1.5vw, 1.3rem); letter-spacing: .42em; text-indent: .42em; text-transform: uppercase; color: var(--gold); }
-.emblem { width: clamp(84px, 7vw, 112px); height: auto; display: block; margin: 0 auto 28px; filter: drop-shadow(0 2px 8px rgba(0, 0, 0, .8)); }
-.status { margin: 0 0 18px; font: 600 clamp(.95rem, 1.3vw, 1.15rem)/1.2 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; letter-spacing: .22em;
-    text-indent: .22em; text-transform: uppercase; color: #C9B08A; }
-.rule { width: 80px; height: 2px; margin: 0 auto 30px; background: linear-gradient(90deg, transparent, var(--gold), transparent); }
+.brand { margin: 0 0 26px; font-size: clamp(1.9rem, 3.4vw, 3rem); font-weight: 400; letter-spacing: .5em; text-indent: .5em; text-transform: uppercase; color: #E8C98F; }
+.emblem { width: clamp(110px, 9vw, 150px); height: auto; display: block; margin: 0 auto 26px; filter: drop-shadow(0 2px 8px rgba(0, 0, 0, .8)); }
+.status { display: flex; align-items: center; justify-content: center; gap: 20px; margin: 0 0 20px; font: italic 400 clamp(1.1rem, 1.7vw, 1.5rem)/1.25 Georgia, 'Times New Roman', serif;
+    letter-spacing: .24em; text-transform: uppercase; color: #DCC598; }
+.status::before, .status::after { content: ''; flex: 0 1 clamp(30px, 5vw, 72px); height: 1px; background: linear-gradient(90deg, transparent, var(--gold)); }
+.status::after { transform: scaleX(-1); }
+.rule { position: relative; width: 140px; height: 1px; margin: 0 auto 28px; background: linear-gradient(90deg, transparent, var(--gold), transparent); }
+.rule::after { content: ''; position: absolute; left: 50%; top: 50%; width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; transform: rotate(45deg); background: var(--gold); box-shadow: 0 0 10px rgba(208, 169, 114, .6); }
 h1 { margin: 0 0 18px; font-size: clamp(2.2rem, 4.4vw, 3.6rem); line-height: 1.15; font-weight: 600; color: var(--wheat); }
 .copy { margin: 0 auto; max-width: 760px; font-size: clamp(1.2rem, 1.9vw, 1.55rem); line-height: 1.55; color: #E3CFA8; }
 a.retry {
