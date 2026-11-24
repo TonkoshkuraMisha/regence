@@ -1,0 +1,173 @@
+{
+  "id": "calc-distance-routes",
+  "course": "calculation",
+  "order": 3,
+  "title": {
+    "en": "Distance and routes",
+    "uk": "Відстані й маршрути"
+  },
+  "summary": {
+    "en": "How many moves does a king or a knight need? The skill of measuring distance saves tempi in races and endgames.",
+    "uk": "Скільки ходів потрібно королю чи коню? Уміння міряти відстань економить темпи в гонитвах і ендшпілі."
+  },
+  "steps": [
+    {
+      "type": "text",
+      "fen": "8/8/8/8/8/8/8/N3K2k w - - 0 1",
+      "highlights": [
+        "a1",
+        "e1"
+      ],
+      "text": {
+        "en": "A king covers the distance between two squares in as many moves as the larger of the file and rank differences. A knight is trickier: it changes the colour of its square every move and moves in an L, so the distance is worked out square by square. Practise counting without moving the pieces.",
+        "uk": "Король долає відстань між двома полями за стільки ходів, яка більша з різниць по вертикалях і горизонталях. Кінь складніший: він щоразу змінює колір поля й ходить літерою Г, тож відстань рахують поле за полем. Тренуйтеся рахувати, не рухаючи фігур."
+      }
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "How many moves does a king need to go from a1 to h8?",
+        "uk": "За скільки ходів король дійде з a1 на h8?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "7",
+            "uk": "7"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "6",
+            "uk": "6"
+          },
+          "feedback": {
+            "en": "The larger of the two differences (7 files, 7 ranks) gives 7.",
+            "uk": "Береться більша з двох різниць (7 вертикалей, 7 горизонталей): 7."
+          }
+        },
+        {
+          "text": {
+            "en": "8",
+            "uk": "8"
+          },
+          "feedback": {
+            "en": "The larger of the two differences (7 files, 7 ranks) gives 7.",
+            "uk": "Береться більша з двох різниць (7 вертикалей, 7 горизонталей): 7."
+          }
+        }
+      ]
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "How many moves does a knight need to go from g1 to e5?",
+        "uk": "За скільки ходів кінь дійде з g1 на e5?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "2",
+            "uk": "2"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "1",
+            "uk": "1"
+          },
+          "feedback": {
+            "en": "g1 and e5 are squares of the same colour, so a knight needs an even number of moves; the answer is 2.",
+            "uk": "g1 і e5 — поля одного кольору, тож коню потрібна парна кількість ходів; відповідь 2."
+          }
+        },
+        {
+          "text": {
+            "en": "3",
+            "uk": "3"
+          },
+          "feedback": {
+            "en": "g1 and e5 are squares of the same colour, so a knight needs an even number of moves; the answer is 2.",
+            "uk": "g1 і e5 — поля одного кольору, тож коню потрібна парна кількість ходів; відповідь 2."
+          }
+        }
+      ]
+    }
+  ],
+  "exam": [
+    {
+      "type": "choice",
+      "text": {
+        "en": "How many moves does a knight need to go from b1 to d4?",
+        "uk": "За скільки ходів кінь дійде з b1 на d4?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "3",
+            "uk": "3"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "2",
+            "uk": "2"
+          },
+          "feedback": {
+            "en": "b1 and d4 are squares of the different colour, so a knight needs an odd number of moves; the answer is 3.",
+            "uk": "b1 і d4 — поля різних кольорів, тож коню потрібна непарна кількість ходів; відповідь 3."
+          }
+        },
+        {
+          "text": {
+            "en": "4",
+            "uk": "4"
+          },
+          "feedback": {
+            "en": "b1 and d4 are squares of the different colour, so a knight needs an odd number of moves; the answer is 3.",
+            "uk": "b1 і d4 — поля різних кольорів, тож коню потрібна непарна кількість ходів; відповідь 3."
+          }
+        }
+      ]
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "How many moves does a king need to go from e1 to e8?",
+        "uk": "За скільки ходів король дійде з e1 на e8?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "7",
+            "uk": "7"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "6",
+            "uk": "6"
+          },
+          "feedback": {
+            "en": "Seven ranks apart: seven moves.",
+            "uk": "Сім горизонталей: сім ходів."
+          }
+        },
+        {
+          "text": {
+            "en": "8",
+            "uk": "8"
+          },
+          "feedback": {
+            "en": "Seven ranks apart: seven moves.",
+            "uk": "Сім горизонталей: сім ходів."
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,5 +1,17 @@
 [
     {
+        "id": "calculation",
+        "order": 6,
+        "title": {
+            "en": "Calculation and vision",
+            "uk": "Розрахунок і бачення"
+        },
+        "summary": {
+            "en": "See the board, count exchanges and calculate forcing lines: the skills behind every tactic.",
+            "uk": "Бачити дошку, рахувати розміни й розраховувати форсовані варіанти: навички, що стоять за кожним прийомом."
+        }
+    },
+    {
         "id": "tactics",
         "order": 1,
         "title": {

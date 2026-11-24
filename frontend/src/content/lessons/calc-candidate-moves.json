@@ -1,0 +1,175 @@
+{
+  "id": "calc-candidate-moves",
+  "course": "calculation",
+  "order": 6,
+  "title": {
+    "en": "Candidate moves",
+    "uk": "Ходи-кандидати"
+  },
+  "summary": {
+    "en": "Before choosing, list the moves worth a look: checks, captures, threats and one quiet improving move.",
+    "uk": "Перш ніж обирати, складіть список ходів, що заслуговують на погляд: шахи, взяття, загрози й один тихий покращувальний хід."
+  },
+  "steps": [
+    {
+      "type": "text",
+      "fen": "r1bq1rk1/pppp1ppp/2n2n2/2b1p3/2B1P3/2NP1N2/PPP2PPP/R1BQ1RK1 w - - 0 6",
+      "highlights": [
+        "f7"
+      ],
+      "text": {
+        "en": "A candidate move is a move you are ready to calculate. Make the list in a fixed order so that nothing is missed: all checks, all captures, all threats, then one or two quiet moves that improve a piece. Then calculate the forcing ones first. Let us practise the list on this position.",
+        "uk": "Хід-кандидат — це хід, який ви готові рахувати. Складайте список у сталому порядку, щоб нічого не пропустити: усі шахи, усі взяття, усі загрози, а тоді один-два тихі ходи, що покращують фігуру. Потім рахуйте спершу форсовані. Потренуймо список на цій позиції."
+      }
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "White to move. How many checks does White have?",
+        "uk": "Хід білих. Скільки шахів у білих?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "1",
+            "uk": "1"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "2",
+            "uk": "2"
+          },
+          "feedback": {
+            "en": "Count again: look at every piece that can give check.",
+            "uk": "Порахуйте ще раз: перегляньте кожну фігуру, що може дати шах."
+          }
+        },
+        {
+          "text": {
+            "en": "3",
+            "uk": "3"
+          },
+          "feedback": {
+            "en": "Count again: look at every piece that can give check.",
+            "uk": "Порахуйте ще раз: перегляньте кожну фігуру, що може дати шах."
+          }
+        }
+      ],
+      "fen": "r1bq1rk1/pppp1ppp/2n2n2/2b1p3/2B1P3/2NP1N2/PPP2PPP/R1BQ1RK1 w - - 0 6"
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "How many captures does White have?",
+        "uk": "Скільки взяттів у білих?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "2",
+            "uk": "2"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "3",
+            "uk": "3"
+          },
+          "feedback": {
+            "en": "Count again: every legal capture counts, even a bad one.",
+            "uk": "Порахуйте ще раз: рахується кожне допустиме взяття, навіть погане."
+          }
+        },
+        {
+          "text": {
+            "en": "4",
+            "uk": "4"
+          },
+          "feedback": {
+            "en": "Count again: every legal capture counts, even a bad one.",
+            "uk": "Порахуйте ще раз: рахується кожне допустиме взяття, навіть погане."
+          }
+        }
+      ],
+      "fen": "r1bq1rk1/pppp1ppp/2n2n2/2b1p3/2B1P3/2NP1N2/PPP2PPP/R1BQ1RK1 w - - 0 6"
+    }
+  ],
+  "exam": [
+    {
+      "type": "choice",
+      "text": {
+        "en": "How many checks does White have in this position?",
+        "uk": "Скільки шахів у білих у цій позиції?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "1",
+            "uk": "1"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "2",
+            "uk": "2"
+          },
+          "feedback": {
+            "en": "Count again, piece by piece.",
+            "uk": "Порахуйте ще раз, фігуру за фігурою."
+          }
+        },
+        {
+          "text": {
+            "en": "3",
+            "uk": "3"
+          },
+          "feedback": {
+            "en": "Count again, piece by piece.",
+            "uk": "Порахуйте ще раз, фігуру за фігурою."
+          }
+        }
+      ],
+      "fen": "r1bq1rk1/pppp1ppp/2n2n2/2b1p3/2B1P3/2NP1N2/PPP2PPP/R1BQ1RK1 w - - 0 6"
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "Which moves do you calculate first?",
+        "uk": "Які ходи рахуєте першими?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "The forcing ones: checks, captures, threats",
+            "uk": "Форсовані: шахи, взяття, загрози"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "The quiet ones",
+            "uk": "Тихі"
+          },
+          "feedback": {
+            "en": "They leave too many answers to calculate far.",
+            "uk": "Вони залишають забагато відповідей, щоб рахувати далеко."
+          }
+        },
+        {
+          "text": {
+            "en": "The ones that look prettiest",
+            "uk": "Ті, що виглядають найкраще"
+          },
+          "feedback": {
+            "en": "Looks are not a method.",
+            "uk": "Вигляд — не метод."
+          }
+        }
+      ]
+    }
+  ]
+}

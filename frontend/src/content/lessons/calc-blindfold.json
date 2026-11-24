@@ -1,0 +1,169 @@
+{
+  "id": "calc-blindfold",
+  "course": "calculation",
+  "order": 4,
+  "title": {
+    "en": "Seeing the board in your head",
+    "uk": "Бачити дошку в голові"
+  },
+  "summary": {
+    "en": "Follow moves without a board: the skill that lets you calculate lines to the end.",
+    "uk": "Стежити за ходами без дошки: навичка, що дозволяє рахувати варіанти до кінця."
+  },
+  "steps": [
+    {
+      "type": "text",
+      "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+      "text": {
+        "en": "To calculate a line you must see the position after each move in your head. Train it with short sequences from the starting position: update the board mentally after every move and name the pieces and the squares they attack. No board is shown in the next questions on purpose.",
+        "uk": "Щоб рахувати варіант, треба бачити позицію після кожного ходу в голові. Тренуйте це на коротких послідовностях із початкової позиції: оновлюйте дошку подумки після кожного ходу й називайте фігури та поля, які вони б'ють. У наступних питаннях дошки навмисно немає."
+      }
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "From the starting position: 1.Nf3 Nc6 2.Ng5. Which of these squares does the knight on g5 attack?",
+        "uk": "З початкової позиції: 1.Кf3 Кc6 2.Кg5. Яке з цих полів б'є кінь на g5?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "e6",
+            "uk": "e6"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "f6",
+            "uk": "f6"
+          },
+          "feedback": {
+            "en": "A knight never attacks the square next to it on its rank.",
+            "uk": "Кінь ніколи не б'є сусіднє поле на своїй горизонталі."
+          }
+        },
+        {
+          "text": {
+            "en": "g7",
+            "uk": "g7"
+          },
+          "feedback": {
+            "en": "g7 is straight ahead of the knight: it does not attack it.",
+            "uk": "g7 прямо перед конем: він його не б'є."
+          }
+        }
+      ]
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "From the starting position: 1.d4 d5 2.Bf4. Which black pawn does the bishop attack?",
+        "uk": "З початкової позиції: 1.d4 d5 2.Сf4. Який чорний пішак під боєм слона?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "c7",
+            "uk": "c7"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "e7",
+            "uk": "e7"
+          },
+          "feedback": {
+            "en": "The bishop on f4 does not stand on the same diagonal as e7.",
+            "uk": "Слон на f4 не стоїть на одній діагоналі з e7."
+          }
+        },
+        {
+          "text": {
+            "en": "a7",
+            "uk": "a7"
+          },
+          "feedback": {
+            "en": "a7 lies far from the diagonals of f4.",
+            "uk": "a7 далеко від діагоналей f4."
+          }
+        }
+      ]
+    }
+  ],
+  "exam": [
+    {
+      "type": "choice",
+      "text": {
+        "en": "From the starting position: 1.e4 e5 2.Nf3. Which black pawn does the knight attack?",
+        "uk": "З початкової позиції: 1.e4 e5 2.Кf3. Який чорний пішак під боєм коня?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "e5",
+            "uk": "e5"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "d6",
+            "uk": "d6"
+          },
+          "feedback": {
+            "en": "There is no pawn on d6 yet.",
+            "uk": "На d6 ще нема пішака."
+          }
+        },
+        {
+          "text": {
+            "en": "f7",
+            "uk": "f7"
+          },
+          "feedback": {
+            "en": "The knight on f3 does not attack f7.",
+            "uk": "Кінь на f3 не б'є f7."
+          }
+        }
+      ]
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "Why train without a board?",
+        "uk": "Навіщо тренуватися без дошки?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "To calculate lines to the end without moving the pieces",
+            "uk": "Щоб рахувати варіанти до кінця, не рухаючи фігур"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "To play faster in real games",
+            "uk": "Щоб грати швидше в справжніх партіях"
+          },
+          "feedback": {
+            "en": "Speed is a side effect; the aim is calculation.",
+            "uk": "Швидкість — побічний ефект; мета — розрахунок."
+          }
+        },
+        {
+          "text": {
+            "en": "Because it is a rule of chess",
+            "uk": "Бо це правило шахів"
+          },
+          "feedback": {
+            "en": "No rule requires it; it is a training method.",
+            "uk": "Жодне правило цього не вимагає; це метод тренування."
+          }
+        }
+      ]
+    }
+  ]
+}
