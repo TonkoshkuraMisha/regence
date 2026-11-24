@@ -1,0 +1,171 @@
+{
+  "id": "king-mate-in-one-two",
+  "course": "king-attack",
+  "order": 10,
+  "title": {
+    "en": "Mate in one and two",
+    "uk": "Мат в один і два ходи"
+  },
+  "summary": {
+    "en": "Check every check: how to find a mate in one, and the idea behind mates in two.",
+    "uk": "Перевіряйте кожен шах: як знайти мат в один хід і яка ідея стоїть за матами в два ходи."
+  },
+  "steps": [
+    {
+      "type": "text",
+      "fen": "2k4r/Qpp2pp1/3pb3/1BP1n1p1/P7/4P3/1P1N1Pq1/3RK3 w - - 0 18",
+      "highlights": [
+        "a7",
+        "c8",
+        "a8"
+      ],
+      "arrows": [
+        {
+          "from": "a7",
+          "to": "a8",
+          "color": "green"
+        }
+      ],
+      "text": {
+        "en": "To find a mate, go through all the checks one by one. For each check ask three questions: can the king capture the checking piece? can it step to a free square? can the check be blocked or the piece captured by another? If the answer to all three is no, it is mate.",
+        "uk": "Щоб знайти мат, перебирайте всі шахи по черзі. Для кожного шаху спитайте: чи може король узяти фігуру, що дає шах? чи може він піти на вільне поле? чи можна перекрити шах або взяти фігуру іншою? Якщо на всі три питання відповідь «ні» — це мат."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "2k4r/Qpp2pp1/3pb3/1BP1n1p1/P7/4P3/1P1N1Pq1/3RK3 w - - 0 18",
+      "text": {
+        "en": "White to move. Mate in one.",
+        "uk": "Хід білих. Мат в один хід."
+      },
+      "line": [
+        {
+          "answers": [
+            "a7a8"
+          ],
+          "correct": {
+            "en": "The king cannot capture on a8 or escape: checkmate.",
+            "uk": "Король не може взяти на a8 чи втекти: мат."
+          }
+        }
+      ]
+    },
+    {
+      "type": "find_move",
+      "fen": "r3k2r/3p1ppp/p3p3/1pb1Pn2/4P2q/1B6/PPP3PP/R1BQ1R1K b kq - 0 16",
+      "text": {
+        "en": "Black to move. Mate in one.",
+        "uk": "Хід чорних. Мат в один хід."
+      },
+      "line": [
+        {
+          "answers": [
+            "f5g3"
+          ],
+          "correct": {
+            "en": "The knight gives mate: the king is boxed in by its own pieces.",
+            "uk": "Кінь ставить мат: короля замкнули власні фігури."
+          }
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "fen": "4r1k1/5pp1/p2p1r2/3Pq1Q1/8/1PP3R1/6PP/R5K1 b - - 2 27",
+      "highlights": [
+        "e1",
+        "g1"
+      ],
+      "arrows": [
+        {
+          "from": "e5",
+          "to": "e1",
+          "color": "green"
+        }
+      ],
+      "text": {
+        "en": "A mate in two often starts with a forcing move that the opponent must accept. Here a queen sacrifice drags the rook away from the first rank: after the king's defender is removed, the other rook mates.",
+        "uk": "Мат у два ходи часто починається з форсованого ходу, який суперник мусить прийняти. Тут жертва ферзя відтягує туру з першої горизонталі: щойно захисника короля прибрано, інша тура ставить мат."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "4r1k1/5pp1/p2p1r2/3Pq1Q1/8/1PP3R1/6PP/R5K1 b - - 2 27",
+      "text": {
+        "en": "Black to move. Mate in two.",
+        "uk": "Хід чорних. Мат у два ходи."
+      },
+      "line": [
+        {
+          "answers": [
+            "e5e1"
+          ],
+          "reply": "a1e1",
+          "correct": {
+            "en": "White must take: the rook a1 leaves its post.",
+            "uk": "Білі мусять узяти: тура a1 залишає свій пост."
+          }
+        },
+        {
+          "answers": [
+            "e8e1"
+          ],
+          "correct": {
+            "en": "Back-rank mate.",
+            "uk": "Мат на першій горизонталі."
+          }
+        }
+      ],
+      "hint": {
+        "en": "A queen sacrifice with check.",
+        "uk": "Жертва ферзя з шахом."
+      }
+    }
+  ],
+  "exam": [
+    {
+      "type": "find_move",
+      "fen": "r4r1k/pp3pp1/1bp4p/3b3Q/3P4/P1P3qP/1PB2PP1/R1B2RK1 b - - 0 25",
+      "text": {
+        "en": "Black to move. Mate in one.",
+        "uk": "Хід чорних. Мат в один хід."
+      },
+      "line": [
+        {
+          "answers": [
+            "g3g2"
+          ],
+          "correct": {
+            "en": "The queen is protected by the bishop d5.",
+            "uk": "Ферзя захищає слон d5."
+          }
+        }
+      ]
+    },
+    {
+      "type": "find_move",
+      "fen": "r6k/1pp2p2/3b1N2/4n1RP/2q5/p7/2P5/1K4R1 w - - 4 36",
+      "text": {
+        "en": "White to move. Mate in two.",
+        "uk": "Хід білих. Мат у два ходи."
+      },
+      "line": [
+        {
+          "answers": [
+            "g5g8"
+          ],
+          "reply": "a8g8"
+        },
+        {
+          "answers": [
+            "g1g8"
+          ],
+          "correct": {
+            "en": "Back-rank mate again.",
+            "uk": "Знову мат на першій горизонталі."
+          }
+        }
+      ]
+    }
+  ]
+}
