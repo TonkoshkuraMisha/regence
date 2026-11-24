@@ -18,7 +18,7 @@
 // position; there is no "live" position.
 
 import {useState, useEffect, useRef, useMemo, useCallback} from 'react';
-import {useParams, useLocation, Link} from 'react-router-dom';
+import {useParams, useLocation, useNavigate, Link} from 'react-router-dom';
 import {Chess} from 'chess.js';
 import {ArrowLeft, Download, Loader2, Sword, Palette, Cpu, Sparkles, Volume2, VolumeX, Crown, Share2} from 'lucide-react';
 import {gameDisplayDate} from '../services/gameDates';
@@ -88,6 +88,7 @@ export default function GameViewer({library = false, imported = false}: { librar
     const {t, dateLocale} = useI18n();
     const {gameId} = useParams<{ gameId: string }>();
     const location = useLocation();
+    const navigate = useNavigate();
     const gameDataFromState = location.state?.game;
 
     const [history, setHistory] = useState<any[]>([]);
@@ -240,6 +241,11 @@ export default function GameViewer({library = false, imported = false}: { librar
                     analysisApi.pgn(source, gameId ?? ''),
                     library ? Promise.resolve(null) : analysisApi.cached(source, gameId ?? ''),
                 ]);
+                // A Fischer random game: the client chess library has no 960 rules, the archive viewer replays it on the server.
+                if (source === 'played' && pgnText.includes('[Variant "Chess960"]')) {
+                    navigate(`/play/960/game/${gameId}`, {replace: true});
+                    return;
+                }
                 const newGame = new Chess();
                 newGame.loadPgn(pgnText);
 

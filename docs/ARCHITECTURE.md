@@ -142,7 +142,7 @@ For each section: what it does → files → where the data comes from → how i
   time goes to the opponent, the `games.hourglass` flag), Fischer random chess.
 - **Files.** `src/api/websockets.py` (actions), `src/services/matchmaker.py` (lobby and game start),
   `game_state.py` (position, clocks, finish), `game_engine.py` (rules: legality, result, flag), `rating.py`,
-  `connection_manager.py`, `odds.py`, `chess960.py`; client — `components/Chessboard.tsx` and the hooks in
+  `connection_manager.py`, `odds.py`, `chess960.py` (a bot game, the archive replay of finished 960 games and their engine analysis); client — `components/Chessboard.tsx` and the hooks in
   `components/chessboard/hooks/` (`useGameSocket.ts`, `useClock.ts`, `usePremoves.ts`).
 - **How a move goes.** `make_move` → `GameStateManager.process_atomic_move`: in a single Redis transaction
   (WATCH/MULTI) the turn order, the state version and legality are checked, time is deducted and the new position is

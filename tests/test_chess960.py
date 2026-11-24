@@ -7,6 +7,7 @@ import chess
 import pytest
 
 from src.core.errors import DomainValueError
+from src.models.game import GameStatus
 from src.services import chess960 as c960
 
 API = "/api/v1/chess960"
@@ -83,4 +84,92 @@ def test_api_engine_unavailable(client, monkeypatch):
 
     monkeypatch.setattr(c960, "bot_move", broken)
     reply = client.post(f"{API}/move", json={"number": 518, "moves": [], "move": "e2e4"})
+    assert reply.status_code == 503 and reply.json()["detail"]["code"] == "engine_busy"
+
+
+# --- Archive of finished games (21.3): replay and analysis ---
+
+def _pgn_960(moves: list[str]) -> str:
+    """The PGN of a finished game as the server stores it: Variant and FEN headers (Shredder-FEN) plus the movetext."""
+    from src.services.odds import pgn_header
+    board = c960.start_board(0)
+    start = board.fen(shredder=True)
+    body = []
+    for index, uci in enumerate(moves):
+        san = board.san(board.parse_uci(uci))
+        board.push(board.parse_uci(uci))
+        body.append(f"{index // 2 + 1}. {san}" if index % 2 == 0 else san)
+    return f'{pgn_header(start)}\n[Result "1-0"]\n\n{" ".join(body)} 1-0'
+
+
+def test_archive_record_replays_a_960_game():
+    record = c960.archive_record(_pgn_960(["e2e4", "e7e5", "b2b3"]))
+    assert record.moves == ["e2e4", "e7e5", "b2b3"] and len(record.fens) == 4
+    assert record.fens[0] == record.start_fen == c960.start_board(0).fen(shredder=True)
+    assert record.sans[0] == "e4" and record.result == "1-0"
+
+
+def test_archive_record_rejects_standard_and_broken_games():
+    standard = '[Event "t"]\n[Result "1-0"]\n\n1. e4 e5 1-0'
+    for text in (standard, "", "garbage"):
+        with pytest.raises(DomainValueError) as refused:
+            c960.archive_record(text)
+        assert refused.value.code == "not_chess960_game"
+
+
+def test_evaluate_positions_goes_through_the_pool(monkeypatch):
+    seen = {}
+
+    @contextmanager
+    def acquire(options):
+        seen["options"] = options
+
+        def analyse(board, limit):
+            seen["chess960"] = board.chess960
+            return {"score": chess.engine.PovScore(chess.engine.Cp(35), chess.WHITE)}
+        yield SimpleNamespace(analyse=analyse)
+
+    monkeypatch.setattr(c960, "resolve_stockfish_path", lambda: "stockfish")
+    monkeypatch.setattr(c960, "get_engine_pool", lambda path: SimpleNamespace(acquire=acquire))
+    mate = c960.start_board(518)
+    for uci in ("f2f3", "e7e5", "g2g4", "d8h4"):
+        mate.push_uci(uci)
+    scores = c960.evaluate_positions([c960.start_board(0).fen(shredder=True), mate.fen(shredder=True)])
+    assert scores == [35, -c960.MATE_SCORE_CP] and seen["chess960"] is True and seen["options"] == {}
+
+
+async def _stored(db_session, test_user_1, test_user_2, pgn: str, status: GameStatus = GameStatus.COMPLETED) -> int:
+    from src.models.game import Game
+    game = Game(white_player_id=test_user_1.id, black_player_id=test_user_2.id, status=status, result="1-0",
+                termination="checkmate", is_rated=False, base_time_ms=300000, increment_ms=0, pgn=pgn)
+    db_session.add(game)
+    await db_session.commit()
+    return game.id
+
+
+async def test_api_archive_and_analysis(client, db_session, test_user_1, test_user_2, monkeypatch):
+    stored = await _stored(db_session, test_user_1, test_user_2, _pgn_960(["e2e4", "e7e5"]))
+    view = client.get(f"{API}/archive/{stored}").json()
+    assert view["moves"] == ["e2e4", "e7e5"] and len(view["fens"]) == 3 and view["result"] == "1-0"
+
+    monkeypatch.setattr(c960, "evaluate_positions", lambda fens: [10] * len(fens))
+    analysis = client.get(f"{API}/archive/{stored}/analysis").json()
+    assert analysis == {"game_id": stored, "scores": [10, 10, 10], "complete": True}
+
+    standard = await _stored(db_session, test_user_1, test_user_2, '[Result "1-0"]\n\n1. e4 e5 1-0')
+    assert client.get(f"{API}/archive/{standard}").json()["detail"]["code"] == "not_chess960_game"
+    running = await _stored(db_session, test_user_1, test_user_2, _pgn_960(["e2e4"]), GameStatus.IN_PROGRESS)
+    assert client.get(f"{API}/archive/{running}").status_code == 404
+    assert client.get(f"{API}/archive/999999").status_code == 404
+
+
+async def test_api_archive_analysis_engine_unavailable(client, db_session, test_user_1, test_user_2, monkeypatch):
+    from src.services.engine_pool import EngineUnavailableError
+
+    def broken(fens):
+        raise EngineUnavailableError("no engine")
+
+    monkeypatch.setattr(c960, "evaluate_positions", broken)
+    stored = await _stored(db_session, test_user_1, test_user_2, _pgn_960(["e2e4"]))
+    reply = client.get(f"{API}/archive/{stored}/analysis")
     assert reply.status_code == 503 and reply.json()["detail"]["code"] == "engine_busy"

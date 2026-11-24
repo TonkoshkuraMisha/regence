@@ -1279,6 +1279,7 @@ export const en = {
         exam_section_empty: 'There are no positions for this test yet',
         exam_question_unknown: 'This position is not part of this test',
         chess960_bad_position: 'There is no such starting position (0–959)',
+        not_chess960_game: 'This game is not Fischer random chess',
         mini_game_over: 'The game is already over',
         mini_room_not_found: 'This game room does not exist or has expired',
         mini_room_full: 'Both seats in this game are already taken',
@@ -2766,6 +2767,7 @@ export const en = {
         archiveBadge: 'Blindfold, level {level} · peeks: {peeks}',
     },
     chess960: {
+        archive: {title: 'Fischer random game #{id}', first: 'To the start', prev: 'Previous move', next: 'Next move', last: 'To the end', ply: 'Move {n} of {total}', analyse: 'Analyse with the engine', analysing: 'Analysing…', score: 'Evaluation', curve: 'Evaluation curve (White above the line)', partial: 'Only the first part of the game was analysed.', swing: 'Move {n}: {move} lost about {loss} pawns'},
         live: {title: 'Chess960 against a person', noGame: 'No Chess960 game is running. Create a link for a friend on the main page and choose the Chess960 variant.', toLobby: 'To the main board', vsBot: 'Play Chess960 against the bot', yourMove: 'Your move.', opponentMove: 'Opponent to move.', unrated: 'The game is unrated.', drawOffered: 'Your opponent offers a draw.', acceptDraw: 'Accept', declineDraw: 'Decline', drawSent: 'Draw offer sent.', drawDeclined: 'The draw offer was declined.', abort: 'Abort', offerDraw: 'Offer a draw', resign: 'Resign', resignConfirm: 'Resign the game?', premoveSet: 'Premove: {move} — it is played as soon as it is your turn.', cancelPremove: 'Cancel', rematch: 'Rematch', rematchSent: 'Rematch offered.', rematchOffered: 'Your opponent offers a rematch: the same position, colours swapped.', rematchDeclined: 'The rematch was declined.', again: 'New game'},
         title: 'Fischer random chess',
         intro: 'Chess960: the pieces behind the pawns stand in one of 960 random orders, the same for both sides. Opening theory does not help — think from the first move. Against the bot, without rating.',

@@ -12,10 +12,13 @@ import asyncio
 
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.fair_play import forbid_engine_help_during_game
 from src.api.rate_limit import rate_limit
 from src.core.errors import ApiError, DomainError
+from src.db.session import get_db
+from src.models.game import Game, GameStatus
 from src.services import chess960 as c960
 from src.services.engine_pool import EngineBusyError, EngineUnavailableError, engine_work
 
@@ -87,3 +90,37 @@ async def move(payload: MoveIn):
 async def bot_turn(payload: GameIn):
     """The bot's move in the current position - when the player has Black (the bot starts)."""
     return await _bot_reply(_replay(payload), payload.level)
+
+
+async def _archive_record(game_id: int, db: AsyncSession) -> c960.Record:
+    """The replay record of a finished game; an unknown or unfinished game is 404, a non-Fischer one - not_chess960_game."""
+    game = await db.get(Game, game_id)
+    if game is None or game.status != GameStatus.COMPLETED or not game.pgn:
+        raise ApiError(status.HTTP_404_NOT_FOUND, "game_not_found", game_id=game_id)
+    try:
+        return c960.archive_record(game.pgn)
+    except DomainError as exc:
+        raise exc.to_http(status.HTTP_400_BAD_REQUEST) from None
+
+
+@router.get("/archive/{game_id}")
+async def archive_game(game_id: int, db: AsyncSession = Depends(get_db)):
+    """A finished Fischer game for the archive viewer: positions after every ply (Shredder-FEN), moves and the result."""
+    record = await _archive_record(game_id, db)
+    return {"game_id": game_id, "start_fen": record.start_fen, "fens": record.fens, "moves": record.moves,
+            "sans": record.sans, "result": record.result}
+
+
+@router.get("/archive/{game_id}/analysis", dependencies=BOT_DEPENDENCIES)
+async def archive_analysis(game_id: int, db: AsyncSession = Depends(get_db)):
+    """
+    Engine evaluation of every position of a finished Fischer game (centipawns for White). Engine work: the same limit as
+    /bots/move and the fair-play rule; engine busy or unavailable - 503.
+    """
+    record = await _archive_record(game_id, db)
+    try:
+        with engine_work("bot_move"):
+            scores = await asyncio.to_thread(c960.evaluate_positions, record.fens)
+    except (EngineBusyError, EngineUnavailableError):
+        raise ApiError(status.HTTP_503_SERVICE_UNAVAILABLE, "engine_busy", headers={"Retry-After": "5"}) from None
+    return {"game_id": game_id, "scores": scores, "complete": len(scores) == len(record.fens)}
