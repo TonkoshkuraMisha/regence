@@ -1,0 +1,168 @@
+{
+  "id": "tactics-defence",
+  "course": "tactics",
+  "order": 24,
+  "title": {
+    "en": "Defending against threats",
+    "uk": "Захист від загроз"
+  },
+  "summary": {
+    "en": "Before you attack, ask what the opponent threatens. Find the only move, or the defence that is also a counter-chance.",
+    "uk": "Перш ніж атакувати, спитайте, чим загрожує суперник. Знайдіть єдиний хід або захист, що водночас дає контршанс."
+  },
+  "steps": [
+    {
+      "type": "text",
+      "fen": "2r5/2Pk1R2/p3p3/1p1b3Q/1P6/P4p2/2q3PP/3R2K1 b - - 2 37",
+      "highlights": [
+        "c7",
+        "d7",
+        "f7"
+      ],
+      "text": {
+        "en": "Defence is calculated like attack, but from the other side. Ask in this order: what does the opponent threaten; which of his moves are checks and captures; is there a move that parries the threat and still keeps my own counter-chances? In this position Black's king is attacked by the queen and the rook, and the pawn on c7 is dangerous too.",
+        "uk": "Захист рахують як атаку, але з іншого боку. Питайте в такому порядку: чим загрожує суперник; які його ходи — шахи й взяття; чи є хід, що відбиває загрозу й водночас зберігає мої власні контршанси? У цій позиції чорному королю загрожують ферзь і тура, а пішак c7 теж небезпечний."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "2r5/2Pk1R2/p3p3/1p1b3Q/1P6/P4p2/2q3PP/3R2K1 b - - 2 37",
+      "text": {
+        "en": "Black to move. Find the defence.",
+        "uk": "Хід чорних. Знайдіть захист."
+      },
+      "line": [
+        {
+          "answers": [
+            "d7c6"
+          ],
+          "reply": "f7f3",
+          "correct": {
+            "en": "The king steps away from the pin and the checks, and White's attack runs out.",
+            "uk": "Король відходить від зв'язки й шахів, і атака білих вичерпується."
+          }
+        },
+        {
+          "answers": [
+            "c2d1"
+          ],
+          "correct": {
+            "en": "Black wins material with check.",
+            "uk": "Чорні виграють матеріал із шахом."
+          }
+        }
+      ],
+      "hint": {
+        "en": "Where is the king safest?",
+        "uk": "Де королю найбезпечніше?"
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "r7/p4r1k/5B2/2p2nR1/4R3/P7/5K2/8 w - - 7 50",
+      "text": {
+        "en": "White to move. Find the strongest move.",
+        "uk": "Хід білих. Знайдіть найсильніший хід."
+      },
+      "line": [
+        {
+          "answers": [
+            "g5f5"
+          ],
+          "reply": "h7g6",
+          "correct": {
+            "en": "Taking the knight removes the attacker and keeps the initiative.",
+            "uk": "Взяття коня прибирає нападника й зберігає ініціативу."
+          }
+        },
+        {
+          "answers": [
+            "e4f4"
+          ],
+          "correct": {
+            "en": "White keeps the extra piece.",
+            "uk": "Білі зберігають зайву фігуру."
+          }
+        }
+      ],
+      "hint": {
+        "en": "Remove the most dangerous attacking piece.",
+        "uk": "Приберіть найнебезпечнішу атакуючу фігуру."
+      }
+    },
+    {
+      "type": "text",
+      "text": {
+        "en": "Good defenders remove the attacker, interpose with tempo or counter-attack; passive moves lose slowly. In both positions the defence was a capture or a king move, never a retreat that gives the opponent time.",
+        "uk": "Хороші захисники прибирають нападника, перекривають із темпом або контратакують; пасивні ходи програють повільно. В обох позиціях захист був взяттям або ходом короля, ніколи не відступом, що дає суперникові час."
+      }
+    }
+  ],
+  "exam": [
+    {
+      "type": "find_move",
+      "fen": "2rr2k1/p5p1/4p1Qp/3nP1b1/1q1P4/2N2P2/1P3BPP/2R2RK1 b - - 0 24",
+      "text": {
+        "en": "Black to move. Find the defence.",
+        "uk": "Хід чорних. Знайдіть захист."
+      },
+      "line": [
+        {
+          "answers": [
+            "g5c1"
+          ],
+          "reply": "g6e6",
+          "correct": {
+            "en": "Black takes the rook first and answers the queen check calmly.",
+            "uk": "Чорні спершу беруть туру й спокійно відповідають на шах ферзем."
+          }
+        },
+        {
+          "answers": [
+            "g8h8"
+          ],
+          "correct": {
+            "en": "The king steps aside and Black stays a rook up.",
+            "uk": "Король відходить, і чорні лишаються з турою в плюсі."
+          }
+        }
+      ]
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "What do you ask first when defending?",
+        "uk": "Що питаєте першим, коли захищаєтесь?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "What exactly does the opponent threaten?",
+            "uk": "Чим саме загрожує суперник?"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "How can I attack him?",
+            "uk": "Як мені його атакувати?"
+          },
+          "feedback": {
+            "en": "First stop the threat; the counter-attack comes second.",
+            "uk": "Спершу зупиніть загрозу; контратака — другою."
+          }
+        },
+        {
+          "text": {
+            "en": "Which piece can retreat?",
+            "uk": "Яка фігура може відступити?"
+          },
+          "feedback": {
+            "en": "Retreat is a last resort: it gives the opponent time.",
+            "uk": "Відступ — крайній засіб: він дає суперникові час."
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,176 @@
+{
+  "id": "opening-development",
+  "course": "opening",
+  "order": 1,
+  "title": {
+    "en": "Development",
+    "uk": "Розвиток фігур"
+  },
+  "summary": {
+    "en": "The opening in one idea: bring all pieces into play quickly, fight for the centre and get the king safe.",
+    "uk": "Дебют в одній ідеї: швидко ввести всі фігури в гру, поборотися за центр і сховати короля."
+  },
+  "steps": [
+    {
+      "type": "text",
+      "fen": "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
+      "highlights": [
+        "e4",
+        "e5",
+        "d4",
+        "d5"
+      ],
+      "arrows": [
+        {
+          "from": "g1",
+          "to": "f3",
+          "color": "green"
+        },
+        {
+          "from": "f1",
+          "to": "c4",
+          "color": "green"
+        }
+      ],
+      "text": {
+        "en": "Four simple rules for the opening: fight for the centre with pawns and pieces; develop knights and bishops quickly; castle early to make the king safe; do not move the same piece twice and do not bring the queen out too soon. Whoever develops faster usually gets the first attack.",
+        "uk": "Чотири прості правила дебюту: боріться за центр пішаками й фігурами; швидко розвивайте коней і слонів; рано рокіруйте, щоб сховати короля; не ходіть двічі тією самою фігурою й не виводьте ферзя надто рано. Хто розвивається швидше, зазвичай отримує першу атаку."
+      }
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "White to move. Which move follows the opening principles best?",
+        "uk": "Хід білих. Який хід найкраще відповідає принципам дебюту?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "Nf3",
+            "uk": "Кf3"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "Qh5",
+            "uk": "Фh5"
+          },
+          "feedback": {
+            "en": "An early queen is chased by developing moves and wastes time.",
+            "uk": "Ранній ферзь стає ціллю для ходів розвитку й марнує час."
+          }
+        },
+        {
+          "text": {
+            "en": "a3",
+            "uk": "a3"
+          },
+          "feedback": {
+            "en": "A rim pawn move develops nothing and does not fight for the centre.",
+            "uk": "Хід крайнього пішака нічого не розвиває й не бореться за центр."
+          }
+        }
+      ],
+      "highlights": [
+        "f3"
+      ],
+      "fen": "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2"
+    },
+    {
+      "type": "text",
+      "fen": "r2qk1nr/pbpn3p/1p1p4/4p3/2B1PQ2/2N5/PPP3PP/2KR2NR w kq - 0 12",
+      "highlights": [
+        "f7",
+        "e8"
+      ],
+      "arrows": [
+        {
+          "from": "f4",
+          "to": "f7",
+          "color": "red"
+        }
+      ],
+      "text": {
+        "en": "Why does speed matter? Black here has spent moves on pawns and left the king in the centre with the knight g8 undeveloped. White's queen and bishop attack f7, which only the king defends. A lead in development turns into a direct attack.",
+        "uk": "Чому швидкість важлива? Чорні тут витратили ходи на пішаки й залишили короля в центрі з нерозвиненим конем g8. Ферзь і слон білих б'ють f7, який захищає лише король. Перевага в розвитку перетворюється на пряму атаку."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "r2qk1nr/pbpn3p/1p1p4/4p3/2B1PQ2/2N5/PPP3PP/2KR2NR w kq - 0 12",
+      "text": {
+        "en": "White to move. Mate in one.",
+        "uk": "Хід білих. Мат в один хід."
+      },
+      "line": [
+        {
+          "answers": [
+            "f4f7"
+          ],
+          "correct": {
+            "en": "The king in the centre and a lag in development: checkmate.",
+            "uk": "Король у центрі й відставання в розвитку: мат."
+          }
+        }
+      ]
+    }
+  ],
+  "exam": [
+    {
+      "type": "find_move",
+      "fen": "r1bqk2r/ppp2pbp/2n1p1p1/8/3Pn3/3B1Q2/PPP1N1PP/R1B2RK1 w kq - 0 10",
+      "text": {
+        "en": "White to move. Mate in one.",
+        "uk": "Хід білих. Мат в один хід."
+      },
+      "line": [
+        {
+          "answers": [
+            "f3f7"
+          ],
+          "correct": {
+            "en": "f7 was defended by the king alone.",
+            "uk": "Поле f7 захищав лише король."
+          }
+        }
+      ]
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "Why castle early?",
+        "uk": "Навіщо рокіруватися рано?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "It makes the king safe and brings a rook into play",
+            "uk": "Це ховає короля й вводить туру в гру"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "It wins a pawn",
+            "uk": "Це виграє пішака"
+          },
+          "feedback": {
+            "en": "Castling does not capture anything.",
+            "uk": "Рокіровка нічого не бере."
+          }
+        },
+        {
+          "text": {
+            "en": "It is required by the rules",
+            "uk": "Цього вимагають правила"
+          },
+          "feedback": {
+            "en": "Castling is optional; it is just usually a very good idea.",
+            "uk": "Рокіровка необов'язкова, але зазвичай дуже корисна."
+          }
+        }
+      ]
+    }
+  ]
+}

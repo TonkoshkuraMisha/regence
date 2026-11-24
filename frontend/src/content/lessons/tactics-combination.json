@@ -1,0 +1,197 @@
+{
+  "id": "tactics-combination",
+  "course": "tactics",
+  "order": 21,
+  "title": {
+    "en": "A combination: sacrifice and mate",
+    "uk": "Комбінація: жертва й мат"
+  },
+  "summary": {
+    "en": "A combination is a forced sequence with a sacrifice. Learn to see the whole line: the sacrifice, the forced reply, the finish.",
+    "uk": "Комбінація — це форсована послідовність із жертвою. Навчіться бачити весь варіант: жертва, вимушена відповідь, завершення."
+  },
+  "steps": [
+    {
+      "type": "text",
+      "fen": "6rk/1pp2p1n/8/p3qNp1/3r2P1/6PQ/PR6/R5K1 w - - 0 36",
+      "highlights": [
+        "h7",
+        "h8"
+      ],
+      "arrows": [
+        {
+          "from": "h3",
+          "to": "h7",
+          "color": "green"
+        }
+      ],
+      "text": {
+        "en": "Every combination has three parts: the idea (what weakness is hit), the forcing line (checks and threats that leave one reply) and the finish. Start from the end: where is the king mated? Then look for the move that drags it there. Here the black king is on h8 and the file h is half open.",
+        "uk": "Кожна комбінація має три частини: ідею (по якій слабкості б'ємо), форсований варіант (шахи й загрози, що залишають одну відповідь) і завершення. Починайте з кінця: де матують короля? Потім шукайте хід, що заганяє його туди. Тут чорний король на h8, а вертикаль h напіввідкрита."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "6rk/1pp2p1n/8/p3qNp1/3r2P1/6PQ/PR6/R5K1 w - - 0 36",
+      "text": {
+        "en": "White to move. Mate in three.",
+        "uk": "Хід білих. Мат у три ходи."
+      },
+      "line": [
+        {
+          "answers": [
+            "h3h7"
+          ],
+          "reply": "h8h7",
+          "correct": {
+            "en": "The queen is given up to drag the king onto h7.",
+            "uk": "Ферзя віддано, щоб заманити короля на h7."
+          }
+        },
+        {
+          "answers": [
+            "b2h2"
+          ],
+          "reply": "h7g6",
+          "correct": {
+            "en": "A check along the file.",
+            "uk": "Шах по вертикалі."
+          }
+        },
+        {
+          "answers": [
+            "h2h6"
+          ],
+          "correct": {
+            "en": "Checkmate.",
+            "uk": "Мат."
+          }
+        }
+      ],
+      "hint": {
+        "en": "Give up the queen on h7.",
+        "uk": "Віддайте ферзя на h7."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "r2q2rk/ppp1bp1p/2n1b3/4p2R/3pP3/P2P1Q2/1PP2PP1/RNB1K1N1 w Q - 3 15",
+      "text": {
+        "en": "White to move. Mate in three.",
+        "uk": "Хід білих. Мат у три ходи."
+      },
+      "line": [
+        {
+          "answers": [
+            "h5h7"
+          ],
+          "reply": "h8h7",
+          "correct": {
+            "en": "The rook sacrifice drags the king out.",
+            "uk": "Жертва тури виманює короля."
+          }
+        },
+        {
+          "answers": [
+            "f3h5"
+          ],
+          "reply": "h7g7",
+          "correct": {
+            "en": "Check.",
+            "uk": "Шах."
+          }
+        },
+        {
+          "answers": [
+            "h5h6"
+          ],
+          "correct": {
+            "en": "Checkmate.",
+            "uk": "Мат."
+          }
+        }
+      ],
+      "hint": {
+        "en": "Start with the rook sacrifice on h7.",
+        "uk": "Почніть із жертви тури на h7."
+      }
+    }
+  ],
+  "exam": [
+    {
+      "type": "find_move",
+      "fen": "5qk1/p1p5/1p1p2p1/3Pp3/1PPnP1Q1/3B2p1/P5PP/6K1 b - - 0 27",
+      "text": {
+        "en": "Black to move. Mate in three.",
+        "uk": "Хід чорних. Мат у три ходи."
+      },
+      "line": [
+        {
+          "answers": [
+            "f8f2"
+          ],
+          "reply": "g1h1",
+          "correct": {
+            "en": "A check that takes the f-file and the second rank.",
+            "uk": "Шах, що забирає вертикаль f і другу горизонталь."
+          }
+        },
+        {
+          "answers": [
+            "f2e1"
+          ],
+          "reply": "d3f1",
+          "correct": {
+            "en": "Check on the first rank.",
+            "uk": "Шах на першій горизонталі."
+          }
+        },
+        {
+          "answers": [
+            "e1f1"
+          ],
+          "correct": {
+            "en": "Checkmate.",
+            "uk": "Мат."
+          }
+        }
+      ]
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "What do you look for first in a combination?",
+        "uk": "Що шукаєте першим у комбінації?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "The final position: where the king can be mated",
+            "uk": "Кінцеву позицію: де можна матувати короля"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "The most valuable piece to sacrifice",
+            "uk": "Найціннішу фігуру для жертви"
+          },
+          "feedback": {
+            "en": "The sacrifice follows from the finish, not the other way round.",
+            "uk": "Жертва випливає із завершення, а не навпаки."
+          }
+        },
+        {
+          "text": {
+            "en": "A quiet move",
+            "uk": "Тихий хід"
+          },
+          "feedback": {
+            "en": "Quiet moves give the opponent too many answers.",
+            "uk": "Тихі ходи дають суперникові забагато відповідей."
+          }
+        }
+      ]
+    }
+  ]
+}

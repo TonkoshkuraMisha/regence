@@ -1,0 +1,202 @@
+{
+  "id": "strategy-bad-bishop",
+  "course": "strategy",
+  "order": 17,
+  "title": {
+    "en": "The bad bishop",
+    "uk": "Поганий слон"
+  },
+  "summary": {
+    "en": "A bishop hemmed in by its own pawns on the same colour: how to spot it and what to do about it.",
+    "uk": "Слон, затиснутий власними пішаками свого кольору: як його впізнати й що з ним робити."
+  },
+  "steps": [
+    {
+      "type": "text",
+      "fen": "r2q1rk1/pp2bppp/2npbn2/4p3/2P1P3/2NBBN2/PP3PPP/R2Q1RK1 w - - 0 1",
+      "highlights": [
+        "c4",
+        "e4",
+        "d3"
+      ],
+      "arrows": [
+        {
+          "from": "c4",
+          "to": "d3",
+          "color": "red"
+        },
+        {
+          "from": "e4",
+          "to": "d3",
+          "color": "red"
+        }
+      ],
+      "text": {
+        "en": "A bishop moves on squares of one colour only. If many of your pawns stand on that same colour, they block its diagonals: the bishop is 'bad'. Here White's light-squared bishop d3 is hemmed in by the pawns c4 and e4, both on light squares.",
+        "uk": "Слон ходить лише по полях одного кольору. Якщо багато ваших пішаків стоять на полях того самого кольору, вони перекривають йому діагоналі: слон «поганий». Тут білий світлопольний слон d3 затиснутий пішаками c4 і e4, що стоять на світлих полях."
+      }
+    },
+    {
+      "type": "choice",
+      "fen": "r2q1rk1/pp2bppp/2npbn2/4p3/2P1P3/2NBBN2/PP3PPP/R2Q1RK1 w - - 0 1",
+      "highlights": [
+        "d3",
+        "e3"
+      ],
+      "text": {
+        "en": "Which of White's two bishops is the bad one?",
+        "uk": "Який із двох слонів білих поганий?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "The bishop on d3",
+            "uk": "Слон на d3"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "The bishop on e3",
+            "uk": "Слон на e3"
+          },
+          "feedback": {
+            "en": "It moves on dark squares, and White's pawns c4 and e4 stand on light squares, so it is not blocked by them.",
+            "uk": "Він ходить по темних полях, а пішаки c4 і e4 стоять на світлих, тож вони йому не заважають."
+          }
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "fen": "r2q1rk1/pp2bppp/2npbn2/4p3/2P1P3/2NBBN2/PP3PPP/R2Q1RK1 w - - 0 1",
+      "highlights": [
+        "d3",
+        "c2",
+        "b1"
+      ],
+      "arrows": [
+        {
+          "from": "d3",
+          "to": "b1",
+          "color": "green"
+        }
+      ],
+      "text": {
+        "en": "A bad bishop is not always a defect, but it is a reason to act. The usual cures: exchange it for an enemy piece, or move it outside the pawn chain, where it keeps scope. And when you plan your pawns, try to place them on the colour opposite to your bishop.",
+        "uk": "Поганий слон — не завжди вада, але привід діяти. Звичайні способи: обміняти його на фігуру суперника або вивести за пішаковий ланцюжок, де він зберігає простір. А плануючи пішаки, ставте їх на поля кольору, протилежного вашому слонові."
+      }
+    },
+    {
+      "type": "choice",
+      "fen": "r2q1rk1/pp2bppp/2npbn2/4p3/2P1P3/2NBBN2/PP3PPP/R2Q1RK1 w - - 0 1",
+      "text": {
+        "en": "What is the usual way to deal with a bad bishop?",
+        "uk": "Який звичайний спосіб впоратися з поганим слоном?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "Exchange it, or bring it outside the pawn chain",
+            "uk": "Обміняти його або вивести за пішаковий ланцюжок"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "Put more pawns on the squares of its colour",
+            "uk": "Поставити більше пішаків на поля його кольору"
+          },
+          "feedback": {
+            "en": "That would block its diagonals even more.",
+            "uk": "Так ви ще більше перекриєте йому діагоналі."
+          }
+        },
+        {
+          "text": {
+            "en": "Leave it there for the whole game",
+            "uk": "Залишити його там на всю партію"
+          },
+          "feedback": {
+            "en": "A passive piece is a handicap; it is better to improve or exchange it.",
+            "uk": "Пасивна фігура — гандикап; її краще покращити або обміняти."
+          }
+        }
+      ]
+    }
+  ],
+  "exam": [
+    {
+      "type": "choice",
+      "text": {
+        "en": "When is a bishop called 'bad'?",
+        "uk": "Коли слона називають «поганим»?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "When its own pawns stand on squares of its colour and block it",
+            "uk": "Коли власні пішаки стоять на полях його кольору й заважають йому"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "When it is worth less than a knight",
+            "uk": "Коли він коштує менше за коня"
+          },
+          "feedback": {
+            "en": "The value of the pieces does not depend on this.",
+            "uk": "Від цього вартість фігур не залежить."
+          }
+        },
+        {
+          "text": {
+            "en": "When it stands on the edge of the board",
+            "uk": "Коли він стоїть на краю дошки"
+          },
+          "feedback": {
+            "en": "Position on the edge is a different problem; here the pawns are the cause.",
+            "uk": "Розташування на краю — інша проблема; тут причина в пішаках."
+          }
+        }
+      ]
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "Your bishop is light-squared. Where is it better to keep most of your pawns?",
+        "uk": "Ваш слон світлопольний. Де краще тримати більшість пішаків?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "On dark squares",
+            "uk": "На темних полях"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "On light squares",
+            "uk": "На світлих полях"
+          },
+          "feedback": {
+            "en": "Then they would block the bishop's diagonals.",
+            "uk": "Тоді вони перекриють діагоналі слона."
+          }
+        },
+        {
+          "text": {
+            "en": "The colour does not matter",
+            "uk": "Колір не має значення"
+          },
+          "feedback": {
+            "en": "It matters: the pawns decide how much room the bishop has.",
+            "uk": "Має: пішаки визначають, скільки простору в слона."
+          }
+        }
+      ]
+    }
+  ]
+}

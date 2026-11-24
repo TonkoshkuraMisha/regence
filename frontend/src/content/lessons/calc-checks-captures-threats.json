@@ -1,0 +1,171 @@
+{
+  "id": "calc-checks-captures-threats",
+  "course": "calculation",
+  "order": 2,
+  "title": {
+    "en": "Checks, captures, threats",
+    "uk": "Шахи, взяття, загрози"
+  },
+  "summary": {
+    "en": "Look at forcing moves first: they limit the opponent's answers and make calculation possible.",
+    "uk": "Спершу дивіться на форсовані ходи: вони обмежують відповіді суперника й роблять розрахунок можливим."
+  },
+  "steps": [
+    {
+      "type": "text",
+      "fen": "r1b2kr1/1p1p1pp1/p7/5p1p/1q6/7P/PPPB1P2/2K1R2R w - - 0 23",
+      "highlights": [
+        "b4",
+        "f8"
+      ],
+      "arrows": [
+        {
+          "from": "d2",
+          "to": "b4",
+          "color": "green"
+        }
+      ],
+      "text": {
+        "en": "Before a long calculation, go through the forcing moves in this order: checks, captures, threats. A check leaves the opponent few answers, so you can calculate far; a quiet move leaves him dozens. Here a check starts a short forced line.",
+        "uk": "Перед довгим розрахунком перебирайте форсовані ходи в такому порядку: шахи, взяття, загрози. Шах залишає суперникові мало відповідей, тож можна рахувати далеко; тихий хід залишає десятки. Тут шах починає коротку форсовану лінію."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "r1b2kr1/1p1p1pp1/p7/5p1p/1q6/7P/PPPB1P2/2K1R2R w - - 0 23",
+      "text": {
+        "en": "White to move. Mate in two.",
+        "uk": "Хід білих. Мат у два ходи."
+      },
+      "line": [
+        {
+          "answers": [
+            "d2b4"
+          ],
+          "reply": "d7d6",
+          "correct": {
+            "en": "A check that leaves almost no choice.",
+            "uk": "Шах, що майже не залишає вибору."
+          }
+        },
+        {
+          "answers": [
+            "b4d6"
+          ],
+          "correct": {
+            "en": "Checkmate.",
+            "uk": "Мат."
+          }
+        }
+      ],
+      "hint": {
+        "en": "Start with a check.",
+        "uk": "Почніть із шаху."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "8/6bp/1pNQ2p1/1p4Pk/5P2/7K/q6P/8 w - - 1 40",
+      "text": {
+        "en": "White to move. Mate in two.",
+        "uk": "Хід білих. Мат у два ходи."
+      },
+      "line": [
+        {
+          "answers": [
+            "d6d1"
+          ],
+          "reply": "a2e2",
+          "correct": {
+            "en": "The queen check forces the reply.",
+            "uk": "Шах ферзем форсує відповідь."
+          }
+        },
+        {
+          "answers": [
+            "d1e2"
+          ],
+          "correct": {
+            "en": "Checkmate.",
+            "uk": "Мат."
+          }
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "fen": "4r1k1/5pp1/8/Q2P4/8/2Bq4/PP6/K3R3 b - - 0 38",
+      "highlights": [
+        "e1",
+        "d1"
+      ],
+      "text": {
+        "en": "If there is no good check, look at captures and then at threats: moves that attack something or prepare a mate. Always ask what the opponent can do after each forcing move; if the answer is 'almost nothing', you can calculate to the end.",
+        "uk": "Якщо доброго шаху нема, дивіться на взяття, а тоді на загрози: ходи, що щось атакують або готують мат. Завжди питайте, що може зробити суперник після кожного форсованого ходу; якщо відповідь «майже нічого», можна рахувати до кінця."
+      }
+    }
+  ],
+  "exam": [
+    {
+      "type": "find_move",
+      "fen": "4r1k1/5pp1/8/Q2P4/8/2Bq4/PP6/K3R3 b - - 0 38",
+      "text": {
+        "en": "Black to move. Mate in two.",
+        "uk": "Хід чорних. Мат у два ходи."
+      },
+      "line": [
+        {
+          "answers": [
+            "e8e1"
+          ],
+          "reply": "c3e1"
+        },
+        {
+          "answers": [
+            "d3d1"
+          ],
+          "correct": {
+            "en": "Checkmate.",
+            "uk": "Мат."
+          }
+        }
+      ]
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "In which order do you look at forcing moves?",
+        "uk": "У якому порядку дивитися на форсовані ходи?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "Checks, captures, threats",
+            "uk": "Шахи, взяття, загрози"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "Quiet moves first",
+            "uk": "Спершу тихі ходи"
+          },
+          "feedback": {
+            "en": "Quiet moves leave the opponent too many answers.",
+            "uk": "Тихі ходи залишають суперникові забагато відповідей."
+          }
+        },
+        {
+          "text": {
+            "en": "Any order, it makes no difference",
+            "uk": "У будь-якому, це не має значення"
+          },
+          "feedback": {
+            "en": "Checks limit the answers most, so they come first.",
+            "uk": "Шахи найбільше обмежують відповіді, тож вони йдуть першими."
+          }
+        }
+      ]
+    }
+  ]
+}

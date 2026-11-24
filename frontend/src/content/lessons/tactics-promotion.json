@@ -1,0 +1,180 @@
+{
+  "id": "tactics-promotion",
+  "course": "tactics",
+  "order": 23,
+  "title": {
+    "en": "Promotion",
+    "uk": "Перетворення пішака"
+  },
+  "summary": {
+    "en": "A pawn on the seventh rank is a threat worth a piece. Count the race, use the promotion with tempo, and know when a knight is better than a queen.",
+    "uk": "Пішак на сьомій горизонталі — загроза ціною в фігуру. Рахуйте гонитву, перетворюйте з темпом і знайте, коли кінь кращий за ферзя."
+  },
+  "steps": [
+    {
+      "type": "text",
+      "fen": "8/PR3p1k/4p1p1/8/8/1PB5/1KP2q2/7q w - - 0 41",
+      "highlights": [
+        "a7",
+        "a8"
+      ],
+      "arrows": [
+        {
+          "from": "a7",
+          "to": "a8",
+          "color": "green"
+        }
+      ],
+      "text": {
+        "en": "A pawn that reaches the seventh rank ties the opponent's pieces to the promotion square. Three ideas: promote with check or with a capture to gain a tempo; count the race of two pawns move by move; and remember the underpromotion: sometimes a knight gives check or a fork where a queen would be taken or would stalemate. In this position White has a rook and a pawn on the seventh, but Black has two queens. What does White do?",
+        "uk": "Пішак, що дійшов до сьомої горизонталі, прив'язує фігури суперника до поля перетворення. Три ідеї: перетворюйте з шахом або з взяттям, щоб виграти темп; рахуйте гонитву двох пішаків хід за ходом; і пам'ятайте про перетворення на слабшу фігуру: інколи кінь дає шах або виделку там, де ферзя взяли б або був би пат. У цій позиції білі мають туру й пішака на сьомій, а в чорних два ферзі. Що роблять білі?"
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "8/PR3p1k/4p1p1/8/8/1PB5/1KP2q2/7q w - - 0 41",
+      "text": {
+        "en": "White to move. Find the strongest move.",
+        "uk": "Хід білих. Знайдіть найсильніший хід."
+      },
+      "line": [
+        {
+          "answers": [
+            "a7a8q"
+          ],
+          "reply": "f2c2",
+          "correct": {
+            "en": "Promotion with a threat against the king and the rook: the pawn carries all the weight.",
+            "uk": "Перетворення із загрозою королю й турі: весь тягар несе пішак."
+          }
+        },
+        {
+          "answers": [
+            "b2c2"
+          ],
+          "correct": {
+            "en": "White has won the queen back and keeps a decisive material lead.",
+            "uk": "Білі повернули ферзя й зберігають вирішальну матеріальну перевагу."
+          }
+        }
+      ],
+      "hint": {
+        "en": "The pawn has only one step left.",
+        "uk": "Пішаку лишився один крок."
+      }
+    },
+    {
+      "type": "text",
+      "fen": "2rr4/1p2Pkbp/pn4p1/8/3P4/1qN4P/PP2RPP1/3R2K1 w - - 0 21",
+      "highlights": [
+        "e7",
+        "d8",
+        "f7"
+      ],
+      "text": {
+        "en": "Now an underpromotion. The pawn e7 can take on d8 and become any piece. A queen would be captured by the rook, but a knight gives check to the king f7 at the same time as it takes the rook's place on d8: the check wins a tempo for the next capture.",
+        "uk": "Тепер перетворення на слабшу фігуру. Пішак e7 може взяти на d8 і стати будь-якою фігурою. Ферзя б узяла тура, але кінь дає шах королю f7 і водночас стає на d8 замість тури: шах виграє темп для наступного взяття."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "2rr4/1p2Pkbp/pn4p1/8/3P4/1qN4P/PP2RPP1/3R2K1 w - - 0 21",
+      "text": {
+        "en": "White to move. Find the promotion that wins.",
+        "uk": "Хід білих. Знайдіть перетворення, що виграє."
+      },
+      "line": [
+        {
+          "answers": [
+            "e7d8n"
+          ],
+          "reply": "c8d8",
+          "correct": {
+            "en": "The knight promotes with check, so Black must answer it and the rook c8 is taken in return.",
+            "uk": "Кінь перетворюється з шахом, тож чорні мусять відповісти, а туру c8 забирають навзаєм."
+          }
+        },
+        {
+          "answers": [
+            "a2b3"
+          ],
+          "correct": {
+            "en": "White has won material.",
+            "uk": "Білі виграли матеріал."
+          }
+        }
+      ],
+      "hint": {
+        "en": "Promote with check.",
+        "uk": "Перетворіться з шахом."
+      }
+    }
+  ],
+  "exam": [
+    {
+      "type": "find_move",
+      "fen": "4k3/1pp3KP/3p4/6B1/3P4/p1P5/7r/8 w - - 0 46",
+      "text": {
+        "en": "White to move. Find the move that wins by force.",
+        "uk": "Хід білих. Знайдіть хід, що форсовано виграє."
+      },
+      "line": [
+        {
+          "answers": [
+            "g5h6"
+          ],
+          "reply": "e8e7",
+          "correct": {
+            "en": "The bishop controls the promotion square and prepares h8=Q.",
+            "uk": "Слон контролює поле перетворення й готує h8=Ф."
+          }
+        },
+        {
+          "answers": [
+            "h7h8q"
+          ],
+          "correct": {
+            "en": "The pawn promotes.",
+            "uk": "Пішак перетворюється."
+          }
+        }
+      ]
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "When is it right to promote to a knight instead of a queen?",
+        "uk": "Коли правильно перетворитися на коня замість ферзя?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "When the knight gives check or a fork that a queen would not",
+            "uk": "Коли кінь дає шах чи виделку, яких не дав би ферзь"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "Always: a knight is faster",
+            "uk": "Завжди: кінь швидший"
+          },
+          "feedback": {
+            "en": "A queen is stronger in almost every position.",
+            "uk": "Ферзь сильніший майже в усіх позиціях."
+          }
+        },
+        {
+          "text": {
+            "en": "Never: it loses material",
+            "uk": "Ніколи: це втрата матеріалу"
+          },
+          "feedback": {
+            "en": "Underpromotion is rare, but it wins or saves games.",
+            "uk": "Таке перетворення рідкісне, але виграє й рятує партії."
+          }
+        }
+      ]
+    }
+  ]
+}

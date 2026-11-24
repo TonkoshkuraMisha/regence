@@ -1,5 +1,17 @@
 [
     {
+        "id": "calculation",
+        "order": 6,
+        "title": {
+            "en": "Calculation and vision",
+            "uk": "Розрахунок і бачення"
+        },
+        "summary": {
+            "en": "See the board, count exchanges and calculate forcing lines: the skills behind every tactic.",
+            "uk": "Бачити дошку, рахувати розміни й розраховувати форсовані варіанти: навички, що стоять за кожним прийомом."
+        }
+    },
+    {
         "id": "tactics",
         "order": 1,
         "title": {
@@ -45,6 +57,18 @@
         "summary": {
             "en": "Typical pawn structures and the plans they give both sides.",
             "uk": "Типові пішакові структури й плани, які вони дають обом сторонам."
+        }
+    },
+    {
+        "id": "opening",
+        "order": 5,
+        "title": {
+            "en": "Opening: development and traps",
+            "uk": "Дебют: розвиток і пастки"
+        },
+        "summary": {
+            "en": "The opening in a few simple ideas: develop quickly, fight for the centre, castle and avoid classic traps.",
+            "uk": "Дебют у кількох простих ідеях: швидко розвивайтеся, боріться за центр, рокіруйте й уникайте класичних пасток."
         }
     }
 ]

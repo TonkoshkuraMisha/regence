@@ -1,0 +1,175 @@
+{
+  "id": "tactics-master-sacrifice",
+  "course": "tactics",
+  "order": 26,
+  "title": {
+    "en": "The decisive sacrifice",
+    "uk": "Вирішальна жертва"
+  },
+  "summary": {
+    "en": "Offer the queen or a rook so that the opponent's last defender is deflected and the attack finishes at once.",
+    "uk": "Запропонуйте ферзя чи туру так, щоб останній захисник суперника відвернувся й атака завершилась одразу."
+  },
+  "steps": [
+    {
+      "type": "text",
+      "fen": "r1b2bk1/ppnn3p/3p2p1/2P5/1PP1p1Bq/P3P2P/1B3Pp1/1R1Q1RK1 w - - 0 20",
+      "highlights": [
+        "d5",
+        "e6",
+        "g8"
+      ],
+      "arrows": [
+        {
+          "from": "d1",
+          "to": "d5",
+          "color": "green"
+        }
+      ],
+      "text": {
+        "en": "A master's sacrifice has a clear purpose: deflect the one piece that holds the position together. Ask yourself: which enemy piece guards the key square, and what do I get if it is forced away? Here the knight d7 and the king g8 are tied to the squares around f7 and e6.",
+        "uk": "Жертва майстра має чітку мету: відвернути єдину фігуру, що тримає позицію. Питайте себе: яка ворожа фігура охороняє ключове поле і що я отримаю, якщо її відтягнути? Тут кінь d7 і король g8 прив'язані до полів навколо f7 та e6."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "r1b2bk1/ppnn3p/3p2p1/2P5/1PP1p1Bq/P3P2P/1B3Pp1/1R1Q1RK1 w - - 0 20",
+      "text": {
+        "en": "White to move. Mate in two.",
+        "uk": "Хід білих. Мат у два ходи."
+      },
+      "line": [
+        {
+          "answers": [
+            "d1d5"
+          ],
+          "reply": "c7d5",
+          "correct": {
+            "en": "The queen offers itself; the knight c7 is the only piece that can take it, and it leaves the defence.",
+            "uk": "Ферзь пропонує себе; кінь c7 — єдина фігура, що може його взяти, і вона залишає оборону."
+          }
+        },
+        {
+          "answers": [
+            "g4e6"
+          ],
+          "correct": {
+            "en": "Checkmate.",
+            "uk": "Мат."
+          }
+        }
+      ],
+      "hint": {
+        "en": "Give the queen on d5.",
+        "uk": "Віддайте ферзя на d5."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "3rr3/2k3p1/pR6/P1pqbQ2/4p3/2P4P/5PP1/1R4K1 w - - 6 33",
+      "text": {
+        "en": "White to move. Find the decisive sacrifice.",
+        "uk": "Хід білих. Знайдіть вирішальну жертву."
+      },
+      "line": [
+        {
+          "answers": [
+            "b6b7"
+          ],
+          "reply": "d5b7",
+          "correct": {
+            "en": "The rook sacrifice deflects the queen from the defence of f7.",
+            "uk": "Жертва тури відвертає ферзя від захисту f7."
+          }
+        },
+        {
+          "answers": [
+            "f5f7"
+          ],
+          "correct": {
+            "en": "With check, White wins material or mates.",
+            "uk": "Із шахом білі виграють матеріал або матують."
+          }
+        }
+      ],
+      "hint": {
+        "en": "Deflect the queen with a check.",
+        "uk": "Відверніть ферзя шахом."
+      }
+    },
+    {
+      "type": "text",
+      "text": {
+        "en": "Both sacrifices deflect a defender with a check, so Black cannot ignore them. The same question solves the next positions: who defends the key square, and can that piece be forced to leave?",
+        "uk": "Обидві жертви відвертають захисника шахом, тож чорні не можуть їх проігнорувати. Те саме питання розв'язує наступні позиції: хто захищає ключове поле і чи можна змусити цю фігуру піти?"
+      }
+    }
+  ],
+  "exam": [
+    {
+      "type": "find_move",
+      "fen": "3r3k/p5p1/1p1qp1Qp/7P/5bN1/P7/1PP5/1K3R2 w - - 1 30",
+      "text": {
+        "en": "White to move. Find the sacrifice.",
+        "uk": "Хід білих. Знайдіть жертву."
+      },
+      "line": [
+        {
+          "answers": [
+            "g4f6"
+          ],
+          "reply": "g7f6",
+          "correct": {
+            "en": "The knight is given up to open the sixth rank for the queen.",
+            "uk": "Коня віддано, щоб відкрити шосту горизонталь ферзю."
+          }
+        },
+        {
+          "answers": [
+            "g6f6"
+          ],
+          "correct": {
+            "en": "White wins with check.",
+            "uk": "Білі виграють із шахом."
+          }
+        }
+      ]
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "What do you ask before a decisive sacrifice?",
+        "uk": "Що питаєте перед вирішальною жертвою?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "Which defender holds the position, and can it be deflected?",
+            "uk": "Який захисник тримає позицію і чи можна його відвернути?"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "Which of my pieces is the least useful?",
+            "uk": "Яка з моїх фігур найменш корисна?"
+          },
+          "feedback": {
+            "en": "A sacrifice is chosen by its purpose, not by the piece's uselessness.",
+            "uk": "Жертву обирають за метою, а не за марністю фігури."
+          }
+        },
+        {
+          "text": {
+            "en": "Is the opponent short of time?",
+            "uk": "Чи не бракує суперникові часу?"
+          },
+          "feedback": {
+            "en": "Do not count on mistakes; calculate.",
+            "uk": "Не розраховуйте на помилки; рахуйте."
+          }
+        }
+      ]
+    }
+  ]
+}

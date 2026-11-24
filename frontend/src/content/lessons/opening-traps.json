@@ -1,0 +1,188 @@
+{
+  "id": "opening-traps",
+  "course": "opening",
+  "order": 2,
+  "title": {
+    "en": "Opening traps",
+    "uk": "Дебютні пастки"
+  },
+  "summary": {
+    "en": "A move that looks like a free pawn can lose a piece: learn to set a classic trap and to avoid one.",
+    "uk": "Хід, що здається безкоштовним пішаком, може коштувати фігури: навчіться ставити класичну пастку й уникати її."
+  },
+  "steps": [
+    {
+      "type": "text",
+      "fen": "rn1qkbnr/ppp2p1p/3p2p1/4p3/2B1P1b1/2N2N2/PPPP1PPP/R1BQK2R w KQkq - 0 5",
+      "highlights": [
+        "e5",
+        "g4",
+        "d1"
+      ],
+      "arrows": [
+        {
+          "from": "f3",
+          "to": "e5",
+          "color": "green"
+        }
+      ],
+      "text": {
+        "en": "A trap is a natural-looking move that loses by force. In this famous idea Black has pinned the knight f3 to the queen and White seems to be in trouble. But White plays Nxe5! Black may take the queen, and then Bxf7+ and Nd5 mate; if Black recaptures on e5, White simply wins a piece with Qxg4.",
+        "uk": "Пастка — це природний на вигляд хід, що форсовано програє. У цій відомій ідеї чорні зв'язали коня f3 із ферзем, і білим наче погано. Але білі грають Nxe5! Якщо чорні візьмуть ферзя, далі Bxf7+ і Nd5 — мат; якщо ж візьмуть на e5, білі просто виграють фігуру ходом Qxg4."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "rn1qkbnr/ppp2p1p/3p2p1/4p3/2B1P1b1/2N2N2/PPPP1PPP/R1BQK2R w KQkq - 0 5",
+      "text": {
+        "en": "White to move. Win material.",
+        "uk": "Хід білих. Виграйте матеріал."
+      },
+      "line": [
+        {
+          "answers": [
+            "f3e5"
+          ],
+          "reply": "d6e5",
+          "correct": {
+            "en": "Black took the knight; the bishop g4 is now hanging.",
+            "uk": "Чорні взяли коня; слон g4 тепер під боєм."
+          }
+        },
+        {
+          "answers": [
+            "d1g4"
+          ],
+          "correct": {
+            "en": "White is a piece up.",
+            "uk": "Білі виграли фігуру."
+          }
+        }
+      ],
+      "hint": {
+        "en": "The knight f3 is pinned, but is it really stuck?",
+        "uk": "Коня f3 зв'язано, та чи справді він безсилий?"
+      }
+    },
+    {
+      "type": "text",
+      "fen": "r1bqkb1r/pppn1ppp/5n2/3p2B1/3P4/2N5/PP2PPPP/R2QKBNR w KQkq - 0 6",
+      "highlights": [
+        "d5",
+        "d8",
+        "g5"
+      ],
+      "text": {
+        "en": "Traps work against you too. Here the pawn d5 is attacked twice and defended once: a free pawn? Before you grab, ask what the opponent gets in return. Look at the queen on d8 and the bishop g5 pinning the knight.",
+        "uk": "Пастки діють і проти вас. Тут пішак d5 атакований двічі, а захищений раз: безкоштовний пішак? Перш ніж хапати, спитайте, що отримає суперник натомість. Погляньте на ферзя d8 і слона g5, що зв'язує коня."
+      }
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "White to move. Should White take the pawn on d5?",
+        "uk": "Хід білих. Чи брати пішака на d5?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "Nxd5 — a free pawn",
+            "uk": "Кxd5 — безкоштовний пішак"
+          },
+          "feedback": {
+            "en": "This is the Elephant Trap: ...Nxd5! Bxd8 Bb4+ and Black wins back the queen with interest.",
+            "uk": "Це «Пастка слона»: …Кxd5! Сxd8 Сb4+, і чорні повертають ферзя з відсотками."
+          }
+        },
+        {
+          "text": {
+            "en": "e3, a calm developing move",
+            "uk": "e3 — спокійний хід розвитку"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "Bxf6",
+            "uk": "Сxf6"
+          },
+          "feedback": {
+            "en": "This gives up the bishop pair without any gain.",
+            "uk": "Це віддає пару слонів без жодної вигоди."
+          }
+        }
+      ],
+      "highlights": [
+        "d5"
+      ],
+      "fen": "r1bqkb1r/pppn1ppp/5n2/3p2B1/3P4/2N5/PP2PPPP/R2QKBNR w KQkq - 0 6"
+    }
+  ],
+  "exam": [
+    {
+      "type": "find_move",
+      "fen": "r1bqk2r/4nppp/p3p3/3pP3/1b1B4/8/PP1N1PPP/RN1QK2R w KQkq - 3 12",
+      "text": {
+        "en": "White to move. Win material.",
+        "uk": "Хід білих. Виграйте матеріал."
+      },
+      "line": [
+        {
+          "answers": [
+            "d1a4"
+          ],
+          "reply": "d8d7",
+          "correct": {
+            "en": "A check that pins the knight e7? No: it attacks the bishop b4 at the same time.",
+            "uk": "Шах, що одночасно атакує слона b4."
+          }
+        },
+        {
+          "answers": [
+            "a4b4"
+          ],
+          "correct": {
+            "en": "White wins a piece.",
+            "uk": "Білі виграли фігуру."
+          }
+        }
+      ]
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "What should you do before taking a 'free' pawn?",
+        "uk": "Що слід зробити, перш ніж брати «безкоштовного» пішака?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "Check what the opponent gets in return",
+            "uk": "Перевірити, що отримає суперник натомість"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "Take it at once, material is always right",
+            "uk": "Взяти одразу: матеріал завжди правий"
+          },
+          "feedback": {
+            "en": "A pawn is cheap compared with a lost piece.",
+            "uk": "Пішак дешевий порівняно з утраченою фігурою."
+          }
+        },
+        {
+          "text": {
+            "en": "Ask for a draw",
+            "uk": "Запропонувати нічию"
+          },
+          "feedback": {
+            "en": "First calculate the consequences.",
+            "uk": "Спершу прорахуйте наслідки."
+          }
+        }
+      ]
+    }
+  ]
+}

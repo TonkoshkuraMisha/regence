@@ -1,0 +1,133 @@
+{
+  "id": "calc-board-coordinates",
+  "course": "calculation",
+  "order": 1,
+  "title": {
+    "en": "Board coordinates",
+    "uk": "Координати дошки"
+  },
+  "summary": {
+    "en": "Know every square at once: its colour and its diagonals. This is the base of every calculation.",
+    "uk": "Знати кожне поле миттєво: його колір і діагоналі. Це основа будь-якого розрахунку."
+  },
+  "steps": [
+    {
+      "type": "text",
+      "fen": "8/8/8/8/8/8/8/K6k w - - 0 1",
+      "highlights": [
+        "a1",
+        "h1"
+      ],
+      "text": {
+        "en": "A quick way to tell a square's colour: the corner a1 is dark. Count the file (a=1, b=2 ...) and the rank; if the sum is even the square is dark, if odd it is light. So h1 (8+1=9) is light and d4 (4+4=8) is dark. Two squares are on one diagonal when they are the same number of files and ranks apart.",
+        "uk": "Швидкий спосіб визначити колір поля: кут a1 темний. Порахуйте вертикаль (a=1, b=2 ...) і горизонталь; якщо сума парна — поле темне, якщо непарна — світле. Тож h1 (8+1=9) світле, а d4 (4+4=8) темне. Два поля лежать на одній діагоналі, коли віддалені на однакову кількість вертикалей і горизонталей."
+      }
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "What colour is the square f3?",
+        "uk": "Якого кольору поле f3?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "Light",
+            "uk": "Світле"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "Dark",
+            "uk": "Темне"
+          },
+          "feedback": {
+            "en": "6 + 3 = 9, an odd sum: light.",
+            "uk": "6 + 3 = 9, сума непарна: світле."
+          }
+        }
+      ]
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "Are the squares c1 and h6 on the same diagonal?",
+        "uk": "Чи лежать поля c1 і h6 на одній діагоналі?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "Yes",
+            "uk": "Так"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "No",
+            "uk": "Ні"
+          },
+          "feedback": {
+            "en": "They are 5 files and 5 ranks apart: the same diagonal.",
+            "uk": "Вони віддалені на 5 вертикалей і 5 горизонталей: одна діагональ."
+          }
+        }
+      ]
+    }
+  ],
+  "exam": [
+    {
+      "type": "choice",
+      "text": {
+        "en": "What colour is the square d5?",
+        "uk": "Якого кольору поле d5?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "Light",
+            "uk": "Світле"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "Dark",
+            "uk": "Темне"
+          },
+          "feedback": {
+            "en": "4 + 5 = 9, an odd sum: light.",
+            "uk": "4 + 5 = 9, сума непарна: світле."
+          }
+        }
+      ]
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "Are the squares a3 and e8 on the same diagonal?",
+        "uk": "Чи лежать поля a3 і e8 на одній діагоналі?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "Yes",
+            "uk": "Так"
+          },
+          "feedback": {
+            "en": "They are 4 files but 5 ranks apart.",
+            "uk": "Вони віддалені на 4 вертикалі, але на 5 горизонталей."
+          }
+        },
+        {
+          "text": {
+            "en": "No",
+            "uk": "Ні"
+          },
+          "correct": true
+        }
+      ]
+    }
+  ]
+}
