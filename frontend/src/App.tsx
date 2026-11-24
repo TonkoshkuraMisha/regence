@@ -30,6 +30,7 @@ import {TransparencyPage} from './components/TransparencyPage';
 import {PrivacyPage} from './components/PrivacyPage';
 import {TermsPage} from './components/TermsPage';
 import {ArenaPage, ArenasPage} from './components/arena/ArenaPages';
+import {WeeklyLegendsPage} from './components/events/WeeklyLegends';
 import {ConferencesPage} from './components/arena/ConferencesPage';
 import {TeamsPage} from './components/social/TeamsPage';
 import {StudyLobby, StudyRoomPage} from './components/study/StudyPages';
@@ -783,6 +784,7 @@ export default function App() {
                         <Route path="/tools" element={<ToolsPage/>}/>
                         <Route path="/watch" element={<WatchPage/>}/>
                         <Route path="/arenas" element={<ArenasPage/>}/>
+                        <Route path="/events/weekly" element={<WeeklyLegendsPage/>}/>
                         <Route path="/arenas/:arenaId" element={<ArenaPage/>}/>
                         <Route path="/conferences" element={<ConferencesPage/>}/>
                         <Route path="/teams" element={<TeamsPage/>}/>

@@ -43,6 +43,9 @@ export function notificationText(n: AppNotification, t: ReturnType<typeof useI18
         });
     }
     if (n.kind === 'arena_podium') return t('social.notify.arenaPodium', {place: Number(p.place)});
+    if (n.kind === 'weekly_legends') {
+        return t('social.notify.weeklyLegends', {place: Number(p.place), players: Number(p.players), points: Number(p.points)});
+    }
     return t('social.notify.reportAnswer');
 }
 

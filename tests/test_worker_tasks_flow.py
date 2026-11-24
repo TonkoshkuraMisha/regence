@@ -211,6 +211,16 @@ def test_purge_deleted_accounts(monkeypatch, count):
     assert celery_app.conf.task_routes["purge_deleted_accounts"] == {"queue": "analysis"}
 
 
+@pytest.mark.parametrize("count", [0, 4])
+def test_weekly_legends_results(monkeypatch, count):
+    from src.services import weekly_legends
+    from src.worker.celery_app import celery_app
+
+    monkeypatch.setattr(weekly_legends, "notify_results", _recorder([], "w", result=count))
+    assert tasks.weekly_legends_results() == count
+    assert celery_app.conf.beat_schedule["weekly-legends-results"]["task"] == "weekly_legends_results"
+
+
 @pytest.mark.parametrize("count", [0, 1])
 def test_arena_awards(monkeypatch, count):
     from src.services import arena_awards

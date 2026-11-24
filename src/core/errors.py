@@ -229,6 +229,10 @@ ERROR_MESSAGES: dict[str, str] = {
     "tournament_game_closed": "This tournament game is already finished",
     "tournament_game_mismatch": "The game does not match your tournament game",
     "tournament_game_not_started": "Start your tournament game from the tournament page",
+    # --- weekly tournament against legends (task 26.1) ---------------------------------------------------------------
+    "weekly_legend_unknown": "This legend is not in this week's tournament",
+    "weekly_legend_played": "You have already played this legend this week",
+    "weekly_no_session": "Start this game from the weekly tournament page",
     # --- game import from other sites (task 24.1) ----------------------------------------------------
     "import_rate_limited": "Too many imports, please try again in {retry_after} s",
     "import_source_unknown": "Unknown site",

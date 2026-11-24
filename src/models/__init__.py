@@ -54,8 +54,10 @@ from src.models.team import Team, TeamMember
 from src.models.tournament import Tournament, TournamentGame, TournamentPlayer
 from src.models.trainer import ExamResult, TrainerResult
 from src.models.user import User
+from src.models.weekly_legends import WeeklyLegendGame
 
 __all__ = [
+    "WeeklyLegendGame",
     "PuzzleTimedScore",
     "BotOpeningStat",
     "BotRating",

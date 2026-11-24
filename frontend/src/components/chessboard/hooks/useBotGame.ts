@@ -31,6 +31,7 @@ import type {MessageKey} from '../../../i18n';
 import {messageParam, status} from '../status';
 import type {GameStatus, StatusParam} from '../status';
 import {getToken} from '../../../services/authToken';
+import type {WeeklyOutcome} from '../../../services/weeklyLegends';
 
 // Pauses between retries of the bot move request; after the fourth attempt, every 8 s while the game is in progress.
 const BOT_RETRY_DELAYS_MS = [1000, 2000, 4000, 8000];
@@ -126,6 +127,8 @@ export interface BotGameStartOptions {
     ladder?: boolean;
     /** Tournament game (task 15.3): no take-backs, the result is recorded in the tournament. */
     tournamentGameId?: number;
+    /** Weekly game against legends (task 26.1): no take-backs, the result goes to the weekly standings. */
+    weekly?: boolean;
     /** Handicap (task 21.1): material means the starting position, time means the sides' clocks, "hourglass clock". */
     odds?: OddsChoice;
 }
@@ -140,6 +143,16 @@ export function ladderOutcomeMessage(outcome: LadderOutcome): GameStatus & { key
     }
     const delta = outcome.delta > 0 ? `+${outcome.delta}` : String(outcome.delta);
     return {key: outcome.promoted ? 'ladder.resultPromoted' : 'ladder.result', params: {rating: outcome.rating, delta}};
+}
+
+/** Weekly game result for the status line (task 26.1): the points and the week total, or why it counted as a loss. */
+export function weeklyOutcomeMessage(outcome: WeeklyOutcome): GameStatus & { key: MessageKey } {
+    if (outcome.forfeit) {
+        const reasonKey = `weeklyLegends.forfeit.${outcome.forfeit}`;
+        const reason = hasMessage(reasonKey) ? messageParam(reasonKey) : outcome.forfeit;
+        return {key: 'weeklyLegends.resultForfeit', params: {reason, total: outcome.total}};
+    }
+    return {key: 'weeklyLegends.result', params: {points: outcome.points, total: outcome.total}};
 }
 
 /** Bot remark for a move: a botComments catalog key and parameters; an unknown key gives no remark. */
@@ -182,6 +195,8 @@ export interface UseBotGameResult {
     isLadderGame: boolean;
     /** A tournament game is in progress (or was just played). */
     isTournamentGame: boolean;
+    /** A weekly game against legends is in progress (or was just played). */
+    isWeeklyGame: boolean;
     /** Tournament that received the result of the last saved game (for the "To tournament" link). */
     savedTournamentId: number | null;
     /** Result of the last saved ladder game (to refresh the ladder panel). */
@@ -210,7 +225,7 @@ export interface UseBotGameResult {
     /** Resumes a game from a snapshot (after a page reload): position, clocks and flags as they were. */
     resumeBotGame: (snapshot: BotGameSnapshot) => void;
     /** Flags of the game in progress for a snapshot: ladder, tournament game number, workshop opponent. */
-    botGameInfo: () => { ladder: boolean; tournamentGameId: number | null; custom: CustomOpponent | null };
+    botGameInfo: () => { ladder: boolean; tournamentGameId: number | null; custom: CustomOpponent | null; weekly: boolean };
 }
 
 /**
@@ -243,6 +258,8 @@ export function useBotGame({
     const [isLadderGame, setIsLadderGame] = useState<boolean>(false);
     const tournamentGameRef = useRef<number | null>(null);
     const [isTournamentGame, setIsTournamentGame] = useState<boolean>(false);
+    const weeklyRef = useRef<boolean>(false);
+    const [isWeeklyGame, setIsWeeklyGame] = useState<boolean>(false);
     const [savedTournamentId, setSavedTournamentId] = useState<number | null>(null);
     const [ladderOutcome, setLadderOutcome] = useState<LadderOutcome | null>(null);
 
@@ -276,7 +293,7 @@ export function useBotGame({
         if (!token) return;
         const verboseMoves = completedGame.history({verbose: true});
         // Without moves only a counted game is saved (ladder, tournament): resigning before the first move is also a result.
-        if (verboseMoves.length === 0 && !ladderRef.current && !tournamentGameRef.current) return;
+        if (verboseMoves.length === 0 && !ladderRef.current && !tournamentGameRef.current && !weeklyRef.current) return;
         botGameSavedRef.current = true;
         const movesUci = verboseMoves.map((m: any) => `${m.from}${m.to}${m.promotion || ''}`);
         try {
@@ -287,6 +304,7 @@ export function useBotGame({
                     bot_id: botId, player_color: playerColor, result,
                     ladder: ladderRef.current,
                     ...(tournamentGameRef.current ? {tournament_game_id: tournamentGameRef.current} : {}),
+                    ...(weeklyRef.current ? {weekly: true} : {}),
                     assisted: Boolean(isAssisted?.()),
                     // Blindfold play (task 19.5): the level and the peeks go to the archive.
                     ...(getBlindfold().level > 0 ? {blindfold: getBlindfold().level, peeks: getBlindfold().peeks} : {}),
@@ -335,6 +353,7 @@ export function useBotGame({
                     setLadderOutcome(data.ladder);
                     setDrawOfferStatus(ladderOutcomeMessage(data.ladder));
                 }
+                if (data.weekly) setDrawOfferStatus(weeklyOutcomeMessage(data.weekly as WeeklyOutcome));
             }
         } catch (err) {
             console.error('Failed to save the bot game:', err);
@@ -399,6 +418,8 @@ export function useBotGame({
         setIsLadderGame(Boolean(options.ladder));
         tournamentGameRef.current = options.tournamentGameId ?? null;
         setIsTournamentGame(Boolean(options.tournamentGameId));
+        weeklyRef.current = Boolean(options.weekly);
+        setIsWeeklyGame(Boolean(options.weekly));
         setSavedTournamentId(null);
         if (isSearching) {
             setIsSearching(false);
@@ -442,6 +463,8 @@ export function useBotGame({
         setIsLadderGame(snapshot.ladder);
         tournamentGameRef.current = snapshot.tournamentGameId;
         setIsTournamentGame(Boolean(snapshot.tournamentGameId));
+        weeklyRef.current = snapshot.weekly === true;
+        setIsWeeklyGame(snapshot.weekly === true);
         setSavedTournamentId(null);
         customOpponentRef.current = snapshot.botId === 'custom' ? snapshot.custom : null;
         setHourglass?.(snapshot.odds?.kind === 'hourglass');
@@ -605,6 +628,8 @@ export function useBotGame({
         setIsLadderGame(false);
         tournamentGameRef.current = null;
         setIsTournamentGame(false);
+        weeklyRef.current = false;
+        setIsWeeklyGame(false);
         setActiveBot(null);
         setBotComment(null);
         setIsBotThinking(false);
@@ -615,12 +640,13 @@ export function useBotGame({
     const customArchetypeId = useCallback(() => customOpponentRef.current?.archetypeId ?? null, []);
     const botGameInfo = useCallback(() => ({
         ladder: ladderRef.current, tournamentGameId: tournamentGameRef.current, custom: customOpponentRef.current,
+        weekly: weeklyRef.current,
     }), []);
 
     const offerDrawToBot = useCallback(async () => {
         if (!activeBot || gameOverResult) return;
         // In the ladder and tournament the server does not remember the bot's agreement: a draw there is on the board only.
-        if (ladderRef.current || tournamentGameRef.current) {
+        if (ladderRef.current || tournamentGameRef.current || weeklyRef.current) {
             setDrawOfferStatus(status('status.botDrawNotHere'));
             return;
         }
@@ -663,7 +689,7 @@ export function useBotGame({
     return {
         selectedBotId, setSelectedBotId, botComment, isBotThinking, savedBotGameId,
         startHistoricalBotGame, startCustomBotGame, botProfileFor, botNameParam, saveBotGameToDatabase, exitBotGame,
-        isLadderGame, ladderOutcome, customArchetypeId, isTournamentGame, savedTournamentId, offerDrawToBot,
+        isLadderGame, ladderOutcome, customArchetypeId, isTournamentGame, isWeeklyGame, savedTournamentId, offerDrawToBot,
         resumeBotGame, botGameInfo,
     };
 }

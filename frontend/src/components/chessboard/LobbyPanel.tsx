@@ -1,11 +1,12 @@
 // --- FILE: frontend/src/components/chessboard/LobbyPanel.tsx ---
 // "Lobby / Live" tab: open player challenges that can be accepted, and games in progress now, for spectating.
-// At the top is an announcement of the nearest arena. Both lists arrive as props from the useGameSocket hook, which polls the
+// At the top are announcements of the nearest arena and of the weekly tournament against legends. Both lists arrive as props from the useGameSocket hook, which polls the
 // server every 1.5 s: GET /profile/matchmaking/queue (challenges) and GET /profile/games/live (games). Chessboard removes one's own challenge from the
 // list. One cannot accept a challenge or start spectating while one's own game against a human is in progress.
 
 import {Radio, Play, Eye} from 'lucide-react';
 import {ArenaBanner} from '../arena/ArenaPages';
+import {WeeklyLegendsBanner} from '../events/WeeklyLegends';
 import type {LiveGameItem, QueuePlayer} from './types';
 import {useI18n} from '../../i18n';
 
@@ -31,6 +32,8 @@ export function LobbyPanel({
         <div className="flex-1 min-h-0 bg-acacia-dark rounded-md border border-amber-900/50 p-2.5 flex flex-col shadow-inner">
             {/* Arena announcement (17.2). */}
             <ArenaBanner/>
+            {/* The weekly tournament against legends (26.1). */}
+            <WeeklyLegendsBanner/>
             <div className="grid grid-cols-2 gap-1.5 p-1 bg-black/40 rounded border border-amber-900/40 mb-2 shrink-0">
                 <button
                     type="button"

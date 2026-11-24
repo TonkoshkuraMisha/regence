@@ -29,7 +29,7 @@ export interface Relation {
 
 /** Notification kinds; the text is assembled on the client from the catalog by kind and payload fields. */
 export type NotificationKind = 'challenge' | 'rematch' | 'tournament_round' | 'report_answer' | 'workout_reminder' | 'post_comment'
-    | 'arena_reminder' | 'arena_podium';
+    | 'arena_reminder' | 'arena_podium' | 'weekly_legends';
 
 /** A notification-center notification (notifications table). The payload fields depend on the kind — see notificationLink. */
 export interface AppNotification {
@@ -101,5 +101,6 @@ export function notificationLink(n: AppNotification): string {
     if (n.kind === 'tournament_round') return `/tournaments/${n.payload.tournament_id}`;
     if (n.kind === 'post_comment') return `/feed/post/${n.payload.post_id}`;
     if (n.kind === 'arena_reminder' || n.kind === 'arena_podium') return `/arenas/${n.payload.arena_id}`;
+    if (n.kind === 'weekly_legends') return '/events/weekly';
     return '/';
 }

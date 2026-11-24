@@ -32,6 +32,7 @@ from src.api import (
     chess960,
     client_errors,
     conferences,
+    events,
     exam,
     feed,
     game_import,
@@ -152,6 +153,7 @@ def create_app() -> FastAPI:
     app.include_router(bots.router, prefix="/api/v1/bots", tags=["bots"])
     app.include_router(personalities.router, prefix="/api/v1/bots/personalities", tags=["bots"])
     app.include_router(ladder.router, prefix="/api/v1/bots/ladder", tags=["bots"])
+    app.include_router(events.router, prefix=settings.API_V1_STR)
     app.include_router(themes.router, prefix="/api/v1/themes", tags=["training"])
     app.include_router(puzzles.router, prefix="/api/v1/puzzles", tags=["training"])
     app.include_router(learn.router, prefix="/api/v1/learn", tags=["training"])

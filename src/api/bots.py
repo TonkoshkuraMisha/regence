@@ -44,7 +44,7 @@ from src.core.errors import ApiError, DomainError, DomainValueError, validation_
 from src.db import session as db_session
 from src.models.game import Game, GameStatus
 from src.models.user import User
-from src.services import engine_info, move_check, openings, product_metrics
+from src.services import engine_info, move_check, openings, product_metrics, weekly_legends
 from src.services import ladder as ladder_service
 from src.services import tournaments as tournament_service
 from src.services.bots import BOT_INSTANCES  # the single registry of bots (src/services/bots/__init__.py)
@@ -230,6 +230,8 @@ class BotGameSaveRequest(BaseModel):
     )
     ladder: bool = Field(default=False, description="A club ladder game (opened by POST /bots/ladder/start)")
     tournament_game_id: int | None = Field(default=None, description="The player's tournament game (task 15.3)")
+    weekly: bool = Field(default=False, description="A weekly game against legends (task 26.1, opened by "
+                                                    "POST /events/weekly-legends/start)")
     assisted: bool = Field(default=False, description="The player used the mentor: a training game")
     blindfold: int | None = Field(default=None, ge=1, le=4, description="Blindfold play (task 19.5): tier 1-4")
     peeks: int = Field(default=0, ge=0, le=10_000, description="How many times the player peeked at the position")
@@ -268,6 +270,8 @@ class BotGameSaveResponse(BaseModel):
     rating_before: int | None = None
     rating_after: int | None = None
     rating_delta: int | None = None
+    # A weekly game against legends (task 26.1): points, the reason it counted as a loss and the week total.
+    weekly: weekly_legends.WeeklyOutcome | None = None
 
 
 def calculate_authentic_thinking_time_ms(
@@ -794,6 +798,17 @@ async def _ladder_game_for_save(
     return session, *found
 
 
+async def _weekly_session_for_save(user: User, payload: BotGameSaveRequest) -> ladder_service.LadderSession:
+    """The open weekly game (task 26.1) that the game being saved corresponds to - legend and colour - or 409."""
+    try:
+        session = await weekly_legends.check_save(user, payload.bot_id)
+    except DomainError as exc:
+        raise exc.to_http(409) from exc
+    if payload.player_color != session.color:
+        raise ApiError(409, "weekly_no_session")
+    return session
+
+
 async def _tournament_game_for_save(
         db: AsyncSession, user: User, payload: BotGameSaveRequest,
 ) -> tournament_service.PlayerGame:
@@ -888,7 +903,7 @@ async def save_bot_game(
     on the server (opponent, colour, time control) - otherwise 409; a hint or a takeback in a tournament game gives
     a loss, not the board result.
     """
-    if payload.blindfold and (payload.ladder or payload.tournament_game_id):
+    if payload.blindfold and (payload.ladder or payload.tournament_game_id or payload.weekly):
         # Blindfold play is training: it does not exist in the ladder and the tournament (task 19.5).
         raise ApiError(400, "blindfold_not_allowed")
     if payload.bot_id != CUSTOM_BOT_ID and payload.bot_id not in BOT_METADATA:
@@ -896,6 +911,7 @@ async def save_bot_game(
     personality_name, personality_elo = await _resolve_personality_for_save(db, current_user, payload)
     ladder_game = await _ladder_game_for_save(current_user, payload) if payload.ladder else None
     tournament_game = await _tournament_game_for_save(db, current_user, payload) if payload.tournament_game_id else None
+    weekly_session = await _weekly_session_for_save(current_user, payload) if payload.weekly else None
 
     if payload.player_color not in ("white", "black"):
         raise ApiError(400, "invalid_player_color")
@@ -905,7 +921,7 @@ async def save_bot_game(
 
     # A game without moves is not written to the archive - except counted ones (ladder, tournament) resigned or lost on
     # time before the first move: otherwise the tournament game would stay open, and the round unclosed.
-    counted = ladder_game is not None or tournament_game is not None
+    counted = ladder_game is not None or tournament_game is not None or weekly_session is not None
     if counted and payload.termination == "agreement":
         # The server does not remember the bot's agreement to a draw - in a counted game it cannot be forged.
         raise ApiError(400, "termination_required")
@@ -973,11 +989,20 @@ async def save_bot_game(
         if payload.player_color == "black" and result != "1/2-1/2":
             player_score = 1.0 - player_score
         ladder_outcome = await ladder_service.apply_result(db, current_user, rung, player_score, session.assisted)
+    weekly_outcome = None
+    if weekly_session is not None:
+        await db.flush()  # the game id for the weekly row
+        weekly_outcome = await weekly_legends.record_result(
+            db, current_user, weekly_session, result, payload.player_color, payload.assisted, payload.base_time_ms,
+            payload.increment_ms, new_game.id,
+        )
     await product_metrics.record_event(db, current_user.id, product_metrics.GAME_FINISHED)
     await db.commit()
     await db.refresh(new_game)
     if ladder_game is not None:
         await ladder_service.clear_session(current_user.id)
+    if weekly_session is not None:
+        await ladder_service.clear_session(current_user.id, weekly_legends.SCOPE)
     tournament_forfeit = None
     rating_change = None
     if tournament_game is not None:
@@ -1021,6 +1046,7 @@ async def save_bot_game(
         ladder=ladder_outcome,
         tournament_id=tournament_game.tournament.id if tournament_game else None,
         tournament_forfeit=tournament_forfeit,
+        weekly=weekly_outcome,
         rating_before=rating_change.before if rating_change else None,
         rating_after=rating_change.after if rating_change else None,
         rating_delta=rating_change.delta if rating_change else None,

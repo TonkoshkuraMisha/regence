@@ -116,6 +116,7 @@ celery_app.conf.update(
         "arena_reminders": {"queue": ANALYSIS_QUEUE},
         "archive_move_telemetry": {"queue": ANALYSIS_QUEUE},
         "purge_deleted_accounts": {"queue": ANALYSIS_QUEUE},
+        "weekly_legends_results": {"queue": ANALYSIS_QUEUE},
         "arena_awards": {"queue": ANALYSIS_QUEUE},
         "bot_selfplay": {"queue": SIMULATION_QUEUE},
     },
@@ -137,6 +138,9 @@ celery_app.conf.update(
         "review-cheater-flags": {"task": "review_cheater_flags", "schedule": crontab(day_of_week=1, hour=6, minute=7)},
         # Accounts past the deletion grace period are anonymised (task 23.1): once a day, at 04:23 UTC.
         "purge-deleted-accounts": {"task": "purge_deleted_accounts", "schedule": crontab(hour=4, minute=23)},
+        # Last week's places in the tournament against legends (task 26.1): Monday 00:13 UTC, right after the week ends.
+        "weekly-legends-results": {"task": "weekly_legends_results",
+                                   "schedule": crontab(day_of_week=1, hour=0, minute=13)},
     },
     # Do not prefetch long simulation games: otherwise one worker takes a queue and holds it.
     worker_prefetch_multiplier=1,

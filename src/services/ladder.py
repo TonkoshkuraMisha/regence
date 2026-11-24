@@ -19,7 +19,8 @@ games could simply be abandoned).
 
 The same mechanism guards a tournament game (task A.2): the session has its own scope (SCOPES) -- "ladder" or
 "tournament" -- the move and analysis checks apply to both. A tournament game session is opened by
-tournaments.start_player_game.
+tournaments.start_player_game; a weekly tournament game against legends (task 26.1) has the scope "weekly"
+(src/services/weekly_legends.py).
 
 The ladder rating is the player's ladder_rating and ladder_games fields (User); the module is also called by
 src/api/profile.py and
@@ -79,9 +80,10 @@ class LadderSession:
     tournament_game_id: int | None = None
 
 
-# The session scope: "ladder" -- a ladder game, "tournament" -- a tournament game; the Redis key depends on it.
+# The session scope: "ladder" -- a ladder game, "tournament" -- a tournament game, "weekly" -- a weekly game against
+# legends; the Redis key depends on it.
 Scope = str
-SCOPES: tuple[Scope, ...] = ("ladder", "tournament")
+SCOPES: tuple[Scope, ...] = ("ladder", "tournament", "weekly")
 
 
 def rungs() -> list[Rung]:

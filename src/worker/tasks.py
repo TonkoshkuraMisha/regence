@@ -298,6 +298,26 @@ def purge_deleted_accounts() -> int:
     return purged
 
 
+async def _weekly_legends_results_async() -> int:
+    engine = create_async_engine(_task_database_url(), poolclass=NullPool)
+    try:
+        async with async_sessionmaker(engine, expire_on_commit=False)() as db:
+            from src.services import weekly_legends
+
+            return await weekly_legends.notify_results(db)
+    finally:
+        await engine.dispose()
+
+
+@celery_app.task(name="weekly_legends_results", ignore_result=True)
+def weekly_legends_results() -> int:
+    """Last week's places in the tournament against legends to its participants (task 26.1) - every Monday."""
+    sent = asyncio.run(_weekly_legends_results_async())
+    if sent:
+        logger.info("Weekly legends results sent: %s", sent)
+    return sent
+
+
 async def _arena_awards_async() -> int:
     engine = create_async_engine(_task_database_url(), poolclass=NullPool)
     try:

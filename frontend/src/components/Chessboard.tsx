@@ -42,6 +42,7 @@ import type {BotOpponentId, HistoricalBotId, HistoricalBotProfile} from '../conf
 import {ALL_TIME_CONTROLS, DEFAULT_TIME_CONTROL, TIME_CONTROLS, timeControlCategory} from '../config/timeControls';
 import {clearBotGameSnapshot, loadBotGameSnapshot, saveBotGameSnapshot} from '../services/botGameSnapshot';
 import type {TournamentGameStart} from '../services/tournaments';
+import type {WeeklyGameStart} from '../services/weeklyLegends';
 import {ContinueTournaments, TournamentGameBar} from './tournaments/TournamentGameBar';
 import {pickFirstOpponent} from '../services/onboarding';
 import type {FirstGameStart} from '../services/onboarding';
@@ -86,7 +87,7 @@ import {PersonalityWorkshop} from './chessboard/PersonalityWorkshop';
 import {LadderPanel} from './chessboard/LadderPanel';
 import type {LadderStart} from '../services/ladder';
 import {ladderOutcomeMessage} from './chessboard/hooks/useBotGame';
-import {hasStatusKey, renderStatus, status} from './chessboard/status';
+import {hasStatusKey, messageParam, renderStatus, status} from './chessboard/status';
 import type {GameStatus} from './chessboard/status';
 import {useI18n} from '../i18n';
 import {fetchBotCatalog, fetchRivalry} from '../services/botCatalog';
@@ -377,7 +378,7 @@ export default function Chessboard() {
     const {
         selectedBotId, setSelectedBotId, botComment, isBotThinking, savedBotGameId,
         startHistoricalBotGame, startCustomBotGame, botProfileFor, botNameParam, saveBotGameToDatabase, exitBotGame,
-        isLadderGame, ladderOutcome, customArchetypeId, isTournamentGame, savedTournamentId, offerDrawToBot,
+        isLadderGame, ladderOutcome, customArchetypeId, isTournamentGame, isWeeklyGame, savedTournamentId, offerDrawToBot,
         resumeBotGame, botGameInfo,
     } = useBotGame({
         game, myColor, gameOverResult, whiteTimeMs, blackTimeMs, isSearching, setIsSearching,
@@ -402,7 +403,7 @@ export default function Chessboard() {
     }, [savedBotGameId]);
     // A counted game, ladder or tournament (task A.2): no coach, x-ray or take-back: the server would count such
     // help as a loss anyway or would not count the game.
-    const isRatedBotGame = isLadderGame || isTournamentGame;
+    const isRatedBotGame = isLadderGame || isTournamentGame || isWeeklyGame;
     // A pause is given only by a friendly bot game: in a ladder or tournament game it would let one think without a clock.
     const canPauseBot = Boolean(activeBot) && !gameId && !isRatedBotGame && !gameOverResult;
     useEffect(() => {
@@ -1304,7 +1305,7 @@ export default function Chessboard() {
             whiteTimeMs, blackTimeMs, baseMinutes: effectiveWhiteBaseMinutes, incrementSeconds: effectiveIncSeconds,
             odds: activeOdds ? {kind: activeOdds.kind, giver: activeOdds.giver} : null,
             ladder: info.ladder, tournamentGameId: info.tournamentGameId, tournamentId: tournamentLinkId,
-            paused: botPaused,
+            weekly: info.weekly, paused: botPaused,
         });
     };
     // Fresh version of the record for page-close handlers (they outlive a single render).
@@ -1336,7 +1337,8 @@ export default function Chessboard() {
     useEffect(() => {
         if (resumedBotGameRef.current || !currentUsername || gameId || activeBot || spectatingGameId) return;
         const routeState = routeLocation.state as Record<string, unknown> | null;
-        if (routeState && (routeState.tournamentGame || routeState.guestGame || routeState.firstGame)) return;
+        if (routeState && (routeState.tournamentGame || routeState.weeklyGame || routeState.guestGame
+            || routeState.firstGame)) return;
         resumedBotGameRef.current = true;
         const snapshot = loadBotGameSnapshot(currentUsername);
         if (!snapshot) return;
@@ -1376,6 +1378,35 @@ export default function Chessboard() {
         setTournamentGameRefId(pendingTournament.gameId);
         setPendingTournament(null);
     }, [pendingTournament, effectiveWhiteBaseMinutes, effectiveIncSeconds]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // A weekly game against a legend (task 26.1): like a tournament game, the hall's time control is set to the weekly one
+    // first and the game starts once it is applied, so the server accepts the save.
+    const weeklyStart = (routeLocation.state as { weeklyGame?: WeeklyGameStart } | null)?.weeklyGame;
+    const [pendingWeekly, setPendingWeekly] = useState<WeeklyGameStart | null>(null);
+    useEffect(() => {
+        if (!weeklyStart || gameId || (activeBot && !gameOverResult)) return;
+        const manual = ALL_TIME_CONTROLS.find((o) => o.isManual
+            && o.category === timeControlCategory(weeklyStart.baseTimeMs, weeklyStart.incrementMs));
+        if (manual) setSelectedTimeControl(manual);
+        setManualBaseMinutes(weeklyStart.baseTimeMs / 60000);
+        setManualIncSeconds(weeklyStart.incrementMs / 1000);
+        setPendingWeekly(weeklyStart);
+        navigate('.', {replace: true, state: null});
+    }, [weeklyStart]); // eslint-disable-line react-hooks/exhaustive-deps
+    useEffect(() => {
+        if (!pendingWeekly) return;
+        const applied = Math.round(effectiveWhiteBaseMinutes * 60000) === pendingWeekly.baseTimeMs
+            && Math.round(effectiveIncSeconds * 1000) === pendingWeekly.incrementMs;
+        if (!applied) return;
+        setActiveOdds(null);
+        startHistoricalBotGame(pendingWeekly.botId as HistoricalBotId, pendingWeekly.color, null, {weekly: true});
+        if (pendingWeekly.abandoned) {
+            setDrawOfferStatus(status('weeklyLegends.abandonedNote', {
+                name: messageParam(`bots.profiles.${pendingWeekly.abandoned as HistoricalBotId}.shortName`),
+            }));
+        }
+        setPendingWeekly(null);
+    }, [pendingWeekly, effectiveWhiteBaseMinutes, effectiveIncSeconds]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // A game against a master of the past from the catalog (task 28.5): the same character as in the "Time Machine", but outside a tournament.
     // On the board the name is in the player's language, the game goes to the archive under the name from the PGN.

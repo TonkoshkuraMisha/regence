@@ -45,6 +45,8 @@ export interface BotGameSnapshot {
     /** Tournament game: the number of the schedule game and of the tournament — otherwise null. */
     tournamentGameId: number | null;
     tournamentId: number | null;
+    /** A weekly game against legends (task 26.1); snapshots without the field are not weekly. */
+    weekly?: boolean;
     /** The game was paused: on resume the clocks are not reduced by the reload time (snapshots without the field — not paused). */
     paused?: boolean;
 }

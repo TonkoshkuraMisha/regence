@@ -251,8 +251,14 @@ For each section: what it does → files → where the data comes from → how i
   (`time_machine.py`, 50 tournaments) — famous tournaments of the past with the full historical field plus the player;
   the fields and the real results are checked against open sources by the scripts in `scripts/dev/time_machine/` (the
   procedure for adding a tournament — `scripts/dev/time_machine/README.md`).
+- **Weekly tournament against legends** (task 26.1; `weekly_legends.py`, rules — `weekly_legends_rules.py`, route —
+  `src/api/events.py`, page `/events/weekly` and the lobby banner — `components/events/WeeklyLegends.tsx`): every week
+  five historical bots, one per strength band, open to every player at 10+5; each legend once a week, win 1, draw ½.
+  The game is guarded by a fair session with the scope `weekly` (as the ladder) and counted only from the saved game
+  (`/bots/save-game` with `weekly=true`); a hint, the coach, another time control or an abandoned game is a loss. Data —
+  the `weekly_legend_games` table; on Mondays the task `weekly_legends_results` sends last week's places.
 - **Tests.** `ladder`, `tournaments`, `tournament_rules`, `tournament_play`, `tournament_simulation`,
-  `tournament_career`, `tournament_big`, `time_machine`, `time_machine_play`; browser — `e2e/time-machine.e2e.ts`.
+  `tournament_career`, `tournament_big`, `time_machine`, `time_machine_play`, `weekly_legends`; browser — `e2e/time-machine.e2e.ts`.
 
 ### 4.8. Arenas between humans and conferences
 

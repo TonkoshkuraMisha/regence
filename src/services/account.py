@@ -18,10 +18,11 @@ opponents):
 Anonymisation is not row removal: games are shared with opponents and stay in their history and rating, but without the
 player's name (deleted_<id>). Everything personal is erased - the tables in PERSONAL_TABLES (progress, puzzles, records,
 tournaments with bots, repertoires, achievements, study materials, bot memory of the player, email links, product events,
-arena reminders, timed puzzle scores) and the social ones in SOCIAL_TABLES (follows both ways, notifications, direct
-messages both ways, blocks, hidden conversations, posts with their comments and likes, own comments and likes, team
-membership); in the profile - e-mail, country, kid mode and the guardian code. The password becomes an unusable hash.
-Moderation reports and arena results stay: they are other players' records too. Tables not listed are left untouched.
+arena reminders, timed puzzle scores, weekly legend games) and the social ones in SOCIAL_TABLES (follows both ways,
+notifications, direct messages both ways, blocks, hidden conversations, posts with their comments and likes, own
+comments and likes, team membership); in the profile - e-mail, country, kid mode and the guardian code. The password
+becomes an unusable hash. Moderation reports and arena results stay: they are other players' records too. Tables not
+listed are left untouched.
 """
 
 from __future__ import annotations
@@ -53,6 +54,7 @@ from src.models.team import TeamMember
 from src.models.tournament import Tournament
 from src.models.trainer import ExamResult, TrainerResult
 from src.models.user import User
+from src.models.weekly_legends import WeeklyLegendGame
 from src.services.account_state import delete_after
 
 logger = logging.getLogger(__name__)
@@ -190,6 +192,7 @@ PERSONAL_TABLES = (
     (Repertoire, Repertoire.user_id), (UserAchievement, UserAchievement.user_id),
     (StudyMaterial, StudyMaterial.owner_id), (TrainerResult, TrainerResult.user_id),
     (ExamResult, ExamResult.user_id), (BotRival, BotRival.user_id), (BotRivalStat, BotRivalStat.user_id),
+    (WeeklyLegendGame, WeeklyLegendGame.user_id),
 )
 # Social rows: (model, columns - a row goes when any of them is the player). Comments and likes go before posts; posts
 # take the rest of their comments and likes with them (ON DELETE CASCADE).
