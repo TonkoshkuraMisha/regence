@@ -1,9 +1,9 @@
 // --- FILE: frontend/src/components/beta/ReportProblem.tsx ---
 // «// "Report a problem" (task 24.4): a window available from any page, including when signed out. The text is sent with
-// // context: page path, app version, language and window size; exactly what will be sent is shown right in the form.
-// // The window is the shared Modal (backdrop, close button, Esc). Submission goes through services/beta.ts, POST /api/v1/beta/feedback.
+// context: page path, app version, language and window size; exactly what will be sent is shown right in the form.
+// The window is the shared Modal (backdrop, close button, Esc). Submission goes through services/beta.ts, POST /api/v1/beta/feedback.
 // CommunityLink — // CommunityLink is a link to the community channel: visible only when it is set in the server settings (COMMUNITY_URL);
-// // the version and the link come from useSiteConfig. App.tsx opens the window; About.tsx also shows the link.
+// the version and the link come from useSiteConfig. App.tsx opens the window; About.tsx also shows the link.
 
 import {useState} from 'react';
 import {useLocation} from 'react-router-dom';
@@ -14,11 +14,11 @@ import {errorMessage} from '../../services/apiErrors';
 import {Modal} from '../ui';
 import {betaApi, communityPlatform, screenSize, useSiteConfig} from '../../services/beta';
 
-// // Message length limits in characters; the server checks the same values (src/services/beta.py: MESSAGE_MIN, MESSAGE_MAX).
+// Message length limits in characters; the server checks the same values (src/services/beta.py: MESSAGE_MIN, MESSAGE_MAX).
 const MESSAGE_MIN = 5;
 const MESSAGE_MAX = 2000;
 
-/** /** Link to the community channel (the platform name is taken from the address); not rendered unless COMMUNITY_URL is set. */
+/** Link to the community channel (the platform name is taken from the address); not rendered unless COMMUNITY_URL is set. */
 export function CommunityLink({className = ''}: { className?: string }) {
     const {t} = useI18n();
     const {communityUrl} = useSiteConfig();
@@ -31,7 +31,7 @@ export function CommunityLink({className = ''}: { className?: string }) {
     );
 }
 
-/** /** Message submission window; after a successful submit it shows a confirmation instead of the form. */
+/** Message submission window; after a successful submit it shows a confirmation instead of the form. */
 export function ReportProblem({onClose}: { onClose: () => void }) {
     const {t, language} = useI18n();
     const location = useLocation();

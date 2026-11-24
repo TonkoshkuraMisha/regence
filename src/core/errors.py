@@ -105,6 +105,7 @@ ERROR_MESSAGES: dict[str, str] = {
     "mini_room_busy": "The game is busy, try again",
     "mini_room_in_progress": "The game is not over yet",
     "chess960_bad_position": "There is no such starting position (0-959)",
+    "not_chess960_game": "This game is not Fischer random chess",
     "exam_section_unknown": "There is no such exam test",
     "exam_section_empty": "There are no positions for this test yet",
     "exam_question_unknown": "This position is not part of this test",

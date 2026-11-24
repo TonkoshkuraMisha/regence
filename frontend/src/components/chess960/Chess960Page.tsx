@@ -1,9 +1,9 @@
-// // Fischer Random chess (task 21.3): /play/960 is a game against a bot from a random setup (or by number 0-959).
-// // Rules and the bot's move are on the server (python-chess in 960 mode, Stockfish with UCI_Chess960, src/services/chess960.py):
-// // the client chess library does not know the 960 rules, so the board only draws the position and relays clicks.
-// // Castling is a click on the king, then on one's own rook. No rating. Data comes from /api/v1/chess960 (src/api/chess960.py):
-// // the position and moves are sent in full each time (the server keeps no game state). Route is in App.tsx; the pure functions
-// piecesOf/clickMove // piecesOf/clickMove are shared with the human game (Chess960LiveGame.tsx).
+// Fischer Random chess (task 21.3): /play/960 is a game against a bot from a random setup (or by number 0-959).
+// Rules and the bot's move are on the server (python-chess in 960 mode, Stockfish with UCI_Chess960, src/services/chess960.py):
+// the client chess library does not know the 960 rules, so the board only draws the position and relays clicks.
+// Castling is a click on the king, then on one's own rook. No rating. Data comes from /api/v1/chess960 (src/api/chess960.py):
+// the position and moves are sent in full each time (the server keeps no game state). Route is in App.tsx; the pure functions
+// piecesOf/clickMove are shared with the human game (Chess960LiveGame.tsx).
 
 import {useCallback, useEffect, useState} from 'react';
 import {Link} from 'react-router-dom';
@@ -16,18 +16,18 @@ import type {State960} from '../../services/chess960';
 import {PuzzleBoard} from '../puzzles/PuzzleBoard';
 import {numberedMoves} from '../../services/moveNumbers';
 
-/** /** Server response for a game against a bot: setup number, position, moves (UCI and SAN), result and the bot's move. */
-// // Bot levels 1-5 (the server maps each to an Elo and a time per move, chess960.LEVELS); names come from the chess960.levels catalog.
-// // Termination reasons that have texts in the chess960.terminations catalog.
+/** Server response for a game against a bot: setup number, position, moves (UCI and SAN), result and the bot's move. */
+// Bot levels 1-5 (the server maps each to an Elo and a time per move, chess960.LEVELS); names come from the chess960.levels catalog.
+// Termination reasons that have texts in the chess960.terminations catalog.
 const LEVELS = [1, 2, 3, 4, 5] as const;
 const TERMINATIONS = ['checkmate', 'stalemate', 'insufficient_material', 'threefold_repetition', 'fifty_moves',
     'fivefold_repetition', 'seventyfive_moves'] as const;
 
-// // Requests to the server are in services/chess960.ts; the state type is re-exported for tests and the human game.
+// Requests to the server are in services/chess960.ts; the state type is re-exported for tests and the human game.
 const call = chess960Call;
 export type {State960};
 
-/** /** Pieces of a position by square: "e1" -> "K" (white ones are uppercase). */
+/** Pieces of a position by square: "e1" -> "K" (white ones are uppercase). */
 export function piecesOf(fen: string): Map<string, string> {
     const pieces = new Map<string, string>();
     fen.split(' ')[0].split('/').forEach((row, index) => {
@@ -44,7 +44,7 @@ export function piecesOf(fen: string): Map<string, string> {
     return pieces;
 }
 
-/** /** Move by two clicks: king onto own rook is castling (UCI 960), pawn onto the last rank is a queen. */
+/** Move by two clicks: king onto own rook is castling (UCI 960), pawn onto the last rank is a queen. */
 export function clickMove(fen: string, from: string, to: string): string | null {
     const pieces = piecesOf(fen);
     const mover = pieces.get(from);
@@ -57,7 +57,7 @@ export function clickMove(fen: string, from: string, to: string): string | null 
     return `${from}${to}${promotion}`;
 }
 
-/** /** Outcome of a click on a square in two-click moves: the new selected square and the ready UCI move (null means no move yet). */
+/** Outcome of a click on a square in two-click moves: the new selected square and the ready UCI move (null means no move yet). */
 export interface ClickStep {
     from: string | null;
     move: string | null;

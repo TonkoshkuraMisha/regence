@@ -41,6 +41,7 @@ import {MiniGamePage, MiniGamesPage} from './components/trainers/MiniGames';
 import {MiniGameRoomPage} from './components/trainers/MiniGameRoom';
 import {Chess960Page} from './components/chess960/Chess960Page';
 import {Chess960LiveGame} from './components/chess960/Chess960LiveGame';
+import {Chess960Archive} from './components/chess960/Chess960Archive';
 import {WorkoutPage} from './components/WorkoutPage';
 import {ExamPage} from './components/ExamPage';
 import {ProgramPage, ProgramsPage} from './components/ProgramsPage';
@@ -790,6 +791,7 @@ export default function App() {
                         <Route path="/train/games" element={<MiniGamesPage/>}/>
                         <Route path="/play/960" element={<Chess960Page/>}/>
                         <Route path="/play/960/live" element={<Chess960LiveGame/>}/>
+                        <Route path="/play/960/game/:gameId" element={<Chess960Archive/>}/>
                         <Route path="/workout" element={<WorkoutPage/>}/>
                         <Route path="/exam" element={<ExamPage/>}/>
                         <Route path="/programs" element={<ProgramsPage/>}/>

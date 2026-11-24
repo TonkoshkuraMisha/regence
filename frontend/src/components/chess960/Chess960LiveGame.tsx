@@ -1,11 +1,11 @@
-// // Fischer Random game against a human (task 21.3 / 21.1): /play/960/live. The 960 rules live only on the server (python-chess in
+// Fischer Random game against a human (task 21.3 / 21.1): /play/960/live. The 960 rules live only on the server (python-chess in
 // 960, src/services/game_engine.py): // 960 mode, src/services/game_engine.py): the client chess library does not know 960 castling, so here the board only
-// // draws the position and relays clicks, as in the game against a bot (Chess960Page). Castling is a click on the king, then on
-// // one's own rook; a premove is placed the same way on the opponent's turn (it is sent as soon as it is our turn; the server rejects an impossible one).
-// // State arrives over the shared WebSocket (services/gameSocket): match_found (at start and on every
-// // reconnect), move_made, game_over, chat, draw and rematch offers (a rematch is the same setup with colours swapped,
+// draws the position and relays clicks, as in the game against a bot (Chess960Page). Castling is a click on the king, then on
+// one's own rook; a premove is placed the same way on the opponent's turn (it is sent as soon as it is our turn; the server rejects an impossible one).
+// State arrives over the shared WebSocket (services/gameSocket): match_found (at start and on every
+// reconnect), move_made, game_over, chat, draw and rematch offers (a rematch is the same setup with colours swapped,
 // websockets.create_rematch_game). // websockets.create_rematch_game). The main board (useGameSocket.ts) itself redirects here
-// // a game with variant chess960, passing the snapshot in location.state.match. These games are unrated.
+// a game with variant chess960, passing the snapshot in location.state.match. These games are unrated.
 
 import {useCallback, useEffect, useRef, useState} from 'react';
 import {Link, useLocation} from 'react-router-dom';
@@ -20,7 +20,7 @@ import {PuzzleBoard} from '../puzzles/PuzzleBoard';
 import {clickStep} from './Chess960Page';
 import {numberedMoves} from '../../services/moveNumbers';
 
-// // Game snapshot for rendering: clocks (ms) are values as of the last server message; the state version is needed for make_move.
+// Game snapshot for rendering: clocks (ms) are values as of the last server message; the state version is needed for make_move.
 interface LiveState {
     gameId: number;
     color: 'white' | 'black';
@@ -36,14 +36,14 @@ interface LiveState {
     lastMove: string | null;
 }
 
-/** /** Position for a board without castling rights: the board draws pieces, the server validates 960 castling. */
+/** Position for a board without castling rights: the board draws pieces, the server validates 960 castling. */
 export function displayFen(fen: string): string {
     const parts = fen.split(' ');
     if (parts.length > 2) parts[2] = '-';
     return parts.join(' ');
 }
 
-/** /** Game moves in SAN from the PGN: without headers, move numbers and result. */
+/** Game moves in SAN from the PGN: without headers, move numbers and result. */
 export function sansOf(pgn: string): string[] {
     const movetext = pgn.split('\n').filter((line) => !line.startsWith('[')).join(' ');
     return movetext.split(/\s+/).filter((token) => token && !/^\d+\.(\.\.)?$/.test(token) && !/^\d+\.{1,3}\S/.test(token)
@@ -76,7 +76,7 @@ interface GameMessage {
     reason?: string;
 }
 
-/** /** Game snapshot from a match_found message (server snake_case fields -> component state). */
+/** Game snapshot from a match_found message (server snake_case fields -> component state). */
 function fromSnapshot(data: GameMessage): LiveState {
     return {
         gameId: Number(data.game_id),
@@ -94,13 +94,13 @@ function fromSnapshot(data: GameMessage): LiveState {
     };
 }
 
-// // Time "m:ss" rounded up to the second, as on the main board.
+// Time "m:ss" rounded up to the second, as on the main board.
 function clock(ms: number): string {
     const total = Math.max(0, Math.ceil(ms / 1000));
     return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
 }
 
-// // Unique move command identifier: the server uses it to drop a repeated submission of the same move.
+// Unique move command identifier: the server uses it to drop a repeated submission of the same move.
 function commandId(): string {
     return typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
 }
