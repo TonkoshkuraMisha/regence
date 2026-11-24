@@ -37,6 +37,7 @@ describe('AuthModal: consent to the terms (task 23.1)', () => {
         const terms = screen.getByTestId('auth-terms');
         expect(terms).toBeRequired();
         expect(terms).not.toBeChecked();
+        expect(screen.getByRole('link', {name: 'terms of use'})).toHaveAttribute('href', '/terms');
         expect(screen.getByRole('link', {name: 'community rules'})).toHaveAttribute('href', '/rules');
         expect(screen.getByRole('link', {name: 'privacy summary'})).toHaveAttribute('href', '/privacy');
     });

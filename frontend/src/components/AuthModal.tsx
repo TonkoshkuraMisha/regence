@@ -321,6 +321,7 @@ export default function AuthModal({onSuccess, onClose: onCloseProp, onFirstGame,
                                        onChange={(e) => setAcceptTerms(e.target.checked)} className="mt-0.5"/>
                                 <span>
                                     {t('auth.acceptTermsLead')}{' '}
+                                    <a href="/terms" target="_blank" rel="noreferrer" className="underline">{t('auth.termsTermsLink')}</a>,{' '}
                                     <a href="/rules" target="_blank" rel="noreferrer" className="underline">{t('auth.termsRulesLink')}</a>{' '}
                                     {t('auth.termsAnd')}{' '}
                                     <a href="/privacy" target="_blank" rel="noreferrer" className="underline">{t('auth.termsPrivacyLink')}</a>
