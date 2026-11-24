@@ -131,9 +131,9 @@ FAVICON = (
 )
 
 
-def photo(src: str, style: str, narrow: bool = False) -> str:
-    """A photo on the table: position and tilt are in style; narrow - keep it on a narrow screen too."""
-    cls = "photo narrow" if narrow else "photo"
+def photo(src: str, style: str, narrow: bool = False, extra: str = "") -> str:
+    """A photo on the table: position and tilt are in style; narrow - keep it on a narrow screen too; extra - more CSS classes."""
+    cls = ("photo narrow" if narrow else "photo") + (f" {extra}" if extra else "")
     return f'<figure class="{cls}" style="margin:0;{style}"><img src="{src}" alt=""/></figure>'
 
 
@@ -169,12 +169,23 @@ def landing_collage(photos: list[str]) -> str:
     return '<div class="collage" aria-hidden="true">' + "".join(parts) + "</div>"
 
 
+# Maintenance layout: the photos sit symmetrically about the vertical axis. The outer ones hug the corners; the inner ones sit
+# halfway but never closer to the centre than the brand name (about 15vw wide on each side, 213px at most) plus a gap, so the
+# text is never covered. Below 1400px the inner ones are hidden (.inner): there is no longer room for four per row without crowding the outer ones.
+MAINTENANCE_EDGE = "4%"
+MAINTENANCE_INNER = "min(24%, calc(50% - min(15.2vw, 213px) - 48px - 170px))"
+
+
 def maintenance_collage(photos: list[str]) -> str:
     """Technical maintenance: strips of frames at the top and bottom and a game form - a different layout from the waiting page."""
-    top = [photo(src, f"left:{5 + i * 24}%;top:-34px;transform:rotate({(-1) ** i * 3}deg)", narrow=i < 2)
-           for i, src in enumerate(photos[:4])]
-    bottom = [photo(src, f"left:{12 + i * 24}%;bottom:-34px;transform:rotate({(-1) ** i * -3}deg)", narrow=i < 2)
-              for i, src in enumerate(photos[4:8])]
+    # (side, offset, tilt, inner): left to right, mirrored tilts for the mirrored photos.
+    slots = [("left", MAINTENANCE_EDGE, -3, False), ("left", MAINTENANCE_INNER, 3, True),
+             ("right", MAINTENANCE_INNER, -3, True), ("right", MAINTENANCE_EDGE, 3, False)]
+    top = [photo(src, f"{side}:{offset};top:-34px;transform:rotate({tilt}deg)", narrow=not inner, extra="inner" if inner else "")
+           for src, (side, offset, tilt, inner) in zip(photos[:4], slots, strict=True)]
+    bottom = [photo(src, f"{side}:{offset};bottom:-34px;transform:rotate({-tilt}deg)", narrow=not inner,
+                    extra="inner" if inner else "")
+              for src, (side, offset, tilt, inner) in zip(photos[4:8], slots, strict=True)]
     parts = top + bottom + [
         piece("rook", "width:110px;left:4%;top:34%;transform:rotate(-6deg)"),
         piece("pawn", "width:90px;left:18%;top:62%;transform:rotate(8deg)"),
@@ -189,6 +200,7 @@ def maintenance_collage(photos: list[str]) -> str:
 def narrow_css() -> str:
     """On narrow screens we keep a few photos and mute the background even more."""
     return """
+@media (max-width: 1400px) { .photo.inner { display: none; } }
 @media (max-width: 900px) {
     .photo:not(.narrow), .note { display: none; }
     .photo { width: 96px; padding: 5px 5px 14px; opacity: .45; }
