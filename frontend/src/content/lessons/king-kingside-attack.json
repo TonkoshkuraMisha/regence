@@ -1,0 +1,180 @@
+{
+  "id": "king-kingside-attack",
+  "course": "king-attack",
+  "order": 12,
+  "title": {
+    "en": "Attack on the castled king",
+    "uk": "Атака на рокірованого короля"
+  },
+  "summary": {
+    "en": "Gather the pieces near the king, then break the shelter with a sacrifice on h7 or g7: the typical finish of a kingside attack.",
+    "uk": "Зберіть фігури біля короля, а тоді зламайте прикриття жертвою на h7 чи g7: типове завершення атаки на королівському фланзі."
+  },
+  "steps": [
+    {
+      "type": "text",
+      "fen": "1r1qr2k/p6n/4pb1Q/4R3/2pp1P2/5P2/PPPB3P/6RK w - - 5 30",
+      "highlights": [
+        "h7",
+        "h8",
+        "h6"
+      ],
+      "arrows": [
+        {
+          "from": "h6",
+          "to": "h7",
+          "color": "green"
+        },
+        {
+          "from": "e5",
+          "to": "h5",
+          "color": "green"
+        }
+      ],
+      "text": {
+        "en": "A kingside attack has three stages: bring the queen, a bishop or knight and a rook to the king; open a file or a diagonal; finish with a sacrifice that drags the king out or removes its last defender. Before the sacrifice count the attackers against the defenders near the king: if you have more, the sacrifice usually works.",
+        "uk": "Атака на королівському фланзі має три етапи: приведіть ферзя, слона чи коня й туру до короля; відкрийте вертикаль чи діагональ; завершіть жертвою, що виманює короля або прибирає його останнього захисника. Перед жертвою порахуйте нападників і захисників біля короля: якщо ваших більше, жертва зазвичай спрацьовує."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "1r1qr2k/p6n/4pb1Q/4R3/2pp1P2/5P2/PPPB3P/6RK w - - 5 30",
+      "text": {
+        "en": "White to move. Mate in two.",
+        "uk": "Хід білих. Мат у два ходи."
+      },
+      "line": [
+        {
+          "answers": [
+            "h6h7"
+          ],
+          "reply": "h8h7",
+          "correct": {
+            "en": "The queen is given up: the king must take, and the rook comes to h5.",
+            "uk": "Ферзя віддано: король мусить узяти, а тура приходить на h5."
+          }
+        },
+        {
+          "answers": [
+            "e5h5"
+          ],
+          "correct": {
+            "en": "Checkmate.",
+            "uk": "Мат."
+          }
+        }
+      ],
+      "hint": {
+        "en": "Open the h-file with a queen sacrifice.",
+        "uk": "Відкрийте вертикаль h жертвою ферзя."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "2r2rk1/2q1bp2/1p2p1BB/p1p1P3/P2P2Q1/5b1P/5PP1/R2n2K1 w - - 0 24",
+      "text": {
+        "en": "White to move. Mate in two.",
+        "uk": "Хід білих. Мат у два ходи."
+      },
+      "line": [
+        {
+          "answers": [
+            "g6h7"
+          ],
+          "reply": "g8h8",
+          "correct": {
+            "en": "The bishop check forces the king to the corner.",
+            "uk": "Шах слоном заганяє короля в кут."
+          }
+        },
+        {
+          "answers": [
+            "g4g7"
+          ],
+          "correct": {
+            "en": "Checkmate.",
+            "uk": "Мат."
+          }
+        }
+      ],
+      "hint": {
+        "en": "Start with a bishop check on h7.",
+        "uk": "Почніть із шаху слоном на h7."
+      }
+    },
+    {
+      "type": "text",
+      "text": {
+        "en": "Both finishes use the same pattern: the pieces aim at h7 and g7, and the sacrifice there opens the last door. Whenever your queen and a bishop look at the king's shelter, check the squares h7 and g7 first.",
+        "uk": "Обидва завершення використовують один візерунок: фігури цілять у h7 і g7, а жертва там відчиняє останні двері. Щоразу, коли ваші ферзь і слон дивляться на прикриття короля, перевіряйте поля h7 і g7 першими."
+      }
+    }
+  ],
+  "exam": [
+    {
+      "type": "find_move",
+      "fen": "2k3rB/pp6/1np1p2q/8/3b4/P1N3P1/1PP1QP2/R3R1K1 b - - 0 25",
+      "text": {
+        "en": "Black to move. Mate in two.",
+        "uk": "Хід чорних. Мат у два ходи."
+      },
+      "line": [
+        {
+          "answers": [
+            "g8g3"
+          ],
+          "reply": "g1f1",
+          "correct": {
+            "en": "The rook is sacrificed to pull the king away from the queen's path.",
+            "uk": "Туру віддано, щоб відтягти короля від шляху ферзя."
+          }
+        },
+        {
+          "answers": [
+            "h6h1"
+          ],
+          "correct": {
+            "en": "Checkmate.",
+            "uk": "Мат."
+          }
+        }
+      ]
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "What do you count before a sacrifice near the king?",
+        "uk": "Що рахуєте перед жертвою біля короля?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "The attackers against the defenders near the king",
+            "uk": "Нападників проти захисників біля короля"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "How many pawns I have",
+            "uk": "Скільки в мене пішаків"
+          },
+          "feedback": {
+            "en": "Pawns matter less than pieces near the king.",
+            "uk": "Пішаки важать менше, ніж фігури біля короля."
+          }
+        },
+        {
+          "text": {
+            "en": "How many moves are left in the game",
+            "uk": "Скільки ходів лишилось у партії"
+          },
+          "feedback": {
+            "en": "The attack decides it, not the move count.",
+            "uk": "Рішає атака, а не кількість ходів."
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -144,10 +144,10 @@ export const COURSE: CourseModule[] = [
     mod('X3', 'G', [ex('level3')]),
     // --- Level 4. Class II-I ---
     mod('T4.1', 'T', [th('combination'), th('long_calculation')]),
-    mod('T4.2', 'T', [th('promotion'), th('pawn_race')]),
-    mod('T4.3', 'T', [th('defensive_move'), th('blunder_check')]),
+    mod('T4.2', 'T', [l('tactics-promotion'), th('promotion'), th('pawn_race')]),
+    mod('T4.3', 'T', [l('tactics-defence'), th('defensive_move'), th('blunder_check')]),
     mod('M4.1', 'M', [th('exposed_king')]),
-    mod('M4.2', 'M', [th('kingside_attack')]),
+    mod('M4.2', 'M', [l('king-kingside-attack'), th('kingside_attack')]),
     mod('M4.3', 'M', [th('counterattack')]),
     mod('E4.1', 'E', [l('endgame-active-king')]),
     mod('E4.2', 'E', [th('exchange_choice')]),
