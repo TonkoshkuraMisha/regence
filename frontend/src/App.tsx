@@ -28,6 +28,7 @@ import {WatchPage} from './components/watch/WatchPage';
 import {ImportPage} from './components/gameImport/ImportPage';
 import {TransparencyPage} from './components/TransparencyPage';
 import {PrivacyPage} from './components/PrivacyPage';
+import {TermsPage} from './components/TermsPage';
 import {ArenaPage, ArenasPage} from './components/arena/ArenaPages';
 import {ConferencesPage} from './components/arena/ConferencesPage';
 import {TeamsPage} from './components/social/TeamsPage';
@@ -785,6 +786,7 @@ export default function App() {
                         <Route path="/feed/post/:postId" element={<PostPage/>}/>
                         <Route path="/rules" element={<CommunityRulesPage/>}/>
                         <Route path="/privacy" element={<PrivacyPage/>}/>
+                        <Route path="/terms" element={<TermsPage/>}/>
                         {/* Showcase of shared design components: not in the menu (docs/design-system.md). */}
                         <Route path="/design" element={<DesignGallery/>}/>
                         <Route path="/train" element={<TrainersPage/>}/>
