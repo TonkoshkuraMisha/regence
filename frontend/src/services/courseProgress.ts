@@ -2,7 +2,8 @@
 // Auto-credit of Grand Course steps (owner's plan 18.11, task 6): GET /learn/course-progress returns what has been done by
 // exercise kinds (the norms are computed by the server — src/services/course_progress.py), and here it is matched to the steps
 // of a module. The progress record keys are the same functions the sections write them with (alphabet, mates course, endgame, mini-games).
-// A step without an objective outcome (library, repertoire, master games, «guess the move», warm-up, play) is not checked:
+// A master game step with an id is done when the game was played to the end (record classics-<id>, ClassicsPage).
+// A step without an objective outcome (library, repertoire, the whole master games collection, «guess the move», warm-up, play) is not checked:
 // a module made only of such steps is marked by the player, as before. The same rules credit the sessions of training
 // programs (22.3, programAutoCount): a session is a set of the same exercises.
 
@@ -14,6 +15,7 @@ import {progressId as basicsProgressId} from '../content/basics/levels';
 import {mateProgressId} from '../components/learn/MateCourse';
 import {progressId as endgameProgressId} from '../components/learn/EndgameTrainer';
 import {miniProgressId} from '../components/trainers/MiniGames';
+import {progressId as classicsProgressId} from '../content/classics';
 import {getToken} from './authToken';
 
 export interface CourseFacts {
@@ -63,6 +65,7 @@ export function activityDone(activity: Activity, facts: CourseFacts): boolean | 
         case 'mini': return lessons.has(miniProgressId(activity.id));
         case 'theme': return facts.themes.includes(activity.id);
         case 'trainer': return facts.trainers.includes(activity.id);
+        case 'classics': return activity.id ? lessons.has(classicsProgressId(activity.id)) : null;
         case 'exam': {
             const estimate = facts.exams[activity.id];
             if (estimate === undefined) return false;

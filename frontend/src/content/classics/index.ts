@@ -57,6 +57,17 @@ export function scoreStop(stop: ClassicStop, uci: string): { score: number; loss
     return {score: Math.max(0, 80 - Math.floor((loss - 30) / 5)), loss};
 }
 
+/**
+ * Short title of a game by its id "white-black-year" (the file name): "Tolush – Keres, 1947". Used where the game file is
+ * not loaded yet (a Big course step label); the course test checks it against the players and year of every game the course links.
+ */
+export function classicIdTitle(id: string): string {
+    const parts = id.split('-');
+    const year = /^\d{4}$/.test(parts[parts.length - 1]) ? parts.pop() : undefined;
+    const names = parts.map((name) => name.charAt(0).toUpperCase() + name.slice(1)).join(' – ');
+    return year ? `${names}, ${year}` : names;
+}
+
 export function progressId(id: string): string {
     return `classics-${id}`.slice(0, 64);
 }
