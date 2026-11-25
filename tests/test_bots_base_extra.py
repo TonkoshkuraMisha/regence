@@ -160,8 +160,10 @@ def test_book_move_skips_bad_entries(monkeypatch):
 
 
 def test_unscorable_reference_is_dropped(monkeypatch):
-    bot = _Bot(stockfish_path="stockfish")
+    # Patch os.path.exists before the bot is built: otherwise the path is resolved against the real host
+    # (no engine on Windows without bin/ -> engine_path=None and the reference is never scored).
     monkeypatch.setattr(bots_base.os.path, "exists", lambda path: True)
+    bot = _Bot(stockfish_path="stockfish")
     monkeypatch.setattr(bots_base, "analyse_with_stockfish", lambda **kwargs: {E4: 10.0})
     monkeypatch.setattr(bots_base, "strength_reference_move", lambda *a, **k: chess.Move.from_uci("d2d4"))
     monkeypatch.setattr(bots_base, "score_move", lambda *a, **k: None)
