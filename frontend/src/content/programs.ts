@@ -14,7 +14,9 @@ export type Activity =
     | { kind: 'exam'; id: string }
     /** Game library (27.1), with a pawn structure filter (27.5) - for Big course modules. */
     | { kind: 'library'; structure?: string; moves?: string }
-    | { kind: 'workout' | 'repertoire' | 'classics' | 'guess' | 'play' };
+    /** Master games with explanations (14.7); with an id - one game with "what would you play?" stops (Big course 27.6). */
+    | { kind: 'classics'; id?: string }
+    | { kind: 'workout' | 'repertoire' | 'guess' | 'play' };
 
 export type Session = Activity[];
 
@@ -120,7 +122,7 @@ export function activityLink(activity: Activity): { to: string; state?: unknown 
         }
         case 'workout': return {to: '/workout'};
         case 'repertoire': return {to: '/repertoire'};
-        case 'classics': return {to: '/learn/classics'};
+        case 'classics': return {to: activity.id ? `/learn/classics/${activity.id}` : '/learn/classics'};
         case 'guess': return {to: '/guess'};
         case 'play': return {to: '/'};
     }

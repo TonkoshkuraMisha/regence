@@ -5,6 +5,8 @@
 // draft: added by the author but not verified; not visible to the player, marked in the frame); empty - nothing. Course coverage for
 // the author - coverage(): how many modules of each status per level and branch.
 // Module names live in the i18n catalogs: supercourse.modules.<code, dot replaced by "_">.
+// A "game with stops" step is one master game of the classics collection (game(id)), picked where its own intro names the
+// module's idea: rooks on an open file, a weakened king, a pawn storm, steady positional play.
 
 import type {Activity} from './programs';
 import {MUST_KNOW, STUDIES} from './mustKnow';
@@ -38,6 +40,8 @@ const lib = (structure: string): Activity => ({kind: 'library', structure});
 const games = (moves: string): Activity => ({kind: 'library', moves});
 const REPERTOIRE: Activity = {kind: 'repertoire'};
 const CLASSICS: Activity = {kind: 'classics'};
+// One master game with "what would you play?" stops (14.7): the game itself shows the module's idea in a real fight.
+const game = (id: string): Activity => ({kind: 'classics', id});
 const GUESS: Activity = {kind: 'guess'};
 
 function mod(code: string, branch: Branch, steps: Activity[] = [], draft: Activity[] = []): CourseModule {
@@ -87,12 +91,12 @@ export const COURSE: CourseModule[] = [
     mod('T2.10', 'T', [l('tactics-pawn-breakthrough'), th('pawn_breakthrough'), th('promotion'), th('underpromotion'), th('advanced_pawn')]),
     mod('M2.1', 'M', [l('king-mating-patterns'), m('anastasia_mate'), m('arabian_mate'), m('boden_mate'), m('double_bishop_mate'), m('epaulette_mate'), m('hook_mate')]),
     mod('M2.2', 'M', [l('king-rook-knight-mates'), l('king-bishop-mates')]),
-    mod('M2.3', 'M', [l('king-exposed'), th('exposed_king')]),
+    mod('M2.3', 'M', [l('king-exposed'), th('exposed_king'), game('konstantinopolsky-smyslov-1945')]),
     mod('E2.1', 'E', [l('endgame-key-squares'), th('triangulation'), th('outflanking'), th('shouldering'), e('two_pawns'), e('two_pawns_connected')]),
     mod('E2.2', 'E', [l('endgame-lucena'), e('lucena'), e('philidor'), th('rook_behind_passer')]),
     mod('E2.3', 'E', [l('endgame-wrong-bishop'), e('wrong_bishop'), e('rook_pawn_def')]),
     mod('E2.4', 'E', MUST_KNOW[0].map(e)),
-    mod('S2.1', 'S', [l('strategy-open-file'), th('open_file'), th('seventh_rank')]),
+    mod('S2.1', 'S', [l('strategy-open-file'), th('open_file'), th('seventh_rank'), game('tolush-keres-1947')]),
     mod('S2.2', 'S', [l('strategy-outpost'), th('outpost')]),
     mod('S2.3', 'S', [l('strategy-bad-bishop'), th('bad_bishop')]),
     mod('S2.4', 'S', [l('strategy-weak-squares'), th('weak_squares'), th('isolated_pawn')]),
@@ -102,7 +106,7 @@ export const COURSE: CourseModule[] = [
     mod('C2.1', 'C', [l('calc-blindfold'), tr('blind_move'), tr('blind_where')]),
     mod('C2.2', 'C', [l('calc-exchange'), tr('calc_exchange')]),
     mod('C2.3', 'C', [l('calc-candidate-moves'), th('candidate_moves')]),
-    mod('G2.1', 'G', [CLASSICS]),
+    mod('G2.1', 'G', [game('rubinstein-chigorin-1906'), game('reti-rubinstein-1928'), CLASSICS]),
     mod('G2.2', 'G', [GUESS]),
     mod('G2.3', 'G', [{kind: 'library'}]),
     mod('X2', 'G', [ex('level2')]),
@@ -116,7 +120,7 @@ export const COURSE: CourseModule[] = [
     mod('T3.7', 'T', [l('tactics-combination'), th('combination')]),
     mod('T3.8', 'T', [th('equality'), th('save_by_perpetual'), th('save_by_stalemate'), th('perpetual_check'), th('stalemate_trick'), th('fortress'), th('desperado')]),
     mod('M3.1', 'M', [l('king-greek-gift'), th('greek_gift'), th('double_bishop_sacrifice')]),
-    mod('M3.2', 'M', [l('king-storm-and-lift'), th('pawn_storm'), th('rook_lift')]),
+    mod('M3.2', 'M', [l('king-storm-and-lift'), th('pawn_storm'), th('rook_lift'), game('kagan-petrosian-1979')]),
     mod('M3.3', 'M', [th('kingside_attack'), th('queenside_attack')]),
     mod('M3.4', 'M', [l('tactics-sacrifice-for-mate'), th('sacrifice')]),
     mod('E3.1', 'E', [l('endgame-bishop-vs-knight'), e('bishop_vs_knight')]),

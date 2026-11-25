@@ -5,6 +5,7 @@ import {describe, expect, it} from 'vitest';
 import {BRANCHES, COURSE, courseProgressId, coverage, LEVEL_COUNT, moduleStatus, moduleTitleKey} from '../supercourse';
 import type {CourseModule} from '../supercourse';
 import type {Activity} from '../programs';
+import {activityLink} from '../programs';
 import {lessonById} from '../lessons';
 import {BASICS} from '../basics/levels';
 import {EXERCISES} from '../../components/learn/EndgameTrainer';
@@ -12,6 +13,7 @@ import {TRAINER_IDS} from '../../services/trainers';
 import {MINI_GAMES} from '../../components/trainers/MiniGames';
 import {STRUCTURES} from '../../services/library';
 import {hasMessage} from '../../i18n';
+import {CLASSIC_IDS, classicIdTitle, loadClassic} from '../classics';
 
 const EXAM = ['F', 'A', 'B', 'C', 'D', 'E', 'G', 'H', 'I', 'J', 'endgame',
     'level0', 'level1', 'level2', 'level3', 'level4', 'level5'];  // level exams - 27.12
@@ -27,6 +29,7 @@ function exists(activity: Activity): boolean {
         case 'mini': return (MINI_GAMES as readonly string[]).includes(activity.id);
         case 'exam': return EXAM.includes(activity.id);
         case 'library': return !activity.structure || (STRUCTURES as readonly string[]).includes(activity.structure);
+        case 'classics': return !activity.id || CLASSIC_IDS.includes(activity.id);
         default: return true;
     }
 }
@@ -74,6 +77,31 @@ describe('level exams (27.12)', () => {
         expect(levelExamPassed(1, {level1: {estimate: 999}})).toBe(false);
         expect(levelExamPassed(2, {A: {estimate: 2000}, B: {estimate: 2000}})).toBe(false);  // the diagnostic does not count
         for (let level = 0; level < LEVEL_COUNT; level++) expect(examSections(level)).toEqual([`level${level}`]);
+    });
+});
+
+describe('master games with stops (27.6)', () => {
+    const steps = COURSE.flatMap((module) => module.steps)
+        .flatMap((step) => (step.kind === 'classics' && step.id ? [step.id] : []));
+
+    it('the course links single games, and each opens its own page', () => {
+        expect(steps.length).toBeGreaterThan(0);
+        for (const id of steps) expect(activityLink({kind: 'classics', id}).to).toBe(`/learn/classics/${id}`);
+        expect(activityLink({kind: 'classics'}).to).toBe('/learn/classics');
+    });
+
+    it('the label from the id matches the players and the year of the game file, and the game has stops', async () => {
+        for (const id of steps) {
+            const game = await loadClassic(id);
+            expect(game).not.toBeNull();
+            const surname = (player: string) => player.split(',')[0].trim();
+            expect(classicIdTitle(id)).toBe(`${surname(game!.white)} – ${surname(game!.black)}, ${game!.year}`);
+            expect(game!.stops.length).toBeGreaterThan(0);
+        }
+    });
+
+    it('the step label key exists in both catalogs', () => {
+        expect(hasMessage('programs.activities.classicGame')).toBe(true);
     });
 });
 

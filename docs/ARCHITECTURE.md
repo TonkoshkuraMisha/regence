@@ -325,7 +325,9 @@ For each section: what it does → files → where the data comes from → how i
   (`lesson_progress`). The legality of the lessons' moves is checked by a client test, the answers are checked against
   the engine by `scripts/verify_lessons.py`.
 - **The Grand Course** (`content/supercourse.ts`, concept — `docs/research/supercourse.md`): levels 0–5 by rank and
-  branch; a course step leads into an already existing section. Level exams — `level_exam.py`, diagnostics — `exam.py`.
+  branch; a course step leads into an already existing section. A "game with stops" step opens one master game of the
+  classics collection (`{kind: 'classics', id}` → `/learn/classics/<id>`) and is credited by its `classics-<id>`
+  progress record once the game is played to the end. Level exams — `level_exam.py`, diagnostics — `exam.py`.
   **Auto-credit:** `GET /learn/course-progress` (`src/services/course_progress.py`) collects what has been done against
   the standards (`lesson_progress` records, the `theme_progress` theme steps, `trainer_results` attempts, `exam_results`
   grades); the client (`services/courseProgress.ts`) matches it against the module's steps and closes the module by
