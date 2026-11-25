@@ -3,10 +3,12 @@
 Beta programme (task 24.4).
 
 * Invitations. A code is created by a moderator: with a usage limit and an expiry (both optional), revocation —
-  at any moment. A code is accepted while it is not revoked, not expired and not used up. The deduction is a single UPDATE with
-  a condition,
-  in the same transaction as account creation: two simultaneous requests cannot exceed the limit, and a failed
-  registration does not spend the code.
+  at any moment. The player keeps the code they registered with (users.invite_id), so a partner link (a club, a blogger,
+  task 26.2) shows not only how many registered but also how many started to play: ACTIVE_MIN_GAMES finished games
+  (against people or bots, the games table). Players registered before users.invite_id existed are in uses only.
+  A code is accepted while it is not revoked, not expired and not used up. The deduction is a single UPDATE with
+  a condition, in the same transaction as account creation: two simultaneous requests cannot exceed the limit, and a
+  failed registration does not spend the code.
 * "Report a problem". The text of a player (or guest) with context: page, app version, language, screen size.
   A moderator queue with statuses new → in_progress → done | rejected.
 * Summary for a period (scripts/feedback_digest.py): how many arrived, how they were handled, on which pages, a list.
@@ -23,6 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.config import settings
 from src.core.errors import DomainError
 from src.models.beta import Feedback, Invite
+from src.models.game import Game, GameStatus
 from src.models.user import User
 
 # Without lookalike characters (0/O, 1/I/L): the code is dictated and retyped by hand.
@@ -35,6 +38,8 @@ MAX_CODE_LENGTH = 32
 # handing one code to thousands of accounts (more — only a moderator code).
 FRIEND_NOTE = "friend"
 FRIEND_MAX_USES = 50
+# A player who came through an invitation counts as "started to play" after this many finished games (task 26.2).
+ACTIVE_MIN_GAMES = 1
 # Upper bounds of the usage limit and the code's lifetime; they are checked by the request schema in src/api/beta.py.
 MAX_USES = 100_000
 MAX_EXPIRES_DAYS = 365
@@ -96,9 +101,10 @@ def invite_state(invite: Invite, now: datetime | None = None) -> str:
     return "active"
 
 
-def _invite_view(invite: Invite, now: datetime) -> dict:
+def _invite_view(invite: Invite, now: datetime, active: int = 0) -> dict:
     return {
         "id": invite.id, "code": invite.code, "note": invite.note, "max_uses": invite.max_uses, "uses": invite.uses,
+        "active": active,
         "expires_at": _iso(invite.expires_at), "revoked_at": _iso(invite.revoked_at),
         "created_at": _iso(invite.created_at), "state": invite_state(invite, now),
     }
@@ -146,7 +152,24 @@ async def list_invites(db: AsyncSession, moderator: User) -> list[dict]:
     _moderator(moderator)
     now = _now()
     rows = (await db.execute(select(Invite).order_by(Invite.created_at.desc(), Invite.id.desc()))).scalars().all()
-    return [_invite_view(invite, now) for invite in rows]
+    active = await active_counts(db, [invite.id for invite in rows])
+    return [_invite_view(invite, now, active.get(invite.id, 0)) for invite in rows]
+
+
+async def active_counts(db: AsyncSession, invite_ids: list[int]) -> dict[int, int]:
+    """Invitation id -> how many players who registered with it have at least ACTIVE_MIN_GAMES finished games."""
+    if not invite_ids:
+        return {}
+    games = (select(func.count(Game.id)).where(
+        Game.status == GameStatus.COMPLETED,
+        or_(Game.white_player_id == User.id, Game.black_player_id == User.id),
+    ).correlate(User).scalar_subquery())
+    rows = await db.execute(
+        select(User.invite_id, func.count(User.id))
+        .where(User.invite_id.in_(invite_ids), games >= ACTIVE_MIN_GAMES)
+        .group_by(User.invite_id)
+    )
+    return {invite_id: count for invite_id, count in rows.all()}
 
 
 async def revoke_invite(db: AsyncSession, moderator: User, invite_id: int) -> dict:
@@ -179,18 +202,18 @@ async def invite_usable(db: AsyncSession, code: str | None) -> bool:
     return await db.scalar(select(Invite.id).where(Invite.code == code, *_usable(_now()))) is not None
 
 
-async def consume_invite(db: AsyncSession, code: str | None) -> bool:
+async def consume_invite(db: AsyncSession, code: str | None) -> int | None:
     """
-    One use of a code: True — deducted. Without commit: the caller commits together with account creation, and on
-    rollback the deduction is undone.
+    One use of a code: the invitation id when deducted (the caller stores it in users.invite_id), otherwise None. Without
+    commit: the caller commits together with account creation, and on rollback the deduction is undone.
     """
     code = normalize_code(code)
     if not code:
-        return False
+        return None
     used = await db.execute(
         update(Invite).where(Invite.code == code, *_usable(_now())).values(uses=Invite.uses + 1).returning(Invite.id)
     )
-    return used.scalar_one_or_none() is not None
+    return used.scalar_one_or_none()
 
 
 # --- problem reports -----------------------------------------------------------------------------------------

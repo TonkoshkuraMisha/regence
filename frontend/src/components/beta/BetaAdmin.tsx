@@ -1,7 +1,7 @@
 // --- FILE: frontend/src/components/beta/BetaAdmin.tsx ---
 // Beta programme for a moderator (task 24.4), on the /moderation page (social/ModerationPage.tsx; the panels are visible only to
 // a moderator): invitations (create a code with a limit and an expiry, copy a link, revoke; one sees how many people
-// came through each) and a queue of "Report a problem" messages with statuses. Data is services/beta.ts
+// came through each and how many of them started to play - a partner link of a club or a blogger, task 26.2) and a queue of "Report a problem" messages with statuses. Data is services/beta.ts
 // (/api/v1/beta/invites and /feedback, src/api/beta.py); the server checks the rights.
 
 import {useCallback, useEffect, useState} from 'react';
@@ -93,6 +93,9 @@ export function InvitesPanel() {
                     <span data-testid={`beta-invite-uses-${invite.id}`}>
                         {invite.max_uses === null ? t('beta.invites.uses', {n: invite.uses})
                             : t('beta.invites.usesOf', {n: invite.uses, max: invite.max_uses})}
+                    </span>
+                    <span className="text-boxwood/85" data-testid={`beta-invite-active-${invite.id}`}>
+                        {t('beta.invites.active', {n: invite.active})}
                     </span>
                     {invite.expires_at && (
                         <span className="text-boxwood/70">

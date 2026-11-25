@@ -96,6 +96,30 @@ def test_open_registration_needs_no_code_but_counts_a_valid_one(client, moderato
     assert [(item["code"], item["uses"]) for item in listed["invites"]] == [(invite["code"], 1)]
 
 
+async def test_partner_link_shows_how_many_started_to_play(client, db_session, moderator):
+    """Task 26.2: the player keeps the code they came with; a finished game makes them "active" for the partner link."""
+    from src.models.game import Game, GameStatus
+
+    _, mod_token = moderator
+    invite = client.post(f"{API}/invites", json={"note": "blogger"}, headers=auth(mod_token)).json()
+    for name in ("Fan1", "Fan2", "Fan3"):
+        assert register(client, name, invite["code"]).status_code == 201
+    assert register(client, "Other").status_code == 201
+    fans = {user.username: user for user in (await db_session.execute(
+        select(User).where(User.username.in_(["Fan1", "Fan2", "Fan3", "Other"])))).scalars()}
+    assert {fans[name].invite_id for name in ("Fan1", "Fan2", "Fan3")} == {invite["id"]}
+    assert fans["Other"].invite_id is None
+
+    # Fan1 finished a game (as Black), Fan2 only has a game in progress, Fan3 has not played: one has started to play.
+    db_session.add_all([
+        Game(white_player_id=fans["Other"].id, black_player_id=fans["Fan1"].id, status=GameStatus.COMPLETED, result="0-1"),
+        Game(white_player_id=fans["Fan2"].id, black_player_id=fans["Other"].id, status=GameStatus.IN_PROGRESS),
+    ])
+    await db_session.commit()
+    item = client.get(f"{API}/invites", headers=auth(mod_token)).json()["invites"][0]
+    assert (item["uses"], item["active"]) == (3, 1)
+
+
 def test_invite_only_registration(client, moderator, invite_only):
     _, mod_token = moderator
     without = register(client, "Stranger")
