@@ -3337,6 +3337,7 @@ export const en = {
             empty: 'No codes yet.',
             uses: 'joined: {n}',
             usesOf: 'joined: {n} of {max}',
+            active: 'started to play: {n}',
             expires: 'until {date}',
             copyLink: 'Copy link',
             copied: 'Copied',

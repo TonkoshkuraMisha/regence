@@ -3341,6 +3341,7 @@ export const uk: Messages = {
             empty: 'Кодів поки немає.',
             uses: 'прийшло: {n}',
             usesOf: 'прийшло: {n} із {max}',
+            active: 'почали грати: {n}',
             expires: 'до {date}',
             copyLink: 'Скопіювати посилання',
             copied: 'Скопійовано',

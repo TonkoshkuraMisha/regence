@@ -113,16 +113,17 @@ describe('community channel', () => {
 
 describe('invitations for the moderator', () => {
     const invite = (over: object) => ({
-        id: 1, code: 'K7QF2MXN9B', note: null, max_uses: null, uses: 0, expires_at: null, revoked_at: null,
+        id: 1, code: 'K7QF2MXN9B', note: null, max_uses: null, uses: 0, active: 0, expires_at: null, revoked_at: null,
         created_at: '2026-11-16T10:00:00+00:00', state: 'active', ...over,
     });
 
     it('the list: how many came by each code, the state, revocation', async () => {
         const fetchMock = stub(() => ({invite_only: true, invites: [
-            invite({id: 1, uses: 3, max_uses: 10, note: 'club'}), invite({id: 2, code: 'ZZZZZZZZZZ', uses: 5, state: 'revoked'}),
+            invite({id: 1, uses: 3, active: 2, max_uses: 10, note: 'club'}), invite({id: 2, code: 'ZZZZZZZZZZ', uses: 5, state: 'revoked'}),
         ]}));
         render(<InvitesPanel/>);
         expect(await screen.findByTestId('beta-invite-uses-1')).toHaveTextContent('joined: 3 of 10');
+        expect(screen.getByTestId('beta-invite-active-1')).toHaveTextContent('started to play: 2');
         expect(screen.getByTestId('beta-invite-uses-2')).toHaveTextContent('joined: 5');
         expect(screen.getByTestId('beta-invite-mode')).toHaveTextContent('Registration is closed: by invitation only.');
         expect(screen.getByTestId('beta-invite-2')).toHaveTextContent('revoked');

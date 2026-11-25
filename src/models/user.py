@@ -12,7 +12,7 @@ src/services/anticheat.py), the moderator role, interface settings (language, th
 from datetime import datetime
 from typing import Literal
 
-from sqlalchemy import Boolean, DateTime, Index, Integer, String
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
 
@@ -60,6 +60,10 @@ class User(Base):
     # the guardian code: when set, only that code turns kid mode off.
     kid_mode: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
     kid_guardian_hash: Mapped[str | None] = mapped_column(String, nullable=True)
+    # The invitation the player registered with (task 26.2, src/services/beta.py): partner links of clubs and bloggers show
+    # how many of the people who came through them started to play. NULL - registered without a code or before 25.11.2026.
+    invite_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("invites.id", ondelete="SET NULL"), nullable=True,
+                                                  index=True)
     # The confirmed e-mail (task 17.5) - optional; needed for password reset. Only a confirmed one is stored:
     # an address that has not been confirmed yet lives in a one-time link (EmailToken), so someone else's address cannot be
     # taken this way.

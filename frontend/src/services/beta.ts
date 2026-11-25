@@ -29,6 +29,8 @@ export interface Invite {
     /** How many times the code can be used; null — unlimited. */
     max_uses: number | null;
     uses: number;
+    /** How many of those who registered with the code have finished a game (task 26.2: what a partner link brought). */
+    active: number;
     expires_at: string | null;
     revoked_at: string | null;
     created_at: string | null;

@@ -65,7 +65,7 @@ before the response is sent to the network (`ActionContext.release_db`).
 | Teams | `teams`, `team_members` | `team.py` |
 | Library and archive | `library_collections`, `library_games`, `library_game_collections`, `library_annotations`, `collection_entries` | `library.py`, `collection.py` |
 | Social | `follows`, `notifications`, `direct_messages`, `blocks`, `hidden_conversations`, `posts`, `post_comments`, `post_likes`, `reports`, `study_materials` | `social.py`, `moderation.py`, `study.py` |
-| Beta | `invites`, `feedback` | `beta.py` |
+| Beta | `invites`, `feedback`, `users.invite_id` (partner links: who came and started to play) | `beta.py` |
 
 The schema is changed only by migrations (`migrations/versions/`); CI applies them to an empty database and checks them
 against the models with the `alembic check` command. The report on the state of the schema and the open decisions about

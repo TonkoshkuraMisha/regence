@@ -130,7 +130,8 @@ async def register_user(user_in: UserCreate, request: Request, db: AsyncSession 
     db.add(new_user)
     # The code is consumed in the same transaction as account creation. With open registration the code is optional:
     # a valid one is counted (it shows who came by invitation), an invalid one does not interfere.
-    if not await beta.consume_invite(db, invite_code) and settings.REGISTRATION_INVITE_ONLY:
+    new_user.invite_id = await beta.consume_invite(db, invite_code)
+    if new_user.invite_id is None and settings.REGISTRATION_INVITE_ONLY:
         await db.rollback()  # the code was exhausted or revoked between the check and consumption
         raise ApiError(status.HTTP_403_FORBIDDEN, "registration_invite_invalid")
     try:
