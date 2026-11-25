@@ -19,6 +19,7 @@ import type {CourseFacts} from '../services/courseProgress';
 import {activityLink, PROGRAMS, programById, SESSIONS_PER_PROGRAM} from '../content/programs';
 import type {Activity} from '../content/programs';
 import {lessonById, localized} from '../content/lessons';
+import {classicIdTitle} from '../content/classics';
 
 /** Lesson record code that stores programme progress (the lesson progress table, services/lessonProgress.ts). */
 export const progressId = (programId: string) => `program-${programId}`;
@@ -41,7 +42,9 @@ export function activityLabel(t: (key: never) => string, language: Language, act
             : activity.moves ? `${tr('library.title')}: ${activity.moves}` : tr('library.title');
         case 'workout': return tr('workout.title');
         case 'repertoire': return tr('repertoire.title');
-        case 'classics': return tr('programs.activities.classics');
+        case 'classics': return activity.id
+            ? tr('programs.activities.classicGame', {game: classicIdTitle(activity.id)})
+            : tr('programs.activities.classics');
         case 'guess': return tr('programs.activities.guess');
         case 'play': return tr('programs.activities.play');
     }

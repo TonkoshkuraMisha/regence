@@ -43,6 +43,13 @@ describe('step done', () => {
         expect(activityDone({kind: 'repertoire'}, FACTS)).toBeNull();
         expect(activityDone({kind: 'library', structure: 'iqp'}, FACTS)).toBeNull();
         expect(activityDone({kind: 'guess'}, FACTS)).toBeNull();
+        expect(activityDone({kind: 'classics'}, FACTS)).toBeNull();
+    });
+
+    it('a master game step is done when the game was played to the end (record classics-<id>)', () => {
+        const facts = {...FACTS, lessons: [...FACTS.lessons, 'classics-tolush-keres-1947']};
+        expect(activityDone({kind: 'classics', id: 'tolush-keres-1947'}, facts)).toBe(true);
+        expect(activityDone({kind: 'classics', id: 'reti-rubinstein-1928'}, facts)).toBe(false);
     });
 });
 
