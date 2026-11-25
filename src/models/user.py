@@ -62,8 +62,10 @@ class User(Base):
     kid_guardian_hash: Mapped[str | None] = mapped_column(String, nullable=True)
     # The invitation the player registered with (task 26.2, src/services/beta.py): partner links of clubs and bloggers show
     # how many of the people who came through them started to play. NULL - registered without a code or before 25.11.2026.
-    invite_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("invites.id", ondelete="SET NULL"), nullable=True,
-                                                  index=True)
+    # use_alter: invites.created_by points back at users, so this key is created after both tables (no table order cycle).
+    invite_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("invites.id", ondelete="SET NULL", use_alter=True, name="users_invite_id_fkey"),
+        nullable=True, index=True)
     # The confirmed e-mail (task 17.5) - optional; needed for password reset. Only a confirmed one is stored:
     # an address that has not been confirmed yet lives in a one-time link (EmailToken), so someone else's address cannot be
     # taken this way.
