@@ -7,7 +7,7 @@ are not sent here - they are brought by saving the player's game (15.3) and by s
 import json
 from typing import Literal
 
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, Depends, Query, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,13 +18,14 @@ from src.core.errors import ApiError, DomainError
 from src.db.session import get_db
 from src.models.tournament import Tournament, TournamentGame, TournamentPlayer
 from src.models.user import User
+from src.services import legends_season, time_machine
 from src.services import legends_week as legends_week_service
-from src.services import time_machine
 from src.services import tournament_career as career
 from src.services import tournament_rules as rules
 from src.services import tournaments as service
 from src.services.bots import selfplay as bot_selfplay
 from src.services.bots.archetypes import ARCHETYPES_BY_KEY
+from src.services.league import SEASON_PATTERN
 from src.services.rating import classify_time_control
 from src.services.task_dispatch import schedule_tournament_simulations_in_background
 
@@ -286,6 +287,16 @@ async def legends_week(request: Request, db: AsyncSession = Depends(get_db)):
     guest too (a logged-in player also gets their own row); entering is the ordinary time-machine start of the announced event.
     """
     return await legends_week_service.standings(db, await optional_user_id(request, db))
+
+
+@router.get("/legends-week/season")
+async def legends_season_table(request: Request, season: str | None = Query(None, pattern=SEASON_PATTERN),
+                               db: AsyncSession = Depends(get_db)):
+    """
+    Season table of the legends weeks (task 26.1): a calendar month (current by default, or season=YYYY-MM), points for the
+    weekly places (src/services/legends_season.py). Open to a guest too; a logged-in player also gets their own row.
+    """
+    return await legends_season.standings(db, await optional_user_id(request, db), season)
 
 
 @router.post("/time-machine/{event_key}", response_model=TournamentOut, status_code=status.HTTP_201_CREATED)

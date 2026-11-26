@@ -50,13 +50,12 @@ def _ranked(rows: list[tuple[int, str, int]]) -> list[dict]:
     return out
 
 
-async def standings(db: AsyncSession, user_id: int | None = None, today: dt.date | None = None) -> dict:
+async def week_ranking(db: AsyncSession, monday: dt.date) -> list[dict]:
     """
-    The announcement and the table of the week: {event_key, starts_on, ends_on, rows: [{place, username, tournament_place,
-    me}], me: the player's own row or None}. `rows` has the TOP best; `me` is filled when the player has a finished run, even
-    below the top.
+    The whole table of the week starting on this Monday: [{place, user_id, username, score}] where score is the player's best
+    tournament place in a finished run of the week's event; also used by the season table (legends_season.py).
     """
-    monday, next_monday = week_window(today)
+    next_monday = monday + WEEK
     event = event_for_week(monday)
     start = dt.datetime.combine(monday, dt.time.min, dt.UTC)
     end = dt.datetime.combine(next_monday, dt.time.min, dt.UTC)
@@ -70,7 +69,18 @@ async def standings(db: AsyncSession, user_id: int | None = None, today: dt.date
     best: dict[int, tuple[int, str, int]] = {}
     for uid, username, place in everyone:
         best.setdefault(uid, (uid, username, place))
-    ranked = _ranked(sorted(best.values(), key=lambda row: (row[2], row[1])))
+    return _ranked(sorted(best.values(), key=lambda row: (row[2], row[1])))
+
+
+async def standings(db: AsyncSession, user_id: int | None = None, today: dt.date | None = None) -> dict:
+    """
+    The announcement and the table of the week: {event_key, starts_on, ends_on, rows: [{place, username, tournament_place,
+    me}], me: the player's own row or None}. `rows` has the TOP best; `me` is filled when the player has a finished run, even
+    below the top.
+    """
+    monday, next_monday = week_window(today)
+    event = event_for_week(monday)
+    ranked = await week_ranking(db, monday)
     rows = [{"place": r["place"], "username": r["username"], "tournament_place": r["score"], "me": r["user_id"] == user_id}
             for r in ranked[:TOP]]
     mine = next((r for r in ranked if r["user_id"] == user_id), None) if user_id is not None else None

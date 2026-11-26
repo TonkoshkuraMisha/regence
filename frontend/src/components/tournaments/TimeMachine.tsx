@@ -19,7 +19,7 @@ import {
     eventTitle, fieldName, fieldShortName, getTimeMachine, guestAbout, scoreText, startHistoricEvent,
 } from '../../services/timeMachine';
 import type {FieldEntry, HistoricEvent} from '../../services/timeMachine';
-import {LegendsWeek} from './LegendsWeek';
+import {LegendsSeason, LegendsWeek} from './LegendsWeek';
 
 // Shared look of a page section card.
 const sectionClass = 'bg-acacia p-4 rounded-lg border-2 border-acacia-dark';
@@ -204,6 +204,7 @@ export function TimeMachinePage() {
             </header>
             {error && <p role="alert" className="text-sm text-rose-300">{renderUiMessage(error, t)}</p>}
             <LegendsWeek busy={busy} onStart={(key) => start({key})}/>
+            <LegendsSeason/>
             <div className={`${sectionClass} flex flex-wrap items-center gap-3`}>
                 <label htmlFor="tm-control" className="text-sm">{t('timeMachine.control')}</label>
                 <select id="tm-control" value={chosen.id} data-testid="tm-control"

@@ -3506,6 +3506,13 @@ export const en = {
             place: 'Finished {place}',
             announce: 'Legends of the week: {title}',
         },
+        legendsSeason: {
+            title: 'Legends season {season}',
+            intro: 'The weeks of the month add up: a place in a weekly table brings points (25, 18, 15 … for the top ten), and every finished run adds one more.',
+            empty: 'No finished runs this season yet.',
+            points: plural({one: '{count} point', other: '{count} points'}),
+            weeks: plural({one: '{count} week', other: '{count} weeks'}),
+        },
         controlHint: 'The same for all your games in the tournament. You can play one game a day: the tournament waits for you.',
         formats: {round_robin: 'Round robin', knockout: 'Knockout', swiss: 'Swiss'},
         cycles: plural({one: '{count} cycle', other: '{count} cycles'}),
