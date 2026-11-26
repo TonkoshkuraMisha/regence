@@ -50,6 +50,64 @@ html, body {
     -moz-osx-font-smoothing: grayscale;
 }
 
+/* Drop-down lists of every <select> in the theme palette. The list of a native select is drawn by the browser, so by default
+   it shows the system colours (white or grey with a blue highlight). Two layers, both in @layer base so that utility classes
+   on a particular select still win:
+   1. all browsers: dark colour scheme plus themed option colours (honoured by Chrome, Edge and Firefox on Windows/Linux);
+   2. browsers with customisable selects (appearance: base-select, Chromium 135+): the whole picker - panel, border, rows,
+      highlight - is drawn from the palette tokens above; others keep layer 1. */
+@layer base {
+    select {
+        color-scheme: dark;
+    }
+
+    select option,
+    select optgroup {
+        background-color: var(--color-room-dark);
+        color: var(--color-boxwood-light);
+    }
+
+    select option:checked {
+        background-color: var(--color-acacia-light);
+    }
+}
+
+@supports (appearance: base-select) {
+    @layer base {
+        select,
+        ::picker(select) {
+            appearance: base-select;
+        }
+
+        ::picker(select) {
+            background-color: var(--color-room-dark);
+            border: 1px solid var(--color-acacia-light);
+            border-radius: 0.5rem;
+            padding: 0.25rem;
+            box-shadow: var(--shadow-heavy);
+        }
+
+        select option {
+            padding: 0.4rem 0.65rem;
+            border-radius: 0.375rem;
+        }
+
+        select option:hover,
+        select option:focus-visible {
+            background-color: var(--color-acacia);
+        }
+
+        select option:checked {
+            background-color: var(--color-acacia-light);
+            color: var(--color-paper);
+        }
+
+        select option::checkmark {
+            display: none;
+        }
+    }
+}
+
 /* Keyboard focus of a board square (task 26.3): a two-colour ring - black outside, white inside (WCAG C40 technique).
    On any square of any theme at least one of the two colours gives contrast of at least 3:1 (WCAG 1.4.11); a single-colour blue
    ring blended into the square on many themes. Checked by config/__tests__/boardThemes.test.ts. The class is set on squares by
