@@ -3517,6 +3517,13 @@ export const uk: Messages = {
             place: 'Фініш: {place}',
             announce: 'Легенди тижня: {title}',
         },
+        legendsSeason: {
+            title: 'Сезон легенд {season}',
+            intro: 'Тижні місяця складаються: місце в таблиці тижня приносить очки (25, 18, 15 … для першої десятки), а кожен завершений забіг додає ще одне.',
+            empty: 'У цьому сезоні ще немає завершених забігів.',
+            points: plural({one: '{count} очко', few: '{count} очки', many: '{count} очок', other: '{count} очка'}),
+            weeks: plural({one: '{count} тиждень', few: '{count} тижні', many: '{count} тижнів', other: '{count} тижня'}),
+        },
         controlHint: 'Однаковий для всіх ваших партій турніру. Можна грати по партії на день: турнір чекає на вас.',
         formats: {round_robin: 'Круговий', knockout: 'На вибування', swiss: 'Швейцарська'},
         cycles: plural({one: '{count} коло', few: '{count} кола', many: '{count} кіл', other: '{count} кола'}),

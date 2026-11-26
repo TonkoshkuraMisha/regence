@@ -253,9 +253,12 @@ For each section: what it does → files → where the data comes from → how i
   procedure for adding a tournament — `scripts/dev/time_machine/README.md`). **Legends of the week**
   (`legends_week.py`, task 26.1) — one Time Machine event per ISO week by a fixed rotation over the registry; each player
   plays their own run, the weekly table ranks the best finished run by tournament place (derived from `tournaments`,
-  no table of its own); `GET /tournaments/legends-week`, client `components/tournaments/LegendsWeek.tsx`.
+  no table of its own); `GET /tournaments/legends-week`, client `components/tournaments/LegendsWeek.tsx`. **Legends
+  season** (`legends_season.py`) — the weeks of a calendar month (`league.season_bounds`) add up: points by the weekly
+  place (25, 18, 15 … for the top ten) plus one for any finished run; `GET /tournaments/legends-week/season[?season=YYYY-MM]`,
+  card `LegendsSeason` on `/time-machine`.
 - **Tests.** `ladder`, `tournaments`, `tournament_rules`, `tournament_play`, `tournament_simulation`,
-  `tournament_career`, `tournament_big`, `time_machine`, `time_machine_play`, `legends_week`; browser — `e2e/time-machine.e2e.ts`.
+  `tournament_career`, `tournament_big`, `time_machine`, `time_machine_play`, `legends_week`, `legends_season`; browser — `e2e/time-machine.e2e.ts`.
 
 ### 4.8. Arenas between humans and conferences
 

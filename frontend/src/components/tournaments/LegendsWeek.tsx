@@ -2,13 +2,14 @@
 // Weekly tournament against the legends (task 26.1): the announcement of this week's historic tournament and the table of the best
 // runs. Data: services/timeMachine.ts getLegendsWeek (server: src/services/legends_week.py). Everyone plays their own run, so
 // "Play" just starts the announced event through the same time-machine start as on the page below. LegendsAnnouncement is the
-// one-line announcement for the tournaments lobby (TournamentsPage.tsx).
+// one-line announcement for the tournaments lobby (TournamentsPage.tsx). LegendsSeason is the season table: the weeks of the
+// calendar month add up (getLegendsSeason, server: src/services/legends_season.py - points by weekly place, the server computes).
 
 import {useEffect, useState} from 'react';
 import {Link} from 'react-router-dom';
 import {useI18n} from '../../i18n';
-import {eventTitle, getLegendsWeek} from '../../services/timeMachine';
-import type {LegendsRow, LegendsWeek as Week} from '../../services/timeMachine';
+import {eventTitle, getLegendsSeason, getLegendsWeek} from '../../services/timeMachine';
+import type {LegendsRow, LegendsSeason as Season, LegendsSeasonRow, LegendsWeek as Week} from '../../services/timeMachine';
 
 /** The week loaded once; a failure leaves the card out (the announcement is a convenience, not a requirement). */
 function useLegendsWeek(): Week | null {
@@ -60,6 +61,48 @@ export function LegendsWeek({busy, onStart}: { busy: boolean; onStart: (eventKey
                     )}
                 </ol>
             )}
+        </section>
+    );
+}
+
+/** The season table of the legends weeks; a failure or a reply of another shape leaves the card out, like the weekly one. */
+export function LegendsSeason() {
+    const {t, tp} = useI18n();
+    const [season, setSeason] = useState<Season | null>(null);
+    useEffect(() => {
+        let alive = true;
+        getLegendsSeason().then((s) => alive && Array.isArray(s?.rows) && setSeason(s)).catch(() => undefined);
+        return () => {
+            alive = false;
+        };
+    }, []);
+    if (!season) return null;
+    const row = (r: LegendsSeasonRow) => (
+        <li key={`${r.place}-${r.username}`} data-testid="legends-season-row" aria-current={r.me ? 'true' : undefined}
+            className={`flex items-center gap-2 px-2 py-0.5 rounded ${r.me ? 'bg-amber-900/50 text-amber-100' : ''}`}>
+            <span className="w-6 text-right text-boxwood/70">{r.place}</span>
+            <span className="flex-1 truncate">{r.username}</span>
+            <span className="text-xs text-boxwood/70">{tp('timeMachine.legendsSeason.weeks', r.weeks)}</span>
+            <span className="text-sm font-semibold">{tp('timeMachine.legendsSeason.points', r.points)}</span>
+        </li>
+    );
+    return (
+        <section className="bg-acacia p-4 rounded-lg border-2 border-amber-700 flex flex-col gap-2" data-testid="legends-season">
+            <h2 className="text-lg font-bold text-amber-200">{t('timeMachine.legendsSeason.title', {season: season.season})}</h2>
+            <p className="text-sm text-boxwood/85">{t('timeMachine.legendsSeason.intro')}</p>
+            {season.rows.length === 0
+                ? <p className="text-sm text-boxwood/70" data-testid="legends-season-empty">{t('timeMachine.legendsSeason.empty')}</p>
+                : (
+                    <ol className="flex flex-col text-sm">
+                        {season.rows.map(row)}
+                        {season.me && !season.rows.some((r) => r.me) && (
+                            <>
+                                <li aria-hidden className="text-center text-boxwood/50">…</li>
+                                {row(season.me)}
+                            </>
+                        )}
+                    </ol>
+                )}
         </section>
     );
 }

@@ -18,7 +18,7 @@ from src.services import league
 
 router = APIRouter(dependencies=[Depends(rate_limit("teams", "RATE_LIMIT_PUZZLES"))])
 
-SEASON = r"^\d{4}-(0[1-9]|1[0-2])$"
+SEASON = league.SEASON_PATTERN
 _CODES = {"team_not_found": status.HTTP_404_NOT_FOUND, "team_name_invalid": status.HTTP_400_BAD_REQUEST}
 
 

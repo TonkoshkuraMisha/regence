@@ -146,3 +146,27 @@ export interface LegendsWeek {
 /** This week's announcement and table; open to guests too. */
 export const getLegendsWeek = () =>
     call<LegendsWeek>(`${API_BASE_URL}/api/v1/tournaments/legends-week`, {method: 'GET'}, 'timeMachine.loadFailed');
+
+/** A row of the legends season table: season points, weeks won and weeks played. */
+export interface LegendsSeasonRow {
+    place: number;
+    username: string;
+    points: number;
+    wins: number;
+    weeks: number;
+    me: boolean;
+}
+
+/** The season table of the legends weeks (GET /tournaments/legends-week/season, src/services/legends_season.py). */
+export interface LegendsSeason {
+    /** Calendar month "YYYY-MM". */
+    season: string;
+    /** Mondays (ISO dates) of the weeks counted so far. */
+    weeks: string[];
+    rows: LegendsSeasonRow[];
+    me: LegendsSeasonRow | null;
+}
+
+/** The current season's table; open to guests too. */
+export const getLegendsSeason = () =>
+    call<LegendsSeason>(`${API_BASE_URL}/api/v1/tournaments/legends-week/season`, {method: 'GET'}, 'timeMachine.loadFailed');

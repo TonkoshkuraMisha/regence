@@ -45,6 +45,10 @@ def draw_points(mine: int, opponent: int) -> int:
     return 2 if opponent - mine >= DRAW_BONUS_GAP else 1
 
 
+# A season key in requests: "YYYY-MM" (season_bounds); the team league and the legends season table accept it.
+SEASON_PATTERN = r"^\d{4}-(0[1-9]|1[0-2])$"
+
+
 def season_bounds(season: str | None = None, now: datetime | None = None) -> tuple[str, datetime, datetime]:
     """
     (the key "YYYY-MM", start, end) of the season; by default -- the current month. The start is the first day of the month
