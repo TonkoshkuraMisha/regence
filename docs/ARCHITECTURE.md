@@ -327,7 +327,11 @@ For each section: what it does → files → where the data comes from → how i
 - **The Grand Course** (`content/supercourse.ts`, concept — `docs/research/supercourse.md`): levels 0–5 by rank and
   branch; a course step leads into an already existing section. A "game with stops" step opens one master game of the
   classics collection (`{kind: 'classics', id}` → `/learn/classics/<id>`) and is credited by its `classics-<id>`
-  progress record once the game is played to the end. Level exams — `level_exam.py`, diagnostics — `exam.py`.
+  progress record once the game is played to the end. A "demo" step (`{kind: 'classics', id, demo: true}` →
+  `/learn/classics/<id>?stops=off`) opens the same game without questions and is credited the same way. Games of the
+  collection are built by `scripts/build_classics.py`: from the champions' archive, or chosen ones from the game library
+  (`--library <moves_hash>`) or a PGN file (`--pgn`) with stops found by the "Guess the move" selection.
+  Level exams — `level_exam.py`, diagnostics — `exam.py`.
   **Auto-credit:** `GET /learn/course-progress` (`src/services/course_progress.py`) collects what has been done against
   the standards (`lesson_progress` records, the `theme_progress` theme steps, `trainer_results` attempts, `exam_results`
   grades); the client (`services/courseProgress.ts`) matches it against the module's steps and closes the module by

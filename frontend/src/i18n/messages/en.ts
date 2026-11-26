@@ -2975,7 +2975,7 @@ export const en = {
         markDone: 'Session done',
         activityDone: 'done',
         activities: {mate: 'Mating pattern', endgame: 'Endgame', puzzles: 'Puzzles', trainer: 'Trainer',
-            classics: 'Master games with explanations', classicGame: 'Master game with stops: {game}', guess: 'Guess the master’s move', play: 'A game against a bot'},
+            classics: 'Master games with explanations', classicDemo: 'Master game with comments: {game}', classicGame: 'Master game with stops: {game}', guess: 'Guess the master’s move', play: 'A game against a bot'},
         items: {
             first_steps: {name: 'First steps', intro: 'From how the pieces move to the first mates and forks: the ABC, simple checkmates, double attacks and pins.'},
             to_1200: {name: 'Up to 1200', intro: 'The basic tactical blows, the first endgame techniques and opening traps; every week — a workout and a game.'},

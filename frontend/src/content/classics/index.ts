@@ -1,7 +1,9 @@
 // --- FILE: frontend/src/content/classics/index.ts ---
 // Master games with explanations (task 14.7): the JSON files of this folder are produced by scripts/build_classics.py - moves, engine
 // evaluations, coach comments (catalog keys coach.*), "what would you play?" stops. The intro and summary texts are
-// authored, in several languages. Files load on demand: they do not enter the main bundle.
+// authored, in en and uk. Files load on demand: they do not enter the main bundle. Games come from the champions' archive
+// or, with --library / --pgn, from the game library or a PGN file (field source).
+// A game opens with stops by default; classicLink(id, {demo: true}) opens it as a demonstration - moves with comments, no questions.
 
 import type {Language} from '../../i18n';
 import type {CoachComment} from '../../services/coach';
@@ -28,6 +30,8 @@ export interface ClassicGame {
     /** Coach comment on a ply (key - ply number). */
     comments: Record<string, CoachComment>;
     stops: ClassicStop[];
+    /** Where a chosen game came from (build_classics.py --library / --pgn): the library moves_hash or the PGN file name. */
+    source?: { library?: string; pgn?: string };
     intro: Record<Language, string>;
     summary: Record<Language, string>;
 }
@@ -66,6 +70,21 @@ export function classicIdTitle(id: string): string {
     const year = /^\d{4}$/.test(parts[parts.length - 1]) ? parts.pop() : undefined;
     const names = parts.map((name) => name.charAt(0).toUpperCase() + name.slice(1)).join(' – ');
     return year ? `${names}, ${year}` : names;
+}
+
+/** Query parameter of the game page that switches the stops off: ?stops=off - a demonstration (Big course step "demo"). */
+const STOPS_PARAM = 'stops';
+const STOPS_OFF = 'off';
+
+/** Link to a game page; demo - without "what would you play?" stops (the toggle on the page still turns them on). */
+export function classicLink(id: string, options: { demo?: boolean } = {}): string {
+    const path = `/learn/classics/${id}`;
+    return options.demo ? `${path}?${STOPS_PARAM}=${STOPS_OFF}` : path;
+}
+
+/** Whether the game page starts with stops: yes, unless the link is a demonstration (classicLink with demo). */
+export function startsWithStops(params: URLSearchParams): boolean {
+    return params.get(STOPS_PARAM) !== STOPS_OFF;
 }
 
 export function progressId(id: string): string {

@@ -1,13 +1,14 @@
 // --- FILE: frontend/src/components/learn/ClassicsPage.tsx ---
 // Annotated master games (task 14.7): /learn/classics is a collection, /learn/classics/:id is a game viewer:
 // an intro text, moves with coach comments, a "with stops" mode (before a key move, "what would you play?",
-// points as in "Guess the master's move"), a final text at the end.
+// points as in "Guess the master's move"), a final text at the end. The page starts with stops unless the link is a
+// demonstration (?stops=off, classicLink with demo - the Big course "demo" step).
 // Data: games and reviews are content/classics (loadAllClassics, loadClassic, scoreStop); comment text and arrows are services/coach.ts
 // (coachText, coachArrows); progress is lessonProgress: the lesson "classics-<id>" is marked when the player reaches the end of the game.
 // The pages are wired in App.tsx.
 
 import {useEffect, useMemo, useState} from 'react';
-import {Link, useParams} from 'react-router-dom';
+import {Link, useParams, useSearchParams} from 'react-router-dom';
 import {Chess} from 'chess.js';
 import {ArrowLeft, ChevronFirst, ChevronLast, ChevronLeft, ChevronRight, Check} from 'lucide-react';
 import {useI18n} from '../../i18n';
@@ -15,7 +16,7 @@ import {coachArrows, coachText} from '../../services/coach';
 import {getToken} from '../../services/authToken';
 import {fetchLessonProgress, saveLessonProgress} from '../../services/lessonProgress';
 import type {LessonProgress} from '../../services/lessonProgress';
-import {loadAllClassics, loadClassic, progressId, scoreStop} from '../../content/classics';
+import {classicLink, loadAllClassics, loadClassic, progressId, scoreStop, startsWithStops} from '../../content/classics';
 import type {ClassicGame} from '../../content/classics';
 import {PuzzleBoard} from '../puzzles/PuzzleBoard';
 import type {BoardArrow} from '../puzzles/PuzzleBoard';
@@ -56,7 +57,7 @@ export function ClassicsPage() {
             <ol className="flex flex-col gap-2">
                 {games.map((game) => (
                     <li key={game.id}>
-                        <Link to={`/learn/classics/${game.id}`} data-testid={`classic-${game.id}`}
+                        <Link to={classicLink(game.id)} data-testid={`classic-${game.id}`}
                               className="flex items-center justify-between gap-3 bg-acacia px-3 py-2 rounded border-2 border-acacia-dark hover:border-amber-500">
                             <span>
                                 <span className="font-bold text-amber-200">{title(game)}</span>
@@ -83,7 +84,8 @@ export function ClassicGamePage() {
     const {gameId = ''} = useParams<{ gameId: string }>();
     const [game, setGame] = useState<ClassicGame | null | undefined>(undefined);
     const [ply, setPly] = useState(0);
-    const [withStops, setWithStops] = useState(true);
+    const [searchParams] = useSearchParams();
+    const [withStops, setWithStops] = useState(() => startsWithStops(searchParams));
     const [stop, setStop] = useState<StopState | null>(null);
     const [scores, setScores] = useState<Record<number, number>>({});
 
@@ -92,8 +94,9 @@ export function ClassicGamePage() {
         setPly(0);
         setStop(null);
         setScores({});
+        setWithStops(startsWithStops(searchParams));
         void loadClassic(gameId).then(setGame);
-    }, [gameId]);
+    }, [gameId, searchParams]);
 
     const positions = useMemo(() => {
         if (!game) return [];
