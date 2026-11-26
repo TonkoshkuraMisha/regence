@@ -19,9 +19,9 @@ function sans(game: ClassicGame): string[] {
 }
 
 describe('master games with explanations', () => {
-    it('forty-five games', () => {
-        expect(GAMES).toHaveLength(45);
-        expect(new Set(GAMES.map((g) => g.id)).size).toBe(45);
+    it('forty-eight games', () => {
+        expect(GAMES).toHaveLength(48);
+        expect(new Set(GAMES.map((g) => g.id)).size).toBe(48);
     });
 
     for (const game of GAMES) {

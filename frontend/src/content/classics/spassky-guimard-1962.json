@@ -1,0 +1,593 @@
+{
+ "id": "spassky-guimard-1962",
+ "white": "Spassky, Boris V",
+ "black": "Guimard, Carlos E",
+ "event": "Capablanca mem",
+ "year": "1962",
+ "result": "1-0",
+ "moves": [
+  "d2d4",
+  "e7e6",
+  "g1f3",
+  "g8f6",
+  "c2c4",
+  "d7d5",
+  "b1c3",
+  "f8e7",
+  "e2e3",
+  "e8g8",
+  "c4d5",
+  "e6d5",
+  "f1d3",
+  "c7c5",
+  "d4c5",
+  "e7c5",
+  "e1g1",
+  "b8c6",
+  "b2b3",
+  "d8e7",
+  "c1b2",
+  "c8g4",
+  "h2h3",
+  "g4f3",
+  "d1f3",
+  "c6e5",
+  "f3f5",
+  "e5d3",
+  "f5d3",
+  "f8d8",
+  "c3e2",
+  "c5a3",
+  "b2a3",
+  "e7a3",
+  "f1c1",
+  "a8c8",
+  "c1c2",
+  "c8c6",
+  "e2d4",
+  "c6c2",
+  "d3c2",
+  "g7g6",
+  "a1c1",
+  "f6e8",
+  "c2d2",
+  "a7a6",
+  "d4e2",
+  "a3e7",
+  "d2a5",
+  "e8f6",
+  "c1c7",
+  "d8d7",
+  "c7c8",
+  "g8g7",
+  "e2d4",
+  "h7h6",
+  "a2a4",
+  "f6e4",
+  "c8c2",
+  "e7a3",
+  "a5e1",
+  "g7h7",
+  "a4a5",
+  "a3d6",
+  "e1c1",
+  "d6b4",
+  "c1a1",
+  "b4d6",
+  "a1c1",
+  "d6b4",
+  "f2f3",
+  "e4f6",
+  "c2c5",
+  "h7g7",
+  "g1f2",
+  "d7d6",
+  "c1c3",
+  "b4c3",
+  "c5c3",
+  "d6d7",
+  "c3c8",
+  "f6g8",
+  "g2g4",
+  "g8e7",
+  "c8b8",
+  "h6h5",
+  "g4h5",
+  "g6h5",
+  "f2g3",
+  "e7g6",
+  "f3f4",
+  "g7f6",
+  "f4f5",
+  "g6e7",
+  "g3f4",
+  "f6g7",
+  "f4g5",
+  "e7g8",
+  "f5f6",
+  "g7h7",
+  "b3b4",
+  "h5h4",
+  "d4b3",
+  "d7d6",
+  "b8b7",
+  "d6f6",
+  "b3d4",
+  "f6g6",
+  "g5f4",
+  "g8h6",
+  "b7b6",
+  "g6g8"
+ ],
+ "evals": [
+  23,
+  57,
+  20,
+  24,
+  17,
+  17,
+  17,
+  35,
+  5,
+  6,
+  0,
+  2,
+  -3,
+  23,
+  24,
+  32,
+  19,
+  41,
+  20,
+  39,
+  27,
+  27,
+  27,
+  32,
+  21,
+  43,
+  48,
+  51,
+  51,
+  49,
+  57,
+  49,
+  50,
+  50,
+  49,
+  29,
+  29,
+  46,
+  45,
+  46,
+  44,
+  39,
+  39,
+  42,
+  47,
+  48,
+  39,
+  56,
+  38,
+  68,
+  58,
+  65,
+  65,
+  64,
+  22,
+  44,
+  39,
+  38,
+  14,
+  21,
+  13,
+  34,
+  9,
+  6,
+  8,
+  19,
+  5,
+  6,
+  12,
+  19,
+  0,
+  59,
+  53,
+  62,
+  40,
+  64,
+  71,
+  69,
+  69,
+  103,
+  102,
+  103,
+  118,
+  112,
+  116,
+  113,
+  112,
+  100,
+  77,
+  100,
+  100,
+  96,
+  10,
+  186,
+  165,
+  354,
+  365,
+  391,
+  417,
+  441,
+  443,
+  494,
+  379,
+  404,
+  409,
+  411,
+  423,
+  486,
+  428,
+  492,
+  486,
+  561
+ ],
+ "comments": {
+  "21": {
+   "comment": [
+    {
+     "key": "coach.good.pin_relative.v1",
+     "params": {
+      "attacker": "♝g4",
+      "front": "♘f3",
+      "behind": "♕d1"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "g4",
+     "to": "d1",
+     "kind": "idea"
+    }
+   ],
+   "highlights": [
+    {
+     "square": "f3",
+     "kind": "target"
+    },
+    {
+     "square": "d1",
+     "kind": "target"
+    }
+   ]
+  },
+  "25": {
+   "comment": [
+    {
+     "key": "coach.good.fork.v2",
+     "params": {
+      "attacker": "♞e5",
+      "target1": "♗d3",
+      "target2": "♕f3"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "e5",
+     "to": "d3",
+     "kind": "idea"
+    },
+    {
+     "from": "e5",
+     "to": "f3",
+     "kind": "idea"
+    }
+   ],
+   "highlights": [
+    {
+     "square": "d3",
+     "kind": "target"
+    },
+    {
+     "square": "f3",
+     "kind": "target"
+    }
+   ]
+  },
+  "71": {
+   "comment": [
+    {
+     "key": "coach.verdict.inaccuracy.v2",
+     "params": {
+      "move": "♞f6"
+     }
+    },
+    {
+     "key": "coach.best.generic.v1",
+     "params": {
+      "move": "♞g3"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "e4",
+     "to": "g3",
+     "kind": "best"
+    }
+   ],
+   "highlights": []
+  },
+  "92": {
+   "comment": [
+    {
+     "key": "coach.verdict.inaccuracy.v2",
+     "params": {
+      "move": "f5"
+     }
+    },
+    {
+     "key": "coach.best.generic.v1",
+     "params": {
+      "move": "♔f2"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "g3",
+     "to": "f2",
+     "kind": "best"
+    }
+   ],
+   "highlights": []
+  },
+  "93": {
+   "comment": [
+    {
+     "key": "coach.verdict.mistake.v1",
+     "params": {
+      "move": "♞e7"
+     }
+    },
+    {
+     "key": "coach.best.generic.v1",
+     "params": {
+      "move": "h4+"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "h5",
+     "to": "h4",
+     "kind": "best"
+    }
+   ],
+   "highlights": []
+  },
+  "95": {
+   "comment": [
+    {
+     "key": "coach.verdict.mistake.v1",
+     "params": {
+      "move": "♚g7"
+     }
+    },
+    {
+     "key": "coach.best.generic.v1",
+     "params": {
+      "move": "h4"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "h5",
+     "to": "h4",
+     "kind": "best"
+    }
+   ],
+   "highlights": []
+  },
+  "101": {
+   "comment": [
+    {
+     "key": "coach.verdict.inaccuracy.v2",
+     "params": {
+      "move": "h4"
+     }
+    },
+    {
+     "key": "coach.best.generic.v1",
+     "params": {
+      "move": "♜d6"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "d7",
+     "to": "d6",
+     "kind": "best"
+    }
+   ],
+   "highlights": []
+  },
+  "102": {
+   "comment": [
+    {
+     "key": "coach.verdict.mistake.v1",
+     "params": {
+      "move": "♘b3"
+     }
+    },
+    {
+     "key": "coach.best.generic.v1",
+     "params": {
+      "move": "♘f5"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "d4",
+     "to": "f5",
+     "kind": "best"
+    }
+   ],
+   "highlights": []
+  },
+  "104": {
+   "comment": [
+    {
+     "key": "coach.good.pin_absolute.v1",
+     "params": {
+      "attacker": "♖b7",
+      "front": "♟f7",
+      "behind": "♚h7"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "b7",
+     "to": "h7",
+     "kind": "idea"
+    }
+   ],
+   "highlights": [
+    {
+     "square": "f7",
+     "kind": "target"
+    },
+    {
+     "square": "h7",
+     "kind": "target"
+    }
+   ]
+  },
+  "108": {
+   "comment": [
+    {
+     "key": "coach.verdict.inaccuracy.v2",
+     "params": {
+      "move": "♔f4"
+     }
+    },
+    {
+     "key": "coach.missed.hanging.v2",
+     "params": {
+      "piece": "♟h4"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "g5",
+     "to": "h4",
+     "kind": "best"
+    }
+   ],
+   "highlights": [
+    {
+     "square": "h4",
+     "kind": "target"
+    }
+   ]
+  },
+  "111": {
+   "comment": [
+    {
+     "key": "coach.verdict.inaccuracy.v1",
+     "params": {
+      "move": "♜g8"
+     }
+    },
+    {
+     "key": "coach.threat.hanging.v2",
+     "params": {
+      "piece": "♟a6"
+     }
+    },
+    {
+     "key": "coach.best.generic.v2",
+     "params": {
+      "move": "♜g1"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "b6",
+     "to": "a6",
+     "kind": "threat"
+    },
+    {
+     "from": "g6",
+     "to": "g1",
+     "kind": "best"
+    }
+   ],
+   "highlights": [
+    {
+     "square": "a6",
+     "kind": "target"
+    }
+   ]
+  }
+ },
+ "stops": [
+  {
+   "ply": 94,
+   "move": "g3f4",
+   "best_cp": 172,
+   "gap_cp": 172,
+   "lines": [
+    [
+     "g3f4",
+     172
+    ],
+    [
+     "b8h8",
+     0
+    ],
+    [
+     "g3f3",
+     -3
+    ]
+   ]
+  },
+  {
+   "ply": 98,
+   "move": "f5f6",
+   "best_cp": 472,
+   "gap_cp": 351,
+   "lines": [
+    [
+     "f5f6",
+     472
+    ],
+    [
+     "g5h5",
+     121
+    ],
+    [
+     "g5f4",
+     112
+    ]
+   ]
+  }
+ ],
+ "intro": {
+  "en": "The 1962 Capablanca Memorial. A Queen's Gambit Declined: after 6.cxd5 exd5 7.Bd3 c5 8.dxc5 Bxc5 Black is left with an isolated pawn on d5. The minor pieces come off one by one (12...Bxf3, 14...Nxd3, 17.Bxa3), and White puts a knight on d4 — the square right in front of the pawn.",
+  "uk": "Меморіал Капабланки 1962 року. Відмовлений ферзевий гамбіт: після 6.cxd5 exd5 7.Bd3 c5 8.dxc5 Bxc5 у чорних лишається ізольований пішак d5. Легкі фігури розмінюються одна за одною (12...Bxf3, 14...Nxd3, 17.Bxa3), а білі ставлять коня на d4 — поле прямо перед пішаком."
+ },
+ "summary": {
+  "en": "The pawn never fell, but it decided the game: with the queens off (39...Qxc3) Black's pieces had to guard d5 while the white king marched up — 45.Kg3, 48.Kf4, 49.Kg5 — and the f-pawn advanced to f6. Then the rook broke in on b7 (53.Rxb7). Lesson: against an isolated pawn, blockade the square in front of it and trade pieces — the less force is left, the heavier the pawn becomes.",
+  "uk": "Пішак так і не впав, але вирішив партію: після розміну ферзів (39...Qxc3) фігури чорних мусили стерегти d5, а білий король ішов уперед — 45.Kg3, 48.Kf4, 49.Kg5, — і пішак «f» дійшов до f6. Потім тура вдерлася на b7 (53.Rxb7). Урок: проти ізольованого пішака блокуйте поле перед ним і розмінюйте фігури — що менше сил лишається, то важчим стає пішак."
+ }
+}

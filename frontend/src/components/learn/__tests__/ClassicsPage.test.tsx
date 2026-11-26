@@ -23,10 +23,10 @@ function renderAt(path: string) {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('Master games', () => {
-    it('a list of forty-five games', async () => {
+    it('a list of forty-eight games', async () => {
         renderAt('/learn/classics');
         expect(await screen.findByTestId('classic-botvinnik-tal-1961')).toHaveTextContent('Botvinnik');
-        expect(screen.getAllByTestId(/^classic-[a-z]/)).toHaveLength(45);
+        expect(screen.getAllByTestId(/^classic-[a-z]/)).toHaveLength(48);
     });
 
     it('the intro text, then a stop before the key move and points for the master\'s move', async () => {
