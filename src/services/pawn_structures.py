@@ -5,8 +5,8 @@ this structure" and future Supercourse modules (C3-C4, `docs/research/supercours
 The rules are from White's point of view; each rule is also checked on the mirrored position, so a structure is recognised for
 either side (isolated, hanging, stonewall, Carlsbad and others). The order of checking matters: more specific
 structures come before general ones (hedgehog is a special case of Maroczy, wedge of the King's Indian chain). The
-structure of a game is the longest of those met between the 12th and 80th plies (at least 8 plies; plies are all counted,
-not necessarily consecutive).
+structure of a game is the longest of those met between the 12th and 80th plies (at least MIN_PLIES plies, fewer for the
+short-lived structures in SHORT_LIVED; plies are all counted, not necessarily consecutive).
 
 The rules look only at pawns and only at named squares: this is a tag for search, not a position evaluation.
 Who calls it: game import into the library (src/services/library.py) and re-tagging scripts/tag_library.py - the structure
@@ -32,6 +32,10 @@ STRUCTURES = ("hedgehog", "maroczy", "wedge", "kid_chain", "modern_benoni", "sto
 # The game window in which the structure is searched: before the 12th ply it has not formed yet, after the 80th it is
 # already an endgame. MIN_PLIES - how many plies the structure must stand to become a game tag.
 FIRST_PLY, LAST_PLY, MIN_PLIES = 12, 80, 8
+# Structures that are clearly recognisable but rarely stand for long: the stonewall is usually broken by e4/f5 or a trade
+# of the f-pawn, hanging pawns by an advance or an exchange of one of them (on the owner's "Pawn structures" collections
+# only 2 of 7 and 1 of 4 reached MIN_PLIES). They need fewer plies, so such a game is not left without the tag.
+SHORT_LIVED = {"stonewall": 5, "hanging_pawns": 5}
 
 
 class Pawns:
@@ -175,9 +179,9 @@ def center_type(board: chess.Board) -> str | None:
 
 def game_structure(moves: Iterable[chess.Move], start: chess.Board | None = None) -> str | None:
     """
-    The longest structure of a game between FIRST_PLY and LAST_PLY (at least MIN_PLIES plies). "Longest" - by the number of
-    window positions in which it was detected (not necessarily consecutive). start - the starting position, if not the
-    ordinary one.
+    The longest structure of a game between FIRST_PLY and LAST_PLY (at least MIN_PLIES plies, SHORT_LIVED ones - their own
+    smaller number). "Longest" - by the number of window positions in which it was detected (not necessarily consecutive);
+    only structures that reached their own minimum compete. start - the starting position, if not the ordinary one.
     """
     board = (start or chess.Board()).copy()
     seen: Counter[str] = Counter()
@@ -187,7 +191,9 @@ def game_structure(moves: Iterable[chess.Move], start: chess.Board | None = None
             break
         if ply >= FIRST_PLY and (code := detect(board)) is not None:
             seen[code] += 1
-    if not seen:
+    lasting = [(count, code) for code, count in seen.items() if count >= SHORT_LIVED.get(code, MIN_PLIES)]
+    if not lasting:
         return None
-    code, count = seen.most_common(1)[0]
-    return code if count >= MIN_PLIES else None
+    # Longest first; equal counts - the earlier (more specific) rule, as in RULES.
+    order = {code: index for index, (code, _) in enumerate(RULES)}
+    return min(lasting, key=lambda item: (-item[0], order[item[1]]))[1]
