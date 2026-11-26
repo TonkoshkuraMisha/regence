@@ -39,7 +39,8 @@ class Notification(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), index=True)
-    # challenge | rematch | tournament_round | report_answer | workout_reminder | post_comment | arena_reminder
+    # challenge | rematch | tournament_round | report_answer | workout_reminder | post_comment | arena_reminder |
+    # arena_podium | legends_week
     # (the list is notifications.KINDS; the client gets the latest notifications.KEEP, old ones are not deleted from the
     # database).
     kind: Mapped[str] = mapped_column(String(32))

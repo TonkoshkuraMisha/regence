@@ -137,6 +137,8 @@ celery_app.conf.update(
         "review-cheater-flags": {"task": "review_cheater_flags", "schedule": crontab(day_of_week=1, hour=6, minute=7)},
         # Accounts past the deletion grace period are anonymised (task 23.1): once a day, at 04:23 UTC.
         "purge-deleted-accounts": {"task": "purge_deleted_accounts", "schedule": crontab(hour=4, minute=23)},
+        # The new legends week is open (task 26.1): Monday morning UTC, at minute 11 - not together with other scheduled tasks.
+        "legends-week-start": {"task": "legends_week_start", "schedule": crontab(day_of_week=1, hour=8, minute=11)},
     },
     # Do not prefetch long simulation games: otherwise one worker takes a queue and holds it.
     worker_prefetch_multiplier=1,

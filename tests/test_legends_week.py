@@ -69,3 +69,49 @@ async def test_cheater_is_left_out(db_session, test_user_1):
 def test_endpoint_is_open_to_a_guest(client):
     body = client.get(f"{API}/legends-week").json()
     assert body["event_key"] in {event.key for event in EVENTS} and body["rows"] == [] and body["me"] is None
+
+
+async def _notified(db, user_id: int) -> list[dict]:
+    from src.models.social import Notification
+
+    rows = (await db.execute(select(Notification).where(
+        Notification.user_id == user_id, Notification.kind == "legends_week"))).scalars().all()
+    return [row.payload for row in rows]
+
+
+async def test_week_start_goes_to_recent_runners_once(db_session, test_user_1, test_user_2, monkeypatch):
+    from src.services import notifications
+
+    delivered: list[int] = []
+
+    async def fake_deliver(user_id, notification):
+        delivered.append(user_id)
+
+    monkeypatch.setattr(notifications, "deliver", fake_deliver)
+    today = dt.datetime.now(dt.UTC).date()
+    monday = legends_week.week_window(today)[0]
+    last_week = monday - legends_week.WEEK
+    # The first player finished last week's event; the second one never played.
+    run = await time_machine.start(db_session, test_user_1, legends_week.event_for_week(last_week).key, 600_000, 0)
+    run.created_at = dt.datetime.combine(last_week, dt.time(12), dt.UTC)
+    await _finish(db_session, run, 2, test_user_1.id)
+
+    assert await legends_week.send_week_start(db_session, today) == 1
+    assert delivered == [test_user_1.id]
+    assert await _notified(db_session, test_user_1.id) == [
+        {"event_key": legends_week.event_for_week(monday).key, "starts_on": monday.isoformat()}]
+    assert await _notified(db_session, test_user_2.id) == []
+    # A repeated run of the task the same week sends nothing more.
+    assert await legends_week.send_week_start(db_session, today) == 0
+
+
+async def test_week_start_skips_players_already_playing_this_week(db_session, test_user_1):
+    today = dt.datetime.now(dt.UTC).date()
+    monday = legends_week.week_window(today)[0]
+    last_week = monday - legends_week.WEEK
+    old = await time_machine.start(db_session, test_user_1, legends_week.event_for_week(last_week).key, 600_000, 0)
+    old.created_at = dt.datetime.combine(last_week, dt.time(12), dt.UTC)
+    await _finish(db_session, old, 2, test_user_1.id)
+    await _finish(db_session, await time_machine.start(
+        db_session, test_user_1, legends_week.event_for_week(monday).key, 600_000, 0), 1, test_user_1.id)
+    assert await legends_week.send_week_start(db_session, today) == 0

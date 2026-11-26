@@ -170,6 +170,22 @@ def test_arena_reminders(monkeypatch, sent):
     assert tasks.arena_reminders() == sent
 
 
+def test_legends_week_start_returns_sent_count(monkeypatch, caplog):
+    from src.services import legends_week
+
+    monkeypatch.setattr(legends_week, "send_week_start", _recorder([], "l", result=3))
+    with caplog.at_level(logging.INFO):
+        assert tasks.legends_week_start() == 3
+    assert "Legends week start notifications sent: 3" in caplog.text
+
+
+def test_legends_week_start_is_scheduled_on_mondays():
+    from src.worker.celery_app import celery_app
+
+    entry = celery_app.conf.beat_schedule["legends-week-start"]
+    assert entry["task"] == "legends_week_start" and "legends_week_start" in celery_app.tasks
+
+
 def test_bot_selfplay_counts_games(monkeypatch):
     from src.services.bots import selfplay
 

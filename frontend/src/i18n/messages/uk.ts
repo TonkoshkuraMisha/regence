@@ -2521,6 +2521,7 @@ export const uk: Messages = {
             tournamentRound: 'Тур {round}: ваша партія готова',
             workoutReminder: 'Розминка дня чекає — не переривайте серію ({streak} дн.).',
             arenaReminder: 'Арена {control} скоро почнеться',
+            legendsWeek: 'Тиждень легенд відкрито: {title}. Сідайте за дошку.',
             arenaPodium: 'Ви посіли {place} місце на арені — вітаємо!',
             reportAnswer: 'Відповідь на вашу скаргу',
             postComment: 'Новий коментар від {from} до вашої публікації',
