@@ -431,6 +431,7 @@ The tasks — `src/worker/tasks.py`, the queues and the schedule — `src/worker
 | `workout_reminders` | `analysis` | beat, once a day at 16:00 UTC |
 | `bot_selfplay` | `simulation` | beat, every 6 hours |
 | `arena_reminders` | `analysis` | beat, every minute |
+| `legends_week_start` | `analysis` | beat, Monday 08:11 UTC |
 
 Enqueueing a task from the API does not wait for the broker (`src/services/task_dispatch.py`): the game result is
 broadcast at once, and if the broker is unavailable the review can be computed later with a button on the game page.

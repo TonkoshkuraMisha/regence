@@ -2517,6 +2517,7 @@ export const en = {
             tournamentRound: 'Round {round}: your game is ready',
             workoutReminder: 'The warm-up of the day is waiting — keep your {streak}-day streak going.',
             arenaReminder: 'Arena {control} is about to start',
+            legendsWeek: 'The legends week is open: {title}. Take your seat at the board.',
             arenaPodium: 'You took place {place} in the arena — congratulations!',
             reportAnswer: 'An answer to your report',
             postComment: 'New comment from {from} on your post',

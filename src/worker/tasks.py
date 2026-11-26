@@ -7,8 +7,8 @@ Celery background tasks.
   (src/services/position_index.py), and for a game with a historical bot - where the opponent makes mistakes
   (src/services/bots/memory.py, record_rival_errors). analyze_imported_game - review and puzzles for a game from another site.
 * simulate_tournament_game - a bot-vs-bot game in a tournament; after it the next games are queued.
-* workout_reminders, arena_reminders, arena_awards, bot_selfplay, archive_move_telemetry, review_cheater_flags - scheduled
-  (the schedule is src/worker/celery_app.py).
+* workout_reminders, arena_reminders, arena_awards, legends_week_start, bot_selfplay, archive_move_telemetry,
+  review_cheater_flags - scheduled (the schedule is src/worker/celery_app.py).
 
 Every task runs in its own event loop and creates its own database connection (asyncpg connections are bound
 to the loop they were created in). Tasks with an engine need a free Stockfish process from the pool: if the pool is busy,
@@ -206,6 +206,25 @@ def arena_reminders() -> int:
     sent = asyncio.run(_arena_reminders_async())
     if sent:
         logger.info("Arena reminders sent: %s", sent)
+    return sent
+
+
+async def _legends_week_start_async() -> int:
+    engine = create_async_engine(_task_database_url(), poolclass=NullPool)
+    try:
+        async with async_sessionmaker(engine, expire_on_commit=False)() as db:
+            from src.services import legends_week
+
+            return await legends_week.send_week_start(db)
+    finally:
+        await engine.dispose()
+
+
+@celery_app.task(name="legends_week_start", ignore_result=True)
+def legends_week_start() -> int:
+    """The "legends week is open" notification (task 26.1) - on the celery beat schedule, Monday morning UTC."""
+    sent = asyncio.run(_legends_week_start_async())
+    logger.info("Legends week start notifications sent: %s", sent)
     return sent
 
 

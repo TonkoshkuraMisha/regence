@@ -218,6 +218,14 @@ describe('conference schedule and reminders (33.4)', () => {
         expect(notificationText(n, makeI18n('uk').t)).toBe('Ви посіли 2 місце на арені — вітаємо!');
         expect(notificationText(n, makeI18n('en').t)).toBe('You took place 2 in the arena — congratulations!');
     });
+
+    it('the legends week is open (26.1): the text with the event title in both languages and a link to the Time Machine', () => {
+        const n = {id: 3, kind: 'legends_week', payload: {event_key: 'london_1851', starts_on: '2026-11-30'},
+            created_at: null, read: false} as AppNotification;
+        expect(notificationLink(n)).toBe('/time-machine');
+        expect(notificationText(n, makeI18n('en').t)).toMatch(/^The legends week is open: .*1851/);
+        expect(notificationText(n, makeI18n('uk').t)).toMatch(/^Тиждень легенд відкрито: .*1851/);
+    });
 });
 
 describe('splits of an overfull arena (33.2)', () => {
