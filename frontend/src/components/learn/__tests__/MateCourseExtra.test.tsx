@@ -7,6 +7,7 @@ import {MemoryRouter, Route, Routes} from 'react-router-dom';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {setToken} from '../../../services/authToken';
 import {MateConstructionPage, MateCoursePage, MateExamPage} from '../MateCourse';
+import {SLOW_FLOW_TIMEOUT_MS} from '../../../test/timeouts';
 
 const TASK = {
     id: 11, fen: '4r1k1/5ppp/8/8/8/8/3R1PPP/3R2K1 b - - 0 1', first_move: 'e8e2', rating: 1000,
@@ -110,7 +111,7 @@ describe('mate course: list and pattern', () => {
         expect(await screen.findByTestId('mates-finished')).toBeInTheDocument();
         const put = calls.find((c) => c.url.includes('/learn/progress/'))!;
         expect(JSON.parse(String(put.init?.body))).toMatchObject({completed: true, steps_total: 1});
-    }, 20_000);
+    }, SLOW_FLOW_TIMEOUT_MS);
 
     it('a server refusal on "Show solution" and on a move — a message, the puzzle is not lost', async () => {
         stub([
@@ -128,7 +129,7 @@ describe('mate course: list and pattern', () => {
         fireEvent.click(screen.getByRole('button', {name: 'Show solution'}));
         await waitFor(() => expect(screen.getAllByRole('alert').length).toBeGreaterThan(0));
         expect(screen.queryByTestId('course-failed')).toBeNull();
-    }, 20_000);
+    }, SLOW_FLOW_TIMEOUT_MS);
 });
 
 describe('mate course: final test', () => {
@@ -152,7 +153,7 @@ describe('mate course: final test', () => {
         await waitFor(() => expect(calls.filter((c) => c.url.includes('/learn/progress/'))).toHaveLength(1));
         const put = calls.find((c) => c.url.includes('/learn/progress/'))!;
         expect(JSON.parse(String(put.init?.body))).toMatchObject({exam_score: 0, exam_total: 1, completed: true});
-    }, 20_000);
+    }, SLOW_FLOW_TIMEOUT_MS);
 
     it('the last puzzle is solved — the result with points and a retake', async () => {
         stub([
@@ -171,5 +172,5 @@ describe('mate course: final test', () => {
         await play('d8', 'e8');
         expect(await screen.findByTestId('mates-exam-result', {}, {timeout: 5000})).toHaveTextContent('1');
         expect(screen.getByTestId('mates-exam-start')).toBeInTheDocument();
-    }, 20_000);
+    }, SLOW_FLOW_TIMEOUT_MS);
 });
