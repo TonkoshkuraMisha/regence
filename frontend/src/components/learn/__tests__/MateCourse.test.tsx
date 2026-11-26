@@ -4,6 +4,7 @@ import {act, fireEvent, render, screen, waitFor} from '@testing-library/react';
 import {MemoryRouter, Route, Routes} from 'react-router-dom';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {setToken} from '../../../services/authToken';
+import {SLOW_FLOW_TIMEOUT_MS} from '../../../test/timeouts';
 import {MateConstructionPage, MateCoursePage, MateExamPage, mateProgressId} from '../MateCourse';
 
 const OVERVIEW = {
@@ -99,7 +100,7 @@ describe('Mating patterns course', () => {
         expect(put[0]).toContain(mateProgressId('back_rank_mate'));
         expect(JSON.parse(String(put[1].body))).toMatchObject({step: 1, steps_total: 2, completed: false});
         expect(screen.getByTestId('mates-next')).toBeInTheDocument();
-    }, 20_000);  // under load (coverage measurement, CI) the default 5 s was not enough
+    }, SLOW_FLOW_TIMEOUT_MS);
 
     it('after a wrong move the board is free: the right move can be played by hand', async () => {
         stub([
@@ -118,7 +119,7 @@ describe('Mating patterns course', () => {
         await play('d2', 'd8');  // the solution move from the arrow — on the board
         expect(cell('d8').querySelector('img')?.getAttribute('alt')).toBe('wr');
         expect(screen.getByTestId('explorer-back')).not.toBeDisabled();
-    }, 20_000);
+    }, SLOW_FLOW_TIMEOUT_MS);
 
     it('without login the course asks to log in', () => {
         setToken(null);
@@ -158,7 +159,7 @@ describe('Mating patterns course', () => {
 
         fireEvent.click(screen.getByTestId('mates-exam-next'));
         await waitFor(() => expect(screen.getByTestId('mates-exam-status')).toHaveTextContent('Puzzle 2 of 2'));
-    }, 20_000);
+    }, SLOW_FLOW_TIMEOUT_MS);
 
     it('test: the time and the puzzle number', async () => {
         stub([

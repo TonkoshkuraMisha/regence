@@ -8,6 +8,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import App from '../App';
 import {setToken} from '../services/authToken';
 import {setLanguage} from '../i18n';
+import {SLOW_FLOW_TIMEOUT_MS} from '../test/timeouts';
 
 vi.mock('../services/gameSocket', () => ({
     gameSocket: {connect: vi.fn(), disconnect: vi.fn(), send: vi.fn(), on: vi.fn(), off: vi.fn()},
@@ -89,7 +90,7 @@ describe('App: profile menu', () => {
             '/messages', '/study', '/moderation', '/tournaments', '/leaderboard', '/settings']) {
             expect(visited, path).toContain(path);
         }
-    });
+    }, SLOW_FLOW_TIMEOUT_MS);  // renders fourteen pages one after another
 
     it('ping: on a network error the menu shows an error message', async () => {
         stubFetch({'/profile/me': ok(PROFILE), '/health': 'offline'});

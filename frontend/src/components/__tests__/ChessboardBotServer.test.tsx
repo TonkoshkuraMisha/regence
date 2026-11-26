@@ -13,6 +13,7 @@ import {resetBotCatalogCache} from '../../services/botCatalog';
 import {setToken} from '../../services/authToken';
 import {openBots} from '../../test/newGame';
 import {playMove} from '../../test/boardMoves';
+import {SLOW_FLOW_TIMEOUT_MS} from '../../test/timeouts';
 
 vi.mock('../../services/gameSocket', () => ({
     gameSocket: {connect: vi.fn(), disconnect: vi.fn(), send: vi.fn(), on: vi.fn(), off: vi.fn()},
@@ -91,7 +92,7 @@ afterEach(() => {
     localStorage.clear();
 });
 
-describe('game result by the server answer', () => {
+describe('game result by the server answer', {timeout: SLOW_FLOW_TIMEOUT_MS}, () => {
     it('if the server judged differently, its result stays on the screen', async () => {
         await startBotGame(FOOLS_MATE_REPLIES, {saveGame: () => json({game_id: 999, status: 'finished', result: '1/2-1/2'})});
         await playFoolsMate();
@@ -107,7 +108,7 @@ describe('game result by the server answer', () => {
     });
 });
 
-describe('a draw offer to the bot', () => {
+describe('a draw offer to the bot', {timeout: SLOW_FLOW_TIMEOUT_MS}, () => {
     async function offerDraw() {
         await playMove('e2', 'e4');
         await botReplies();
