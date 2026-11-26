@@ -85,3 +85,41 @@ def test_center_type(white, black, expected):
 def test_mobile_centre_of_black_by_the_mirror():
     # Black's d5 + e5 with nothing in front, White has no d-pawn.
     assert ps.center_type(board("a2 b2 c4 e2 f2 g2 h2", "a7 b7 d5 e5 f7 g7 h7")) == "mobile"
+
+
+def _play(line: str) -> list[chess.Move]:
+    b = chess.Board()
+    return [b.push_san(san) for san in line.split()]
+
+
+# Dutch stonewall: Black keeps d5 + e6 + f5 (and c6), White plays on the queenside. Black's structure is found by the mirror.
+DUTCH_STONEWALL = "d4 f5 c4 e6 g3 Nf6 Bg2 Be7 Nf3 O-O O-O d5 Nc3 c6 b3 Ne4 Bb2 Bd6 Qc2 Nd7 Rad1 Qe7 Ne5 Nxe5"
+
+
+def test_short_lived_structure_gets_its_lower_threshold():
+    moves = _play(DUTCH_STONEWALL)[:17]  # the structure stands for 6 plies of the window: more than 5, fewer than 8
+    # The structure stands long enough for the lower bar but not for the ordinary one - the case the lower bar exists for.
+    assert ps.SHORT_LIVED["stonewall"] <= _counts(moves)["stonewall"] < ps.MIN_PLIES
+    assert ps.game_structure(moves) == "stonewall"
+
+
+def _counts(moves: list[chess.Move]) -> dict[str, int]:
+    board = chess.Board()
+    seen: dict[str, int] = {}
+    for ply, move in enumerate(moves, start=1):
+        board.push(move)
+        if ply >= ps.FIRST_PLY and (code := ps.detect(board)):
+            seen[code] = seen.get(code, 0) + 1
+    return seen
+
+
+def test_other_structures_keep_the_ordinary_threshold():
+    assert ps.SHORT_LIVED.keys() == {"stonewall", "hanging_pawns"}
+    assert all(limit < ps.MIN_PLIES for limit in ps.SHORT_LIVED.values())
+    # French chain for fewer than MIN_PLIES plies stays untagged (see test_game_structure_needs_a_lasting_structure).
+
+
+def test_a_short_stonewall_does_not_beat_a_longer_structure():
+    # Equal-or-longer structures still win: the lower bar only lets a short structure compete, it does not favour it.
+    moves = _play("e4 e6 d4 d5 e5 c5 c3 Nc6 Nf3 Qb6 a3 Bd7 b4 cxd4 cxd4 Rc8 Bb2 Nge7 Nc3 Nf5 Na4 Qd8 Bd3 Be7")
+    assert ps.game_structure(moves) == "french_chain"
