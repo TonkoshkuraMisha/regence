@@ -9,7 +9,7 @@
 // module's idea: rooks on an open file, a weakened king, a pawn storm, steady positional play; for S2.2-S2.4 the game was
 // found by scripts/dev/theme_games.py - the mentor's own rule (outpost, bad bishop, isolated pawn) holds for most of it;
 // likewise the uncastled-king games of O1.1 (a demo) and M2.3 (king_center), and the closed, open and mobile centre of
-// S2.5 (pawn_structures.center_type).
+// S2.5 (pawn_structures.center_type) and the miniatures of G1.1 (games of up to 25 moves ending in mate).
 // A "demo" step (demo(id)) is the same game shown without questions - moves with the coach's comments - for levels
 // where "what would you play?" is too early.
 
@@ -82,7 +82,7 @@ export const COURSE: CourseModule[] = [
     mod('C1.1', 'C', [l('calc-board-coordinates'), tr('coord_find'), tr('coord_name'), tr('coord_color'), tr('quiet_path')]),
     mod('C1.2', 'C', [l('calc-checks-captures-threats'), tr('calc_checks')]),
     mod('C1.3', 'C', [l('calc-distance-routes'), tr('calc_distance'), tr('knight_route')]),
-    mod('G1.1', 'G', [tr('miniatures'), demo('kasparov-timman-1995')]),
+    mod('G1.1', 'G', [tr('miniatures'), demo('kasparov-timman-1995'), demo('kostic-keres-1937'), game('korchnoi-solak-2002')]),
     mod('X1', 'G', [ex('level1')]),
     // --- Level 2. Class IV-III ---
     mod('T2.1', 'T', [l('tactics-double-check'), th('double_check'), th('windmill')]),

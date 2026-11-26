@@ -50,3 +50,13 @@ def test_centre_themes():
     gruenfeld = chess.Board("rnbqk2r/pp2ppbp/6p1/2p5/3PP3/2P5/P4PPP/R1BQKBNR w KQkq - 0 8")
     assert tg.THEMES["centre_mobile"].detect(gruenfeld, chess.WHITE, chess.BLACK) == "mobile"
     assert tg.THEMES["centre_mobile"].detect(gruenfeld, chess.BLACK, chess.WHITE) is None
+
+
+def test_miniature_mate_theme():
+    mated = chess.Board()
+    for san in ("e4", "e5", "Qh5", "Nc6", "Bc4", "Nf6", "Qxf7#"):
+        mated.push_san(san)
+    theme = tg.THEMES["miniature_mate"]
+    assert theme.detect(mated, chess.WHITE, chess.BLACK) == "mate"
+    assert theme.detect(chess.Board(), chess.WHITE, chess.BLACK) is None
+    assert theme.max_moves == 25 and theme.min_run == 1

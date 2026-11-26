@@ -1,0 +1,227 @@
+{
+ "id": "kostic-keres-1937",
+ "white": "Kostic, Boris",
+ "black": "Keres, Paul",
+ "event": "Stockholm ol",
+ "year": "1937",
+ "result": "1-0",
+ "moves": [
+  "e2e4",
+  "e7e5",
+  "g1f3",
+  "b8c6",
+  "d2d4",
+  "e5d4",
+  "f1c4",
+  "g8f6",
+  "e1g1",
+  "d7d5",
+  "e4d5",
+  "f6d5",
+  "f3g5",
+  "f8e7",
+  "g5f7",
+  "e8f7",
+  "d1h5",
+  "g7g6",
+  "c4d5",
+  "f7g7",
+  "c1h6",
+  "g7f6",
+  "h5g5"
+ ],
+ "evals": [
+  27,
+  39,
+  28,
+  34,
+  16,
+  13,
+  -15,
+  -15,
+  -15,
+  136,
+  194,
+  177,
+  198,
+  197,
+  201,
+  198,
+  166,
+  165,
+  163,
+  99998,
+  99999,
+  99999,
+  100000
+ ],
+ "comments": {
+  "9": {
+   "comment": [
+    {
+     "key": "coach.verdict.mistake.v2",
+     "params": {
+      "move": "d5"
+     }
+    },
+    {
+     "key": "coach.missed.hanging.v2",
+     "params": {
+      "piece": "♙e4"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "f6",
+     "to": "e4",
+     "kind": "best"
+    }
+   ],
+   "highlights": [
+    {
+     "square": "e4",
+     "kind": "target"
+    }
+   ]
+  },
+  "19": {
+   "comment": [
+    {
+     "key": "coach.verdict.blunder.v1",
+     "params": {
+      "move": "♚g7"
+     }
+    },
+    {
+     "key": "coach.threat.mate_in.v1",
+     "params": {
+      "n": 2,
+      "move": "♗h6+"
+     }
+    },
+    {
+     "key": "coach.best.generic.v1",
+     "params": {
+      "move": "♚e8"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "c1",
+     "to": "h6",
+     "kind": "threat"
+    },
+    {
+     "from": "f7",
+     "to": "e8",
+     "kind": "best"
+    }
+   ],
+   "highlights": []
+  },
+  "22": {
+   "comment": [
+    {
+     "key": "coach.good.checkmate.v1",
+     "params": {
+      "move": "♕g5#"
+     }
+    }
+   ],
+   "arrows": [],
+   "highlights": []
+  }
+ },
+ "stops": [
+  {
+   "ply": 10,
+   "move": "e4d5",
+   "best_cp": 157,
+   "gap_cp": 178,
+   "lines": [
+    [
+     "e4d5",
+     157
+    ],
+    [
+     "c4d5",
+     -21
+    ],
+    [
+     "c4b3",
+     -75
+    ]
+   ]
+  },
+  {
+   "ply": 14,
+   "move": "g5f7",
+   "best_cp": 200,
+   "gap_cp": 170,
+   "lines": [
+    [
+     "g5f7",
+     200
+    ],
+    [
+     "f1e1",
+     30
+    ],
+    [
+     "d1h5",
+     0
+    ]
+   ]
+  },
+  {
+   "ply": 18,
+   "move": "c4d5",
+   "best_cp": 157,
+   "gap_cp": 182,
+   "lines": [
+    [
+     "c4d5",
+     157
+    ],
+    [
+     "h5d5",
+     -25
+    ],
+    [
+     "h5f3",
+     -67
+    ]
+   ]
+  },
+  {
+   "ply": 20,
+   "move": "c1h6",
+   "best_cp": 99998,
+   "gap_cp": 99389,
+   "lines": [
+    [
+     "c1h6",
+     99998
+    ],
+    [
+     "h5h6",
+     609
+    ],
+    [
+     "h5f3",
+     -281
+    ]
+   ]
+  }
+ ],
+ "intro": {
+  "en": "The 1937 Olympiad in Stockholm. A Scotch Gambit: White develops quickly and castles (5.O-O), while Black opens the centre with 5...d5 with his own king still on e8. Watch what happens to a king that stays in the middle of an open board.",
+  "uk": "Олімпіада 1937 року в Стокгольмі. Шотландський гамбіт: білі швидко розвиваються й рокують (5.O-O), а чорні відкривають центр ходом 5...d5, коли їхній король ще стоїть на e8. Погляньте, що стається з королем, який лишається посеред відкритої дошки."
+ },
+ "summary": {
+  "en": "7.Ng5 and 8.Nxf7 tore the king out: after 8...Kxf7 9.Qh5+ g6 10.Bxd5+ Kg7 11.Bh6+ Kf6 the queen mated on g5 — 12.Qg5#. The whole game lasted twelve moves. Lesson: at the start f7 is the weakest point in Black's camp; while the king has not castled, a sacrifice there can end the game at once.",
+  "uk": "7.Ng5 і 8.Nxf7 витягли короля: після 8...Kxf7 9.Qh5+ g6 10.Bxd5+ Kg7 11.Bh6+ Kf6 ферзь поставив мат на g5 — 12.Qg5#. Уся партія тривала дванадцять ходів. Урок: на початку партії f7 — найслабше місце в таборі чорних; поки король не рокував, жертва на цьому полі може закінчити гру одразу."
+ }
+}
