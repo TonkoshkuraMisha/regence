@@ -1,0 +1,209 @@
+{
+  "id": "king-center-hunt",
+  "course": "king-attack",
+  "order": 13,
+  "title": {
+    "en": "A king stuck in the centre",
+    "uk": "Король, що застряг у центрі"
+  },
+  "summary": {
+    "en": "A king that has not castled is hit by open lines: sacrifice to open them and keep checking.",
+    "uk": "Король, що не зробив рокіровку, потрапляє під удар відкритих ліній: жертвуйте, щоб їх відкрити, і не припиняйте шахів."
+  },
+  "steps": [
+    {
+      "type": "text",
+      "fen": "r2qkb1r/1ppb2p1/pn2pnpp/3p4/3P4/1P1BP2P/PBPN1PP1/R2QK2R w KQkq - 0 11",
+      "highlights": [
+        "e8",
+        "f7",
+        "g6"
+      ],
+      "arrows": [
+        {
+          "from": "d3",
+          "to": "g6",
+          "color": "green"
+        }
+      ],
+      "text": {
+        "en": "While the king stays in the middle, every file and diagonal that opens is a road to it. Black has not castled and has no pawn on f7: the bishop on d3 looks at g6 and the king beyond. When the king is in the centre, ask: which line can I open with a sacrifice, and can I keep giving checks until the king has nowhere to go?",
+        "uk": "Поки король лишається посередині, кожна відкрита вертикаль чи діагональ - дорога до нього. Чорні не зробили рокіровку й не мають пішака f7: слон d3 дивиться на g6, а за ним - на короля. Коли король у центрі, питайте: яку лінію можна відкрити жертвою і чи можна не припиняти шахів, доки королю нікуди йти?"
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "r2qkb1r/1ppb2p1/pn2pnpp/3p4/3P4/1P1BP2P/PBPN1PP1/R2QK2R w KQkq - 0 11",
+      "text": {
+        "en": "White to move. Open the road to the king with a sacrifice and mate in three.",
+        "uk": "Хід білих. Відкрийте дорогу до короля жертвою і поставте мат у три ходи."
+      },
+      "line": [
+        {
+          "answers": [
+            "d3g6"
+          ],
+          "reply": "e8e7",
+          "correct": {
+            "en": "The bishop takes the pawn on g6 with check: nothing can capture it, so the king has to step to e7.",
+            "uk": "Слон бере пішака g6 із шахом: його нічим узяти, тож король мусить піти на e7."
+          }
+        },
+        {
+          "answers": [
+            "b2a3"
+          ],
+          "reply": "c7c5",
+          "correct": {
+            "en": "The second bishop checks along the long diagonal; the only reply is the pawn block c5.",
+            "uk": "Другий слон дає шах по довгій діагоналі; єдина відповідь - пішак c5 перекриває."
+          }
+        },
+        {
+          "answers": [
+            "a3c5"
+          ],
+          "correct": {
+            "en": "The bishop takes on c5: checkmate, the king has no square.",
+            "uk": "Слон бере c5: мат, королю нікуди йти."
+          }
+        }
+      ],
+      "hint": {
+        "en": "A bishop capture with check.",
+        "uk": "Взяття слоном із шахом."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "r3k2r/1p3pp1/p3p1pq/2PpP3/3P1P2/6P1/PP1Q4/RN2R1K1 b kq - 0 18",
+      "text": {
+        "en": "Black to move. The white king can be dragged into the middle of the board. Mate in three.",
+        "uk": "Хід чорних. Білого короля можна витягнути на середину дошки. Мат у три ходи."
+      },
+      "line": [
+        {
+          "answers": [
+            "h6h1"
+          ],
+          "reply": "g1f2",
+          "correct": {
+            "en": "The queen checks on h1: the king has to step to f2.",
+            "uk": "Ферзь дає шах h1: король мусить піти на f2."
+          }
+        },
+        {
+          "answers": [
+            "h8h2"
+          ],
+          "reply": "f2e3",
+          "correct": {
+            "en": "The rook checks and drives the king further, to e3.",
+            "uk": "Тура дає шах і жене короля далі, на e3."
+          }
+        },
+        {
+          "answers": [
+            "h1e4"
+          ],
+          "correct": {
+            "en": "The queen gives mate in the middle of the board.",
+            "uk": "Ферзь ставить мат посеред дошки."
+          }
+        }
+      ],
+      "hint": {
+        "en": "A queen check on the first rank.",
+        "uk": "Шах ферзем по першій горизонталі."
+      }
+    },
+    {
+      "type": "text",
+      "text": {
+        "en": "The king in the centre lost in both positions to the same plan: open lines with a sacrifice or a check, and never let the king breathe. Defend by castling in time, and when you attack - count the open lines to the king before you sacrifice.",
+        "uk": "Король у центрі програв в обох позиціях за одним планом: відкрити лінії жертвою чи шахом і не дати королю перепочити. Захищаючись, вчасно робіть рокіровку; атакуючи, перед жертвою порахуйте відкриті лінії до короля."
+      }
+    }
+  ],
+  "exam": [
+    {
+      "type": "find_move",
+      "fen": "3rkr1R/p1p4R/1p2p1p1/4P1q1/4Bb2/8/PPP2PP1/1K6 w - - 6 24",
+      "text": {
+        "en": "White to move. The black king is stuck in the centre. Mate in three.",
+        "uk": "Хід білих. Чорний король застряг у центрі. Мат у три ходи."
+      },
+      "line": [
+        {
+          "answers": [
+            "e4c6"
+          ],
+          "reply": "d8d7",
+          "correct": {
+            "en": "The bishop checks; the rook has to interpose on d7.",
+            "uk": "Слон дає шах; тура мусить стати на d7."
+          }
+        },
+        {
+          "answers": [
+            "c6d7"
+          ],
+          "reply": "e8d8",
+          "correct": {
+            "en": "The bishop takes the rook with check; the king has only d8.",
+            "uk": "Слон бере туру з шахом; королю лишається лише d8."
+          }
+        },
+        {
+          "answers": [
+            "h8f8"
+          ],
+          "correct": {
+            "en": "The rook takes on f8: checkmate.",
+            "uk": "Тура бере f8: мат."
+          }
+        }
+      ],
+      "hint": {
+        "en": "A bishop check on c6.",
+        "uk": "Шах слоном на c6."
+      }
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "Your opponent's king is still in the centre. What is the best plan?",
+        "uk": "Король суперника ще в центрі. Який найкращий план?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "Open lines towards it and keep checking",
+            "uk": "Відкривати лінії до нього й не припиняти шахів"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "Wait until it castles",
+            "uk": "Чекати, доки він зробить рокіровку"
+          },
+          "feedback": {
+            "en": "A king in the centre is weakest now; waiting gives it time to hide.",
+            "uk": "Король у центрі найвразливіший саме зараз; очікування дає йому сховатися."
+          }
+        },
+        {
+          "text": {
+            "en": "Trade queens to simplify",
+            "uk": "Розміняти ферзів і спростити гру"
+          },
+          "feedback": {
+            "en": "Trading queens takes away the attack and saves the king.",
+            "uk": "Розмін ферзів забирає атаку й рятує короля."
+          }
+        }
+      ]
+    }
+  ]
+}

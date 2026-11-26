@@ -1,0 +1,240 @@
+{
+  "id": "tactics-forcing-line",
+  "course": "tactics",
+  "order": 32,
+  "title": {
+    "en": "Forcing lines: check, capture, threat",
+    "uk": "Форсовані варіанти: шах, взяття, загроза"
+  },
+  "summary": {
+    "en": "A combination is easy to calculate when every move is forcing: look at checks first, then captures, then threats.",
+    "uk": "Комбінацію легко порахувати, коли кожен хід форсований: дивіться спершу шахи, потім взяття, потім загрози."
+  },
+  "steps": [
+    {
+      "type": "text",
+      "fen": "r3r2k/pp1q2bp/1np3p1/5pB1/2BP3R/2P2Q2/PP4PP/5RK1 w - - 4 23",
+      "text": {
+        "en": "A long combination looks frightening until you notice that its moves are forcing: the opponent has one reply, or very few. That is why strong players calculate in a strict order: first all checks, then all captures, then all threats. Checks leave only a few replies, so the line is short and sure. Quiet moves come last.",
+        "uk": "Довга комбінація лякає, доки не помітиш, що її ходи форсовані: у суперника одна відповідь або дуже мало відповідей. Тому сильні гравці рахують у строгому порядку: спершу всі шахи, потім усі взяття, потім усі загрози. Після шахів лишається мало відповідей, тож варіант короткий і певний. Тихі ходи - наостанок."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "r3r2k/pp1q2bp/1np3p1/5pB1/2BP3R/2P2Q2/PP4PP/5RK1 w - - 4 23",
+      "text": {
+        "en": "White to move. Mate in three. Start with the checks.",
+        "uk": "Хід білих. Мат у три ходи. Почніть із шахів."
+      },
+      "line": [
+        {
+          "answers": [
+            "h4h7"
+          ],
+          "reply": "h8h7",
+          "correct": {
+            "en": "The rook is given up with check: the king has to take it and step out to h7.",
+            "uk": "Туру віддано з шахом: король мусить її взяти й вийти на h7."
+          }
+        },
+        {
+          "answers": [
+            "f3h3"
+          ],
+          "reply": "g7h6",
+          "correct": {
+            "en": "A new check along the h-file; the only reply is the bishop g7 interposing on h6.",
+            "uk": "Новий шах по вертикалі h; єдина відповідь - слон g7 стає на h6."
+          }
+        },
+        {
+          "answers": [
+            "h3h6"
+          ],
+          "correct": {
+            "en": "The queen takes the bishop on h6: checkmate.",
+            "uk": "Ферзь бере слона на h6: мат."
+          }
+        }
+      ],
+      "hint": {
+        "en": "Give up the rook with check.",
+        "uk": "Віддайте туру з шахом."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "2r1kb1r/1B3pp1/p3pn2/n5N1/1pp2P1p/1P2P1P1/2KBQ2P/1N1R3R b k - 0 20",
+      "text": {
+        "en": "Black to move. Mate in three. Every move is a check.",
+        "uk": "Хід чорних. Мат у три ходи. Кожен хід - шах."
+      },
+      "line": [
+        {
+          "answers": [
+            "c4b3"
+          ],
+          "reply": "c2d3",
+          "correct": {
+            "en": "The pawn takes with check and pulls the king out to d3.",
+            "uk": "Пішак бере з шахом і витягує короля на d3."
+          }
+        },
+        {
+          "answers": [
+            "c8d8"
+          ],
+          "reply": "b7d5",
+          "correct": {
+            "en": "The rook checks along the open d-file; the only reply is the bishop interposing on d5.",
+            "uk": "Тура дає шах по відкритій вертикалі d; єдина відповідь - слон стає на d5."
+          }
+        },
+        {
+          "answers": [
+            "d8d5"
+          ],
+          "correct": {
+            "en": "The rook takes the bishop: checkmate.",
+            "uk": "Тура бере слона: мат."
+          }
+        }
+      ],
+      "hint": {
+        "en": "Look at the pawn on c4.",
+        "uk": "Подивіться на пішака c4."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "5rk1/Q5pp/6q1/8/7N/1P2R2b/P4RPP/6K1 b - - 0 25",
+      "text": {
+        "en": "Black to move. Mate in three. Do not be afraid to give up the queen.",
+        "uk": "Хід чорних. Мат у три ходи. Не бійтеся віддати ферзя."
+      },
+      "line": [
+        {
+          "answers": [
+            "g6b1"
+          ],
+          "reply": "e3e1",
+          "correct": {
+            "en": "Check on the first rank: a white rook has to block.",
+            "uk": "Шах по першій горизонталі: біла тура мусить стати на лінію."
+          }
+        },
+        {
+          "answers": [
+            "b1e1"
+          ],
+          "reply": "f2f1",
+          "correct": {
+            "en": "The queen takes the rook with check; the other rook has to interpose on f1.",
+            "uk": "Ферзь бере туру з шахом; друга тура мусить стати на f1."
+          }
+        },
+        {
+          "answers": [
+            "e1f1"
+          ],
+          "correct": {
+            "en": "The queen takes the last defender on f1: checkmate.",
+            "uk": "Ферзь бере останнього захисника на f1: мат."
+          }
+        }
+      ],
+      "hint": {
+        "en": "Start with a check on the first rank.",
+        "uk": "Почніть із шаху по першій горизонталі."
+      }
+    },
+    {
+      "type": "text",
+      "text": {
+        "en": "In all three positions almost every move left the opponent one or two replies, so the whole line could be calculated to the end before the first move. Make it a habit: before a combination, write down in your head the checks, then the captures, then the threats. If you find a forcing line to the end, play it.",
+        "uk": "У всіх трьох позиціях майже кожен хід залишав суперникові одну-дві відповіді, тож усю лінію можна було порахувати до кінця ще до першого ходу. Зробіть це звичкою: перед комбінацією подумки випишіть шахи, потім взяття, потім загрози. Якщо знайшли форсований варіант до кінця - грайте його."
+      }
+    }
+  ],
+  "exam": [
+    {
+      "type": "find_move",
+      "fen": "6k1/5R1p/3p4/p3bNP1/n6P/8/8/1r3B1K w - - 2 43",
+      "text": {
+        "en": "White to move. Mate in three: check, check, mate.",
+        "uk": "Хід білих. Мат у три ходи: шах, шах, мат."
+      },
+      "line": [
+        {
+          "answers": [
+            "f5h6"
+          ],
+          "reply": "g8h8",
+          "correct": {
+            "en": "The knight checks and drives the king to h8.",
+            "uk": "Кінь дає шах і заганяє короля на h8."
+          }
+        },
+        {
+          "answers": [
+            "f7f8"
+          ],
+          "reply": "h8g7",
+          "correct": {
+            "en": "The rook checks and the king has only g7.",
+            "uk": "Тура дає шах, і в короля лишається лише g7."
+          }
+        },
+        {
+          "answers": [
+            "f8g8"
+          ],
+          "correct": {
+            "en": "The rook gives mate on g8.",
+            "uk": "Тура ставить мат на g8."
+          }
+        }
+      ],
+      "hint": {
+        "en": "Begin with the knight.",
+        "uk": "Почніть із коня."
+      }
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "In what order do you look at candidate moves in a combination?",
+        "uk": "У якому порядку дивляться ходи-кандидати в комбінації?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "Checks, captures, threats",
+            "uk": "Шахи, взяття, загрози"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "Quiet moves first, then captures",
+            "uk": "Спершу тихі ходи, потім взяття"
+          },
+          "feedback": {
+            "en": "Quiet moves leave the opponent too many replies to calculate; they come last.",
+            "uk": "Тихі ходи лишають суперникові забагато відповідей; їх розглядають наостанок."
+          }
+        },
+        {
+          "text": {
+            "en": "In any order, the result is the same",
+            "uk": "У будь-якому порядку, результат той самий"
+          },
+          "feedback": {
+            "en": "The order matters: forcing moves have the fewest replies, so they are the easiest to calculate.",
+            "uk": "Порядок важливий: у форсованих ходів найменше відповідей, їх найлегше порахувати."
+          }
+        }
+      ]
+    }
+  ]
+}
