@@ -40,3 +40,13 @@ def test_uncastled_king_of_the_loser_from_move_eight():
     stuck.fullmove_number = 5  # the opening is still on: silent
     assert tg._king_center(stuck, chess.WHITE, chess.BLACK) is None
     assert tg.THEMES["king_center"].from_move == 8 and tg.THEMES["king_center"].max_moves < tg.THEMES["outpost"].max_moves
+
+
+def test_centre_themes():
+    kid = chess.Board("r1bq1rk1/ppp2pbp/3p1np1/3Pp3/2P1P3/2N2N2/PP2BPPP/R2QK2R w KQ - 0 10")
+    assert tg.THEMES["centre_closed"].detect(kid, chess.WHITE, chess.BLACK) == "closed"
+    assert tg.THEMES["centre_open"].detect(kid, chess.WHITE, chess.BLACK) is None
+    # Gruenfeld exchange: White's d4 + e4 pair is mobile - a theme of the winner only.
+    gruenfeld = chess.Board("rnbqk2r/pp2ppbp/6p1/2p5/3PP3/2P5/P4PPP/R1BQKBNR w KQkq - 0 8")
+    assert tg.THEMES["centre_mobile"].detect(gruenfeld, chess.WHITE, chess.BLACK) == "mobile"
+    assert tg.THEMES["centre_mobile"].detect(gruenfeld, chess.BLACK, chess.WHITE) is None

@@ -1,0 +1,957 @@
+{
+ "id": "keres-botvinnik-1948",
+ "white": "Keres, Paul",
+ "black": "Botvinnik, Mikhail",
+ "event": "World Championship 18th",
+ "year": "1948",
+ "result": "0-1",
+ "moves": [
+  "c2c4",
+  "e7e6",
+  "g2g3",
+  "d7d5",
+  "f1g2",
+  "d5d4",
+  "b2b4",
+  "c7c5",
+  "b4b5",
+  "e6e5",
+  "d2d3",
+  "f8d6",
+  "e2e4",
+  "d8c7",
+  "g1e2",
+  "h7h5",
+  "h2h4",
+  "g8h6",
+  "e1g1",
+  "c8g4",
+  "f2f3",
+  "g4e6",
+  "f3f4",
+  "e6g4",
+  "f4f5",
+  "b8d7",
+  "b1d2",
+  "g7g6",
+  "f5g6",
+  "f7g6",
+  "d2f3",
+  "d6e7",
+  "f1f2",
+  "c7d6",
+  "c1h6",
+  "h8h6",
+  "d1d2",
+  "h6h8",
+  "f3g5",
+  "d7f6",
+  "a1e1",
+  "d6b6",
+  "g5f3",
+  "f6d7",
+  "f3g5",
+  "h8f8",
+  "f2f8",
+  "e7f8",
+  "a2a4",
+  "f8h6",
+  "a4a5",
+  "b6f6",
+  "e2c1",
+  "e8c8",
+  "c1b3",
+  "d8f8",
+  "e1a1",
+  "f6e7",
+  "d2c1",
+  "c8b8",
+  "a1a2",
+  "f8f7",
+  "c1a3",
+  "h6g5",
+  "h4g5",
+  "g4d1",
+  "a3c1",
+  "d1b3",
+  "a2b2",
+  "b3d1",
+  "c1d1",
+  "e7g5",
+  "d1e1",
+  "d7f8",
+  "g1h2",
+  "g5f6",
+  "g2h3",
+  "f8h7",
+  "e1d1",
+  "h7g5",
+  "b5b6",
+  "h5h4",
+  "d1g4",
+  "h4g3",
+  "h2g3",
+  "f7f8",
+  "b6a7",
+  "b8a7",
+  "a5a6",
+  "g5h3",
+  "g4h3",
+  "f6f4",
+  "g3g2",
+  "f4f1",
+  "g2h2",
+  "f8f2",
+  "b2f2",
+  "f1f2",
+  "h2h1",
+  "f2e1",
+  "h1g2",
+  "e1e2",
+  "g2g1",
+  "e2e3",
+  "h3e3",
+  "d4e3",
+  "a6b7",
+  "a7b7",
+  "g1g2",
+  "b7b6",
+  "g2f3",
+  "b6a5",
+  "f3e3",
+  "a5b4",
+  "e3d2",
+  "g6g5"
+ ],
+ "evals": [
+  18,
+  20,
+  28,
+  14,
+  22,
+  18,
+  4,
+  27,
+  11,
+  28,
+  31,
+  41,
+  -13,
+  12,
+  -59,
+  -34,
+  -70,
+  -17,
+  -47,
+  -26,
+  -47,
+  -40,
+  -49,
+  -49,
+  -55,
+  -53,
+  -62,
+  -35,
+  -54,
+  -54,
+  -54,
+  7,
+  -54,
+  -16,
+  -44,
+  -49,
+  -41,
+  -41,
+  -73,
+  4,
+  -40,
+  8,
+  -64,
+  -11,
+  -90,
+  -49,
+  -45,
+  -53,
+  -70,
+  -74,
+  -74,
+  -38,
+  -91,
+  -68,
+  -73,
+  -99,
+  -117,
+  -113,
+  -181,
+  -133,
+  -160,
+  -165,
+  -217,
+  -252,
+  -230,
+  -245,
+  -242,
+  -244,
+  -277,
+  -271,
+  -300,
+  -275,
+  -313,
+  -234,
+  -234,
+  -234,
+  -236,
+  -225,
+  -292,
+  -271,
+  -298,
+  -343,
+  -314,
+  -321,
+  -321,
+  -341,
+  -380,
+  -379,
+  -362,
+  -377,
+  -405,
+  -647,
+  -637,
+  -532,
+  -649,
+  -647,
+  -600,
+  -501,
+  -628,
+  -628,
+  -629,
+  -629,
+  -586,
+  -629,
+  -596,
+  -592,
+  -602,
+  -611,
+  -626,
+  -625,
+  -647,
+  -690,
+  -674,
+  -691,
+  -971,
+  -934
+ ],
+ "comments": {
+  "12": {
+   "comment": [
+    {
+     "key": "coach.verdict.inaccuracy.v2",
+     "params": {
+      "move": "e4"
+     }
+    },
+    {
+     "key": "coach.best.generic.v1",
+     "params": {
+      "move": "a4"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "a2",
+     "to": "a4",
+     "kind": "best"
+    }
+   ],
+   "highlights": []
+  },
+  "14": {
+   "comment": [
+    {
+     "key": "coach.verdict.inaccuracy.v1",
+     "params": {
+      "move": "♘e2"
+     }
+    },
+    {
+     "key": "coach.best.generic.v2",
+     "params": {
+      "move": "♘f3"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "g1",
+     "to": "f3",
+     "kind": "best"
+    }
+   ],
+   "highlights": []
+  },
+  "17": {
+   "comment": [
+    {
+     "key": "coach.verdict.inaccuracy.v1",
+     "params": {
+      "move": "♞h6"
+     }
+    },
+    {
+     "key": "coach.best.generic.v1",
+     "params": {
+      "move": "a6"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "a7",
+     "to": "a6",
+     "kind": "best"
+    }
+   ],
+   "highlights": []
+  },
+  "19": {
+   "comment": [
+    {
+     "key": "coach.good.pin_relative.v2",
+     "params": {
+      "attacker": "♝g4",
+      "front": "♘e2",
+      "behind": "♕d1"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "g4",
+     "to": "d1",
+     "kind": "idea"
+    }
+   ],
+   "highlights": [
+    {
+     "square": "e2",
+     "kind": "target"
+    },
+    {
+     "square": "d1",
+     "kind": "target"
+    }
+   ]
+  },
+  "23": {
+   "comment": [
+    {
+     "key": "coach.good.pin_relative.v1",
+     "params": {
+      "attacker": "♝g4",
+      "front": "♘e2",
+      "behind": "♕d1"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "g4",
+     "to": "d1",
+     "kind": "idea"
+    }
+   ],
+   "highlights": [
+    {
+     "square": "e2",
+     "kind": "target"
+    },
+    {
+     "square": "d1",
+     "kind": "target"
+    }
+   ]
+  },
+  "31": {
+   "comment": [
+    {
+     "key": "coach.verdict.inaccuracy.v1",
+     "params": {
+      "move": "♝e7"
+     }
+    },
+    {
+     "key": "coach.best.generic.v1",
+     "params": {
+      "move": "♞f7"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "h6",
+     "to": "f7",
+     "kind": "best"
+    }
+   ],
+   "highlights": []
+  },
+  "32": {
+   "comment": [
+    {
+     "key": "coach.verdict.inaccuracy.v1",
+     "params": {
+      "move": "♖f2"
+     }
+    },
+    {
+     "key": "coach.best.capture.v1",
+     "params": {
+      "move": "♗xh6",
+      "piece": "♞h6"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "c1",
+     "to": "h6",
+     "kind": "best"
+    }
+   ],
+   "highlights": []
+  },
+  "39": {
+   "comment": [
+    {
+     "key": "coach.verdict.inaccuracy.v1",
+     "params": {
+      "move": "♞f6"
+     }
+    },
+    {
+     "key": "coach.best.pos_open_file.v1",
+     "params": {
+      "move": "♜f8",
+      "file": "f"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "h8",
+     "to": "f8",
+     "kind": "best"
+    }
+   ],
+   "highlights": []
+  },
+  "41": {
+   "comment": [
+    {
+     "key": "coach.verdict.inaccuracy.v2",
+     "params": {
+      "move": "♛b6"
+     }
+    },
+    {
+     "key": "coach.best.generic.v2",
+     "params": {
+      "move": "♝d7"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "g4",
+     "to": "d7",
+     "kind": "best"
+    }
+   ],
+   "highlights": []
+  },
+  "42": {
+   "comment": [
+    {
+     "key": "coach.verdict.inaccuracy.v1",
+     "params": {
+      "move": "♘f3"
+     }
+    },
+    {
+     "key": "coach.best.generic.v2",
+     "params": {
+      "move": "a4"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "a2",
+     "to": "a4",
+     "kind": "best"
+    }
+   ],
+   "highlights": []
+  },
+  "43": {
+   "comment": [
+    {
+     "key": "coach.verdict.inaccuracy.v2",
+     "params": {
+      "move": "♞d7"
+     }
+    },
+    {
+     "key": "coach.best.capture.v1",
+     "params": {
+      "move": "♝xf3",
+      "piece": "♘f3"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "g4",
+     "to": "f3",
+     "kind": "best"
+    }
+   ],
+   "highlights": []
+  },
+  "44": {
+   "comment": [
+    {
+     "key": "coach.verdict.inaccuracy.v2",
+     "params": {
+      "move": "♘g5"
+     }
+    },
+    {
+     "key": "coach.best.generic.v1",
+     "params": {
+      "move": "a4"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "a2",
+     "to": "a4",
+     "kind": "best"
+    }
+   ],
+   "highlights": []
+  },
+  "49": {
+   "comment": [
+    {
+     "key": "coach.good.pin_relative.v1",
+     "params": {
+      "attacker": "♝h6",
+      "front": "♘g5",
+      "behind": "♕d2"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "h6",
+     "to": "d2",
+     "kind": "idea"
+    }
+   ],
+   "highlights": [
+    {
+     "square": "g5",
+     "kind": "target"
+    },
+    {
+     "square": "d2",
+     "kind": "target"
+    }
+   ]
+  },
+  "52": {
+   "comment": [
+    {
+     "key": "coach.verdict.inaccuracy.v2",
+     "params": {
+      "move": "♘c1"
+     }
+    },
+    {
+     "key": "coach.best.pos_open_file.v2",
+     "params": {
+      "move": "♖f1",
+      "file": "f"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "e1",
+     "to": "f1",
+     "kind": "best"
+    }
+   ],
+   "highlights": []
+  },
+  "58": {
+   "comment": [
+    {
+     "key": "coach.verdict.inaccuracy.v2",
+     "params": {
+      "move": "♕c1"
+     }
+    },
+    {
+     "key": "coach.best.generic.v2",
+     "params": {
+      "move": "♔h2"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "g1",
+     "to": "h2",
+     "kind": "best"
+    }
+   ],
+   "highlights": []
+  },
+  "59": {
+   "comment": [
+    {
+     "key": "coach.verdict.inaccuracy.v1",
+     "params": {
+      "move": "♚b8"
+     }
+    },
+    {
+     "key": "coach.best.generic.v1",
+     "params": {
+      "move": "♜f7"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "f8",
+     "to": "f7",
+     "kind": "best"
+    }
+   ],
+   "highlights": []
+  },
+  "62": {
+   "comment": [
+    {
+     "key": "coach.verdict.inaccuracy.v2",
+     "params": {
+      "move": "♕a3"
+     }
+    },
+    {
+     "key": "coach.threat.hanging.v1",
+     "params": {
+      "piece": "♘g5"
+     }
+    },
+    {
+     "key": "coach.best.pos_open_file.v2",
+     "params": {
+      "move": "♖f2",
+      "file": "f"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "h6",
+     "to": "g5",
+     "kind": "threat"
+    },
+    {
+     "from": "a2",
+     "to": "f2",
+     "kind": "best"
+    }
+   ],
+   "highlights": [
+    {
+     "square": "g5",
+     "kind": "target"
+    }
+   ]
+  },
+  "73": {
+   "comment": [
+    {
+     "key": "coach.verdict.inaccuracy.v2",
+     "params": {
+      "move": "♞f8"
+     }
+    },
+    {
+     "key": "coach.best.generic.v2",
+     "params": {
+      "move": "♞f6"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "d7",
+     "to": "f6",
+     "kind": "best"
+    }
+   ],
+   "highlights": []
+  },
+  "78": {
+   "comment": [
+    {
+     "key": "coach.verdict.inaccuracy.v2",
+     "params": {
+      "move": "♕d1"
+     }
+    },
+    {
+     "key": "coach.best.generic.v1",
+     "params": {
+      "move": "♗g2"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "h3",
+     "to": "g2",
+     "kind": "best"
+    }
+   ],
+   "highlights": []
+  },
+  "82": {
+   "comment": [
+    {
+     "key": "coach.good.mate_threat.v2",
+     "params": {
+      "piece": "♕g4",
+      "square": "c8"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "g4",
+     "to": "c8",
+     "kind": "idea"
+    }
+   ],
+   "highlights": []
+  },
+  "86": {
+   "comment": [
+    {
+     "key": "coach.good.pin_absolute.v1",
+     "params": {
+      "attacker": "♖b2",
+      "front": "♟b7",
+      "behind": "♚b8"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "b2",
+     "to": "b8",
+     "kind": "idea"
+    }
+   ],
+   "highlights": [
+    {
+     "square": "b7",
+     "kind": "target"
+    },
+    {
+     "square": "b8",
+     "kind": "target"
+    }
+   ]
+  },
+  "93": {
+   "comment": [
+    {
+     "key": "coach.good.skewer.v1",
+     "params": {
+      "attacker": "♛f1",
+      "front": "♔g2",
+      "behind": "♕h3"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "f1",
+     "to": "h3",
+     "kind": "idea"
+    }
+   ],
+   "highlights": [
+    {
+     "square": "g2",
+     "kind": "target"
+    },
+    {
+     "square": "h3",
+     "kind": "target"
+    }
+   ]
+  },
+  "95": {
+   "comment": [
+    {
+     "key": "coach.good.fork.v2",
+     "params": {
+      "attacker": "♜f2",
+      "target1": "♖b2",
+      "target2": "♔h2"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "f2",
+     "to": "b2",
+     "kind": "idea"
+    },
+    {
+     "from": "f2",
+     "to": "h2",
+     "kind": "idea"
+    }
+   ],
+   "highlights": [
+    {
+     "square": "b2",
+     "kind": "target"
+    },
+    {
+     "square": "h2",
+     "kind": "target"
+    }
+   ]
+  },
+  "103": {
+   "comment": [
+    {
+     "key": "coach.good.fork.v2",
+     "params": {
+      "attacker": "♛e3",
+      "target1": "♔g1",
+      "target2": "♕h3"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "e3",
+     "to": "g1",
+     "kind": "idea"
+    },
+    {
+     "from": "e3",
+     "to": "h3",
+     "kind": "idea"
+    }
+   ],
+   "highlights": [
+    {
+     "square": "g1",
+     "kind": "target"
+    },
+    {
+     "square": "h3",
+     "kind": "target"
+    }
+   ]
+  },
+  "114": {
+   "comment": [
+    {
+     "key": "coach.verdict.blunder.v1",
+     "params": {
+      "move": "♔d2"
+     }
+    },
+    {
+     "key": "coach.best.generic.v1",
+     "params": {
+      "move": "♔f3"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "e3",
+     "to": "f3",
+     "kind": "best"
+    }
+   ],
+   "highlights": []
+  }
+ },
+ "stops": [
+  {
+   "ply": 71,
+   "move": "e7g5",
+   "best_cp": 274,
+   "gap_cp": 160,
+   "lines": [
+    [
+     "e7g5",
+     274
+    ],
+    [
+     "e7d8",
+     114
+    ],
+    [
+     "d7f8",
+     96
+    ]
+   ]
+  },
+  {
+   "ply": 99,
+   "move": "f2e1",
+   "best_cp": 771,
+   "gap_cp": 767,
+   "lines": [
+    [
+     "f2e1",
+     771
+    ],
+    [
+     "g6g5",
+     4
+    ],
+    [
+     "f2b2",
+     0
+    ]
+   ]
+  }
+ ],
+ "intro": {
+  "en": "The 1948 World Championship match-tournament. An English Opening: after 3...d4 and 5...e5 Black's pawns on d4 and e5 meet White's on d3 and e4 (6.d3, 7.e4) — the centre is closed. Neither side can break through in the middle, so the play goes to the wings: White pushes on the queenside (4.b4, 5.b5, 25.a4, 26.a5), Black looks at the kingside (8...h5, 10...Bg4).",
+  "uk": "Матч-турнір за першість світу 1948 року. Англійський початок: після 3...d4 і 5...e5 пішаки чорних на d4 і e5 упираються в білі на d3 і e4 (6.d3, 7.e4) — центр закритий. Прорватися посередині не може ніхто, тож гра йде на флангах: білі наступають на ферзевому (4.b4, 5.b5, 25.a4, 26.a5), чорні дивляться на королівський (8...h5, 10...Bg4)."
+ },
+ "summary": {
+  "en": "White opened the f-file (13.f5, 15.fxg6 fxg6), but the rooks were traded on it (24.Rxf8+). Botvinnik gave both bishops for White's knights (32...Bxg5 33.hxg5, 34...Bxb3), picked up the g5-pawn (36...Qxg5) and opened the h-file (41...h4, 42...hxg3+). In the end the blocked d4-pawn had the last word: 53.Qxe3 dxe3, and the black king marched to b4. Lesson: in a closed centre the plans are made on the wings — whoever opens a file there with more pieces ready for it takes the initiative.",
+  "uk": "Білі відкрили лінію «f» (13.f5, 15.fxg6 fxg6), але тури на ній розмінялися (24.Rxf8+). Ботвинник віддав обох слонів за білих коней (32...Bxg5 33.hxg5, 34...Bxb3), забрав пішака g5 (36...Qxg5) і відкрив лінію «h» (41...h4, 42...hxg3+). Наприкінці останнє слово сказав заблокований пішак d4: 53.Qxe3 dxe3, і чорний король пройшов на b4. Урок: у закритому центрі плани будують на флангах — перевагу отримує той, хто відкриє там лінію, маючи для неї більше готових фігур."
+ }
+}

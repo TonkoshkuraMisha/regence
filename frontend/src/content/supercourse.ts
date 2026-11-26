@@ -8,7 +8,8 @@
 // A "game with stops" step is one master game of the classics collection (game(id)), picked where its own intro names the
 // module's idea: rooks on an open file, a weakened king, a pawn storm, steady positional play; for S2.2-S2.4 the game was
 // found by scripts/dev/theme_games.py - the mentor's own rule (outpost, bad bishop, isolated pawn) holds for most of it;
-// likewise the uncastled-king games of O1.1 (a demo) and M2.3 (king_center).
+// likewise the uncastled-king games of O1.1 (a demo) and M2.3 (king_center), and the closed, open and mobile centre of
+// S2.5 (pawn_structures.center_type).
 // A "demo" step (demo(id)) is the same game shown without questions - moves with the coach's comments - for levels
 // where "what would you play?" is too early.
 
@@ -105,7 +106,8 @@ export const COURSE: CourseModule[] = [
     mod('S2.2', 'S', [l('strategy-outpost'), th('outpost'), game('spassky-petrosian-1969')]),
     mod('S2.3', 'S', [l('strategy-bad-bishop'), th('bad_bishop'), game('petrosian-nikolaevsky-1957')]),
     mod('S2.4', 'S', [l('strategy-weak-squares'), th('weak_squares'), th('isolated_pawn'), game('spassky-guimard-1962')]),
-    mod('S2.5', 'S', [lib('symmetry'), lib('french_chain'), lib('kid_chain'), tr('structure_quiz')]),
+    mod('S2.5', 'S', [game('keres-botvinnik-1948'), game('geller-lipnitsky-1950'), game('tolush-smyslov-1952'),
+        lib('symmetry'), lib('french_chain'), lib('kid_chain'), tr('structure_quiz')]),
     mod('O2.1', 'O', [REPERTOIRE]),
     mod('O2.2', 'O', [REPERTOIRE]),
     mod('C2.1', 'C', [l('calc-blindfold'), tr('blind_move'), tr('blind_where')]),

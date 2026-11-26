@@ -11,6 +11,15 @@ not necessarily consecutive).
 The rules look only at pawns and only at named squares: this is a tag for search, not a position evaluation.
 Who calls it: game import into the library (src/services/library.py) and re-tagging scripts/tag_library.py - the structure
 code is stored in library_games.structure; "Name the Structure" (src/services/structure_quiz.py) takes it from there.
+
+The type of the centre (Big course module S2.5, center_type) is a separate, coarser rule on the d- and e-files only:
+* closed - on both files a pawn of one side stands right in front of a pawn of the other (blocked chains: King's Indian,
+  French); neither side can open the centre with these pawns;
+* mobile - one side has pawns on d4 and e4 (d5 and e5 for Black), nothing stands in front of them and the opponent has no
+  d-pawn: the pair can advance (Gruenfeld, Queen's Gambit Accepted lines);
+* open - there are no pawns at all on the d- and e-files: the pieces fight along open lines.
+Anything else (one blocked file, tension, a lone central pawn) has no type. scripts/dev/theme_games.py picks master games
+for S2.5 with it.
 """
 
 from collections import Counter
@@ -134,6 +143,33 @@ def detect(board: chess.Board) -> str | None:
     for code, rule in RULES:
         if any(rule(side) for side in sides):
             return code
+    return None
+
+
+CENTRE_TYPES = ("closed", "mobile", "open")  # center_type codes, in the order they are checked
+CENTRE_FILES = ("d", "e")
+
+
+def _blocked(p: Pawns, file: str) -> bool:
+    """On the file an own pawn stands right in front of an opponent pawn (White's point of view: ours below, theirs above)."""
+    return any(f"{file}{rank}" in p.ours and f"{file}{rank + 1}" in p.theirs for rank in range(2, 8))
+
+
+def _mobile(p: Pawns) -> bool:
+    """Own pawns on d4 and e4 with nothing in front of them, and the opponent has no d-pawn."""
+    in_front = p.ours | p.theirs
+    return p.has("d4", "e4") and "d5" not in in_front and "e5" not in in_front and p.they_none_on("d")
+
+
+def center_type(board: chess.Board) -> str | None:
+    """Type of the centre: closed, mobile (of either side, by the mirrored position) or open; None - none of them."""
+    white = Pawns(board, chess.WHITE)
+    if all(_blocked(white, file) for file in CENTRE_FILES):
+        return "closed"
+    if _mobile(white) or _mobile(Pawns(board.mirror(), chess.WHITE)):
+        return "mobile"
+    if all(white.none_on(file) and white.they_none_on(file) for file in CENTRE_FILES):
+        return "open"
     return None
 
 

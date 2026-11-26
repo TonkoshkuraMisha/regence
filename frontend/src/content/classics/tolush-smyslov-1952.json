@@ -1,0 +1,541 @@
+{
+ "id": "tolush-smyslov-1952",
+ "white": "Tolush, Alexander V",
+ "black": "Smyslov, Vassily",
+ "event": "URS-ch20",
+ "year": "1952",
+ "result": "1-0",
+ "moves": [
+  "d2d4",
+  "d7d5",
+  "c2c4",
+  "c7c6",
+  "g1f3",
+  "g8f6",
+  "b1c3",
+  "d5c4",
+  "a2a4",
+  "c8f5",
+  "e2e3",
+  "e7e6",
+  "f1c4",
+  "f8b4",
+  "e1g1",
+  "a7a5",
+  "d1e2",
+  "f6e4",
+  "c3a2",
+  "b4e7",
+  "c4d3",
+  "e4f6",
+  "e3e4",
+  "f5g4",
+  "c1e3",
+  "e8g8",
+  "a2c3",
+  "b8a6",
+  "a1d1",
+  "a6b4",
+  "d3b1",
+  "d8c7",
+  "h2h3",
+  "g4f3",
+  "e2f3",
+  "f8d8",
+  "d1c1",
+  "d8d7",
+  "f3e2",
+  "g7g6",
+  "f2f4",
+  "c7d8",
+  "e2f2",
+  "f6e8",
+  "g2g4",
+  "e8g7",
+  "f4f5",
+  "e6f5",
+  "g4f5",
+  "e7g5",
+  "e3g5",
+  "d8g5",
+  "g1h2",
+  "a8d8",
+  "f1g1",
+  "g5h6",
+  "c1d1",
+  "g8h8",
+  "g1g4",
+  "g6f5",
+  "g4h4",
+  "h6d6",
+  "e4e5",
+  "d6e6",
+  "c3e2",
+  "c6c5",
+  "f2g3",
+  "e6g6",
+  "g3f2",
+  "c5d4",
+  "e2f4",
+  "g6c6",
+  "d1g1",
+  "d4d3",
+  "f2g3",
+  "d8g8",
+  "e5e6"
+ ],
+ "evals": [
+  23,
+  23,
+  25,
+  35,
+  30,
+  29,
+  25,
+  40,
+  35,
+  35,
+  22,
+  23,
+  33,
+  25,
+  29,
+  52,
+  51,
+  53,
+  48,
+  44,
+  44,
+  75,
+  77,
+  92,
+  91,
+  91,
+  76,
+  129,
+  106,
+  101,
+  101,
+  129,
+  124,
+  117,
+  143,
+  153,
+  112,
+  113,
+  111,
+  115,
+  96,
+  149,
+  92,
+  91,
+  93,
+  103,
+  89,
+  88,
+  94,
+  85,
+  101,
+  101,
+  97,
+  124,
+  106,
+  103,
+  103,
+  112,
+  141,
+  132,
+  183,
+  195,
+  210,
+  234,
+  185,
+  185,
+  101,
+  197,
+  185,
+  398,
+  440,
+  480,
+  574,
+  942,
+  1015,
+  1170,
+  99995
+ ],
+ "comments": {
+  "13": {
+   "comment": [
+    {
+     "key": "coach.good.pin_absolute.v1",
+     "params": {
+      "attacker": "♝b4",
+      "front": "♘c3",
+      "behind": "♔e1"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "b4",
+     "to": "e1",
+     "kind": "idea"
+    }
+   ],
+   "highlights": [
+    {
+     "square": "c3",
+     "kind": "target"
+    },
+    {
+     "square": "e1",
+     "kind": "target"
+    }
+   ]
+  },
+  "23": {
+   "comment": [
+    {
+     "key": "coach.good.pin_relative.v1",
+     "params": {
+      "attacker": "♝g4",
+      "front": "♘f3",
+      "behind": "♕e2"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "g4",
+     "to": "e2",
+     "kind": "idea"
+    }
+   ],
+   "highlights": [
+    {
+     "square": "f3",
+     "kind": "target"
+    },
+    {
+     "square": "e2",
+     "kind": "target"
+    }
+   ]
+  },
+  "27": {
+   "comment": [
+    {
+     "key": "coach.verdict.inaccuracy.v1",
+     "params": {
+      "move": "♞a6"
+     }
+    },
+    {
+     "key": "coach.best.generic.v2",
+     "params": {
+      "move": "♞bd7"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "b8",
+     "to": "d7",
+     "kind": "best"
+    }
+   ],
+   "highlights": []
+  },
+  "41": {
+   "comment": [
+    {
+     "key": "coach.verdict.inaccuracy.v1",
+     "params": {
+      "move": "♛d8"
+     }
+    },
+    {
+     "key": "coach.best.generic.v1",
+     "params": {
+      "move": "♜ad8"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "a8",
+     "to": "d8",
+     "kind": "best"
+    }
+   ],
+   "highlights": []
+  },
+  "42": {
+   "comment": [
+    {
+     "key": "coach.verdict.inaccuracy.v2",
+     "params": {
+      "move": "♕f2"
+     }
+    },
+    {
+     "key": "coach.best.generic.v1",
+     "params": {
+      "move": "♖cd1"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "c1",
+     "to": "d1",
+     "kind": "best"
+    }
+   ],
+   "highlights": []
+  },
+  "55": {
+   "comment": [
+    {
+     "key": "coach.good.pin_absolute.v1",
+     "params": {
+      "attacker": "♛h6",
+      "front": "♙h3",
+      "behind": "♔h2"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "h6",
+     "to": "h2",
+     "kind": "idea"
+    }
+   ],
+   "highlights": [
+    {
+     "square": "h3",
+     "kind": "target"
+    },
+    {
+     "square": "h2",
+     "kind": "target"
+    }
+   ]
+  },
+  "64": {
+   "comment": [
+    {
+     "key": "coach.verdict.inaccuracy.v2",
+     "params": {
+      "move": "♘e2"
+     }
+    },
+    {
+     "key": "coach.best.generic.v2",
+     "params": {
+      "move": "♕f4"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "f2",
+     "to": "f4",
+     "kind": "best"
+    }
+   ],
+   "highlights": []
+  },
+  "66": {
+   "comment": [
+    {
+     "key": "coach.verdict.inaccuracy.v2",
+     "params": {
+      "move": "♕g3"
+     }
+    },
+    {
+     "key": "coach.best.pos_open_file.v2",
+     "params": {
+      "move": "♖g1",
+      "file": "g"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "d1",
+     "to": "g1",
+     "kind": "best"
+    }
+   ],
+   "highlights": []
+  },
+  "67": {
+   "comment": [
+    {
+     "key": "coach.verdict.mistake.v1",
+     "params": {
+      "move": "♛g6"
+     }
+    },
+    {
+     "key": "coach.best.generic.v2",
+     "params": {
+      "move": "♛a6"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "e6",
+     "to": "a6",
+     "kind": "best"
+    }
+   ],
+   "highlights": []
+  },
+  "69": {
+   "comment": [
+    {
+     "key": "coach.verdict.blunder.v1",
+     "params": {
+      "move": "cxd4"
+     }
+    },
+    {
+     "key": "coach.best.generic.v2",
+     "params": {
+      "move": "♛e6"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "g6",
+     "to": "e6",
+     "kind": "best"
+    }
+   ],
+   "highlights": []
+  },
+  "73": {
+   "comment": [
+    {
+     "key": "coach.verdict.blunder.v1",
+     "params": {
+      "move": "d3"
+     }
+    },
+    {
+     "key": "coach.best.generic.v1",
+     "params": {
+      "move": "♛c5"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "c6",
+     "to": "c5",
+     "kind": "best"
+    }
+   ],
+   "highlights": []
+  },
+  "74": {
+   "comment": [
+    {
+     "key": "coach.good.mate_threat.v2",
+     "params": {
+      "piece": "♕g3",
+      "square": "g7"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "g3",
+     "to": "g7",
+     "kind": "idea"
+    }
+   ],
+   "highlights": []
+  },
+  "75": {
+   "comment": [
+    {
+     "key": "coach.verdict.mistake.v1",
+     "params": {
+      "move": "♜g8"
+     }
+    },
+    {
+     "key": "coach.best.generic.v2",
+     "params": {
+      "move": "f6"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "f7",
+     "to": "f6",
+     "kind": "best"
+    }
+   ],
+   "highlights": []
+  }
+ },
+ "stops": [
+  {
+   "ply": 70,
+   "move": "e2f4",
+   "best_cp": 460,
+   "gap_cp": 268,
+   "lines": [
+    [
+     "e2f4",
+     460
+    ],
+    [
+     "d1g1",
+     192
+    ],
+    [
+     "d1e1",
+     48
+    ]
+   ]
+  },
+  {
+   "ply": 74,
+   "move": "f2g3",
+   "best_cp": 707,
+   "gap_cp": 338,
+   "lines": [
+    [
+     "f2g3",
+     707
+    ],
+    [
+     "f2e3",
+     369
+    ],
+    [
+     "b2b3",
+     204
+    ]
+   ]
+  }
+ ],
+ "intro": {
+  "en": "The 1952 USSR Championship. A Slav Defence: after 4...dxc4 Black gives up the centre, White takes the pawn back (7.Bxc4) and builds a pair of pawns on d4 and e4 (12.e4). Black has no d-pawn to challenge them: such a centre is called mobile — it can move forward when the time comes.",
+  "uk": "Чемпіонат СРСР 1952 року. Слов'янський захист: після 4...dxc4 чорні поступаються центром, білі повертають пішака (7.Bxc4) і будують пару пішаків на d4 і e4 (12.e4). Чорним нічим атакувати цю пару — пішака «d» у них немає: такий центр називають рухомим, він може піти вперед, коли настане час."
+ },
+ "summary": {
+  "en": "White first brought up the pieces and added the f-pawn: 21.f4, 23.g4, and 24.f5 exf5 25.gxf5 opened lines on the kingside. Then the central pair moved: 32.e5 drove the black queen from d6, and after 39.e6 Black resigned. Lesson: a mobile centre is strong while it stands ready to advance; push it when the advance opens lines for your pieces, not before.",
+  "uk": "Спершу білі підтягнули фігури й додали пішака «f»: 21.f4, 23.g4, а 24.f5 exf5 25.gxf5 відкрили лінії на королівському фланзі. Потім рушила центральна пара: 32.e5 прогнав чорного ферзя з d6, а після 39.e6 чорні здалися. Урок: рухомий центр сильний, поки він готовий іти вперед; просувайте його тоді, коли просування відкриває лінії вашим фігурам, а не раніше."
+ }
+}
