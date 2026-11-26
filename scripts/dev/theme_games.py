@@ -7,7 +7,9 @@ so the game shows exactly what the module's lesson names:
 * bad_bishop (S2.3) - the loser has a "bad" bishop (the bad_bishop feature);
 * weak_pawn (S2.4) - the loser has an isolated or backward pawn that the winner presses (isolated_enemy / backward_enemy);
 * king_center (O1.1) - the loser's king stays in the centre without castling while the winner has the pieces to attack it
-  (king_center); short games only, counted from move 8.
+  (king_center); short games only, counted from move 8;
+* centre_closed / centre_open (S2.5) - the type of the centre by src/services/pawn_structures.center_type, for both sides;
+  centre_mobile - the winner's own mobile pawn pair (d4+e4, or d5+e5 for Black).
 
 A game is scored by the longest unbroken run of plies with the idea, counted from the theme's first move (the opening is
 not the idea of a middlegame theme); for an outpost and a weak pawn the run lasts while the idea stays on the same square.
@@ -37,7 +39,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
 from scripts.build_classics import NOT_CLASSICAL, OUT, _slug  # noqa: E402
-from src.services import positional  # noqa: E402
+from src.services import pawn_structures, positional  # noqa: E402
 
 # Events that slip past NOT_CLASSICAL: simultaneous exhibitions ("tour sim") and Casablanca chess (the game starts from a
 # position of a historical game, not from the opening the lesson is about).
@@ -69,6 +71,19 @@ def _king_center(board: chess.Board, _winner: chess.Color, loser: chess.Color) -
     return chess.square_name(feature.squares[0]) if feature else None
 
 
+def _centre(kind: str) -> Callable[[chess.Board, chess.Color, chess.Color], str | None]:
+    """A detector of one type of the centre for both sides (center_type)."""
+    def detect(board: chess.Board, _winner: chess.Color, _loser: chess.Color) -> str | None:
+        return kind if pawn_structures.center_type(board) == kind else None
+    return detect
+
+
+def _winner_mobile_centre(board: chess.Board, winner: chess.Color, _loser: chess.Color) -> str | None:
+    """The winner's mobile pawn pair (seen from the winner's side: the board is mirrored for Black)."""
+    own = board if winner == chess.WHITE else board.mirror()
+    return "mobile" if pawn_structures._mobile(pawn_structures.Pawns(own, chess.WHITE)) else None
+
+
 @dataclass(frozen=True)
 class Theme:
     """How a theme is looked for: the detector, whether the run keeps one square, from which move, game length, run."""
@@ -87,6 +102,10 @@ THEMES: dict[str, Theme] = {
     "weak_pawn": Theme(_weak_pawn, same_square=True),
     # An opening lesson: the punishment comes soon, so short games, from move 8 (where king_center starts speaking).
     "king_center": Theme(_king_center, same_square=False, from_move=8, min_moves=18, max_moves=35, min_run=12),
+    # The centre takes shape around move 12; the type must hold for a good part of the middlegame.
+    "centre_closed": Theme(_centre("closed"), same_square=False, from_move=12, min_run=24),
+    "centre_open": Theme(_centre("open"), same_square=False, from_move=12, min_run=24),
+    "centre_mobile": Theme(_winner_mobile_centre, same_square=False, from_move=10, min_run=12),
 }
 
 

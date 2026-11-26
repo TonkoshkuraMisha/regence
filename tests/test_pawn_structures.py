@@ -60,3 +60,28 @@ def test_library_import_tags_structure():
           "10. Nc3 Nf5 11. Na4 Qd8 12. Bd3 Be7 *"
     parsed = library.parse_game(next(library.read_text(pgn)))
     assert library.structure_of(parsed) == "french_chain"
+
+
+@pytest.mark.parametrize("white, black, expected", [
+    # King's Indian chain: d5/e4 against d6/e5 - both central files blocked.
+    ("a2 b2 c4 d5 e4 f2 g2 h2", "a7 b7 c7 d6 e5 f7 g7 h7", "closed"),
+    # French advance: d4/e5 against d5/e6.
+    ("a2 b2 c3 d4 e5 f2 g2 h2", "a7 b7 c5 d5 e6 f7 g7 h7", "closed"),
+    # Gruenfeld exchange: d4 + e4, Black has no d-pawn and nothing in front of the pair.
+    ("a2 b2 d4 e4 f2 g2 h2", "a7 b7 c5 e7 f7 g7 h7", "mobile"),
+    # The same pair with a black pawn on e5 in front of it is not mobile (and not closed: d-file not blocked).
+    ("a2 b2 d4 e4 f2 g2 h2", "a7 b7 c5 e5 f7 g7 h7", None),
+    # No pawns on the d- and e-files.
+    ("a2 b2 c3 f2 g2 h2", "a7 b7 c6 f7 g7 h7", "open"),
+    # The starting position: nothing has happened in the centre yet.
+    ("a2 b2 c2 d2 e2 f2 g2 h2", "a7 b7 c7 d7 e7 f7 g7 h7", None),
+    # Only one file blocked (French with ...exd5 tension gone on e): no type.
+    ("a2 b2 c3 d4 f2 g2 h2", "a7 b7 c6 d5 f7 g7 h7", None),
+])
+def test_center_type(white, black, expected):
+    assert ps.center_type(board(white, black)) == expected
+
+
+def test_mobile_centre_of_black_by_the_mirror():
+    # Black's d5 + e5 with nothing in front, White has no d-pawn.
+    assert ps.center_type(board("a2 b2 c4 e2 f2 g2 h2", "a7 b7 d5 e5 f7 g7 h7")) == "mobile"
