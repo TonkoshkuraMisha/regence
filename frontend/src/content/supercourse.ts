@@ -7,7 +7,8 @@
 // Module names live in the i18n catalogs: supercourse.modules.<code, dot replaced by "_">.
 // A "game with stops" step is one master game of the classics collection (game(id)), picked where its own intro names the
 // module's idea: rooks on an open file, a weakened king, a pawn storm, steady positional play; for S2.2-S2.4 the game was
-// found by scripts/dev/theme_games.py - the mentor's own rule (outpost, bad bishop, isolated pawn) holds for most of it.
+// found by scripts/dev/theme_games.py - the mentor's own rule (outpost, bad bishop, isolated pawn) holds for most of it;
+// likewise the uncastled-king games of O1.1 (a demo) and M2.3 (king_center).
 // A "demo" step (demo(id)) is the same game shown without questions - moves with the coach's comments - for levels
 // where "what would you play?" is too early.
 
@@ -74,7 +75,7 @@ export const COURSE: CourseModule[] = [
     mod('E1.1', 'E', [l('endgame-square'), e('square_win'), e('square_race'), e('kp_key_square'), l('endgame-opposition'), e('kp_opposition_def')]),
     mod('E1.2', 'E', [l('endgame-queen-vs-pawn'), e('q_vs_pawn')]),
     mod('E1.3', 'E', [l('endgame-simplify'), l('endgame-active-king')]),
-    mod('O1.1', 'O', [l('opening-development'), th('development_lag')]),
+    mod('O1.1', 'O', [l('opening-development'), th('development_lag'), demo('kasparov-seirawan-1996')]),
     mod('O1.2', 'O', [l('opening-traps'), th('opening_trap'), th('trap_scholars_mate'), th('trap_noahs_ark')]),
     mod('O1.3', 'O', [REPERTOIRE]),
     mod('C1.1', 'C', [l('calc-board-coordinates'), tr('coord_find'), tr('coord_name'), tr('coord_color'), tr('quiet_path')]),
@@ -95,7 +96,7 @@ export const COURSE: CourseModule[] = [
     mod('T2.10', 'T', [l('tactics-pawn-breakthrough'), th('pawn_breakthrough'), th('promotion'), th('underpromotion'), th('advanced_pawn')]),
     mod('M2.1', 'M', [l('king-mating-patterns'), m('anastasia_mate'), m('arabian_mate'), m('boden_mate'), m('double_bishop_mate'), m('epaulette_mate'), m('hook_mate')]),
     mod('M2.2', 'M', [l('king-rook-knight-mates'), l('king-bishop-mates')]),
-    mod('M2.3', 'M', [l('king-exposed'), th('exposed_king'), game('konstantinopolsky-smyslov-1945')]),
+    mod('M2.3', 'M', [l('king-exposed'), th('exposed_king'), game('konstantinopolsky-smyslov-1945'), game('tal-mikhalchishin-1978')]),
     mod('E2.1', 'E', [l('endgame-key-squares'), th('triangulation'), th('outflanking'), th('shouldering'), e('two_pawns'), e('two_pawns_connected')]),
     mod('E2.2', 'E', [l('endgame-lucena'), e('lucena'), e('philidor'), th('rook_behind_passer')]),
     mod('E2.3', 'E', [l('endgame-wrong-bishop'), e('wrong_bishop'), e('rook_pawn_def')]),

@@ -1,0 +1,500 @@
+{
+ "id": "kasparov-seirawan-1996",
+ "white": "Kasparov, Gary",
+ "black": "Seirawan, Yasser",
+ "event": "Amsterdam VSB",
+ "year": "1996",
+ "result": "1-0",
+ "moves": [
+  "d2d4",
+  "g8f6",
+  "c2c4",
+  "e7e6",
+  "g1f3",
+  "d7d5",
+  "b1c3",
+  "b8d7",
+  "d1c2",
+  "d5c4",
+  "e2e4",
+  "c7c5",
+  "d4c5",
+  "f8c5",
+  "f1c4",
+  "a7a6",
+  "a2a4",
+  "d8c7",
+  "e1g1",
+  "f6g4",
+  "h2h3",
+  "g4f2",
+  "f1f2",
+  "c5f2",
+  "c2f2",
+  "c7c4",
+  "f2g3",
+  "f7f6",
+  "g3g7",
+  "c4c5",
+  "g1h1",
+  "c5f8",
+  "g7g4",
+  "f8f7",
+  "e4e5",
+  "h8g8",
+  "g4c4",
+  "f6f5",
+  "c1g5",
+  "h7h6",
+  "g5h4",
+  "f7g6",
+  "a1g1",
+  "d7f8",
+  "c4b4",
+  "g8g7",
+  "c3e2",
+  "b7b5",
+  "a4b5",
+  "g7d7",
+  "e2f4",
+  "g6f7",
+  "g1c1",
+  "c8b7",
+  "b5a6",
+  "b7f3",
+  "g2f3",
+  "d7a7",
+  "c1g1",
+  "a7a6",
+  "f4h5",
+  "f7c7",
+  "g1g7",
+  "a6a1",
+  "h1g2",
+  "c7c2",
+  "h4f2"
+ ],
+ "evals": [
+  23,
+  19,
+  18,
+  26,
+  23,
+  14,
+  14,
+  23,
+  23,
+  47,
+  34,
+  34,
+  48,
+  45,
+  45,
+  44,
+  2,
+  18,
+  15,
+  14,
+  -2,
+  33,
+  28,
+  29,
+  29,
+  35,
+  55,
+  55,
+  55,
+  54,
+  7,
+  8,
+  8,
+  168,
+  121,
+  104,
+  123,
+  125,
+  125,
+  201,
+  132,
+  216,
+  216,
+  320,
+  289,
+  307,
+  249,
+  248,
+  246,
+  255,
+  279,
+  279,
+  252,
+  282,
+  353,
+  327,
+  413,
+  352,
+  397,
+  585,
+  638,
+  627,
+  614,
+  652,
+  649,
+  2009,
+  99993
+ ],
+ "comments": {
+  "23": {
+   "comment": [
+    {
+     "key": "coach.good.discovered_attack.v1",
+     "params": {
+      "attacker": "♛c7",
+      "target": "♗c4"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "c7",
+     "to": "c4",
+     "kind": "idea"
+    }
+   ],
+   "highlights": [
+    {
+     "square": "c4",
+     "kind": "target"
+    }
+   ]
+  },
+  "30": {
+   "comment": [
+    {
+     "key": "coach.verdict.inaccuracy.v2",
+     "params": {
+      "move": "♔h1"
+     }
+    },
+    {
+     "key": "coach.best.generic.v2",
+     "params": {
+      "move": "♔h2"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "g1",
+     "to": "h2",
+     "kind": "best"
+    }
+   ],
+   "highlights": []
+  },
+  "33": {
+   "comment": [
+    {
+     "key": "coach.verdict.mistake.v2",
+     "params": {
+      "move": "♛f7"
+     }
+    },
+    {
+     "key": "coach.best.generic.v1",
+     "params": {
+      "move": "♛g8"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "f8",
+     "to": "g8",
+     "kind": "best"
+    }
+   ],
+   "highlights": []
+  },
+  "40": {
+   "comment": [
+    {
+     "key": "coach.verdict.inaccuracy.v1",
+     "params": {
+      "move": "♗h4"
+     }
+    },
+    {
+     "key": "coach.missed.hanging.v2",
+     "params": {
+      "piece": "♟h6"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "g5",
+     "to": "h6",
+     "kind": "best"
+    }
+   ],
+   "highlights": [
+    {
+     "square": "h6",
+     "kind": "target"
+    }
+   ]
+  },
+  "41": {
+   "comment": [
+    {
+     "key": "coach.verdict.inaccuracy.v1",
+     "params": {
+      "move": "♛g6"
+     }
+    },
+    {
+     "key": "coach.best.generic.v1",
+     "params": {
+      "move": "♞f8"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "d7",
+     "to": "f8",
+     "kind": "best"
+    }
+   ],
+   "highlights": []
+  },
+  "43": {
+   "comment": [
+    {
+     "key": "coach.verdict.mistake.v1",
+     "params": {
+      "move": "♞f8"
+     }
+    },
+    {
+     "key": "coach.best.generic.v2",
+     "params": {
+      "move": "♜g7"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "g8",
+     "to": "g7",
+     "kind": "best"
+    }
+   ],
+   "highlights": []
+  },
+  "44": {
+   "comment": [
+    {
+     "key": "coach.good.mate_threat.v2",
+     "params": {
+      "piece": "♕b4",
+      "square": "e7"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "b4",
+     "to": "e7",
+     "kind": "idea"
+    }
+   ],
+   "highlights": []
+  },
+  "46": {
+   "comment": [
+    {
+     "key": "coach.verdict.inaccuracy.v1",
+     "params": {
+      "move": "♘e2"
+     }
+    },
+    {
+     "key": "coach.best.generic.v2",
+     "params": {
+      "move": "♕b6"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "b4",
+     "to": "b6",
+     "kind": "best"
+    }
+   ],
+   "highlights": []
+  },
+  "59": {
+   "comment": [
+    {
+     "key": "coach.verdict.mistake.v2",
+     "params": {
+      "move": "♜xa6"
+     }
+    },
+    {
+     "key": "coach.best.pos_open_file.v2",
+     "params": {
+      "move": "♜c8",
+      "file": "c"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "a8",
+     "to": "c8",
+     "kind": "best"
+    }
+   ],
+   "highlights": []
+  },
+  "65": {
+   "comment": [
+    {
+     "key": "coach.verdict.blunder.v1",
+     "params": {
+      "move": "♛c2+"
+     }
+    },
+    {
+     "key": "coach.best.capture.v2",
+     "params": {
+      "move": "♛xg7+",
+      "piece": "♖g7"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "c7",
+     "to": "g7",
+     "kind": "best"
+    }
+   ],
+   "highlights": []
+  }
+ },
+ "stops": [
+  {
+   "ply": 26,
+   "move": "f2g3",
+   "best_cp": 11,
+   "gap_cp": 171,
+   "lines": [
+    [
+     "f2g3",
+     11
+    ],
+    [
+     "c1f4",
+     -160
+    ],
+    [
+     "c1e3",
+     -186
+    ]
+   ]
+  },
+  {
+   "ply": 28,
+   "move": "g3g7",
+   "best_cp": 17,
+   "gap_cp": 192,
+   "lines": [
+    [
+     "g3g7",
+     17
+    ],
+    [
+     "e4e5",
+     -175
+    ],
+    [
+     "c1e3",
+     -180
+    ]
+   ]
+  },
+  {
+   "ply": 36,
+   "move": "g4c4",
+   "best_cp": 110,
+   "gap_cp": 150,
+   "lines": [
+    [
+     "g4c4",
+     110
+    ],
+    [
+     "g4d4",
+     -40
+    ],
+    [
+     "c1g5",
+     -63
+    ]
+   ]
+  },
+  {
+   "ply": 60,
+   "move": "f4h5",
+   "best_cp": 653,
+   "gap_cp": 441,
+   "lines": [
+    [
+     "f4h5",
+     653
+    ],
+    [
+     "g1g8",
+     212
+    ],
+    [
+     "f4g6",
+     0
+    ]
+   ]
+  },
+  {
+   "ply": 66,
+   "move": "h4f2",
+   "best_cp": 99990,
+   "gap_cp": 101186,
+   "lines": [
+    [
+     "h4f2",
+     99990
+    ],
+    [
+     "b4d2",
+     -1196
+    ],
+    [
+     "g2g3",
+     -99997
+    ]
+   ]
+  }
+ ],
+ "intro": {
+  "en": "Amsterdam 1996. A Queen's Gambit Declined: White castles on move 10, Black does not castle at all. Instead the knight from f6 goes hunting — 10...Ng4 and 11...Nxf2 — and after 12.Rxf2 Bxf2+ 13.Qxf2 Qxc4 Black has a rook and a pawn for a knight. Watch what the extra material is worth while the black king is stuck on e8.",
+  "uk": "Амстердам, 1996 рік. Відмовлений ферзевий гамбіт: білі рокують на 10-му ході, чорні не рокують узагалі. Натомість кінь з f6 іде на полювання — 10...Ng4 і 11...Nxf2, — і після 12.Rxf2 Bxf2+ 13.Qxf2 Qxc4 у чорних тура й пішак за коня. Погляньте, чого вартий зайвий матеріал, поки чорний король застряг на e8."
+ },
+ "summary": {
+  "en": "White's queen broke in at once — 14.Qg3 and 15.Qxg7 — and Black's rooks and queen had to guard the king instead of playing. White brought every piece over: 18.e5, 20.Bg5, 22.Rg1, 26.Nf4, 31.Nh5, 32.Rg7. 34.Bf2 blocked the last check, and Black resigned. Lesson: material won in the opening is worth little if the king stays in the centre — castle first, collect pawns later.",
+  "uk": "Ферзь білих одразу вдерся в табір чорних — 14.Qg3 і 15.Qxg7, — і турам та ферзю чорних довелося стерегти короля замість того, щоб грати. Білі підтягнули всі фігури: 18.e5, 20.Bg5, 22.Rg1, 26.Nf4, 31.Nh5, 32.Rg7. 34.Bf2 закрило останній шах, і чорні здалися. Урок: матеріал, виграний у дебюті, мало чого вартий, якщо король лишається в центрі, — спершу рокіровка, пішаки потім."
+ }
+}

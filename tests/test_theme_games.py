@@ -29,4 +29,14 @@ def test_isolated_pawn_of_the_loser():
 def test_short_draw_and_simul_games_are_not_candidates():
     assert tg.score("outpost", SHORT) is None
     assert tg.score("outpost", SHORT.replace('"1-0"', '"1/2-1/2"').replace("1-0\n", "1/2-1/2\n")) is None
-    assert tg.SIMUL.search("GBR tour sim") and not tg.SIMUL.search("Simferopol")
+    assert tg.SPECIAL.search("GBR tour sim") and tg.SPECIAL.search("Casablanca Chess 2024")
+    assert not tg.SPECIAL.search("Simferopol")
+
+
+def test_uncastled_king_of_the_loser_from_move_eight():
+    # Move 10, Black's king still on e8, White has the queen: the mentor's king_center rule speaks.
+    stuck = chess.Board("r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQ1RK1 w kq - 0 10")
+    assert tg._king_center(stuck, chess.WHITE, chess.BLACK) == "e8"
+    stuck.fullmove_number = 5  # the opening is still on: silent
+    assert tg._king_center(stuck, chess.WHITE, chess.BLACK) is None
+    assert tg.THEMES["king_center"].from_move == 8 and tg.THEMES["king_center"].max_moves < tg.THEMES["outpost"].max_moves

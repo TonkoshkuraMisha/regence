@@ -5,13 +5,17 @@ so the game shows exactly what the module's lesson names:
 
 * outpost (S2.2) - the winner's knight stands on an outpost square of files c-f (is_outpost, CENTRAL_FILES);
 * bad_bishop (S2.3) - the loser has a "bad" bishop (the bad_bishop feature);
-* weak_pawn (S2.4) - the loser has an isolated or backward pawn that the winner presses (isolated_enemy / backward_enemy).
+* weak_pawn (S2.4) - the loser has an isolated or backward pawn that the winner presses (isolated_enemy / backward_enemy);
+* king_center (O1.1) - the loser's king stays in the centre without castling while the winner has the pieces to attack it
+  (king_center); short games only, counted from move 8.
 
-A game is scored by the longest unbroken run of plies with the idea, counted from move FROM_MOVE (the opening is not the
-idea); for an outpost and a weak pawn the run lasts while the idea stays on the same square. Only decisive classical
-games of MIN_MOVES..MAX_MOVES moves are taken, without simultaneous exhibitions (SIMUL), games already in the classics
-collection and with one game per pair of players. The output is a PGN file for scripts/build_classics.py --pgn and a
-list with the square and the move range of the idea - the author checks the game and writes its intro and summary.
+A game is scored by the longest unbroken run of plies with the idea, counted from the theme's first move (the opening is
+not the idea of a middlegame theme); for an outpost and a weak pawn the run lasts while the idea stays on the same square.
+Each theme sets its move range and the shortest run that counts (Theme). Only decisive classical games are taken, without
+simultaneous exhibitions and special-format events (SPECIAL), games already in the classics collection and with
+one game per pair of players.
+The output is a PGN file for scripts/build_classics.py --pgn and a list with the square and the move range of the idea -
+the author checks the game and writes its intro and summary.
 
     python scripts/dev/theme_games.py outpost --count 4 --out outpost.pgn
 """
@@ -23,6 +27,7 @@ import re
 import sys
 from collections.abc import Callable
 from concurrent.futures import ProcessPoolExecutor
+from dataclasses import dataclass
 from pathlib import Path
 
 import chess
@@ -34,11 +39,9 @@ sys.path.insert(0, str(ROOT))
 from scripts.build_classics import NOT_CLASSICAL, OUT, _slug  # noqa: E402
 from src.services import positional  # noqa: E402
 
-FROM_MOVE = 15  # the idea is looked for after the opening
-MIN_MOVES, MAX_MOVES = 25, 60
-MIN_RUN = 16  # plies: a shorter stretch is an episode, not the idea of the game
-# Simultaneous exhibitions slip past NOT_CLASSICAL ("tour sim"): the opponents are not masters.
-SIMUL = re.compile(r"(?<![a-z])sim(?![a-z])", re.IGNORECASE)
+# Events that slip past NOT_CLASSICAL: simultaneous exhibitions ("tour sim") and Casablanca chess (the game starts from a
+# position of a historical game, not from the opening the lesson is about).
+SPECIAL = re.compile(r"(?<![a-z])sim(?![a-z])|casablanca", re.IGNORECASE)
 
 
 def _knight_outpost(board: chess.Board, winner: chess.Color, _loser: chess.Color) -> str | None:
@@ -60,12 +63,30 @@ def _weak_pawn(board: chess.Board, winner: chess.Color, _loser: chess.Color) -> 
     return feature.params["square"] if feature else None
 
 
-# Theme -> detector of the idea in a position (the square it is about, or None) and whether the run must keep the square
-# (a bad bishop moves about and stays bad; a knight leaving its outpost or a target pawn changing ends the idea).
-THEMES: dict[str, tuple[Callable[[chess.Board, chess.Color, chess.Color], str | None], bool]] = {
-    "outpost": (_knight_outpost, True),
-    "bad_bishop": (_bad_bishop, False),
-    "weak_pawn": (_weak_pawn, True),
+def _king_center(board: chess.Board, _winner: chess.Color, loser: chess.Color) -> str | None:
+    """The square of the loser's king stuck in the centre, if the mentor's king_center rule holds."""
+    feature = positional._king_center(board, loser)
+    return chess.square_name(feature.squares[0]) if feature else None
+
+
+@dataclass(frozen=True)
+class Theme:
+    """How a theme is looked for: the detector, whether the run keeps one square, from which move, game length, run."""
+    detect: Callable[[chess.Board, chess.Color, chess.Color], str | None]
+    # A bad bishop moves about and stays bad; a knight leaving its outpost or a target pawn changing ends the idea.
+    same_square: bool
+    from_move: int = 15  # a middlegame idea is looked for after the opening
+    min_moves: int = 25
+    max_moves: int = 60
+    min_run: int = 16  # plies: a shorter stretch is an episode, not the idea of the game
+
+
+THEMES: dict[str, Theme] = {
+    "outpost": Theme(_knight_outpost, same_square=True),
+    "bad_bishop": Theme(_bad_bishop, same_square=False),
+    "weak_pawn": Theme(_weak_pawn, same_square=True),
+    # An opening lesson: the punishment comes soon, so short games, from move 8 (where king_center starts speaking).
+    "king_center": Theme(_king_center, same_square=False, from_move=8, min_moves=18, max_moves=35, min_run=12),
 }
 
 
@@ -73,27 +94,27 @@ def score(theme: str, pgn: str) -> dict | None:
     """The longest run of the idea in a game: {length, from_move, to_move, square, ...}; None - not a candidate."""
     game = chess.pgn.read_game(io.StringIO(pgn))
     event = game.headers.get("Event", "") if game else ""
-    if game is None or NOT_CLASSICAL.search(event) or SIMUL.search(event):
+    if game is None or NOT_CLASSICAL.search(event) or SPECIAL.search(event):
         return None
     result = game.headers.get("Result")
     moves = list(game.mainline_moves())
-    if result not in ("1-0", "0-1") or not MIN_MOVES * 2 <= len(moves) <= MAX_MOVES * 2:
+    spec = THEMES[theme]
+    if result not in ("1-0", "0-1") or not spec.min_moves * 2 <= len(moves) <= spec.max_moves * 2:
         return None
     winner = chess.WHITE if result == "1-0" else chess.BLACK
-    detect, same_square = THEMES[theme]
     board = game.board()
     best = run = (0, 0, "")  # (length, start ply, square)
     for ply, move in enumerate(moves):
         board.push(move)
-        square = detect(board, winner, not winner) if ply >= (FROM_MOVE - 1) * 2 else None
+        square = spec.detect(board, winner, not winner) if ply >= (spec.from_move - 1) * 2 else None
         if not square:
             run = (0, 0, "")
-        elif run[0] and (square == run[2] or not same_square):
+        elif run[0] and (square == run[2] or not spec.same_square):
             run = (run[0] + 1, run[1], square)
         else:
             run = (1, ply, square)
         best = max(best, run)
-    if best[0] < MIN_RUN:
+    if best[0] < spec.min_run:
         return None
     headers = game.headers
     return {"length": best[0], "from_move": best[1] // 2 + 1, "to_move": (best[1] + best[0]) // 2 + 1,
