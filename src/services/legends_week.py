@@ -10,6 +10,10 @@ enters the standings. The weekly table ranks players by the place they took in a
 counts. Runs are matched by `tournaments.created_at` inside the week, and only finished, not withdrawn runs count. Fair-play
 violators, bots and deleted accounts are left out (as in puzzle_leaders). No table of its own: everything is derived from
 tournaments, so no migration. The client shows the announcement and the table in the lobby; texts are on the client.
+
+The start of a week is announced by a notification (send_week_start, the Celery beat task legends_week_start on Monday
+morning UTC): only to players who finished a run in one of the last LOOKBACK_WEEKS weeks - the regulars, not everybody, so
+a weekly message is not spam - and at most once a week, so a repeated run of the task sends nothing new.
 """
 
 import datetime as dt
@@ -27,6 +31,10 @@ from src.services.time_machine import EVENTS, Event
 TOP = 20
 # Days in a week: the table is open from Monday 00:00 UTC to the next Monday.
 WEEK = dt.timedelta(days=7)
+# Who gets the notification about a new week: players with a finished run in one of this many previous weeks.
+LOOKBACK_WEEKS = 4
+# The notification kind (notifications.KINDS); the payload is the event key, the client builds the text and the link.
+NOTIFICATION_KIND = "legends_week"
 
 
 
@@ -89,3 +97,28 @@ async def standings(db: AsyncSession, user_id: int | None = None, today: dt.date
         me = {"place": mine["place"], "username": mine["username"], "tournament_place": mine["score"], "me": True}
     return {"event_key": event.key, "starts_on": monday.isoformat(), "ends_on": next_monday.isoformat(), "rows": rows,
             "me": me}
+
+
+async def send_week_start(db: AsyncSession, today: dt.date | None = None) -> int:
+    """
+    Notifies the regulars that a new legends week has started: players with a finished run in one of the LOOKBACK_WEEKS weeks
+    before this one, who have not been notified since this Monday. Returns the number sent. Records first, delivers after the
+    commit (notifications.record / deliver: the network does not hold the database session).
+    """
+    from src.models.social import Notification
+    from src.services import notifications
+
+    monday = week_window(today)[0]
+    regulars: set[int] = set()
+    for back in range(1, LOOKBACK_WEEKS + 1):
+        regulars |= {row["user_id"] for row in await week_ranking(db, monday - back * WEEK)}
+    since = dt.datetime.combine(monday, dt.time.min, dt.UTC)
+    notified = set((await db.execute(select(Notification.user_id).where(
+        Notification.kind == NOTIFICATION_KIND, Notification.created_at >= since))).scalars())
+    payload = {"event_key": event_for_week(monday).key}
+    sent = [(user_id, await notifications.record(db, user_id, NOTIFICATION_KIND, payload, commit=False))
+            for user_id in sorted(regulars - notified)]
+    await db.commit()
+    for user_id, notification in sent:
+        await notifications.deliver(user_id, notification)
+    return len(sent)

@@ -14,6 +14,7 @@ import {controlLabel} from '../../services/arenas';
 import {gameSocket} from '../../services/gameSocket';
 import {messagesApi} from '../../services/messages';
 import {notificationLink, socialApi} from '../../services/social';
+import {eventTitle} from '../../services/timeMachine';
 import {useKidMode} from '../../services/kidMode';
 import type {AppNotification, Inbox, PlayerCard} from '../../services/social';
 import {PLAYER_SEARCH_MAX} from '../../config/textLimits';
@@ -43,6 +44,7 @@ export function notificationText(n: AppNotification, t: ReturnType<typeof useI18
         });
     }
     if (n.kind === 'arena_podium') return t('social.notify.arenaPodium', {place: Number(p.place)});
+    if (n.kind === 'legends_week') return t('social.notify.legendsWeek', {title: eventTitle(String(p.event_key), t)});
     return t('social.notify.reportAnswer');
 }
 

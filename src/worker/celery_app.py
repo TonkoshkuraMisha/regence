@@ -117,6 +117,7 @@ celery_app.conf.update(
         "archive_move_telemetry": {"queue": ANALYSIS_QUEUE},
         "purge_deleted_accounts": {"queue": ANALYSIS_QUEUE},
         "arena_awards": {"queue": ANALYSIS_QUEUE},
+        "legends_week_start": {"queue": ANALYSIS_QUEUE},
         "bot_selfplay": {"queue": SIMULATION_QUEUE},
     },
     # Scheduled tasks (the celery beat process, the beat service in docker-compose.prod.yml; the list - DEPLOY.md, section 8c).
@@ -135,6 +136,8 @@ celery_app.conf.update(
         "arena-awards": {"task": "arena_awards", "schedule": crontab(minute="*/5")},
         # Review of old unfair-play flags (task 26.4): on Monday mornings UTC.
         "review-cheater-flags": {"task": "review_cheater_flags", "schedule": crontab(day_of_week=1, hour=6, minute=7)},
+        # The start of a legends week (task 26.1): Monday 07:13 UTC - the week (and its event) began at midnight.
+        "legends-week-start": {"task": "legends_week_start", "schedule": crontab(day_of_week=1, hour=7, minute=13)},
         # Accounts past the deletion grace period are anonymised (task 23.1): once a day, at 04:23 UTC.
         "purge-deleted-accounts": {"task": "purge_deleted_accounts", "schedule": crontab(hour=4, minute=23)},
     },

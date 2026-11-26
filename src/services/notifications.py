@@ -22,10 +22,10 @@ from src.models.social import Notification
 logger = logging.getLogger(__name__)
 
 # Notification kinds: a game challenge, a rematch offer, a tournament round played, a moderator's answer to a report,
-# a warm-up reminder, a comment on a post, an arena start reminder. A new kind is added here and to the
-# client catalogues; an unknown kind is a programmer error (assert in ``record``).
+# a warm-up reminder, a comment on a post, an arena start reminder, an arena podium, the start of a legends week. A new
+# kind is added here and to the client catalogues; an unknown kind is a programmer error (assert in ``record``).
 KINDS = ("challenge", "rematch", "tournament_round", "report_answer", "workout_reminder", "post_comment",
-         "arena_reminder", "arena_podium")
+         "arena_reminder", "arena_podium", "legends_week")
 KEEP = 50  # how many of the latest notifications are given to the client; this module does not delete old rows from the table
 
 

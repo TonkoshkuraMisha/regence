@@ -95,3 +95,22 @@ describe('LegendsSeason', () => {
         expect(screen.getByTestId('legends-season-row')).toHaveTextContent('5 тижнів');
     });
 });
+
+describe('legends week notification', () => {
+    it('names the week\'s tournament in the player\'s language and leads to the time machine', async () => {
+        const {makeI18n} = await import('../../../i18n');
+        const {notificationText} = await import('../../social/SocialHeader');
+        const {notificationLink} = await import('../../../services/social');
+        const {eventTitle} = await import('../../../services/timeMachine');
+        const n = {id: 1, kind: 'legends_week' as const, payload: {event_key: 'london_1851'}, created_at: null, read: false};
+        for (const language of ['en', 'uk'] as const) {
+            const {t} = makeI18n(language);
+            const text = notificationText(n, t);
+            expect(text).toContain(eventTitle('london_1851', t));
+            expect(text).not.toContain('london_1851');
+        }
+        expect(notificationText(n, makeI18n('en').t)).toMatch(/^A new legends week has started: /);
+        expect(notificationText(n, makeI18n('uk').t)).toMatch(/^Почався новий тиждень легенд: /);
+        expect(notificationLink(n)).toBe('/time-machine');
+    });
+});

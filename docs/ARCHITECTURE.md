@@ -256,7 +256,9 @@ For each section: what it does → files → where the data comes from → how i
   no table of its own); `GET /tournaments/legends-week`, client `components/tournaments/LegendsWeek.tsx`. **Legends
   season** (`legends_season.py`) — the weeks of a calendar month (`league.season_bounds`) add up: points by the weekly
   place (25, 18, 15 … for the top ten) plus one for any finished run; `GET /tournaments/legends-week/season[?season=YYYY-MM]`,
-  card `LegendsSeason` on `/time-machine`.
+  card `LegendsSeason` on `/time-machine`. The start of a week is announced by the notification `legends_week`
+  (`legends_week.send_week_start`, beat task `legends_week_start`, Monday 07:13 UTC) to players with a finished run in one of
+  the last 4 weeks, at most once a week.
 - **Tests.** `ladder`, `tournaments`, `tournament_rules`, `tournament_play`, `tournament_simulation`,
   `tournament_career`, `tournament_big`, `time_machine`, `time_machine_play`, `legends_week`, `legends_season`; browser — `e2e/time-machine.e2e.ts`.
 

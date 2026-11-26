@@ -222,3 +222,14 @@ def test_arena_awards(monkeypatch, count):
 def test_task_database_url_comes_from_settings(monkeypatch):
     monkeypatch.undo()
     assert tasks._task_database_url() == tasks.settings.async_database_url
+
+
+@pytest.mark.parametrize("count", [0, 2])
+def test_legends_week_start(monkeypatch, count):
+    from src.services import legends_week
+    from src.worker.celery_app import celery_app
+
+    monkeypatch.setattr(legends_week, "send_week_start", _recorder([], "l", result=count))
+    assert tasks.legends_week_start() == count
+    assert celery_app.conf.beat_schedule["legends-week-start"]["task"] == "legends_week_start"
+    assert celery_app.conf.task_routes["legends_week_start"] == {"queue": "analysis"}
