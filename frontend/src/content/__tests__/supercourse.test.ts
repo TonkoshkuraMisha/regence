@@ -81,12 +81,16 @@ describe('level exams (27.12)', () => {
 });
 
 describe('master games with stops (27.6)', () => {
-    const steps = COURSE.flatMap((module) => module.steps)
-        .flatMap((step) => (step.kind === 'classics' && step.id ? [step.id] : []));
+    const games = COURSE.flatMap((module) => module.steps)
+        .flatMap((step) => (step.kind === 'classics' && step.id ? [step] : []));
+    const steps = games.map((step) => step.id!);
 
-    it('the course links single games, and each opens its own page', () => {
-        expect(steps.length).toBeGreaterThan(0);
-        for (const id of steps) expect(activityLink({kind: 'classics', id}).to).toBe(`/learn/classics/${id}`);
+    it('the course links single games, and each opens its own page; a demo step - without stops', () => {
+        expect(games.some((step) => !step.demo)).toBe(true);
+        expect(games.some((step) => step.demo)).toBe(true);
+        for (const step of games) {
+            expect(activityLink(step).to).toBe(`/learn/classics/${step.id}${step.demo ? '?stops=off' : ''}`);
+        }
         expect(activityLink({kind: 'classics'}).to).toBe('/learn/classics');
     });
 
@@ -102,6 +106,7 @@ describe('master games with stops (27.6)', () => {
 
     it('the step label key exists in both catalogs', () => {
         expect(hasMessage('programs.activities.classicGame')).toBe(true);
+        expect(hasMessage('programs.activities.classicDemo')).toBe(true);
     });
 });
 

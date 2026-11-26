@@ -6,6 +6,7 @@ import {afterEach, describe, expect, it, vi} from 'vitest';
 import game from '../../../content/classics/botvinnik-tal-1961.json';
 import {ClassicGamePage, ClassicsPage} from '../ClassicsPage';
 import {playMove} from '../../../test/boardMoves';
+import {classicLink} from '../../../content/classics';
 
 
 function renderAt(path: string) {
@@ -47,6 +48,16 @@ describe('Master games', () => {
         renderAt('/learn/classics/botvinnik-tal-1961');
         await screen.findByTestId('classic-intro');
         fireEvent.click(screen.getByTestId('classic-stops-toggle'));
+        const moves = within(screen.getByTestId('classic-moves')).getAllByRole('button');
+        fireEvent.click(moves[game.stops[0].ply - 1]);
+        fireEvent.click(screen.getByRole('button', {name: 'Move forward'}));
+        expect(screen.queryByTestId('classic-stop')).toBeNull();
+    });
+
+    it('a demonstration link (Big course "demo" step) opens the game without stops', async () => {
+        renderAt(classicLink('botvinnik-tal-1961', {demo: true}));
+        await screen.findByTestId('classic-intro');
+        expect(screen.getByTestId('classic-stops-toggle')).not.toBeChecked();
         const moves = within(screen.getByTestId('classic-moves')).getAllByRole('button');
         fireEvent.click(moves[game.stops[0].ply - 1]);
         fireEvent.click(screen.getByRole('button', {name: 'Move forward'}));

@@ -3,6 +3,8 @@
 // the catalogs (programs.<id>.*), exercise labels come from the catalogs of the sections themselves. All ids are checked by a test
 // (content/__tests__/programs.test.ts).
 
+import {classicLink} from './classics';
+
 export type Activity =
     | { kind: 'basics'; id: string }
     | { kind: 'lesson'; id: string }
@@ -14,8 +16,11 @@ export type Activity =
     | { kind: 'exam'; id: string }
     /** Game library (27.1), with a pawn structure filter (27.5) - for Big course modules. */
     | { kind: 'library'; structure?: string; moves?: string }
-    /** Master games with explanations (14.7); with an id - one game with "what would you play?" stops (Big course 27.6). */
-    | { kind: 'classics'; id?: string }
+    /**
+     * Master games with explanations (14.7); with an id - one game with "what would you play?" stops (Big course 27.6);
+     * with demo - the same game as a demonstration: moves with comments, no questions (a step for the lower levels).
+     */
+    | { kind: 'classics'; id?: string; demo?: boolean }
     | { kind: 'workout' | 'repertoire' | 'guess' | 'play' };
 
 export type Session = Activity[];
@@ -122,7 +127,7 @@ export function activityLink(activity: Activity): { to: string; state?: unknown 
         }
         case 'workout': return {to: '/workout'};
         case 'repertoire': return {to: '/repertoire'};
-        case 'classics': return {to: activity.id ? `/learn/classics/${activity.id}` : '/learn/classics'};
+        case 'classics': return {to: activity.id ? classicLink(activity.id, {demo: activity.demo}) : '/learn/classics'};
         case 'guess': return {to: '/guess'};
         case 'play': return {to: '/'};
     }

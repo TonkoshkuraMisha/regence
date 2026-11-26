@@ -43,7 +43,7 @@ export function activityLabel(t: (key: never) => string, language: Language, act
         case 'workout': return tr('workout.title');
         case 'repertoire': return tr('repertoire.title');
         case 'classics': return activity.id
-            ? tr('programs.activities.classicGame', {game: classicIdTitle(activity.id)})
+            ? tr(activity.demo ? 'programs.activities.classicDemo' : 'programs.activities.classicGame', {game: classicIdTitle(activity.id)})
             : tr('programs.activities.classics');
         case 'guess': return tr('programs.activities.guess');
         case 'play': return tr('programs.activities.play');

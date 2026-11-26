@@ -6,7 +6,8 @@
 // the author - coverage(): how many modules of each status per level and branch.
 // Module names live in the i18n catalogs: supercourse.modules.<code, dot replaced by "_">.
 // A "game with stops" step is one master game of the classics collection (game(id)), picked where its own intro names the
-// module's idea: rooks on an open file, a weakened king, a pawn storm, steady positional play.
+// module's idea: rooks on an open file, a weakened king, a pawn storm, steady positional play. A "demo" step (demo(id)) is the
+// same game shown without questions - moves with the coach's comments - for levels where "what would you play?" is too early.
 
 import type {Activity} from './programs';
 import {MUST_KNOW, STUDIES} from './mustKnow';
@@ -42,6 +43,7 @@ const REPERTOIRE: Activity = {kind: 'repertoire'};
 const CLASSICS: Activity = {kind: 'classics'};
 // One master game with "what would you play?" stops (14.7): the game itself shows the module's idea in a real fight.
 const game = (id: string): Activity => ({kind: 'classics', id});
+const demo = (id: string): Activity => ({kind: 'classics', id, demo: true});
 const GUESS: Activity = {kind: 'guess'};
 
 function mod(code: string, branch: Branch, steps: Activity[] = [], draft: Activity[] = []): CourseModule {
@@ -76,7 +78,7 @@ export const COURSE: CourseModule[] = [
     mod('C1.1', 'C', [l('calc-board-coordinates'), tr('coord_find'), tr('coord_name'), tr('coord_color'), tr('quiet_path')]),
     mod('C1.2', 'C', [l('calc-checks-captures-threats'), tr('calc_checks')]),
     mod('C1.3', 'C', [l('calc-distance-routes'), tr('calc_distance'), tr('knight_route')]),
-    mod('G1.1', 'G', [tr('miniatures')]),
+    mod('G1.1', 'G', [tr('miniatures'), demo('kasparov-timman-1995')]),
     mod('X1', 'G', [ex('level1')]),
     // --- Level 2. Class IV-III ---
     mod('T2.1', 'T', [l('tactics-double-check'), th('double_check'), th('windmill')]),
