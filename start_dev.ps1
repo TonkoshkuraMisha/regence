@@ -161,11 +161,58 @@ if ($LASTEXITCODE -ne 0)
         exit 1
     }
 }
+# Host ports of the compose services (docker-compose.yml): service -> container port, host port.
+$composePorts = @(
+    @{ Service = "db"; Container = 5432; Host = 15432 },
+    @{ Service = "redis"; Container = 6379; Host = 6379 }
+)
+
+# 6.0. A host port held by a container of ANOTHER compose project (for example, an old copy of this project under a
+# different folder name) makes "docker compose up" fail. Such containers are not stopped automatically - they are
+# not ours; the script names them and the command that frees the port.
+$composeProject = "regence"
+$foreign = foreach ($p in $composePorts)
+{
+    docker ps --filter "publish=$( $p.Host )" --format "{{.Names}}|{{.Label `"com.docker.compose.project`"}}" |
+        Where-Object { $_ -and ($_ -split '\|')[1] -ne $composeProject } |
+        ForEach-Object { @{ Port = $p.Host; Name = ($_ -split '\|')[0] } }
+}
+if ($foreign)
+{
+    foreach ($f in $foreign)
+    {
+        Write-Host "[!] Port $( $f.Port ) is held by the container '$( $f.Name )' of another project." -ForegroundColor Red
+    }
+    $names = ($foreign | ForEach-Object { $_.Name } | Select-Object -Unique) -join " "
+    Write-Host "    Free the ports and run the script again:" -ForegroundColor Yellow
+    Write-Host "    docker stop $names; docker update --restart=no $names" -ForegroundColor Yellow
+    exit 1
+}
+
 docker compose up -d db redis
 if ($LASTEXITCODE -ne 0)
 {
     Write-Host "[!] Failed to bring up the db and redis containers (docker compose up). Startup aborted." -ForegroundColor Red
     exit 1
+}
+
+# 6.0.1. A container created while its port was busy can later start WITHOUT the host port mapping (Docker keeps the
+# failed network setup). The backend then cannot reach the service and stops at startup. Such a container is
+# recreated once (its data volume stays); if the port is still not published, startup is aborted with a clear message.
+foreach ($p in $composePorts)
+{
+    $published = docker compose port $p.Service $p.Container 2> $null
+    if (-not $published)
+    {
+        Write-Host "[*] The $( $p.Service ) container has no host port $( $p.Host ) - recreating it..." -ForegroundColor Yellow
+        docker compose up -d --force-recreate $p.Service
+        $published = docker compose port $p.Service $p.Container 2> $null
+    }
+    if (-not $published)
+    {
+        Write-Host "[!] Port $( $p.Host ) of the $( $p.Service ) container is not published. See: docker compose ps" -ForegroundColor Red
+        exit 1
+    }
 }
 
 # 6.1. Waiting for PostgreSQL to be ready: the container port opens earlier than the database accepts connections
