@@ -91,7 +91,7 @@ describe('prizewinner diploma', () => {
         render(<Diploma name="alice" place={1} format="Round robin" size={4} date="15.11.2026"/>);
         const svg = screen.getByRole('img');
         expect(svg).toHaveTextContent('alice');
-        expect(svg.querySelector('circle')?.getAttribute('fill')).toBe('#d4a017');
+        expect(screen.getByTestId('diploma-medal').getAttribute('fill')).toBe('#d4a017');
         const win = {document: {write: vi.fn(), close: vi.fn()}, focus: vi.fn(), print: vi.fn()};
         vi.spyOn(window, 'open').mockReturnValue(win as unknown as Window);
         fireEvent.click(screen.getByRole('button', {name: 'Print'}));
