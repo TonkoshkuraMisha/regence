@@ -1,0 +1,258 @@
+{
+  "id": "endgame-transition",
+  "course": "endgame",
+  "order": 16,
+  "title": {
+    "en": "Into a won endgame: trade queens at the right moment",
+    "uk": "У виграний ендшпіль: розмін ферзів у слушний момент"
+  },
+  "summary": {
+    "en": "When you are better, change the type of position: trade queens if the pawn ending is won.",
+    "uk": "Маючи перевагу, змініть тип позиції: розміняйте ферзів, якщо пішаковий ендшпіль виграний."
+  },
+  "steps": [
+    {
+      "type": "text",
+      "fen": "8/6pk/1p3pqp/8/P3Q3/8/1P3P2/K7 w - - 3 44",
+      "highlights": [
+        "a4",
+        "b2",
+        "g6"
+      ],
+      "text": {
+        "en": "A won position is not won by itself: you have to convert it. The simplest way is to trade the queens when the pawn ending that follows is won. Count it before you trade: whose king is closer to the pawns, who has an outside passed pawn, whose pawns are weaker. If the answer is on your side, the trade turns a hard queen ending into an easy pawn ending.",
+        "uk": "Виграна позиція сама не виграється: її треба реалізувати. Найпростіший шлях - розміняти ферзів, коли пішаковий ендшпіль, що настає, виграний. Порахуйте перед розміном: чий король ближче до пішаків, у кого є віддалений прохідний пішак, чиї пішаки слабші. Якщо відповідь на вашому боці, розмін перетворює складний ферзевий ендшпіль на простий пішаковий."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "8/6pk/1p3pqp/8/P3Q3/8/1P3P2/K7 w - - 3 44",
+      "text": {
+        "en": "White to move. Trade the queens and win the pawn ending.",
+        "uk": "Хід білих. Розміняйте ферзів і виграйте пішаковий ендшпіль."
+      },
+      "line": [
+        {
+          "answers": [
+            "e4g6"
+          ],
+          "reply": "h7g6",
+          "correct": {
+            "en": "The queen takes with check and the king has to retake: the queens are off.",
+            "uk": "Ферзь бере з шахом, і король мусить узяти: ферзів розміняно."
+          }
+        },
+        {
+          "answers": [
+            "b2b4"
+          ],
+          "reply": "g6f5",
+          "correct": {
+            "en": "The queenside pawns start to move; the black king is far away.",
+            "uk": "Пішаки на ферзевому фланзі починають рух; чорний король далеко."
+          }
+        },
+        {
+          "answers": [
+            "a4a5"
+          ],
+          "reply": "f5e5",
+          "correct": {
+            "en": "The pawn goes on; the black king is too far away to stop the a-pawn.",
+            "uk": "Пішак іде далі; чорний король надто далеко, щоб зупинити пішак a."
+          }
+        },
+        {
+          "answers": [
+            "a5a6"
+          ],
+          "correct": {
+            "en": "The a-pawn is on the sixth rank and will promote.",
+            "uk": "Пішак a на шостій горизонталі й перетвориться на ферзя."
+          }
+        }
+      ],
+      "hint": {
+        "en": "Take on g6 with check.",
+        "uk": "Візьміть на g6 із шахом."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "8/5p2/4p1k1/7p/3Q1P2/4PKP1/3q4/8 b - - 0 43",
+      "text": {
+        "en": "Black to move. Trade the queens: whose king will be active in the pawn ending?",
+        "uk": "Хід чорних. Розміняйте ферзів: чий король буде активним у пішаковому ендшпілі?"
+      },
+      "line": [
+        {
+          "answers": [
+            "d2d4"
+          ],
+          "reply": "e3d4",
+          "correct": {
+            "en": "The queen takes the queen; White retakes with the pawn, otherwise he is simply a queen down.",
+            "uk": "Ферзь бере ферзя; білі беруть пішаком, інакше вони просто без ферзя."
+          }
+        },
+        {
+          "answers": [
+            "g6f5"
+          ],
+          "reply": "f3e3",
+          "correct": {
+            "en": "The black king steps forward at once, towards the white pawns.",
+            "uk": "Чорний король одразу йде вперед, до білих пішаків."
+          }
+        },
+        {
+          "answers": [
+            "f5g4"
+          ],
+          "correct": {
+            "en": "The king reaches g4 and attacks the pawns f4 and g3: Black is winning.",
+            "uk": "Король виходить на g4 й атакує пішаки f4 і g3: чорні виграють."
+          }
+        }
+      ],
+      "hint": {
+        "en": "The queen takes the pawn on d4 and gets exchanged.",
+        "uk": "Ферзь бере пішака d4 і розмінюється."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "6k1/p5p1/5p1p/1p1p4/2qP4/1Q2P2P/P4PP1/6K1 b - - 1 32",
+      "text": {
+        "en": "Black to move. Trade the queens and break the pawns.",
+        "uk": "Хід чорних. Розміняйте ферзів і зруйнуйте пішаки."
+      },
+      "line": [
+        {
+          "answers": [
+            "c4b3"
+          ],
+          "reply": "a2b3",
+          "correct": {
+            "en": "The queens are traded: White's pawn structure on the queenside is damaged.",
+            "uk": "Ферзів розміняно: структуру білих пішаків на ферзевому фланзі зруйновано."
+          }
+        },
+        {
+          "answers": [
+            "a7a5"
+          ],
+          "reply": "g1f1",
+          "correct": {
+            "en": "Black pushes the a-pawn to make an outside passed pawn.",
+            "uk": "Чорні просувають пішак a, щоб створити віддалений прохідний пішак."
+          }
+        },
+        {
+          "answers": [
+            "a5a4"
+          ],
+          "reply": "b3a4",
+          "correct": {
+            "en": "The pawn goes on.",
+            "uk": "Пішак іде далі."
+          }
+        },
+        {
+          "answers": [
+            "b5a4"
+          ],
+          "correct": {
+            "en": "The pawn is exchanged and Black gets a passed pawn.",
+            "uk": "Пішак розмінюється, і чорні отримують прохідний."
+          }
+        }
+      ],
+      "hint": {
+        "en": "Take the queen on b3.",
+        "uk": "Візьміть ферзя на b3."
+      }
+    },
+    {
+      "type": "text",
+      "text": {
+        "en": "Every trade was prepared by a count: the king is closer, the passed pawn is farther, the pawns are weaker. Do the same before you simplify: if the pawn ending is not clearly won, keep the queens and the tension.",
+        "uk": "Кожен розмін був підготовлений підрахунком: король ближче, прохідний пішак далі, пішаки слабші. Робіть так само перед спрощенням: якщо пішаковий ендшпіль не виграний однозначно, лишайте ферзів і напругу."
+      }
+    }
+  ],
+  "exam": [
+    {
+      "type": "choice",
+      "text": {
+        "en": "When is a queen trade into a pawn ending a good idea?",
+        "uk": "Коли розмін ферзів у пішаковий ендшпіль - добра ідея?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "When you have counted that the pawn ending is won",
+            "uk": "Коли ви порахували, що пішаковий ендшпіль виграний"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "Always, when you are ahead",
+            "uk": "Завжди, коли ви попереду"
+          },
+          "feedback": {
+            "en": "A trade helps only if the pawn ending is really won; otherwise it can throw the advantage away.",
+            "uk": "Розмін допомагає лише тоді, коли пішаковий ендшпіль справді виграний; інакше можна змарнувати перевагу."
+          }
+        },
+        {
+          "text": {
+            "en": "Never, queens are too valuable",
+            "uk": "Ніколи, ферзі надто цінні"
+          },
+          "feedback": {
+            "en": "A trade into a won pawn ending is the simplest way to win.",
+            "uk": "Розмін у виграний пішаковий ендшпіль - найпростіший шлях до перемоги."
+          }
+        }
+      ]
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "What do you count before trading queens?",
+        "uk": "Що ви рахуєте перед розміном ферзів?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "The king distance to the pawns and passed pawns",
+            "uk": "Відстань королів до пішаків і прохідні пішаки"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "How many moves are left in the game",
+            "uk": "Скільки ходів лишилось у партії"
+          },
+          "feedback": {
+            "en": "The result depends on the pawn ending, not on the move count.",
+            "uk": "Результат залежить від пішакового ендшпілю, а не від кількості ходів."
+          }
+        },
+        {
+          "text": {
+            "en": "Only the number of pawns",
+            "uk": "Лише кількість пішаків"
+          },
+          "feedback": {
+            "en": "The number of pawns is not enough: their place and the kings matter.",
+            "uk": "Кількості пішаків мало: важливі їхнє розташування й королі."
+          }
+        }
+      ]
+    }
+  ]
+}

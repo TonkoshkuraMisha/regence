@@ -1,0 +1,229 @@
+{
+  "id": "endgame-queen-checks",
+  "course": "endgame",
+  "order": 15,
+  "title": {
+    "en": "Queen endings: the check that wins the queen",
+    "uk": "Ферзеві ендшпілі: шах, що виграє ферзя"
+  },
+  "summary": {
+    "en": "In a queen ending a check that also attacks the enemy queen wins it: the king must answer, and the queen falls.",
+    "uk": "У ферзевому ендшпілі шах, що водночас нападає на ферзя суперника, виграє його: король мусить відповісти, і ферзь пропадає."
+  },
+  "steps": [
+    {
+      "type": "text",
+      "fen": "8/1Pq5/5k2/3P4/5p2/3K4/7P/1Q6 b - - 8 65",
+      "highlights": [
+        "b1",
+        "h7"
+      ],
+      "arrows": [
+        {
+          "from": "c7",
+          "to": "h7",
+          "color": "green"
+        },
+        {
+          "from": "h7",
+          "to": "b1",
+          "color": "red"
+        }
+      ],
+      "text": {
+        "en": "Queen endings are full of checks, and a queen moves like a rook and a bishop together. That gives the most important trick of these endings: a queen check that stands on the same line or diagonal as the enemy queen. The king has to leave the line, and the queen is taken for free. Before every move in a queen ending look at your checks and ask: does any of them also hit the queen?",
+        "uk": "Ферзеві ендшпілі повні шахів, а ферзь ходить як тура й слон разом. Звідси головний прийом таких ендшпілів: шах ферзем із поля на тій самій лінії чи діагоналі, де стоїть ферзь суперника. Король мусить піти з лінії, а ферзь береться безкоштовно. Перед кожним ходом у ферзевому ендшпілі перегляньте свої шахи й спитайте: чи не б'є котрий із них ще й ферзя?"
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "8/1Pq5/5k2/3P4/5p2/3K4/7P/1Q6 b - - 8 65",
+      "text": {
+        "en": "Black to move. Find the check that attacks the white queen.",
+        "uk": "Хід чорних. Знайдіть шах, що нападає на білого ферзя."
+      },
+      "line": [
+        {
+          "answers": [
+            "c7h7"
+          ],
+          "reply": "d3d4",
+          "correct": {
+            "en": "Check from h7: the queen stands on the long diagonal h7-b1, and the king has to leave it.",
+            "uk": "Шах із h7: ферзь стоїть на діагоналі h7-b1, і король мусить її залишити."
+          }
+        },
+        {
+          "answers": [
+            "h7b1"
+          ],
+          "correct": {
+            "en": "The queen takes the queen on b1: the white queen was lost to the check.",
+            "uk": "Ферзь бере ферзя b1: білий ферзь пропав через шах."
+          }
+        }
+      ],
+      "hint": {
+        "en": "The queen goes to the diagonal of the other queen with check.",
+        "uk": "Ферзь іде з шахом на діагональ іншого ферзя."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "8/1q4kp/1P6/1Q6/3p4/4p1P1/4K2P/8 b - - 1 47",
+      "text": {
+        "en": "Black to move. Two checks in a row win the queen.",
+        "uk": "Хід чорних. Два шахи поспіль виграють ферзя."
+      },
+      "line": [
+        {
+          "answers": [
+            "b7g2"
+          ],
+          "reply": "e2d3",
+          "correct": {
+            "en": "The first check drives the king to d3.",
+            "uk": "Перший шах заганяє короля на d3."
+          }
+        },
+        {
+          "answers": [
+            "g2f1"
+          ],
+          "reply": "d3d4",
+          "correct": {
+            "en": "The second check is on the diagonal f1-b5: the king answers, the queen on b5 is attacked.",
+            "uk": "Другий шах - на діагоналі f1-b5: король відповідає, ферзь b5 під ударом."
+          }
+        },
+        {
+          "answers": [
+            "f1b5"
+          ],
+          "correct": {
+            "en": "The queen takes the queen on b5.",
+            "uk": "Ферзь бере ферзя b5."
+          }
+        }
+      ],
+      "hint": {
+        "en": "Check on g2, then look for a second one.",
+        "uk": "Шах на g2, а потім шукайте другий."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "Q7/p5pk/7p/6PP/1P6/P4K2/8/6q1 b - - 4 49",
+      "text": {
+        "en": "Black to move. The white queen stands in the corner on a8: use the long diagonal.",
+        "uk": "Хід чорних. Білий ферзь стоїть у кутку a8: скористайтеся довгою діагоналлю."
+      },
+      "line": [
+        {
+          "answers": [
+            "g1h1"
+          ],
+          "reply": "f3f2",
+          "correct": {
+            "en": "Check from h1 along the long diagonal; the white queen on a8 is on the same line.",
+            "uk": "Шах із h1 по довгій діагоналі; білий ферзь на a8 стоїть на тій самій лінії."
+          }
+        },
+        {
+          "answers": [
+            "h1a8"
+          ],
+          "correct": {
+            "en": "The king stepped aside, so the queen takes the queen on a8.",
+            "uk": "Король відійшов убік, і ферзь бере ферзя a8."
+          }
+        }
+      ],
+      "hint": {
+        "en": "A check from the corner square h1.",
+        "uk": "Шах із кутового поля h1."
+      }
+    },
+    {
+      "type": "text",
+      "text": {
+        "en": "Three times the same idea: a check by the queen from a square where it also attacks the other queen. Remember it from both sides. When you attack, look for such a check; when you defend, never leave your queen on a line where the opponent's queen can give check.",
+        "uk": "Тричі та сама ідея: шах ферзем із поля, з якого він нападає і на іншого ферзя. Пам'ятайте про неї з обох боків. Атакуючи, шукайте такий шах; захищаючись, не лишайте ферзя на лінії, де ферзь суперника може дати шах."
+      }
+    }
+  ],
+  "exam": [
+    {
+      "type": "choice",
+      "text": {
+        "en": "What should you look at first in a queen ending?",
+        "uk": "На що дивитися першим ділом у ферзевому ендшпілі?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "Checks, especially those that attack the queen",
+            "uk": "На шахи, особливо ті, що нападають на ферзя"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "Only the pawns, the queens do not matter",
+            "uk": "Лише на пішаки, ферзі не важливі"
+          },
+          "feedback": {
+            "en": "The queens decide: a single check can win one of them.",
+            "uk": "Ферзі вирішують: один шах може виграти ферзя."
+          }
+        },
+        {
+          "text": {
+            "en": "Quiet queen moves",
+            "uk": "На тихі ходи ферзя"
+          },
+          "feedback": {
+            "en": "Checks come first: they force the reply and may win the queen.",
+            "uk": "Спершу шахи: вони примушують до відповіді й можуть виграти ферзя."
+          }
+        }
+      ]
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "Your queen stands on a long diagonal. What is the danger?",
+        "uk": "Ваш ферзь стоїть на довгій діагоналі. Яка небезпека?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "A check by the enemy queen from the same diagonal wins it",
+            "uk": "Шах ферзя суперника з тієї самої діагоналі виграє його"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "None: a queen cannot be attacked by a queen",
+            "uk": "Жодної: ферзя не можна атакувати ферзем"
+          },
+          "feedback": {
+            "en": "A queen attacks a queen like any other piece, and with check it wins it.",
+            "uk": "Ферзь б'є ферзя, як і будь-яку фігуру, а з шахом - виграє."
+          }
+        },
+        {
+          "text": {
+            "en": "Only pawns can attack it",
+            "uk": "Його можуть атакувати лише пішаки"
+          },
+          "feedback": {
+            "en": "Any piece can attack it, including the queen.",
+            "uk": "Його може атакувати будь-яка фігура, зокрема ферзь."
+          }
+        }
+      ]
+    }
+  ]
+}
