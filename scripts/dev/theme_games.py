@@ -9,7 +9,9 @@ so the game shows exactly what the module's lesson names:
 * king_center (O1.1) - the loser's king stays in the centre without castling while the winner has the pieces to attack it
   (king_center); short games only, counted from move 8;
 * centre_closed / centre_open (S2.5) - the type of the centre by src/services/pawn_structures.center_type, for both sides;
-  centre_mobile - the winner's own mobile pawn pair (d4+e4, or d5+e5 for Black).
+  centre_mobile - the winner's own mobile pawn pair (d4+e4, or d5+e5 for Black);
+* miniature_mate (G1.1) - a decisive game of at most 25 moves that ended in mate on the board (the "run" is the mate
+  itself); with equal runs the shorter game comes first.
 
 A game is scored by the longest unbroken run of plies with the idea, counted from the theme's first move (the opening is
 not the idea of a middlegame theme); for an outpost and a weak pawn the run lasts while the idea stays on the same square.
@@ -84,6 +86,11 @@ def _winner_mobile_centre(board: chess.Board, winner: chess.Color, _loser: chess
     return "mobile" if pawn_structures._mobile(pawn_structures.Pawns(own, chess.WHITE)) else None
 
 
+def _mate(board: chess.Board, _winner: chess.Color, _loser: chess.Color) -> str | None:
+    """The position is a checkmate (the last move of a miniature)."""
+    return "mate" if board.is_checkmate() else None
+
+
 @dataclass(frozen=True)
 class Theme:
     """How a theme is looked for: the detector, whether the run keeps one square, from which move, game length, run."""
@@ -106,6 +113,8 @@ THEMES: dict[str, Theme] = {
     "centre_closed": Theme(_centre("closed"), same_square=False, from_move=12, min_run=24),
     "centre_open": Theme(_centre("open"), same_square=False, from_move=12, min_run=24),
     "centre_mobile": Theme(_winner_mobile_centre, same_square=False, from_move=10, min_run=12),
+    # A miniature: up to 25 moves (miniatures.MAX_PLIES), ending in mate; the mate is a single position.
+    "miniature_mate": Theme(_mate, same_square=False, from_move=1, min_moves=10, max_moves=25, min_run=1),
 }
 
 
@@ -168,7 +177,7 @@ def main() -> None:
     pgns = asyncio.run(_archive())
     with ProcessPoolExecutor(max_workers=args.workers) as pool:
         scored = [s for s in pool.map(score, [args.theme] * len(pgns), pgns, chunksize=200) if s]
-    scored.sort(key=lambda s: -s["length"])
+    scored.sort(key=lambda s: (-s["length"], s["moves"]))  # equal runs: the shorter game first
     taken, pairs = [], set()
     for item in scored:
         pair = frozenset((item["white"], item["black"]))

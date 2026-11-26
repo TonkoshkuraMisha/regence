@@ -1,0 +1,479 @@
+{
+ "id": "korchnoi-solak-2002",
+ "white": "Korchnoi,V",
+ "black": "Solak,D",
+ "event": "4th Hilton Open",
+ "year": "2002",
+ "result": "1-0",
+ "moves": [
+  "d2d4",
+  "g7g6",
+  "c2c4",
+  "f8g7",
+  "b1c3",
+  "d7d6",
+  "e2e4",
+  "e7e5",
+  "g1f3",
+  "b8c6",
+  "c1g5",
+  "f7f6",
+  "g5e3",
+  "g8h6",
+  "d4e5",
+  "c6e5",
+  "f1e2",
+  "h6g4",
+  "e3d4",
+  "c7c5",
+  "d4e5",
+  "f6e5",
+  "d1d3",
+  "g4f6",
+  "e1c1",
+  "e8e7",
+  "d3e3",
+  "d8a5",
+  "d1d6",
+  "f6g4",
+  "e3g5",
+  "e7d6",
+  "g5d2",
+  "d6e6",
+  "f3g5",
+  "e6f6",
+  "c3d5"
+ ],
+ "evals": [
+  23,
+  66,
+  41,
+  52,
+  52,
+  54,
+  56,
+  42,
+  67,
+  71,
+  33,
+  96,
+  94,
+  98,
+  115,
+  122,
+  69,
+  76,
+  53,
+  95,
+  116,
+  147,
+  140,
+  189,
+  132,
+  212,
+  95,
+  315,
+  470,
+  663,
+  542,
+  747,
+  682,
+  861,
+  831,
+  99999,
+  100000
+ ],
+ "comments": {
+  "11": {
+   "comment": [
+    {
+     "key": "coach.verdict.inaccuracy.v2",
+     "params": {
+      "move": "f6"
+     }
+    },
+    {
+     "key": "coach.best.generic.v1",
+     "params": {
+      "move": "♞ge7"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "g8",
+     "to": "e7",
+     "kind": "best"
+    }
+   ],
+   "highlights": []
+  },
+  "16": {
+   "comment": [
+    {
+     "key": "coach.verdict.inaccuracy.v1",
+     "params": {
+      "move": "♗e2"
+     }
+    },
+    {
+     "key": "coach.best.generic.v2",
+     "params": {
+      "move": "c5"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "c4",
+     "to": "c5",
+     "kind": "best"
+    }
+   ],
+   "highlights": []
+  },
+  "23": {
+   "comment": [
+    {
+     "key": "coach.verdict.inaccuracy.v1",
+     "params": {
+      "move": "♞f6"
+     }
+    },
+    {
+     "key": "coach.best.generic.v2",
+     "params": {
+      "move": "♝f8"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "g7",
+     "to": "f8",
+     "kind": "best"
+    }
+   ],
+   "highlights": []
+  },
+  "24": {
+   "comment": [
+    {
+     "key": "coach.verdict.inaccuracy.v1",
+     "params": {
+      "move": "O-O-O"
+     }
+    },
+    {
+     "key": "coach.best.generic.v2",
+     "params": {
+      "move": "♖d1"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "a1",
+     "to": "d1",
+     "kind": "best"
+    }
+   ],
+   "highlights": []
+  },
+  "25": {
+   "comment": [
+    {
+     "key": "coach.verdict.inaccuracy.v2",
+     "params": {
+      "move": "♚e7"
+     }
+    },
+    {
+     "key": "coach.best.pos_castle.v2",
+     "params": {
+      "move": "O-O"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "e8",
+     "to": "g8",
+     "kind": "best"
+    }
+   ],
+   "highlights": []
+  },
+  "26": {
+   "comment": [
+    {
+     "key": "coach.verdict.mistake.v2",
+     "params": {
+      "move": "♕e3"
+     }
+    },
+    {
+     "key": "coach.best.generic.v1",
+     "params": {
+      "move": "♘g5"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "f3",
+     "to": "g5",
+     "kind": "best"
+    }
+   ],
+   "highlights": []
+  },
+  "27": {
+   "comment": [
+    {
+     "key": "coach.verdict.blunder.v1",
+     "params": {
+      "move": "♛a5"
+     }
+    },
+    {
+     "key": "coach.best.generic.v2",
+     "params": {
+      "move": "♞g4"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "f6",
+     "to": "g4",
+     "kind": "best"
+    }
+   ],
+   "highlights": []
+  },
+  "29": {
+   "comment": [
+    {
+     "key": "coach.verdict.mistake.v2",
+     "params": {
+      "move": "♞g4"
+     }
+    },
+    {
+     "key": "coach.missed.hanging.v2",
+     "params": {
+      "piece": "♖d6"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "e7",
+     "to": "d6",
+     "kind": "best"
+    }
+   ],
+   "highlights": [
+    {
+     "square": "d6",
+     "kind": "target"
+    }
+   ]
+  },
+  "30": {
+   "comment": [
+    {
+     "key": "coach.verdict.mistake.v1",
+     "params": {
+      "move": "♕g5+"
+     }
+    },
+    {
+     "key": "coach.best.generic.v1",
+     "params": {
+      "move": "♕d2"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "e3",
+     "to": "d2",
+     "kind": "best"
+    }
+   ],
+   "highlights": []
+  },
+  "31": {
+   "comment": [
+    {
+     "key": "coach.verdict.blunder.v2",
+     "params": {
+      "move": "♚xd6"
+     }
+    },
+    {
+     "key": "coach.best.generic.v1",
+     "params": {
+      "move": "♚f7"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "e7",
+     "to": "f7",
+     "kind": "best"
+    }
+   ],
+   "highlights": []
+  },
+  "33": {
+   "comment": [
+    {
+     "key": "coach.verdict.mistake.v2",
+     "params": {
+      "move": "♚e6"
+     }
+    },
+    {
+     "key": "coach.best.generic.v1",
+     "params": {
+      "move": "♚c6"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "d6",
+     "to": "c6",
+     "kind": "best"
+    }
+   ],
+   "highlights": []
+  },
+  "34": {
+   "comment": [
+    {
+     "key": "coach.good.discovered_attack.v1",
+     "params": {
+      "attacker": "♗e2",
+      "target": "♞g4"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "e2",
+     "to": "g4",
+     "kind": "idea"
+    }
+   ],
+   "highlights": [
+    {
+     "square": "g4",
+     "kind": "target"
+    }
+   ]
+  },
+  "35": {
+   "comment": [
+    {
+     "key": "coach.verdict.blunder.v1",
+     "params": {
+      "move": "♚f6"
+     }
+    },
+    {
+     "key": "coach.threat.mate_in.v1",
+     "params": {
+      "n": 1,
+      "move": "♘d5#"
+     }
+    },
+    {
+     "key": "coach.best.generic.v2",
+     "params": {
+      "move": "♚e7"
+     }
+    }
+   ],
+   "arrows": [
+    {
+     "from": "c3",
+     "to": "d5",
+     "kind": "threat"
+    },
+    {
+     "from": "e6",
+     "to": "e7",
+     "kind": "best"
+    }
+   ],
+   "highlights": []
+  },
+  "36": {
+   "comment": [
+    {
+     "key": "coach.good.checkmate.v2",
+     "params": {
+      "move": "♘d5#"
+     }
+    }
+   ],
+   "arrows": [],
+   "highlights": []
+  }
+ },
+ "stops": [
+  {
+   "ply": 32,
+   "move": "g5d2",
+   "best_cp": 702,
+   "gap_cp": 322,
+   "lines": [
+    [
+     "g5d2",
+     702
+    ],
+    [
+     "h1d1",
+     380
+    ],
+    [
+     "c3b5",
+     105
+    ]
+   ]
+  },
+  {
+   "ply": 34,
+   "move": "f3g5",
+   "best_cp": 811,
+   "gap_cp": 608,
+   "lines": [
+    [
+     "f3g5",
+     811
+    ],
+    [
+     "h1d1",
+     195
+    ],
+    [
+     "h2h3",
+     203
+    ]
+   ]
+  }
+ ],
+ "intro": {
+  "en": "The Hilton Open, 2002. A Modern Defence: Black plays 6...f6 and 7...Nh6, and after 11.Bxe5 fxe5 the f-file in front of his king is open. Instead of castling, the king walks forward — 13...Ke7 — while White castles long (13.O-O-O) and points the rook at d6.",
+  "uk": "Гілтон-опен 2002 року. Сучасний захист: чорні грають 6...f6 і 7...Nh6, а після 11.Bxe5 fxe5 лінія «f» перед їхнім королем відкрита. Замість рокіровки король іде вперед — 13...Ke7, — тоді як білі рокують у довгий бік (13.O-O-O) і націлюють туру на d6."
+ },
+ "summary": {
+  "en": "15.Rxd6 was bait: after 15...Ng4 16.Qg5+ Kxd6 the black king stood on d6 in the middle of the board, and three checks finished it — 17.Qd2+ Ke6 18.Ng5+ Kf6 19.Nd5#. Lesson: a king that leaves home before the pieces are developed becomes a target; checks that drive it forward are the attacker's best friends.",
+  "uk": "15.Rxd6 була приманкою: після 15...Ng4 16.Qg5+ Kxd6 чорний король опинився на d6 посеред дошки, і три шахи його добили — 17.Qd2+ Ke6 18.Ng5+ Kf6 19.Nd5#. Урок: король, що вийшов з дому раніше за фігури, стає мішенню; шахи, які женуть його вперед, — найкращі друзі атакуючого."
+ }
+}
