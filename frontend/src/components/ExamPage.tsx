@@ -285,7 +285,8 @@ export function ExamPage() {
             </header>
             {!section && <p className="text-boxwood/85">{t('exam.intro')}</p>}
             {!logged && <p className="text-amber-300" data-testid="exam-login">{t('exam.loginRequired')}</p>}
-            {error && <p role="alert" className="text-rose-300">{renderUiMessage(error, t)}</p>}
+            {/* With a question on screen the error is shown beside the board (below): a line above it would shift the board. */}
+            {error && !current && <p role="alert" className="text-rose-300">{renderUiMessage(error, t)}</p>}
 
             {!section && summary && (
                 <>
@@ -365,6 +366,7 @@ export function ExamPage() {
                             {flash?.kind === 'solved' && t('exam.solved', {gain: flash.gain})}
                             {flash?.kind === 'wrong' && t('exam.moveWrong')}
                         </p>
+                        {error && <p role="alert" className="text-rose-300">{renderUiMessage(error, t)}</p>}
                         <button type="button" onClick={() => void finish(played)} disabled={busy || waiting} data-testid="exam-skip"
                                 className="self-start px-3 py-1 rounded bg-black/30 border border-amber-900/50 text-xs disabled:opacity-50">{t('exam.skip')}</button>
                     </div>

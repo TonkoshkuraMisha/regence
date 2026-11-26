@@ -93,10 +93,10 @@ export function BlindGame({mode, level, seed, onFinish}: TrainerGameProps & { mo
             <span className="font-bold text-amber-200">{t('trainers.memory.round', {n: round + 1, total: BLIND_ROUNDS})}</span>
             {phase === 'look' && (
                 <>
-                    <p className="text-sm">{t('trainers.blind.look', {n: task.moves.length})}</p>
                     <div className="w-full max-w-[420px]">
                         <PuzzleBoard fen={task.startFen} orientation={task.side} interactive={false} onMove={() => undefined} sound={false}/>
                     </div>
+                    <p className="text-sm">{t('trainers.blind.look', {n: task.moves.length})}</p>
                     <button type="button" onClick={() => setPhase('moves')} data-testid="blind-ready"
                             className="self-start px-4 py-2 rounded bg-amber-700 text-white font-bold">{t('trainers.blind.ready')}</button>
                 </>
@@ -120,17 +120,17 @@ export function BlindGame({mode, level, seed, onFinish}: TrainerGameProps & { mo
             )}
             {phase === 'review' && verdict && (
                 <div className="flex flex-col gap-2" data-testid="blind-review">
+                    <div className="w-full max-w-[420px]">
+                        <PuzzleBoard fen={task.finalFen} orientation={task.side} interactive={false} onMove={() => undefined} sound={false}
+                                     arrows={mode === 'move' ? [{from: best.slice(0, 2), to: best.slice(2, 4), color: 'green'}] : []}
+                                     highlights={mode === 'where' ? [question!.square] : []}/>
+                    </div>
                     <p className="text-lg">
                         <b className={verdict.score >= PASS_SCORE ? 'text-emerald-300' : 'text-rose-300'} data-testid="blind-score">{verdict.score}</b>{' '}
                         {mode === 'move'
                             ? t('trainers.blind.moveVerdict', {yours: verdict.reply, best})
                             : t('trainers.blind.whereVerdict', {square: question!.square})}
                     </p>
-                    <div className="w-full max-w-[420px]">
-                        <PuzzleBoard fen={task.finalFen} orientation={task.side} interactive={false} onMove={() => undefined} sound={false}
-                                     arrows={mode === 'move' ? [{from: best.slice(0, 2), to: best.slice(2, 4), color: 'green'}] : []}
-                                     highlights={mode === 'where' ? [question!.square] : []}/>
-                    </div>
                     <p className="text-xs text-boxwood/70">{t('trainers.memory.gameLine', {white: task.game.white, black: task.game.black, year: task.game.year ?? ''})}</p>
                     <button type="button" onClick={next} data-testid="blind-next" className="self-start px-4 py-2 rounded bg-amber-700 text-white font-bold">
                         {t(round + 1 >= BLIND_ROUNDS ? 'trainers.memory.finish' : 'trainers.memory.next')}

@@ -13,6 +13,7 @@ import {
 } from '../../trainers/boardPuzzles';
 import type {Cell, Piece} from '../../trainers/boardPuzzles';
 import type {TrainerGameProps} from './trainerGame';
+import {ReservedSlot} from '../ReservedSlot';
 
 /** Piece glyphs on the placement board. */
 const GLYPH: Record<Piece, string> = {Q: '♛', R: '♜', B: '♝', N: '♞'};
@@ -101,11 +102,13 @@ export function PlacementGame({level, onFinish}: TrainerGameProps) {
     return (
         <div className="flex flex-col gap-3 items-start" data-testid="placement-game">
             <p className="font-bold text-amber-200">{t(`trainers.boardPuzzles.puzzles.${puzzle.id}` as never)}</p>
-            <p className="text-sm" data-testid="placement-status">
-                {t('trainers.boardPuzzles.placed', {n: cells.length, total: puzzle.count})}
-                {bad.size > 0 && <span className="text-rose-300"> · {t('trainers.boardPuzzles.conflict')}</span>}
-                {puzzle.goal === 'dominate' && <span> · {t('trainers.boardPuzzles.uncovered', {n: open.size})}</span>}
-            </p>
+            <ReservedSlot lines={2}>
+                <p className="text-sm" data-testid="placement-status">
+                    {t('trainers.boardPuzzles.placed', {n: cells.length, total: puzzle.count})}
+                    {bad.size > 0 && <span className="text-rose-300"> · {t('trainers.boardPuzzles.conflict')}</span>}
+                    {puzzle.goal === 'dominate' && <span> · {t('trainers.boardPuzzles.uncovered', {n: open.size})}</span>}
+                </p>
+            </ReservedSlot>
             <Grid size={puzzle.size} onCell={toggle} render={(cell) => {
                 const k = key(cell);
                 const placed = cells.some((c) => key(c) === k);
@@ -150,10 +153,12 @@ export function KnightTourGame({level, onFinish}: TrainerGameProps) {
 
     return (
         <div className="flex flex-col gap-3 items-start" data-testid="tour-game">
-            <p className="text-sm" data-testid="tour-status">
-                {path.length === 0 ? t('trainers.boardPuzzles.tourStart') : t('trainers.boardPuzzles.tourProgress', {n: path.length, total: size * size})}
-                {stuck && <span className="text-rose-300" data-testid="tour-stuck"> · {t('trainers.boardPuzzles.stuck')}</span>}
-            </p>
+            <ReservedSlot lines={2}>
+                <p className="text-sm" data-testid="tour-status">
+                    {path.length === 0 ? t('trainers.boardPuzzles.tourStart') : t('trainers.boardPuzzles.tourProgress', {n: path.length, total: size * size})}
+                    {stuck && <span className="text-rose-300" data-testid="tour-stuck"> · {t('trainers.boardPuzzles.stuck')}</span>}
+                </p>
+            </ReservedSlot>
             <Grid size={size} onCell={step} render={(cell) => {
                 const n = order.get(key(cell));
                 const isLast = path.length > 0 && key(path[path.length - 1]) === key(cell);

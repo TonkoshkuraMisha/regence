@@ -17,6 +17,7 @@ import type {MiniRoom} from '../../services/miniGameRooms';
 import {PuzzleBoard} from '../puzzles/PuzzleBoard';
 import type {MiniGameId} from './MiniGames';
 import {Button} from '../ui';
+import {ReservedSlot} from '../ReservedSlot';
 
 /** Room polling period (ms): this is how the page learns about the opponent's move, there is no separate channel for rooms. */
 export const POLL_MS = 1000;
@@ -103,6 +104,7 @@ export function MiniGameRoomPage() {
             </header>
             <p className="text-sm text-boxwood/80">{t(`miniGames.games.${game}.rules`)}</p>
 
+            <ReservedSlot lines={2}>
             {room.waiting && room.you && (
                 <div className="flex flex-wrap items-center gap-2 text-sm" data-testid="mini-room-invite">
                     <span>{t('miniGames.room.invite')}</span>
@@ -115,9 +117,12 @@ export function MiniGameRoomPage() {
                 <Button variant="primary" className="self-start" onClick={() => act(miniRoomsApi.join(room.code))}
                         data-testid="mini-room-join">{t('miniGames.room.join')}</Button>
             ) : <p className="text-sm">{t('miniGames.room.loginToJoin')}</p>)}
+            </ReservedSlot>
 
-            <p className="font-bold" data-testid="mini-room-status" aria-live="polite">{status}</p>
-            {error && <p role="alert" className="text-sm text-rose-300">{renderUiMessage(error, t)}</p>}
+            <ReservedSlot lines={2}>
+                <p className="font-bold" data-testid="mini-room-status" aria-live="polite">{status}</p>
+                {error && <p role="alert" className="text-sm text-rose-300">{renderUiMessage(error, t)}</p>}
+            </ReservedSlot>
             <div className="w-full max-w-[480px]">
                 <PuzzleBoard fen={room.fen} orientation={room.you === 'black' ? 'black' : 'white'} interactive={myTurn}
                              onMove={() => undefined} onSquare={onSquare} highlights={from ? [from] : []}

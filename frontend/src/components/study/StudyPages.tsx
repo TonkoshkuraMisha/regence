@@ -23,6 +23,7 @@ import type {ArrowColor, StudyBoard, StudyRoom} from '../../services/study';
 import {PuzzleBoard} from '../puzzles/PuzzleBoard';
 import {validateLesson} from '../../content/lessons/validate';
 import type {CourseInfo, Lesson} from '../../content/lessons/format';
+import {ReservedSlot} from '../ReservedSlot';
 
 /** Room state polling period, ms: the room has no WebSocket broadcast. */
 export const POLL_MS = 1000;
@@ -222,7 +223,9 @@ export function StudyRoomPage() {
                     {t('study.roomLine', {code: room.code, host: room.host})} · {t('study.present', {n: room.participants.length})}
                 </span>
             </div>
-            {error && <p role="alert" className="text-sm text-rose-300">{renderUiMessage(error, t)}</p>}
+            <ReservedSlot>
+                {error && <p role="alert" className="text-sm text-rose-300">{renderUiMessage(error, t)}</p>}
+            </ReservedSlot>
             <div className="flex flex-col lg:flex-row gap-5 items-start">
                 <div className="w-full max-w-[560px] flex flex-col gap-2">
                     <PuzzleBoard fen={board.fen} orientation="white" onMove={onMove} lastMove={lastMove} arrows={arrows}

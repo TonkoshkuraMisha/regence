@@ -17,6 +17,7 @@ import {fetchLessonProgress, saveLessonProgress} from '../../services/lessonProg
 import type {LessonProgress} from '../../services/lessonProgress';
 import {LessonPlayer} from './LessonPlayer';
 import {getToken} from '../../services/authToken';
+import {ReservedSlot} from '../ReservedSlot';
 
 /** Lesson progress of a signed-in user by lesson_id and a "loaded" flag; a guest has no request, loaded is true at once. */
 function useProgress(): [Record<string, LessonProgress>, boolean] {
@@ -153,7 +154,9 @@ export function LessonPage() {
             <nav className="text-sm">
                 <Link to="/learn" className="underline text-amber-300">{t('learn.toCourses')}</Link>
             </nav>
-            {saveError && <p role="alert" className="text-sm text-rose-300">{t('learn.saveFailed')}</p>}
+            <ReservedSlot>
+                {saveError && <p role="alert" className="text-sm text-rose-300">{t('learn.saveFailed')}</p>}
+            </ReservedSlot>
             <LessonPlayer
                 key={`${lesson.id}-${language}`}
                 lesson={lesson}
