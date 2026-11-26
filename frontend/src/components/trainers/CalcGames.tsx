@@ -19,6 +19,7 @@ import {
 } from '../../trainers/calculation';
 import {useClassics} from './trainerGame';
 import type {TrainerGameProps} from './trainerGame';
+import {ReservedSlot} from '../ReservedSlot';
 
 /** Questions in one QuizGame attempt; 10 points for a correct answer. */
 export const QUIZ_ROUNDS = 10;
@@ -147,7 +148,9 @@ export function QuizGame({kind, seed, onFinish}: Omit<TrainerGameProps, 'level'>
                 <span className="font-bold text-amber-200">{t('trainers.calc.question', {n: index + 1, total: QUIZ_ROUNDS})}</span>
                 <span className="text-sm" data-testid="quiz-score">{t('trainers.coord.score', {score: score.correct, mistakes: score.wrong})}</span>
             </div>
-            <p className="text-lg" data-testid="quiz-prompt">{t(quiz.prompt, quiz.params)}</p>
+            <ReservedSlot lines={2.5}>
+                <p className="text-lg" data-testid="quiz-prompt">{t(quiz.prompt, quiz.params)}</p>
+            </ReservedSlot>
             <div className="w-full max-w-[420px]">
                 <PuzzleBoard fen={explorer.fen ?? quiz.fen} orientation={quiz.orientation} interactive={explorer.active}
                              onMove={(uci) => explorer.play(uci)} lastMove={explorer.lastMove}

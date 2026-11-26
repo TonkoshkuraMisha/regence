@@ -16,6 +16,7 @@ import {postMiniGame} from '../../services/miniGames';
 import {getToken} from '../../services/authToken';
 import {saveLessonProgress} from '../../services/lessonProgress';
 import {miniRoomsApi} from '../../services/miniGameRooms';
+import {ReservedSlot} from '../ReservedSlot';
 
 /** Game codes - the same as the server knows (src/services/mini_games.py); order is the order of the cards. */
 export const MINI_GAMES = ['pawn_war', 'king_pawns', 'queen_vs_pawns', 'rook_vs_pawns', 'capture_flag'] as const;
@@ -151,10 +152,12 @@ export function MiniGamePage() {
                     <Link2 size={14}/> {t('miniGames.room.online')}
                 </button>
             </div>
-            <p className="font-bold" data-testid="mini-status">
-                {outcome ?? (busy ? t('miniGames.thinking') : t(turn === 'white' ? 'miniGames.whiteToMove' : 'miniGames.blackToMove'))}
-            </p>
-            {error && <p role="alert" className="text-sm text-rose-300">{renderUiMessage(error, t)}</p>}
+            <ReservedSlot lines={2}>
+                <p className="font-bold" data-testid="mini-status">
+                    {outcome ?? (busy ? t('miniGames.thinking') : t(turn === 'white' ? 'miniGames.whiteToMove' : 'miniGames.blackToMove'))}
+                </p>
+                {error && <p role="alert" className="text-sm text-rose-300">{renderUiMessage(error, t)}</p>}
+            </ReservedSlot>
             <div className="w-full max-w-[480px]">
                 <PuzzleBoard fen={fen} orientation={mode === 'bot-black' ? 'black' : 'white'} interactive onMove={() => undefined}
                              onSquare={onSquare} highlights={from ? [from] : []} lastMove={last}/>

@@ -15,6 +15,7 @@ import {chess960Call} from '../../services/chess960';
 import type {State960} from '../../services/chess960';
 import {PuzzleBoard} from '../puzzles/PuzzleBoard';
 import {numberedMoves} from '../../services/moveNumbers';
+import {ReservedSlot} from '../ReservedSlot';
 
 /** Server response for a game against a bot: setup number, position, moves (UCI and SAN), result and the bot's move. */
 // Bot levels 1-5 (the server maps each to an Elo and a time per move, chess960.LEVELS); names come from the chess960.levels catalog.
@@ -166,7 +167,9 @@ export function Chess960Page() {
                         className="px-3 py-1.5 rounded bg-amber-700 text-white font-bold disabled:opacity-50">{t('chess960.newGame')}</button>
             </div>
 
-            {error && <p role="alert" className="text-sm text-rose-300">{renderUiMessage(error, t)}</p>}
+            <ReservedSlot>
+                {error && <p role="alert" className="text-sm text-rose-300">{renderUiMessage(error, t)}</p>}
+            </ReservedSlot>
             <div className="flex flex-col lg:flex-row gap-5 items-start">
                 <div className="w-full max-w-[480px]">
                     {state && (

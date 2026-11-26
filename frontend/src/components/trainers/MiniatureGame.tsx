@@ -13,6 +13,7 @@ import {PuzzleBoard} from '../puzzles/PuzzleBoard';
 import {ExplorerControls, usePositionExplorer} from '../puzzles/usePositionExplorer';
 import {libraryApi} from '../../services/library';
 import type {LibraryMiniature} from '../../services/library';
+import {ReservedSlot} from '../ReservedSlot';
 
 /** Positions per attempt; goes to the server as count. */
 export const MINIATURE_ROUNDS = 10;
@@ -89,10 +90,12 @@ export function MiniatureGame({seed, onFinish}: Props) {
                 <span className="font-bold text-amber-200">{t('trainers.calc.question', {n: index + 1, total: items.length})}</span>
                 <span className="text-sm" data-testid="quiz-score">{t('trainers.coord.score', {score: score.correct, mistakes: score.wrong})}</span>
             </div>
-            <p className="text-sm text-boxwood/80" data-testid="miniature-players">
-                {item.white} — {item.black}{item.year ? `, ${item.year}` : ''}
-            </p>
-            <p className="text-lg">{t(white ? 'trainers.miniaturePromptWhite' : 'trainers.miniaturePromptBlack', {moves: Math.ceil((item.moves.length + 1) / 2)})}</p>
+            <ReservedSlot lines={3}>
+                <p className="text-sm text-boxwood/80" data-testid="miniature-players">
+                    {item.white} — {item.black}{item.year ? `, ${item.year}` : ''}
+                </p>
+                <p className="text-lg">{t(white ? 'trainers.miniaturePromptWhite' : 'trainers.miniaturePromptBlack', {moves: Math.ceil((item.moves.length + 1) / 2)})}</p>
+            </ReservedSlot>
             <div className="w-full max-w-[420px]">
                 <PuzzleBoard fen={explorer.fen ?? item.fen} orientation={white ? 'white' : 'black'} interactive onMove={onMove}
                              lastMove={explorer.lastMove} sound={explorer.active}

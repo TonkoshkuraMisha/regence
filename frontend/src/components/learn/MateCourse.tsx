@@ -279,7 +279,8 @@ export function MateConstructionPage() {
 
     const open = (next: number) => {
         setIndex(next);
-        setPuzzle(null);
+        // The previous task stays on screen until the next one arrives: dropping the board while it loads would make it vanish
+        // and reappear (and the page jump) on every "next task".
         puzzlesApi.mateTask(theme, next).then(setPuzzle).catch((err) => setError(errorMessage(err, 'common.networkError')));
     };
 
@@ -298,7 +299,8 @@ export function MateConstructionPage() {
             <BackLink to="/learn/mates" label={t('mateCourse.title')}/>
             <h1 className="text-2xl font-bold text-amber-200">{themeText(theme, 'name', t)}</h1>
             {!loggedIn && <NeedLogin/>}
-            {error && <p role="alert" className="text-sm text-rose-300">{renderUiMessage(error, t)}</p>}
+            {/* While a task is on screen the error goes below the board: a line above it would shift the board. */}
+            {index === null && error && <p role="alert" className="text-sm text-rose-300">{renderUiMessage(error, t)}</p>}
             {loggedIn && index === null && (
                 <>
                     <p className="text-boxwood/90" data-testid="mates-explain">{themeText(theme, 'explain', t)}</p>
@@ -322,6 +324,7 @@ export function MateConstructionPage() {
                         {t('mateCourse.taskOf', {index: index + 1, total})} · {t('mateCourse.solvedCount', {solved: solvedCount, done: results.length})}
                     </p>
                     {puzzle && <CoursePuzzle key={puzzle.id} puzzle={puzzle} onDone={done}/>}
+                    {error && <p role="alert" className="text-sm text-rose-300">{renderUiMessage(error, t)}</p>}
                     {results.length === index + 1 && !finished && (
                         <button type="button" onClick={() => open(index + 1)} data-testid="mates-next"
                                 className="self-start px-4 py-2 rounded bg-amber-700 text-white font-bold flex items-center gap-2">
@@ -375,7 +378,7 @@ export function MateExamPage() {
     }, [over, plan, score]);
 
     const load = (tasks: { theme: string; index: number }[], i: number) => {
-        setPuzzle(null);
+        // The previous task stays until the next arrives - see open() above.
         puzzlesApi.mateTask(tasks[i].theme, tasks[i].index).then(setPuzzle).catch((err) => setError(errorMessage(err, 'common.networkError')));
     };
 
@@ -423,7 +426,7 @@ export function MateExamPage() {
             <BackLink to="/learn/mates" label={t('mateCourse.title')}/>
             <h1 className="text-2xl font-bold text-amber-200">{t('mateCourse.examHeading')}</h1>
             {!loggedIn && <NeedLogin/>}
-            {error && <p role="alert" className="text-sm text-rose-300">{renderUiMessage(error, t)}</p>}
+            {(!plan || over) && error && <p role="alert" className="text-sm text-rose-300">{renderUiMessage(error, t)}</p>}
             {loggedIn && (plan === null || over) && (
                 <>
                     {over && plan && (
@@ -456,6 +459,7 @@ export function MateExamPage() {
                             )}
                         </CoursePuzzle>
                     )}
+                    {error && <p role="alert" className="text-sm text-rose-300">{renderUiMessage(error, t)}</p>}
                 </>
             )}
         </div>

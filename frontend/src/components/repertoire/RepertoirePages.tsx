@@ -17,6 +17,7 @@ import {edgesFrom, followLine, repertoireApi} from '../../services/repertoire';
 import type {Repertoire, RepertoireColor, RepertoireSummary, Starter} from '../../services/repertoire';
 import {PuzzleBoard} from '../puzzles/PuzzleBoard';
 import {OpeningExplorer} from '../OpeningExplorer';
+import {ReservedSlot} from '../ReservedSlot';
 
 // Style of the editor panel's secondary button (extracted so as not to repeat a long class string).
 const BUTTON = 'px-2 py-1 rounded bg-black/30 border border-amber-900/50 flex items-center gap-1 disabled:opacity-40';
@@ -266,8 +267,10 @@ export function RepertoireEditorPage() {
                 </button>
             </header>
             {rep.starter && <p className="text-sm text-boxwood/85">{t(`repertoire.starters.${rep.starter}.intro`)}</p>}
-            {error && <p role="alert" className="text-sm text-rose-300">{renderUiMessage(error, t)}</p>}
-            {notice && <p className="text-sm text-emerald-300" data-testid="repertoire-notice">{notice}</p>}
+            <ReservedSlot>
+                {error && <p role="alert" className="text-sm text-rose-300">{renderUiMessage(error, t)}</p>}
+                {notice && <p className="text-sm text-emerald-300" data-testid="repertoire-notice">{notice}</p>}
+            </ReservedSlot>
 
             <div className="flex flex-col lg:flex-row gap-5 items-start">
                 <div className="w-full max-w-[560px] flex flex-col gap-2">

@@ -161,9 +161,6 @@ export function ClassicGamePage() {
                 <h1 className="text-2xl font-bold text-amber-200">{title(game)}</h1>
                 <p className="text-sm text-boxwood/75">{[game.event, game.year].filter(Boolean).join(', ')} · {game.result}</p>
             </div>
-            {ply === 0 && game.intro[language] && (
-                <p className="bg-black/30 rounded p-3 text-boxwood/90" data-testid="classic-intro">{game.intro[language]}</p>
-            )}
             <div className="flex flex-col lg:flex-row gap-5 items-start">
                 <div className="w-full max-w-[560px] flex flex-col gap-2">
                     <PuzzleBoard fen={positions[ply].fen} orientation={orientation} interactive={Boolean(stop && !stop.answer)}
@@ -191,6 +188,11 @@ export function ClassicGamePage() {
                     </label>
                 </div>
                 <div className="flex-1 flex flex-col gap-3 min-w-0">
+                    {/* The intro is always shown, and beside the board, not above it: a block above the board that disappears
+                        after the first move shifts the board under the player's eyes. */}
+                    {game.intro[language] && (
+                        <p className="bg-black/30 rounded p-3 text-boxwood/90" data-testid="classic-intro">{game.intro[language]}</p>
+                    )}
                     {stop && (
                         <div className="bg-amber-900/40 border border-amber-600 rounded p-3 flex flex-col gap-2" data-testid="classic-stop">
                             <p className="font-bold text-amber-200">

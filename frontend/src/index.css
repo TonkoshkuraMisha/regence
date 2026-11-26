@@ -126,3 +126,10 @@ html, body {
     pointer-events: none;
     z-index: 50;
 }
+
+/* A vertical scrollbar that appears when content below the board grows (feedback, replay, explorer) would narrow the viewport
+   and shift a centred board sideways by the scrollbar width; reserving the gutter keeps the layout still. The board must never
+   move under the player's eyes. */
+html {
+    scrollbar-gutter: stable;
+}

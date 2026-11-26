@@ -26,6 +26,7 @@ import {GameQuiz} from './GameQuiz';
 import {PuzzleBoard} from '../puzzles/PuzzleBoard';
 import type {BoardArrow} from '../puzzles/PuzzleBoard';
 import {ExplorerControls, usePositionExplorer} from '../puzzles/usePositionExplorer';
+import {ReservedSlot} from '../ReservedSlot';
 
 /** single: individual positions; series: a series of moves of one game. */
 type Mode = 'single' | 'series';
@@ -201,8 +202,10 @@ export function GuessPage() {
                        data-testid="guess-choices-toggle"/>
                 {t('guess.choicesMode')}
             </label>
-            {error && <p role="alert" className="text-sm text-rose-300">{renderUiMessage(error, t)}</p>}
-            {empty && <p className="text-sm text-amber-200" data-testid="guess-empty">{t('guess.empty')}</p>}
+            <ReservedSlot>
+                {error && <p role="alert" className="text-sm text-rose-300">{renderUiMessage(error, t)}</p>}
+                {empty && <p className="text-sm text-amber-200" data-testid="guess-empty">{t('guess.empty')}</p>}
+            </ReservedSlot>
 
             {position && (
                 <div className="flex flex-col md:flex-row gap-5 items-start">

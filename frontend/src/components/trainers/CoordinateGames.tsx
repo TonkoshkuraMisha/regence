@@ -8,6 +8,7 @@ import {useI18n} from '../../i18n';
 import {BOARD_THEMES, getSavedBoardThemeKey} from '../../config/boardAppearance';
 import {FILES, coordQuestion, isCorrect, levelToOptions} from '../../trainers/coordinates';
 import type {CoordOptions, CoordTrainer} from '../../trainers/coordinates';
+import {ReservedSlot} from '../ReservedSlot';
 
 /** Game props: trainer kind, level (encodes the attempt settings), seed and onFinish(score, mistakes). */
 interface Props {
@@ -97,11 +98,11 @@ export function CoordinateGame({trainer, level, seed, onFinish}: Props) {
 
     return (
         <div className="flex flex-col gap-3 items-start" data-testid="coord-game">
-            <div className="flex flex-wrap items-baseline gap-4">
+            <ReservedSlot lines={2.5} className="flex flex-wrap items-baseline gap-4">
                 <span className="text-3xl font-bold text-amber-200" data-testid="coord-prompt">{prompt}</span>
                 <span className="font-mono text-lg" data-testid="coord-left">{t('trainers.coord.left', {seconds: left})}</span>
                 <span className="text-emerald-300" data-testid="coord-score">{t('trainers.coord.score', {score, mistakes})}</span>
-            </div>
+            </ReservedSlot>
             {trainer === 'coord_color' ? (
                 <div className="flex gap-3">
                     {(['light', 'dark'] as const).map((color) => (

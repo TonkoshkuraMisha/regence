@@ -17,6 +17,7 @@ import {memoryLevel, pickGame, pickPosition, placementOfFen, positionPool, recal
 import type {Placement, PlacementScore} from '../../trainers/memory';
 import {useClassics} from './trainerGame';
 import type {TrainerGameProps} from './trainerGame';
+import {ReservedSlot} from '../ReservedSlot';
 
 /** Positions in one "Restore the position" attempt. */
 export const MEMORY_ROUNDS = 3;
@@ -93,11 +94,11 @@ export function RestoreGame({level, seed, onFinish}: TrainerGameProps) {
 
     return (
         <div className="flex flex-col gap-3" data-testid="restore-game">
-            <div className="flex flex-wrap items-baseline gap-4">
+            <ReservedSlot lines={2.5} className="flex flex-wrap items-baseline gap-4">
                 <span className="font-bold text-amber-200">{t('trainers.memory.round', {n: round + 1, total: MEMORY_ROUNDS})}</span>
                 {phase === 'show' && <span className="font-mono text-lg" data-testid="memory-left">{t('trainers.memory.remember', {seconds: left})}</span>}
                 {phase === 'place' && <span>{t('trainers.memory.placeHint', {n: Object.keys(targetPlacement).length})}</span>}
-            </div>
+            </ReservedSlot>
             {phase === 'show' && (
                 <div className="w-full max-w-[460px]">
                     <PuzzleBoard fen={target} orientation="white" interactive={false} onMove={() => undefined} sound={false}/>
@@ -127,10 +128,6 @@ export function RestoreGame({level, seed, onFinish}: TrainerGameProps) {
             )}
             {phase === 'review' && result && (
                 <div className="flex flex-col gap-3" data-testid="memory-review">
-                    <p className="text-lg">
-                        <b className="text-amber-300" data-testid="memory-round-score">{result.score}%</b>{' '}
-                        {t('trainers.memory.reviewLine', {correct: result.correct.length, wrong: result.wrong.length})}
-                    </p>
                     <div className="flex flex-col sm:flex-row gap-4">
                         <figure className="flex-1 max-w-[360px]">
                             <figcaption className="text-sm text-boxwood/75 mb-1">{t('trainers.memory.yours')}</figcaption>
@@ -142,6 +139,10 @@ export function RestoreGame({level, seed, onFinish}: TrainerGameProps) {
                             <PuzzleBoard fen={target} orientation="white" interactive={false} onMove={() => undefined} highlights={result.wrong} sound={false}/>
                         </figure>
                     </div>
+                    <p className="text-lg">
+                        <b className="text-amber-300" data-testid="memory-round-score">{result.score}%</b>{' '}
+                        {t('trainers.memory.reviewLine', {correct: result.correct.length, wrong: result.wrong.length})}
+                    </p>
                     <button type="button" onClick={next} data-testid="memory-next" className="self-start px-4 py-2 rounded bg-amber-700 text-white font-bold">
                         {t(round + 1 >= MEMORY_ROUNDS ? 'trainers.memory.finish' : 'trainers.memory.next')}
                     </button>
@@ -212,21 +213,26 @@ export function RecallGame({level, seed, onFinish}: TrainerGameProps) {
     const last = (count: number) => (count > 0 ? {from: moves[count - 1].slice(0, 2), to: moves[count - 1].slice(2, 4)} : null);
     return (
         <div className="flex flex-col gap-3" data-testid="recall-game">
-            <p className="text-sm">
-                {t('trainers.memory.gameLine', {white: game.white, black: game.black, year: game.year ?? ''})}
-            </p>
+            <ReservedSlot lines={3.5} className="flex flex-col gap-1">
+                <p className="text-sm">
+                    {t('trainers.memory.gameLine', {white: game.white, black: game.black, year: game.year ?? ''})}
+                </p>
+                {phase === 'watch' ? (
+                    <span className="font-bold text-amber-200" data-testid="recall-watch">{t('trainers.memory.watch', {n: shown, total: moves.length})}</span>
+                ) : (
+                    <span className="font-bold text-amber-200" data-testid="recall-play">
+                        {t('trainers.memory.repeat', {n: played + 1, total: moves.length})} · {t('trainers.coord.score', {score: score / 10, mistakes})}
+                    </span>
+                )}
+            </ReservedSlot>
             {phase === 'watch' ? (
                 <>
-                    <span className="font-bold text-amber-200" data-testid="recall-watch">{t('trainers.memory.watch', {n: shown, total: moves.length})}</span>
                     <div className="w-full max-w-[460px]">
                         <PuzzleBoard fen={fenAfter(shown)} orientation="white" interactive={false} onMove={() => undefined} lastMove={last(shown)}/>
                     </div>
                 </>
             ) : (
                 <>
-                    <span className="font-bold text-amber-200" data-testid="recall-play">
-                        {t('trainers.memory.repeat', {n: played + 1, total: moves.length})} · {t('trainers.coord.score', {score: score / 10, mistakes})}
-                    </span>
                     <div className="w-full max-w-[460px]">
                         <PuzzleBoard fen={fenAfter(played)} orientation="white" interactive={played < moves.length} onMove={onMove}
                                      lastMove={last(played)} mark={mark}/>

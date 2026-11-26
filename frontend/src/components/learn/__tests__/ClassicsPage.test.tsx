@@ -44,6 +44,16 @@ describe('Master games', () => {
         expect(screen.getByTestId('classic-stop-total')).toHaveTextContent('100 of 100');
     });
 
+    it('the intro stays after the first move: the board never shifts under the eyes', async () => {
+        renderAt('/learn/classics/botvinnik-tal-1961');
+        const intro = await screen.findByTestId('classic-intro');
+        fireEvent.click(screen.getByTestId('classic-stops-toggle'));
+        fireEvent.click(screen.getByRole('button', {name: 'Move forward'}));
+        expect(screen.getByTestId('classic-intro')).toBe(intro);
+        // Beside the board (inside the column with the moves), not above it.
+        expect(intro.parentElement).toContainElement(screen.getByTestId('classic-moves'));
+    });
+
     it('without stops a move goes through at once', async () => {
         renderAt('/learn/classics/botvinnik-tal-1961');
         await screen.findByTestId('classic-intro');
