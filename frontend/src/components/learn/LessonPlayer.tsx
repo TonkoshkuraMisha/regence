@@ -57,10 +57,14 @@ function boardOf(step: Step | QuestionStep): BoardState {
     };
 }
 
-/** Side at the bottom: the one set by the step; for "find the move", the side to move; otherwise White. */
-function orientationOf(step: Step, fen: string): 'white' | 'black' {
+/**
+ * Side at the bottom: the one set by the step; for "find the move", the side to move in the step's STARTING position;
+ * otherwise White. The current position is deliberately not used: after the player's move it is the opponent's turn,
+ * and the board would turn over for the reply and back again.
+ */
+function orientationOf(step: Step): 'white' | 'black' {
     if (step.orientation) return step.orientation;
-    if (step.type === 'find_move') return fen.split(' ')[1] === 'b' ? 'black' : 'white';
+    if (step.type === 'find_move') return boardOf(step).fen.split(' ')[1] === 'b' ? 'black' : 'white';
     return 'white';
 }
 
@@ -301,7 +305,7 @@ export function LessonPlayer({lesson, initialStep = 0, onStep, onFinish, finishA
             <div className="w-full max-w-[min(90vw,520px)] lg:w-[520px] shrink-0">
                 <PuzzleBoard
                     fen={board.fen}
-                    orientation={orientationOf(step, board.fen)}
+                    orientation={orientationOf(step)}
                     interactive={interactive}
                     lastMove={board.lastMove}
                     hint={hint}

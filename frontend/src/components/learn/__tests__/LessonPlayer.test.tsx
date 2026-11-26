@@ -44,7 +44,20 @@ afterEach(() => {
     vi.unstubAllGlobals();
 });
 
+/** The top-left square in DOM order: a8 when White is at the bottom, h1 when Black is. */
+const topLeftSquare = () => document.querySelector('[data-square]')?.getAttribute('data-square');
+
 describe('LessonPlayer', () => {
+    it('keeps the board on the player\'s side while the opponent replies in "find the move"', async () => {
+        render(<LessonPlayer lesson={lesson} initialStep={2}/>);
+        expect(topLeftSquare()).toBe('a8');
+        move('d5e7');  // after the player's move it is Black's turn, but the board must not turn over
+        expect(topLeftSquare()).toBe('a8');
+        await tick(700);
+        expect(pieceOn('h8')).toBe('bk');
+        expect(topLeftSquare()).toBe('a8');
+    });
+
     it('goes through a whole lesson: demonstration, questions, exam', async () => {
         const onStep = vi.fn();
         const onFinish = vi.fn();
