@@ -6,8 +6,10 @@
 // the author - coverage(): how many modules of each status per level and branch.
 // Module names live in the i18n catalogs: supercourse.modules.<code, dot replaced by "_">.
 // A "game with stops" step is one master game of the classics collection (game(id)), picked where its own intro names the
-// module's idea: rooks on an open file, a weakened king, a pawn storm, steady positional play. A "demo" step (demo(id)) is the
-// same game shown without questions - moves with the coach's comments - for levels where "what would you play?" is too early.
+// module's idea: rooks on an open file, a weakened king, a pawn storm, steady positional play; for S2.2-S2.4 the game was
+// found by scripts/dev/theme_games.py - the mentor's own rule (outpost, bad bishop, isolated pawn) holds for most of it.
+// A "demo" step (demo(id)) is the same game shown without questions - moves with the coach's comments - for levels
+// where "what would you play?" is too early.
 
 import type {Activity} from './programs';
 import {MUST_KNOW, STUDIES} from './mustKnow';
@@ -99,9 +101,9 @@ export const COURSE: CourseModule[] = [
     mod('E2.3', 'E', [l('endgame-wrong-bishop'), e('wrong_bishop'), e('rook_pawn_def')]),
     mod('E2.4', 'E', MUST_KNOW[0].map(e)),
     mod('S2.1', 'S', [l('strategy-open-file'), th('open_file'), th('seventh_rank'), game('tolush-keres-1947')]),
-    mod('S2.2', 'S', [l('strategy-outpost'), th('outpost')]),
-    mod('S2.3', 'S', [l('strategy-bad-bishop'), th('bad_bishop')]),
-    mod('S2.4', 'S', [l('strategy-weak-squares'), th('weak_squares'), th('isolated_pawn')]),
+    mod('S2.2', 'S', [l('strategy-outpost'), th('outpost'), game('spassky-petrosian-1969')]),
+    mod('S2.3', 'S', [l('strategy-bad-bishop'), th('bad_bishop'), game('petrosian-nikolaevsky-1957')]),
+    mod('S2.4', 'S', [l('strategy-weak-squares'), th('weak_squares'), th('isolated_pawn'), game('spassky-guimard-1962')]),
     mod('S2.5', 'S', [lib('symmetry'), lib('french_chain'), lib('kid_chain'), tr('structure_quiz')]),
     mod('O2.1', 'O', [REPERTOIRE]),
     mod('O2.2', 'O', [REPERTOIRE]),
