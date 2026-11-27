@@ -173,7 +173,7 @@ export const COURSE: CourseModule[] = [
     mod('S4.7', 'S', [l('structure-hedgehog'), lib('hedgehog')]),
     mod('S4.8', 'S', [th('restriction')]),
     mod('S4.9', 'S', [th('piece_improvement'), th('prophylaxis')]),
-    mod('S4.10', 'S', [th('exchange_choice')]),
+    mod('S4.10', 'S', [l('strategy-exchange-choice'), th('exchange_choice')]),
     mod('S4.11', 'S', [tr('plan_quiz')]),
     mod('O4.1', 'O', [tr('plan_quiz'), tr('structure_quiz'), lib('isolated_pawn')]),
     mod('O4.2', 'O', [REPERTOIRE]),

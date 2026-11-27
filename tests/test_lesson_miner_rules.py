@@ -33,3 +33,13 @@ def test_minor_exchange_is_a_trade_of_minor_pieces():
     assert rule_minor_exchange(board, chess.Move.from_uci("g5e7"))
     assert not rule_minor_exchange(board, chess.Move.from_uci("g5f4"))  # not a capture
     assert not rule_minor_exchange(board, chess.Move.from_uci("c3d5"))  # takes a pawn, not a piece
+
+
+def test_minor_exchange_skips_a_recapture():
+    # The white knight on c6 is defended by the pawn b5; ...Bxc6 trades the bishop for it.
+    standing = chess.Board("4k3/1b6/2N5/1P6/8/8/8/4K3 b - - 0 20")
+    assert rule_minor_exchange(standing, chess.Move.from_uci("b7c6"))
+    # The same picture right after Nd4xc6: taking back on c6 is a recapture, not a choice of exchange.
+    recapture = chess.Board("4k3/1b6/2n5/1P6/3N4/8/8/4K3 w - - 0 20")
+    recapture.push(chess.Move.from_uci("d4c6"))
+    assert not rule_minor_exchange(recapture, chess.Move.from_uci("b7c6"))
