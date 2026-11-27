@@ -22,6 +22,7 @@ Rules (by the RULES registry):
 import argparse
 import glob
 import json
+import os
 import pathlib
 
 import chess
@@ -32,7 +33,8 @@ from src.services.bots.base import resolve_stockfish_path
 from src.services.mentor_service import detect_motifs
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-PGN_GLOB = str(ROOT / "data" / "pgns" / "**" / "*.pgn")
+# LESSON_PGN_ROOT points the search at another folder of PGN files (for example the owner's game collection).
+PGN_GLOB = str(pathlib.Path(os.environ.get("LESSON_PGN_ROOT") or ROOT / "data" / "pgns") / "**" / "*.pgn")
 MATE_SCORE = 100_000
 SLIDERS = (chess.BISHOP, chess.ROOK, chess.QUEEN)
 

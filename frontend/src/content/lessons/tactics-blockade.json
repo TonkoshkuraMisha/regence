@@ -1,0 +1,171 @@
+{
+  "id": "tactics-blockade",
+  "course": "tactics",
+  "order": 33,
+  "title": {
+    "en": "Blockade: stop the passed pawn",
+    "uk": "Блокада: зупиніть прохідного пішака"
+  },
+  "summary": {
+    "en": "A far-advanced enemy passed pawn is stopped by a piece placed right in front of it; a blocked pawn cannot queen and can often be won.",
+    "uk": "Прохідного пішака суперника, що зайшов далеко, зупиняє фігура, поставлена просто перед ним; заблокований пішак не перетворюється на ферзя, і його часто вдається виграти."
+  },
+  "steps": [
+    {
+      "type": "text",
+      "fen": "4k3/3r3p/4p3/1p6/2b5/1P1pQP2/P5PP/6K1 w - - 1 30",
+      "highlights": [
+        "d3",
+        "d2"
+      ],
+      "arrows": [
+        {
+          "from": "e3",
+          "to": "d2",
+          "color": "green"
+        }
+      ],
+      "text": {
+        "en": "A passed pawn on its way to promotion is a danger every move: it can push, and the threat grows with each step. The answer is a blockade: put a piece on the square directly in front of the pawn. The pawn cannot move, and the piece that blocks it is often safe there and attacks the pawn or its supporters. The black pawn on d3 is one step from d2 and promotion; White to move.",
+        "uk": "Прохідний пішак на шляху до ферзя загрожує щоходу: він може піти вперед, і загроза росте з кожним кроком. Відповідь - блокада: поставте фігуру на поле прямо перед пішаком. Пішак не може рухатися, а фігура-блокувальник часто почувається там безпечно й нападає на пішака чи його підтримку. Чорний пішак d3 за крок від d2 і перетворення; хід білих."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "4k3/3r3p/4p3/1p6/2b5/1P1pQP2/P5PP/6K1 w - - 1 30",
+      "text": {
+        "en": "White to move. Stop the pawn on d3 with a piece and do not let it advance.",
+        "uk": "Хід білих. Зупиніть пішака d3 фігурою і не дайте йому піти вперед."
+      },
+      "line": [
+        {
+          "answers": [
+            "e3d2"
+          ],
+          "correct": {
+            "en": "The queen stands on d2, in front of the pawn. The pawn cannot move, and White threatens to take the bishop on c4 with the b3 pawn. The immediate bxc4 would allow d2 and the pawn runs.",
+            "uk": "Ферзь стає на d2 перед пішаком. Пішак не може піти, а білі загрожують узяти слона c4 пішаком b3. Негайне bxc4 дозволило б d2, і пішак біжить."
+          }
+        }
+      ],
+      "hint": {
+        "en": "The queen goes to the square in front of the pawn.",
+        "uk": "Ферзь іде на поле перед пішаком."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "8/6kp/1p2p1n1/4PrP1/P1PK4/1P1N4/5p1P/6R1 w - - 0 38",
+      "text": {
+        "en": "White to move. The black pawn on f2 threatens f1=Q. Stop it and attack it at the same time.",
+        "uk": "Хід білих. Чорний пішак f2 загрожує f1=Ф. Зупиніть його й одночасно нападіть на нього."
+      },
+      "line": [
+        {
+          "answers": [
+            "g1f1"
+          ],
+          "correct": {
+            "en": "The rook takes the promotion square f1: the pawn cannot go on and is attacked by the rook. Blocking and attacking at once is the best form of blockade: the pawn will be lost.",
+            "uk": "Тура займає поле перетворення f1: пішак не може йти далі, а тура його атакує. Блокувати й нападати одночасно - найкраща форма блокади: пішак буде втрачений."
+          }
+        }
+      ],
+      "hint": {
+        "en": "A rook move to the first rank.",
+        "uk": "Хід турою на першу горизонталь."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "q3n3/5k2/6p1/2QPB2p/2P4P/6P1/p1P2P2/6K1 w - - 0 50",
+      "text": {
+        "en": "White to move. The black pawn on a2 is about to queen. Put a piece on the promotion square.",
+        "uk": "Хід білих. Чорний пішак a2 ось-ось стане ферзем. Поставте фігуру на поле перетворення."
+      },
+      "line": [
+        {
+          "answers": [
+            "e5a1"
+          ],
+          "correct": {
+            "en": "The bishop stands on a1, in front of the pawn, and the pawn is stopped for good. The queen on a8 cannot help: its own pawn is in the way.",
+            "uk": "Слон стає на a1 перед пішаком, і пішак зупинений остаточно. Ферзь a8 не може допомогти: на шляху його ж пішак."
+          }
+        }
+      ],
+      "hint": {
+        "en": "The bishop goes to the corner of the long diagonal.",
+        "uk": "Слон іде в кут довгої діагоналі."
+      }
+    },
+    {
+      "type": "text",
+      "text": {
+        "en": "In all three positions the winning move did not capture or check: it simply put a piece in front of the passed pawn. Before you calculate anything, look for enemy passed pawns on the fifth, sixth and seventh ranks: if one is about to run, find the blocking square first.",
+        "uk": "У всіх трьох позиціях виграшний хід нічого не брав і не давав шаху: він просто ставив фігуру перед прохідним пішаком. Перш ніж щось рахувати, пошукайте прохідних пішаків суперника на п'ятій, шостій і сьомій горизонталях: якщо котрийсь ось-ось побіжить, спершу знайдіть поле для блокади."
+      }
+    }
+  ],
+  "exam": [
+    {
+      "type": "find_move",
+      "fen": "6k1/5p2/2q4p/p5p1/3P2P1/1P1pQP2/P5P1/K7 w - - 1 39",
+      "text": {
+        "en": "White to move. The black pawn on d3 is supported by the queen. Block it.",
+        "uk": "Хід білих. Чорний пішак d3 підтриманий ферзем. Заблокуйте його."
+      },
+      "line": [
+        {
+          "answers": [
+            "e3d2"
+          ],
+          "correct": {
+            "en": "The queen blocks the pawn on d2 and attacks it. Taking on d3 at once would let the black queen give perpetual check.",
+            "uk": "Ферзь блокує пішака на d2 й атакує його. Негайне взяття d3 дозволило б чорному ферзеві дати вічний шах."
+          }
+        }
+      ],
+      "hint": {
+        "en": "The queen goes to the square in front of the pawn.",
+        "uk": "Ферзь іде на поле перед пішаком."
+      }
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "Where do you put the piece that blockades a passed pawn?",
+        "uk": "Куди ставлять фігуру, що блокує прохідного пішака?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "On the square directly in front of the pawn",
+            "uk": "На поле прямо перед пішаком"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "As far from the pawn as possible",
+            "uk": "Якомога далі від пішака"
+          },
+          "feedback": {
+            "en": "A distant piece does not stop the pawn: it will simply push.",
+            "uk": "Далека фігура пішака не зупиняє: він просто піде вперед."
+          }
+        },
+        {
+          "text": {
+            "en": "Behind the pawn, on its starting square",
+            "uk": "За пішаком, на його вихідному полі"
+          },
+          "feedback": {
+            "en": "Behind the pawn nothing stops it from advancing.",
+            "uk": "Позаду пішака ніщо не заважає йому просуватися."
+          }
+        }
+      ]
+    }
+  ]
+}
