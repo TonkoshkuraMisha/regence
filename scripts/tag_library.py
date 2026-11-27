@@ -54,6 +54,7 @@ async def run(recompute: bool) -> None:
     from src.models.library import LibraryGame
     from src.services import pawn_structures
     from src.services.beauty import is_beautiful
+    from src.services.game_themes import encode, game_themes
     from src.services.library import ends_in_mate
 
     engine = create_async_engine(settings.async_database_url, poolclass=NullPool)
@@ -67,6 +68,7 @@ async def run(recompute: bool) -> None:
             game.structure = pawn_structures.game_structure(chess.Move.from_uci(u) for u in game.moves.split())
             game.mate_finish = ends_in_mate(game.start_fen, game.moves.split())
             game.beautiful = is_beautiful(game.start_fen, game.moves.split())
+            game.themes = encode(game_themes(game.start_fen, game.moves.split()))
             counts[game.structure] += 1
             if index % 1000 == 0:
                 await db.commit()

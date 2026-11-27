@@ -33,7 +33,13 @@ export interface LibraryGameRow {
     plies: number;
     /** Pawn structure (task 27.5) — a code from STRUCTURES. */
     structure?: string | null;
+    /** Tactics that paid off in the game (task 27.5) — codes from GAME_THEMES. */
+    themes?: string[];
 }
+
+/** Theme marks of games — the same as the server (src/services/game_themes.py GAME_THEMES); names — `themes.<code>.name`. */
+export const GAME_THEMES = ['fork', 'double_check', 'pin', 'skewer', 'discovered_attack', 'discovered_check', 'overload',
+    'interference', 'trapped_piece'] as const;
 
 /** Pawn structure codes — the same as the server tags (src/services/pawn_structures.py); names — in the catalog. */
 export const STRUCTURES = ['hedgehog', 'maroczy', 'wedge', 'kid_chain', 'modern_benoni', 'stonewall', 'saw', 'french_chain',
@@ -77,6 +83,8 @@ export interface LibrarySearch {
     miniature?: boolean;
     /** "Beautiful" tag (27.5): material sacrifice and the winner's mate. */
     beautiful?: boolean;
+    /** Theme mark (task 27.5): a tactic from GAME_THEMES that paid off in the game. */
+    theme?: string;
     /** Game start in UCI separated by spaces (repertoire node, 27.10). */
     moves?: string;
     offset?: number;

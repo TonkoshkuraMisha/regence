@@ -9,7 +9,7 @@ import {ChevronDown, ChevronRight, Library, Lock} from 'lucide-react';
 import {renderUiMessage, useI18n} from '../../i18n';
 import type {UiMessage} from '../../i18n';
 import {errorMessage} from '../../services/apiErrors';
-import {childrenOf, LIBRARY_PAGE, libraryApi, STRUCTURES, totalGames} from '../../services/library';
+import {childrenOf, GAME_THEMES, LIBRARY_PAGE, libraryApi, STRUCTURES, totalGames} from '../../services/library';
 import type {LibraryCollection, LibraryPage as Page, LibrarySearch} from '../../services/library';
 
 // What is shown on the right: games of a collection or search results.
@@ -147,6 +147,13 @@ export function LibraryPage() {
                             className="bg-black/40 rounded px-2 py-1 max-w-[12rem]">
                         <option value="">{t('watch.anyResult')}</option>
                         {STRUCTURES.map((code) => <option key={code} value={code}>{t(`structures.${code}`)}</option>)}
+                    </select>
+                </label>
+                <label className="flex flex-col gap-1">{t('library.theme')}
+                    <select value={draft.theme ?? ''} onChange={(e) => set('theme', e.target.value)} data-testid="library-theme"
+                            className="bg-black/40 rounded px-2 py-1 max-w-[12rem]">
+                        <option value="">{t('watch.anyResult')}</option>
+                        {GAME_THEMES.map((code) => <option key={code} value={code}>{t(`themes.${code}.name`)}</option>)}
                     </select>
                 </label>
                 <label className="flex items-center gap-1.5 self-center cursor-pointer">
