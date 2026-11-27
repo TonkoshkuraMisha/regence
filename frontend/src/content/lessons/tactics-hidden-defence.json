@@ -1,0 +1,282 @@
+{
+  "id": "tactics-hidden-defence",
+  "course": "tactics",
+  "order": 35,
+  "title": {
+    "en": "Hidden defensive resources",
+    "uk": "Приховані захисні ресурси"
+  },
+  "summary": {
+    "en": "The deepest saves begin with a sacrifice: give up material to strip the enemy king, then check it for ever.",
+    "uk": "Найглибші порятунки починаються з жертви: віддайте матеріал, щоб оголити ворожого короля, а тоді шахуйте його без кінця."
+  },
+  "steps": [
+    {
+      "type": "text",
+      "fen": "r4r2/p1pb3k/1p5p/3PB2P/2P2p2/8/PPp2P1P/6RK w - - 1 35",
+      "highlights": [
+        "c2",
+        "g7",
+        "e5"
+      ],
+      "text": {
+        "en": "In the lesson on saving a lost game the checks were on the surface. At a higher level the resource is hidden: the checking piece is blocked, the king seems safe, and only a sacrifice - a piece that cannot be taken, a knight that opens a line, a discovered check - starts the perpetual. When you are lost, count every check, even the ones that give away material.",
+        "uk": "В уроці про порятунок програної партії шахи лежали на поверхні. На вищому рівні ресурс прихований: фігура для шахів заблокована, король ніби в безпеці, і лише жертва - фігура, яку не можна взяти, кінь, що відкриває лінію, розкритий шах - починає вічний шах. Коли ви програєте, перебирайте всі шахи, навіть ті, що віддають матеріал."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "r4r2/p1pb3k/1p5p/3PB2P/2P2p2/8/PPp2P1P/6RK w - - 1 35",
+      "text": {
+        "en": "White to move (Petrosian - Spassky, World Championship 1966). The pawn on c2 is about to queen. Find the rook check the king cannot answer by capturing.",
+        "uk": "Хід білих (Петросян - Спаський, матч за першість світу 1966). Пішак c2 от-от стане ферзем. Знайдіть шах турою, на який король не може відповісти взяттям."
+      },
+      "hint": {
+        "en": "The bishop on e5 guards g7.",
+        "uk": "Слон e5 захищає g7."
+      },
+      "line": [
+        {
+          "answers": [
+            "g1g7"
+          ],
+          "correct": {
+            "en": "35.Rg7+! The rook is protected by the bishop, so the king must go to h8 - into the bishop's diagonal. 36.Rxd7+ - a discovered check from e5, and the rook takes a bishop on the way. After 36...Kg8 37.Rg7+ Kh8 the rook swings back: a windmill that never stops, so a draw.",
+            "uk": "35.Rg7+! Туру захищає слон, тож король мусить іти на h8 - на діагональ слона. 36.Rxd7+ - розкритий шах слоном e5, і тура дорогою бере слона. Після 36...Kg8 37.Rg7+ Kh8 тура повертається: «млин», що не зупиняється, - нічия."
+          }
+        }
+      ]
+    },
+    {
+      "type": "find_move",
+      "fen": "3Q4/8/8/2p1qP1k/4n3/2P4P/8/6RK b - - 2 49",
+      "text": {
+        "en": "Black to move (Tal - Gligoric, 1967). The white rook on g1 shields the king from the queen's checks. Remove it.",
+        "uk": "Хід чорних (Таль - Глігорич, 1967). Біла тура на g1 закриває короля від шахів ферзя. Приберіть її."
+      },
+      "hint": {
+        "en": "Sacrifice the knight with check.",
+        "uk": "Пожертвуйте коня з шахом."
+      },
+      "line": [
+        {
+          "answers": [
+            "e4g3"
+          ],
+          "correct": {
+            "en": "49...Ng3+! The rook has to take, and the first rank is no longer guarded. After 50.Rxg3 Qe1+ 51.Kh2 Qe2+ 52.Kg1 Qe1+ - the white king cannot hide from the queen, a draw.",
+            "uk": "49...Ng3+! Тура мусить узяти, і перша горизонталь більше не захищена. Після 50.Rxg3 Qe1+ 51.Kh2 Qe2+ 52.Kg1 Qe1+ - білий король не може сховатися від ферзя, нічия."
+          }
+        }
+      ]
+    },
+    {
+      "type": "find_move",
+      "fen": "6k1/5p2/3P2p1/7n/4PP2/7q/3Q3P/6RK b - - 0 43",
+      "text": {
+        "en": "Black to move (Portisch - Kasparov, Moscow 1981). The d-pawn will queen. Black has only a queen and a knight against the king - find the perpetual.",
+        "uk": "Хід чорних (Портіш - Каспаров, Москва, 1981). Пішак d от-от стане ферзем. У чорних лише ферзь і кінь проти короля - знайдіть вічний шах."
+      },
+      "hint": {
+        "en": "Check on f3 first; then the knight can open the h-file.",
+        "uk": "Спершу шах на f3; тоді кінь може відкрити вертикаль h."
+      },
+      "line": [
+        {
+          "answers": [
+            "h3f3"
+          ],
+          "reply": "d2g2",
+          "correct": {
+            "en": "43...Qf3+ 44.Qg2 - White blocks with the queen.",
+            "uk": "43...Qf3+ 44.Qg2 - білі закриваються ферзем."
+          }
+        },
+        {
+          "answers": [
+            "h5g3"
+          ],
+          "reply": "h2g3",
+          "correct": {
+            "en": "44...Ng3+! The knight is given up to open the h-file: 45.hxg3 Qh5+ 46.Qh2 Qf3+ and the checks repeat.",
+            "uk": "44...Ng3+! Коня віддано, щоб відкрити вертикаль h: 45.hxg3 Qh5+ 46.Qh2 Qf3+, і шахи повторюються."
+          }
+        }
+      ]
+    },
+    {
+      "type": "find_move",
+      "fen": "r1b2rk1/pp1n1pp1/4p3/6p1/1PNN4/2PBP2R/P6P/2K5 w - - 0 23",
+      "text": {
+        "en": "White to move (Smerdon - Carlsen, Olympiad 2016). White is a rook down, but the rook on h3 and the bishop on d3 both look at the black king.",
+        "uk": "Хід білих (Смердон - Карлсен, Олімпіада 2016). Білі без тури, але тура h3 і слон d3 обидва дивляться на чорного короля."
+      },
+      "hint": {
+        "en": "The bishop checks, then steps off the h-file with a discovered check.",
+        "uk": "Слон шахує, а тоді сходить з вертикалі h з розкритим шахом."
+      },
+      "line": [
+        {
+          "answers": [
+            "d3h7"
+          ],
+          "correct": {
+            "en": "23.Bh7+ Kh8 - the king has to stand on the h-file. 24.Bc2+ - a discovered check from the rook. 24...Kg8 25.Bh7+ repeats: a perpetual check by a bishop.",
+            "uk": "23.Bh7+ Kh8 - король мусить стати на вертикаль h. 24.Bc2+ - розкритий шах турою. 24...Kg8 25.Bh7+ повторює: вічний шах слоном."
+          }
+        }
+      ]
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "Your queen cannot reach the enemy king because a rook stands in the way, and you have a knight that can check. What is the idea?",
+        "uk": "Ваш ферзь не дістає ворожого короля, бо на заваді стоїть тура, а у вас є кінь, який може шахувати. У чому ідея?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "Sacrifice the knight with check to deflect the rook, then check with the queen",
+            "uk": "Пожертвувати коня з шахом, щоб відволікти туру, а тоді шахувати ферзем"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "Keep the knight: material decides the game",
+            "uk": "Зберегти коня: матеріал вирішує партію"
+          },
+          "feedback": {
+            "en": "In a lost position material does not matter - only the result does. A knight for a perpetual check is a good trade.",
+            "uk": "У програній позиції матеріал не важить - важить лише результат. Кінь за вічний шах - добрий обмін."
+          }
+        },
+        {
+          "text": {
+            "en": "Trade queens to stop the opponent's threats",
+            "uk": "Розміняти ферзів, щоб зупинити загрози суперника"
+          },
+          "feedback": {
+            "en": "Without the queen there are no more checks, and the lost position stays lost.",
+            "uk": "Без ферзя шахів більше немає, і програна позиція так і лишається програною."
+          }
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "text": {
+        "en": "Hidden resources come in a few forms: a sacrifice that deflects the piece shielding the king (Tal), a sacrifice that opens a file (Kasparov), a discovered check that lets one piece check from two squares (Petrosian, Smerdon). When the position is lost, ask what would happen if a defender of the enemy king disappeared - then look for the move that makes it disappear.",
+        "uk": "Приховані ресурси бувають кількох видів: жертва, що відволікає фігуру, яка закриває короля (Таль), жертва, що відкриває вертикаль (Каспаров), розкритий шах, що дозволяє одній фігурі шахувати з двох полів (Петросян, Смердон). Коли позиція програна, запитайте себе, що було б, якби захисник ворожого короля зник, - і шукайте хід, що змусить його зникнути."
+      }
+    }
+  ],
+  "exam": [
+    {
+      "type": "find_move",
+      "fen": "3rb1k1/4qpP1/p3p3/4N2Q/3PN3/6P1/pr4P1/K2R3R b - - 0 27",
+      "text": {
+        "en": "Black to move (Grischuk - Carlsen, 2016). White threatens mate on h8. Save the game.",
+        "uk": "Хід чорних (Грищук - Карлсен, 2016). Білі загрожують матом на h8. Урятуйте партію."
+      },
+      "line": [
+        {
+          "answers": [
+            "b2b1"
+          ],
+          "reply": "a1a2",
+          "correct": {
+            "en": "27...Rb1+! The rook is given up to drag the king forward.",
+            "uk": "27...Rb1+! Туру віддано, щоб витягнути короля вперед."
+          }
+        },
+        {
+          "answers": [
+            "b1b2"
+          ],
+          "reply": "a2b2",
+          "correct": {
+            "en": "28...Rb2+! And the second rook too: after 29.Kxb2 the king is in the open.",
+            "uk": "28...Rb2+! І другу туру теж: після 29.Kxb2 король на відкритому місці."
+          }
+        },
+        {
+          "answers": [
+            "e7b4"
+          ],
+          "reply": "b2a2",
+          "correct": {
+            "en": "29...Qb4+ 30.Ka2 Qa4+ 31.Kb1 - the queen checks on the b- and a-files, a perpetual check.",
+            "uk": "29...Qb4+ 30.Ka2 Qa4+ 31.Kb1 - ферзь шахує по вертикалях b і a, вічний шах."
+          }
+        }
+      ]
+    },
+    {
+      "type": "find_move",
+      "fen": "Q7/2R2pkp/2B1p3/3p4/3Pn1p1/4P1P1/3r3P/6K1 b - - 0 36",
+      "text": {
+        "en": "Black to move (Andersson - Tal, 1976). White is a rook up. The knight on e4 helps the rook.",
+        "uk": "Хід чорних (Андерссон - Таль, 1976). У білих зайва тура. Кінь e4 допомагає турі."
+      },
+      "line": [
+        {
+          "answers": [
+            "d2d1"
+          ],
+          "reply": "g1g2",
+          "correct": {
+            "en": "36...Rd1+ 37.Kg2 - the king steps up, but the rook keeps checking along the d-file and the second rank.",
+            "uk": "36...Rd1+ 37.Kg2 - король виходить уперед, але тура далі шахує по вертикалі d і другій горизонталі."
+          }
+        },
+        {
+          "answers": [
+            "d1d2"
+          ],
+          "reply": "g2f1",
+          "correct": {
+            "en": "37...Rd2+ 38.Kf1 Rd1+ - the king is caught between the rook and the knight, a draw.",
+            "uk": "37...Rd2+ 38.Kf1 Rd1+ - король затиснутий між турою й конем, нічия."
+          }
+        }
+      ]
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "What makes a discovered check a good source of a perpetual?",
+        "uk": "Чому розкритий шах - добре джерело вічного шаху?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "The moving piece can go back and forth while the piece behind it gives check",
+            "uk": "Фігура, що ходить, може сновигати туди-сюди, а шах дає фігура позаду неї"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "A discovered check is always mate",
+            "uk": "Розкритий шах - це завжди мат"
+          },
+          "feedback": {
+            "en": "No: the king can usually step away. The point is that the check can be repeated.",
+            "uk": "Ні: король зазвичай може відійти. Суть у тому, що шах можна повторювати."
+          }
+        },
+        {
+          "text": {
+            "en": "It wins the opponent's queen",
+            "uk": "Він виграє ферзя суперника"
+          },
+          "feedback": {
+            "en": "Sometimes, but a perpetual needs only that the check comes again and again.",
+            "uk": "Іноді, але для вічного шаху досить, щоб шах повторювався знову і знову."
+          }
+        }
+      ]
+    }
+  ]
+}

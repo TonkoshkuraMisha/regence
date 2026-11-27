@@ -184,7 +184,7 @@ export const COURSE: CourseModule[] = [
     mod('X4', 'G', [ex('level4')]),
     // --- Level 5. Class I - candidate master ---
     mod('T5.1', 'T', [l('tactics-deep-combination'), th('combination')]),
-    mod('T5.2', 'T', [th('equality'), th('fortress'), th('save_by_perpetual')]),
+    mod('T5.2', 'T', [l('tactics-hidden-defence'), th('equality'), th('fortress'), th('save_by_perpetual')]),
     mod('M5.1', 'M', [l('tactics-master-sacrifice'), th('sacrifice')]),
     mod('E5.1', 'E', [l('endgame-rook-forcing'), e('vancura'), e('lucena'), e('philidor'), th('philidor_position'), th('rook_behind_passer')]),
     mod('E5.2', 'E', [{kind: 'library'}]),
