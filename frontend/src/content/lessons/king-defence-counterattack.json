@@ -1,0 +1,289 @@
+{
+  "id": "king-defence-counterattack",
+  "course": "king-attack",
+  "order": 15,
+  "title": {
+    "en": "Defence: counterattack and trades",
+    "uk": "Захист: контратака і розміни"
+  },
+  "summary": {
+    "en": "Against an attack on your king, strike back in the centre or on the other wing, and trade off the attacker's most dangerous piece - usually the queen.",
+    "uk": "Проти атаки на вашого короля завдайте контрудару в центрі чи на іншому фланзі та розміняйте найнебезпечнішу фігуру суперника - зазвичай ферзя."
+  },
+  "steps": [
+    {
+      "type": "text",
+      "fen": "1r4k1/2q1bppp/1n1pb3/p3p1Pn/1r2P3/1PN1BP2/P1PQ3P/K1NR1BR1 b - - 2 21",
+      "highlights": [
+        "g5",
+        "d6",
+        "d5"
+      ],
+      "arrows": [
+        {
+          "from": "d6",
+          "to": "d5",
+          "color": "green"
+        }
+      ],
+      "text": {
+        "en": "Passive defence rarely holds: the attacker brings one more piece every move. Two weapons work better. The first is a counterattack: a strike in the centre or on the wing where the enemy king lives, so the opponent has to spend moves on defence. The second is trades: every exchange removes an attacker, and without the queen most attacks die out.",
+        "uk": "Пасивний захист рідко витримує: той, хто атакує, щоходу підводить ще одну фігуру. Краще діють два засоби. Перший - контратака: удар у центрі чи на фланзі, де стоїть король суперника, щоб він витрачав ходи на захист. Другий - розміни: кожен розмін прибирає одного нападника, а без ферзя більшість атак згасає."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "1r4k1/2q1bppp/1n1pb3/p3p1Pn/1r2P3/1PN1BP2/P1PQ3P/K1NR1BR1 b - - 2 21",
+      "text": {
+        "en": "Black to move (Carlsen - Bu Xiangzhi, 2007). White's pawns are marching on the kingside. Answer the flank attack in the centre.",
+        "uk": "Хід чорних (Карлсен - Бу Сянчжі, 2007). Білі пішаки йдуть на королівському фланзі. Дайте відповідь на фланговий наступ у центрі."
+      },
+      "hint": {
+        "en": "A pawn break opens lines toward the white king on a1.",
+        "uk": "Пішаковий прорив відкриває лінії до білого короля на a1."
+      },
+      "line": [
+        {
+          "answers": [
+            "d6d5"
+          ],
+          "correct": {
+            "en": "21...d5! The classic rule: a flank attack is met by a strike in the centre. The centre opens, Black's pieces come alive, and White has no time to continue on the kingside.",
+            "uk": "21...d5! Класичне правило: на фланговий наступ відповідають ударом у центрі. Центр відкривається, чорні фігури оживають, і білим ніколи продовжувати на королівському фланзі."
+          }
+        }
+      ]
+    },
+    {
+      "type": "find_move",
+      "fen": "r1b3k1/p4pp1/2p2q1p/2bp4/1p1r2PP/P1NP1PQ1/1P2N3/2KR3R w - - 0 20",
+      "text": {
+        "en": "White to move (Nepomniachtchi - Ding Liren, 2019). Black attacks the white king: the pawn on b4 hits the knight, the rook sits on d4. Do not just defend - counterattack on the other wing.",
+        "uk": "Хід білих (Непомнящий - Дін Ліжень, 2019). Чорні атакують білого короля: пішак b4 б'є коня, тура стоїть на d4. Не лише захищайтеся - контратакуйте на іншому фланзі."
+      },
+      "hint": {
+        "en": "A pawn hits the black queen and opens the way to the black king.",
+        "uk": "Пішак б'є чорного ферзя і відкриває шлях до чорного короля."
+      },
+      "line": [
+        {
+          "answers": [
+            "g4g5"
+          ],
+          "correct": {
+            "en": "20.g5! The queen must move, White gains a tempo, and the kingside pawns open lines toward the black king. The game stays balanced; passive moves would lose.",
+            "uk": "20.g5! Ферзь мусить відступити, білі виграють темп, а пішаки королівського флангу відкривають лінії до чорного короля. Гра лишається рівною; пасивні ходи програли б."
+          }
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "fen": "1r6/1b3pk1/p2qpnp1/P1R1Q2p/8/1NN2P1P/1PP3P1/6K1 b - - 3 30",
+      "highlights": [
+        "e5",
+        "d6",
+        "g7"
+      ],
+      "arrows": [
+        {
+          "from": "d6",
+          "to": "e5",
+          "color": "green"
+        }
+      ],
+      "text": {
+        "en": "The queen is the attacker's main piece. If you can trade it - capture it, or put your own queen opposite and protected - the attack usually stops, even when you have weaknesses near the king. Ask before every move: can I offer a queen trade?",
+        "uk": "Ферзь - головна фігура того, хто атакує. Якщо його можна розміняти - забрати або поставити свого ферзя навпроти під захистом, - атака зазвичай зупиняється, навіть коли біля короля є слабкості. Перед кожним ходом питайте: чи можу я запропонувати розмін ферзів?"
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "1r6/1b3pk1/p2qpnp1/P1R1Q2p/8/1NN2P1P/1PP3P1/6K1 b - - 3 30",
+      "text": {
+        "en": "Black to move (Firouzja - Carlsen, 2021). The white queen on e5 pins the knight to the king along the long diagonal. Defend.",
+        "uk": "Хід чорних (Фіруджа - Карлсен, 2021). Білий ферзь на e5 зв'язує коня з королем по довгій діагоналі. Захищайтеся."
+      },
+      "hint": {
+        "en": "Remove the most dangerous white piece.",
+        "uk": "Приберіть найнебезпечнішу білу фігуру."
+      },
+      "line": [
+        {
+          "answers": [
+            "d6e5"
+          ],
+          "correct": {
+            "en": "30...Qxe5! After 31.Rxe5 the pin is gone and Black's king is safe. Every other move leaves White a strong attack.",
+            "uk": "30...Qxe5! Після 31.Rxe5 зв'язки немає, і чорний король у безпеці. Будь-який інший хід залишає білим сильну атаку."
+          }
+        }
+      ]
+    },
+    {
+      "type": "find_move",
+      "fen": "4r3/p4pk1/1p3p1p/8/5Q1P/3R4/PP3PPK/4q3 b - - 5 31",
+      "text": {
+        "en": "Black to move (Kasparov - Beliavsky, 1983). White threatens Rg3+ with an attack on the king. Offer a queen trade.",
+        "uk": "Хід чорних (Каспаров - Бєлявський, 1983). Білі загрожують Rg3+ з атакою на короля. Запропонуйте розмін ферзів."
+      },
+      "hint": {
+        "en": "Put your queen opposite the white queen, protected by a pawn.",
+        "uk": "Поставте свого ферзя навпроти білого під захистом пішака."
+      },
+      "line": [
+        {
+          "answers": [
+            "e1e5"
+          ],
+          "correct": {
+            "en": "31...Qe5! The queen returns to the centre, protected by the pawn on f6. If the queens come off, White has no attack; if White avoids the trade, the black queen in the centre guards the king.",
+            "uk": "31...Qe5! Ферзь повертається в центр під захистом пішака f6. Якщо ферзі розміняються, атаки в білих немає; якщо білі ухиляться від розміну, чорний ферзь у центрі захищає короля."
+          }
+        }
+      ]
+    },
+    {
+      "type": "find_move",
+      "fen": "r6k/2p3pp/p1p2Bb1/2P5/2Q2p2/2Pq4/P4P1P/4R1K1 w - - 0 26",
+      "text": {
+        "en": "White to move (Spielmann - Rubinstein, 1924). Black's queen and bishop are close to the white king. Stop the attack.",
+        "uk": "Хід білих (Шпільман - Рубінштейн, 1924). Чорні ферзь і слон близько до білого короля. Зупиніть атаку."
+      },
+      "hint": {
+        "en": "The queens stand next to each other.",
+        "uk": "Ферзі стоять поруч."
+      },
+      "line": [
+        {
+          "answers": [
+            "c4d3"
+          ],
+          "correct": {
+            "en": "26.Qxd3! Bxd3 - without queens Black has no attack, and the game is about equal. Any other move lets the black queen join the attack with decisive effect.",
+            "uk": "26.Qxd3! Bxd3 - без ферзів у чорних немає атаки, і гра приблизно рівна. Будь-який інший хід дозволяє чорному ферзю вирішально включитися в атаку."
+          }
+        }
+      ]
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "White is storming your castled king with pawns, and the centre is closed but can be opened. What is usually best?",
+        "uk": "Білі штурмують пішаками вашого рокірованого короля, а центр закритий, але його можна відкрити. Що зазвичай найкраще?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "Open the centre with a pawn break",
+            "uk": "Відкрити центр пішаковим проривом"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "Move every piece to the king and wait",
+            "uk": "Перевести всі фігури до короля й чекати"
+          },
+          "feedback": {
+            "en": "Passive defence gives the attacker time to bring more pieces. A strike in the centre makes him defend instead.",
+            "uk": "Пасивний захист дає тому, хто атакує, час підвести ще фігури. Удар у центрі змушує його захищатися."
+          }
+        },
+        {
+          "text": {
+            "en": "Push your own kingside pawns to meet his",
+            "uk": "Просунути пішаки свого королівського флангу назустріч"
+          },
+          "feedback": {
+            "en": "Pawns in front of your own king are its shelter: pushing them only opens lines for the attacker.",
+            "uk": "Пішаки перед власним королем - його прикриття: їх просування лише відкриває лінії тому, хто атакує."
+          }
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "text": {
+        "en": "Under attack, look in this order: can I trade the attacking queen or the strongest attacking piece? Can I strike in the centre? Can my own attack on the other wing come first? Defend passively only when none of these works.",
+        "uk": "Під атакою шукайте в такому порядку: чи можу я розміняти ферзя суперника або його найсильнішу атакувальну фігуру? Чи можу я вдарити в центрі? Чи встигне моя атака на іншому фланзі раніше? Захищайтеся пасивно, лише коли нічого з цього не працює."
+      }
+    }
+  ],
+  "exam": [
+    {
+      "type": "find_move",
+      "fen": "r1br2k1/p4ppp/2pq4/2NpQ3/3P4/1P2P3/P1P3PP/R4RK1 b - - 0 18",
+      "text": {
+        "en": "Black to move (Carlsen - Bozorov, 2026). The white queen has come close. Defend.",
+        "uk": "Хід чорних (Карлсен - Бозоров, 2026). Білий ферзь підійшов близько. Захищайтеся."
+      },
+      "line": [
+        {
+          "answers": [
+            "d6e5"
+          ],
+          "correct": {
+            "en": "18...Qxe5 19.dxe5 - the queens are off, and Black has nothing to fear.",
+            "uk": "18...Qxe5 19.dxe5 - ферзі розміняні, і чорним нічого боятися."
+          }
+        }
+      ]
+    },
+    {
+      "type": "find_move",
+      "fen": "8/1b2r1k1/p3Pb2/2p3p1/P1B2q2/B1P1Q2p/4R3/6K1 w - - 0 42",
+      "text": {
+        "en": "White to move (Carlsen - Ragger, 2008). The black queen and the pawn on h3 are close to the white king. Stop the attack.",
+        "uk": "Хід білих (Карлсен - Раггер, 2008). Чорний ферзь і пішак h3 близько до білого короля. Зупиніть атаку."
+      },
+      "line": [
+        {
+          "answers": [
+            "e3f4"
+          ],
+          "correct": {
+            "en": "42.Qxf4 gxf4 - without the queen Black has no attack, and White's bishops become strong.",
+            "uk": "42.Qxf4 gxf4 - без ферзя у чорних немає атаки, а білі слони стають сильними."
+          }
+        }
+      ]
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "Why does a queen trade help the defender?",
+        "uk": "Чому розмін ферзів допомагає тому, хто захищається?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "The queen is the attacker's strongest piece; without it few attacks work",
+            "uk": "Ферзь - найсильніша фігура нападника; без нього мало яка атака працює"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "After a queen trade the game is always a draw",
+            "uk": "Після розміну ферзів партія завжди закінчується внічию"
+          },
+          "feedback": {
+            "en": "No: the endgame can still be won or lost. The trade only removes the danger to the king.",
+            "uk": "Ні: ендшпіль ще можна виграти чи програти. Розмін лише прибирає небезпеку для короля."
+          }
+        },
+        {
+          "text": {
+            "en": "The defender gains material",
+            "uk": "Той, хто захищається, виграє матеріал"
+          },
+          "feedback": {
+            "en": "A trade is equal material. Its value is that the attack loses its main piece.",
+            "uk": "Розмін - рівний обмін матеріалом. Його цінність у тому, що атака втрачає головну фігуру."
+          }
+        }
+      ]
+    }
+  ]
+}
