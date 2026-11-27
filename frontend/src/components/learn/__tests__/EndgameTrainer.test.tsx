@@ -30,8 +30,8 @@ function open(id: string) {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('exercise data', () => {
-    it('34 legal positions, for mates — the optimum is within the limit', () => {
-        expect(EXERCISES).toHaveLength(34);
+    it('36 legal positions, for mates — the optimum is within the limit', () => {
+        expect(EXERCISES).toHaveLength(36);
         for (const e of EXERCISES) {
             const game = new Chess(e.fen);
             expect(game.isGameOver(), e.id).toBe(false);
@@ -42,7 +42,7 @@ describe('exercise data', () => {
 
     it('a list by goals', () => {
         render(<MemoryRouter><EndgamesPage/></MemoryRouter>);
-        expect(screen.getAllByTestId(/^endgame-/)).toHaveLength(34);
+        expect(screen.getAllByTestId(/^endgame-/)).toHaveLength(36);
         expect(screen.getByTestId('endgame-lucena')).toHaveTextContent('Lucena');
     });
 });
