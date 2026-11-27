@@ -1,7 +1,8 @@
 """
 Big Course level exams (task 27.12): a "rank test". For each level 0-5 -- a fixed set of positions by the
 course branches (tactics T, mate and attack M, endgame E, strategy S, calculation C) from src/services/data/level_exams.json
-(built by scripts/build_level_exams.py: CC0 database puzzles near the rank threshold, the answer verified by the engine --
+(built by scripts/build_level_exams.py: CC0 database puzzles near the rank threshold, except the strategy branch, which takes
+quiet moves from the tagged library games; the answer verified by the engine --
 the only one).
 The test runs through the same protocol as diagnostic 22.0 (/exam/level<n>/questions, /move and /submit): a question is an id
 by
