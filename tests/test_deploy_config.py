@@ -25,21 +25,15 @@ def _settings(monkeypatch, **env) -> Settings:
 
 # --- /health ---------------------------------------------------------------------------------
 
-@pytest.fixture
-def database_ok(monkeypatch):
-    async def ok():
-        return None
+# The database check answers by default in every test (autouse stub in conftest.py); the "down" test patches it.
 
-    monkeypatch.setattr(main_module, "_check_database", ok)
-
-
-def test_health_reports_ok_when_dependencies_answer(client, database_ok):
+def test_health_reports_ok_when_dependencies_answer(client):
     res = client.get("/health")
     assert res.status_code == 200
     assert res.json()["checks"] == {"database": "ok", "redis": "ok"}
 
 
-def test_health_is_503_when_redis_is_down(client, database_ok, monkeypatch):
+def test_health_is_503_when_redis_is_down(client, monkeypatch):
     from src.db import redis as redis_module
 
     async def broken_ping():
