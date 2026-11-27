@@ -143,7 +143,7 @@ export const COURSE: CourseModule[] = [
     mod('S3.6', 'S', [l('structure-maroczy'), lib('maroczy')]),
     mod('S3.7', 'S', [l('structure-isolated-pawn'), th('isolated_pawn'), lib('isolated_pawn')]),
     mod('S3.10', 'S', [tr('structure_quiz'), tr('plan_quiz')]),
-    mod('S3.8', 'S', [th('blockade'), th('overprotection'), th('centralization'), th('pawn_chain')]),
+    mod('S3.8', 'S', [l('strategy-centralisation'), th('blockade'), th('overprotection'), th('centralization'), th('pawn_chain')]),
     mod('S3.9', 'S', [l('structure-carlsbad'), th('minority_attack'), th('bishop_pair')]),
     mod('O3.1', 'O', [REPERTOIRE]),
     mod('O3.2', 'O', [games('e2e4 c7c5'), lib('maroczy'), lib('hedgehog'), REPERTOIRE]),

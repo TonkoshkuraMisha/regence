@@ -1,0 +1,185 @@
+{
+  "id": "strategy-centralisation",
+  "course": "strategy",
+  "order": 19,
+  "title": {
+    "en": "Centralisation: a knight that does several jobs",
+    "uk": "Централізація: кінь, що виконує кілька завдань"
+  },
+  "summary": {
+    "en": "A knight in the centre that no pawn can drive away guards, attacks and restricts at the same time; when the knight has to move, look for such a square first.",
+    "uk": "Кінь у центрі, якого не прожене жоден пішак, водночас захищає, нападає й обмежує; коли коню треба піти, спершу шукайте саме таке поле."
+  },
+  "steps": [
+    {
+      "type": "text",
+      "fen": "1r6/5kpp/2n2p2/4p3/4P1P1/1p1K1P2/1R4P1/N7 b - - 1 44",
+      "highlights": [
+        "d4",
+        "b3",
+        "c2"
+      ],
+      "arrows": [
+        {
+          "from": "e5",
+          "to": "d4",
+          "color": "blue"
+        }
+      ],
+      "text": {
+        "en": "Centralisation means putting a piece in the middle of the board, where it reaches both wings. It works best on a square that no enemy pawn can ever attack: then the piece stays there as long as you need it. Rubinstein – Salwe, 1905. Black's pawn on b3 is far advanced, and White's knight on a1 is waiting to take it or to come out via c2. The square d4 is protected by the pawn e5. To attack it a white pawn would have to stand on c3 or e3, but White has no c-pawn and the e-pawn has already gone past, to e4.",
+        "uk": "Централізація — це фігура посеред дошки, звідки вона дістає обидва фланги. Найкраще вона працює на полі, яке не може атакувати жоден пішак суперника: тоді фігура стоїть там, скільки потрібно. Рубінштейн – Сальве, 1905. Чорний пішак b3 зайшов далеко, а білий кінь a1 чекає нагоди взяти його або вийти через c2. Поле d4 захищає пішак e5. Щоб атакувати його, білий пішак мав би стояти на c3 або e3, але c-пішака в білих немає, а e-пішак уже пройшов далі, на e4."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "1r6/5kpp/2n2p2/4p3/4P1P1/1p1K1P2/1R4P1/N7 b - - 1 44",
+      "text": {
+        "en": "Black to move. Put the knight where it does the most work.",
+        "uk": "Хід чорних. Поставте коня туди, де він зробить найбільше."
+      },
+      "line": [
+        {
+          "answers": [
+            "c6d4"
+          ],
+          "correct": {
+            "en": "The knight on d4 protects the pawn b3 and takes the square c2, which the pawn b3 also attacks. The white knight on a1 has no good move: b3 is defended twice (the knight and the rook b8), c2 is covered. One centralised knight guards a passed pawn, walls in a whole enemy piece and cannot be chased away by a pawn.",
+            "uk": "Кінь на d4 захищає пішака b3 і забирає поле c2, яке б'є і сам пішак b3. Білий кінь a1 не має доброго ходу: b3 захищене двічі (кінь і тура b8), c2 під контролем. Один централізований кінь стереже прохідного, замикає цілу фігуру суперника, і пішаком його не прогнати."
+          }
+        }
+      ],
+      "hint": {
+        "en": "A knight move to the square that the e5 pawn protects.",
+        "uk": "Хід конем на поле, яке захищає пішак e5."
+      }
+    },
+    {
+      "type": "text",
+      "fen": "1r6/b2nkp2/r3p1pp/n2pP3/PP3P2/2P2N2/3BK1PP/RR6 b - - 0 29",
+      "highlights": [
+        "a5",
+        "b4",
+        "c4"
+      ],
+      "arrows": [
+        {
+          "from": "b4",
+          "to": "a5",
+          "color": "red"
+        }
+      ],
+      "text": {
+        "en": "Often the knight has to move because a pawn attacks it. Then do not just step back: compare the squares it can reach and choose the one in the centre that pawns cannot reach. Steinitz – Fleissig, 1873. The pawn b4 attacks the black knight on a5.",
+        "uk": "Часто коню доводиться йти, бо його атакує пішак. Тоді не просто відступайте: порівняйте поля, куди він може стати, і виберіть те, що в центрі й недосяжне для пішаків. Стейніц – Фляйсіг, 1873. Пішак b4 атакує чорного коня a5."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "1r6/b2nkp2/r3p1pp/n2pP3/PP3P2/2P2N2/3BK1PP/RR6 b - - 0 29",
+      "text": {
+        "en": "Black to move. The knight on a5 is attacked. Where does it go?",
+        "uk": "Хід чорних. Кінь a5 під ударом. Куди йому піти?"
+      },
+      "line": [
+        {
+          "answers": [
+            "a5c4"
+          ],
+          "correct": {
+            "en": "On c4 the knight is protected by the pawn d5, and no white pawn can ever attack it: the b-pawn has already passed, and there is no d-pawn. From c4 it attacks the bishop d2 and the pawn e5 and holds White's queenside. The retreat ...Nc6 keeps the material, but the engine rates it as equal; ...Nc4 gives Black a clear advantage.",
+            "uk": "На c4 коня захищає пішак d5, і жоден білий пішак його ніколи не атакує: b-пішак уже пройшов, а d-пішака немає. З c4 кінь нападає на слона d2 і пішака e5 та тримає ферзевий фланг білих. Відступ …Кc6 зберігає матеріал, але рушій оцінює його як рівність; …Кc4 дає чорним явну перевагу."
+          }
+        }
+      ],
+      "hint": {
+        "en": "The square the pawn d5 protects.",
+        "uk": "Поле, яке захищає пішак d5."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "5r2/7R/2pk2n1/pp2pP2/3p2P1/1P1P1P2/1PP5/3K4 b - - 0 43",
+      "text": {
+        "en": "Noa – Steinitz, 1883. Black to move. The pawn f5 attacks the knight on g6. Find the square from which the knight cannot be driven away.",
+        "uk": "Ноа – Стейніц, 1883. Хід чорних. Пішак f5 атакує коня g6. Знайдіть поле, звідки коня не прогнати."
+      },
+      "line": [
+        {
+          "answers": [
+            "g6f4"
+          ],
+          "correct": {
+            "en": "On f4 the knight is protected by the pawn e5. White has no e-pawn, and the g-pawn on g4 has already passed f4, so no pawn will ever attack it. From f4 it presses on d3 and watches e2, g2 and h3. The other retreats, ...Ne7 and ...Nh8, put the knight passively.",
+            "uk": "На f4 коня захищає пішак e5. Білого e-пішака немає, а g-пішак на g4 уже пройшов f4, тож жоден пішак його не атакує. З f4 кінь тисне на d3 і стереже e2, g2 та h3. Інші відступи, …Кe7 і …Кh8, ставлять коня пасивно."
+          }
+        }
+      ],
+      "hint": {
+        "en": "The knight goes forward, not back, onto the square the e5 pawn protects.",
+        "uk": "Кінь іде вперед, а не назад, на поле, яке захищає пішак e5."
+      }
+    }
+  ],
+  "exam": [
+    {
+      "type": "find_move",
+      "fen": "8/r1rb1k2/3p1pp1/np1Pp2p/pP2P2P/3KP1N1/R1P3P1/1R2N3 b - - 0 41",
+      "text": {
+        "en": "Lasker – Steinitz, 1894. Black to move. The pawn b4 attacks the knight on a5. Find its best square.",
+        "uk": "Ласкер – Стейніц, 1894. Хід чорних. Пішак b4 атакує коня a5. Знайдіть для нього найкраще поле."
+      },
+      "line": [
+        {
+          "answers": [
+            "a5c4"
+          ],
+          "correct": {
+            "en": "The knight on c4 is protected by the pawn b5, so the white king on d3 cannot take it, and White's b- and d-pawns have already gone past c4. From there it attacks the pawn e3 and the squares b2 and d2 and ties White down. ...Nc6? loses the knight to dxc6.",
+            "uk": "Коня на c4 захищає пішак b5, тож білий король d3 не може його взяти, а b- і d-пішаки білих уже пройшли c4. Звідти кінь нападає на пішака e3 і поля b2 та d2 та сковує білих. …Кc6? програє коня через dxc6."
+          }
+        }
+      ],
+      "hint": {
+        "en": "The square the pawn b5 protects.",
+        "uk": "Поле, яке захищає пішак b5."
+      }
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "A pawn attacks your knight. Which square should you look for first?",
+        "uk": "Пішак атакує вашого коня. Яке поле шукати насамперед?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "A central square protected by your pawn that no enemy pawn can ever attack",
+            "uk": "Центральне поле, яке захищає ваш пішак і яке ніколи не атакує жоден пішак суперника"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "The safest square near your own king",
+            "uk": "Найбезпечніше поле біля власного короля"
+          },
+          "feedback": {
+            "en": "A knight hiding at home does no work; safety alone is not a plan.",
+            "uk": "Кінь, що ховається вдома, нічого не робить; сама безпека — ще не план."
+          }
+        },
+        {
+          "text": {
+            "en": "A square on the edge where nothing can attack it",
+            "uk": "Поле на краю, де його ніщо не атакує"
+          },
+          "feedback": {
+            "en": "On the rim the knight controls few squares and is often trapped there.",
+            "uk": "На краю кінь контролює мало полів і часто там застрягає."
+          }
+        }
+      ]
+    }
+  ]
+}
