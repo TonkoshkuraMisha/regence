@@ -14,7 +14,9 @@ Rules (by the RULES registry):
   blockade     - a piece blocks the opponent's passed pawn;
   quiet_move   - a quiet move (not a capture or a check) that is much better than the rest;
   overload     - the opponent has an overloaded piece (a mentor detector), the move attacks it or one of its targets;
-  remove_defender - capture of the sole defender of an opponent piece, after which it is left undefended.
+  remove_defender - capture of the sole defender of an opponent piece, after which it is left undefended;
+  knight_outpost - a knight settles on a central pawn-guarded square that no opponent pawn can attack (S3.8);
+  minor_exchange - a minor piece trades itself for a defended opponent minor piece (choice of exchange, S4.10).
 
     python -m scripts.dev.mine_lesson_positions --rule interference --limit 12 --out interference.json
 """
@@ -149,9 +151,44 @@ def rule_remove_defender(board: chess.Board, move: chess.Move) -> bool:
     return False
 
 
+OUTPOST_FILES = range(2, 6)  # files c-f: a knight there reaches both wings and the centre
+OUTPOST_RANKS = range(3, 6)  # the mover's 4th-6th rank: in the opponent's half or on its border
+MIDDLEGAME_FROM_MOVE = 12  # earlier moves are opening theory, not a plan
+MINOR_PIECES = (chess.KNIGHT, chess.BISHOP)
+
+
+def rule_knight_outpost(board: chess.Board, move: chess.Move) -> bool:
+    """A knight goes (not capturing) to a central square of the 4th-6th rank that is guarded by its own pawn and that no
+    opponent pawn can ever attack (no opponent pawn on a neighbouring file further up the board)."""
+    mover, enemy = board.turn, not board.turn
+    piece = board.piece_at(move.from_square)
+    if (piece is None or piece.piece_type != chess.KNIGHT or board.is_capture(move)
+            or board.fullmove_number < MIDDLEGAME_FROM_MOVE):
+        return False
+    square = move.to_square
+    file_, rank = chess.square_file(square), relative_rank(square, mover)
+    if file_ not in OUTPOST_FILES or rank not in OUTPOST_RANKS:
+        return False
+    if not any(board.piece_at(s) == chess.Piece(chess.PAWN, mover) for s in board.attackers(mover, square)):
+        return False
+    return not any(abs(chess.square_file(p) - file_) == 1 and relative_rank(p, mover) > rank
+                   for p in board.pieces(chess.PAWN, enemy))
+
+
+def rule_minor_exchange(board: chess.Board, move: chess.Move) -> bool:
+    """A minor piece takes a defended minor piece (an exchange, not a win of material): the choice of which piece to trade."""
+    mover = board.turn
+    piece, target = board.piece_at(move.from_square), board.piece_at(move.to_square)
+    return (piece is not None and target is not None and piece.piece_type in MINOR_PIECES
+            and target.piece_type in MINOR_PIECES and target.color != mover
+            and bool(board.attackers(not mover, move.to_square)) and not board.gives_check(move)
+            and board.fullmove_number >= MIDDLEGAME_FROM_MOVE)
+
+
 RULES = {"interference": rule_interference, "rook_lift": rule_rook_lift, "pawn_storm": rule_pawn_storm,
          "blockade": rule_blockade, "quiet_move": rule_quiet_move, "overload": rule_overload,
-         "remove_defender": rule_remove_defender}
+         "remove_defender": rule_remove_defender, "knight_outpost": rule_knight_outpost,
+         "minor_exchange": rule_minor_exchange}
 
 
 def candidates(rule_name: str):
