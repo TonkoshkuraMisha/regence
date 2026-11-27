@@ -2595,6 +2595,8 @@ export const uk: Messages = {
             q_vs_a_pawn_def: 'Захист: пішак a проти ферзя (пат)',
             opposite_bishops_def: 'Захист: різнопольні слони',
             vancura: 'Захист: позиція Ванчури',
+            fortress_q_vs_rook: 'Фортеця: тура й пішак проти ферзя',
+            fortress_opposite_bishops: 'Фортеця: різнокольорові слони, на два пішаки менше',
             study_saavedra: 'Етюд: позиція Сааведри (1895)',
             study_reti: 'Етюд Реті (1921): за двома зайцями',
         },

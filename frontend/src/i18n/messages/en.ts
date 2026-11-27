@@ -2591,6 +2591,8 @@ export const en = {
             q_vs_a_pawn_def: 'Defence: a-pawn against the queen (stalemate)',
             opposite_bishops_def: 'Defence: opposite-coloured bishops',
             vancura: 'Defence: Vančura position',
+            fortress_q_vs_rook: 'Fortress: rook and pawn against the queen',
+            fortress_opposite_bishops: 'Fortress: opposite-coloured bishops, two pawns down',
             study_saavedra: 'Study: Saavedra position (1895)',
             study_reti: 'Study: Réti (1921) — chasing two hares',
         },
