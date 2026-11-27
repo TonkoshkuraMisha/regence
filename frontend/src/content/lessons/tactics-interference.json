@@ -1,0 +1,217 @@
+{
+  "id": "tactics-interference",
+  "course": "tactics",
+  "order": 31,
+  "title": {
+    "en": "Interference",
+    "uk": "Перекриття"
+  },
+  "summary": {
+    "en": "Put a piece on the line between an enemy defender and the piece it protects: the protection is cut off and the piece falls.",
+    "uk": "Поставте фігуру на лінію між захисником суперника і фігурою, яку він захищає: захист обривається, і фігура пропадає."
+  },
+  "steps": [
+    {
+      "type": "text",
+      "fen": "1r4k1/3b3p/6p1/3Pqp2/2B5/5Q1P/3b1PP1/1R4K1 w - - 3 39",
+      "highlights": [
+        "e5",
+        "d6",
+        "b8"
+      ],
+      "arrows": [
+        {
+          "from": "e5",
+          "to": "b8",
+          "color": "red"
+        },
+        {
+          "from": "d5",
+          "to": "d6",
+          "color": "green"
+        }
+      ],
+      "text": {
+        "en": "Black's queen on e5 guards the rook on b8 along the long diagonal. Everything the queen protects depends on that line staying open. Interference puts a piece right on the line - here a pawn steps to d6 - and the protection is gone. A piece that guarded something stops guarding it, and the opponent usually has no time to repair the damage.",
+        "uk": "Ферзь чорних на e5 захищає туру b8 вздовж довгої діагоналі. Усе, що захищає ферзь, тримається на тому, що лінія лишається відкритою. Перекриття ставить фігуру прямо на лінію - тут пішак іде на d6 - і захист зникає. Фігура, що щось захищала, більше цього не робить, а в суперника зазвичай немає часу виправити шкоду."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "1r4k1/3b3p/6p1/3Pqp2/2B5/5Q1P/3b1PP1/1R4K1 w - - 3 39",
+      "text": {
+        "en": "White to move. Which move cuts the queen off from the rook and gives check at the same time?",
+        "uk": "Хід білих. Який хід відрізає ферзя від тури і водночас дає шах?"
+      },
+      "line": [
+        {
+          "answers": [
+            "d5d6"
+          ],
+          "reply": "g8g7",
+          "correct": {
+            "en": "The pawn blocks the diagonal e5-b8, and moving it uncovers the bishop on c4: check. The king must move, the queen cannot guard the rook any more.",
+            "uk": "Пішак перекриває діагональ e5-b8, а його хід відкриває слона c4: шах. Король мусить піти, ферзь більше не захищає туру."
+          }
+        },
+        {
+          "answers": [
+            "b1b8"
+          ],
+          "correct": {
+            "en": "The rook on b8 falls: nobody defends it.",
+            "uk": "Тура b8 пропадає: її ніхто не захищає."
+          }
+        }
+      ],
+      "hint": {
+        "en": "A pawn move with a discovered check.",
+        "uk": "Хід пішака з відкритим шахом."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "r5qk/ppp2p1p/4bpr1/7R/3PPP2/5Q2/PP1N2PP/5RK1 b - - 2 22",
+      "text": {
+        "en": "Black to move. The white queen defends the rook on h5 along the diagonal f3-h5. Cut that line.",
+        "uk": "Хід чорних. Білий ферзь захищає туру h5 вздовж діагоналі f3-h5. Перекрийте цю лінію."
+      },
+      "line": [
+        {
+          "answers": [
+            "e6g4"
+          ],
+          "reply": "f3d3",
+          "correct": {
+            "en": "The bishop steps between the queen and the rook and attacks the queen. If the queen takes it, the rook on g6 recaptures.",
+            "uk": "Слон стає між ферзем і турою й нападає на ферзя. Якщо ферзь його візьме, тура g6 поверне матеріал."
+          }
+        },
+        {
+          "answers": [
+            "g4h5"
+          ],
+          "correct": {
+            "en": "The queen had to run, and the rook on h5, which nothing protects now, is lost.",
+            "uk": "Ферзь мусив тікати, і тура h5, яку тепер ніхто не захищає, пропала."
+          }
+        }
+      ],
+      "hint": {
+        "en": "The bishop goes to the square between the two white pieces.",
+        "uk": "Слон іде на поле між двома білими фігурами."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "3r2k1/2p1qppp/p3p3/1p2P3/5P2/PpPrP3/1B2Q1PP/R4RK1 b - - 1 22",
+      "text": {
+        "en": "Black to move. The queen on e2 protects the bishop on b2 along the second rank. Find the interference.",
+        "uk": "Хід чорних. Ферзь e2 захищає слона b2 вздовж другої горизонталі. Знайдіть перекриття."
+      },
+      "line": [
+        {
+          "answers": [
+            "d3d2"
+          ],
+          "reply": "e2f3",
+          "correct": {
+            "en": "The rook steps onto d2 between the queen and the bishop and attacks both. The queen cannot take it because the rook on d8 protects it.",
+            "uk": "Тура стає на d2 між ферзем і слоном і нападає на обох. Ферзь не може її взяти, бо туру захищає тура d8."
+          }
+        },
+        {
+          "answers": [
+            "d2b2"
+          ],
+          "correct": {
+            "en": "The bishop on b2 has lost its protection and is captured.",
+            "uk": "Слон b2 втратив захист і програний."
+          }
+        }
+      ],
+      "hint": {
+        "en": "A rook move that attacks two pieces.",
+        "uk": "Хід турою, що нападає на дві фігури."
+      }
+    },
+    {
+      "type": "text",
+      "text": {
+        "en": "In all three positions the winning move did not capture anything at first: it went onto a line between two enemy pieces. Before you move, look at what each enemy piece protects and along which line. If you can step onto that line safely - ideally with a threat, a check or an attack - the protection is cut and a piece is yours.",
+        "uk": "У всіх трьох позиціях виграшний хід спершу нічого не брав: він ставав на лінію між двома фігурами суперника. Перш ніж ходити, подивіться, що захищає кожна фігура суперника й вздовж якої лінії. Якщо можна безпечно стати на цю лінію - найкраще з загрозою, шахом чи нападом - захист обривається, і фігура ваша."
+      }
+    }
+  ],
+  "exam": [
+    {
+      "type": "find_move",
+      "fen": "r4r2/pp4b1/2ppq1kp/8/1PP1pPb1/6Q1/P3P1BP/1R3RK1 w - - 2 21",
+      "text": {
+        "en": "White to move. The queen on e6 protects the bishop on g4. Cut that protection with a check.",
+        "uk": "Хід білих. Ферзь e6 захищає слона g4. Обірвіть цей захист із шахом."
+      },
+      "line": [
+        {
+          "answers": [
+            "f4f5"
+          ],
+          "reply": "f8f5",
+          "correct": {
+            "en": "The pawn checks the king and stands between the queen and the bishop; if it is taken, the bishop is left alone.",
+            "uk": "Пішак дає шах королю й стає між ферзем і слоном; якщо його взяти, слон лишається без захисту."
+          }
+        },
+        {
+          "answers": [
+            "g3g4"
+          ],
+          "correct": {
+            "en": "Check, and the bishop on g4 is captured.",
+            "uk": "Шах, і слон g4 захоплений."
+          }
+        }
+      ],
+      "hint": {
+        "en": "A pawn move with check.",
+        "uk": "Хід пішака з шахом."
+      }
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "What do you look for to find an interference?",
+        "uk": "Що ви шукаєте, щоб знайти перекриття?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "A line along which one enemy piece protects another",
+            "uk": "Лінію, вздовж якої одна фігура суперника захищає іншу"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "The enemy king's escape squares",
+            "uk": "Поля відходу короля суперника"
+          },
+          "feedback": {
+            "en": "That is a search for a mate, not for an interference.",
+            "uk": "Це пошук мату, а не перекриття."
+          }
+        },
+        {
+          "text": {
+            "en": "Your own pieces that are attacked",
+            "uk": "Свої фігури, що опинилися під ударом"
+          },
+          "feedback": {
+            "en": "First look at what the opponent's pieces protect: the interference cuts that protection.",
+            "uk": "Спершу подивіться, що захищають фігури суперника: перекриття обриває цей захист."
+          }
+        }
+      ]
+    }
+  ]
+}
