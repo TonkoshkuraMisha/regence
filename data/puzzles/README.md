@@ -13,7 +13,8 @@ by the recognisers in `src/services/theme_detectors.py` and the mate classifier,
 the main selection. Build: `uv run --with zstandard python -m scripts.dev.build_theme_extra <database.csv.zst>`.
 
 `endgame_generated.csv.gz` - our own puzzles on endgame technique (opposition, key squares, outflanking, the rule of the square,
-the "wrong" bishop): the open database has almost none. The positions are built by `scripts/dev/build_endgame_puzzles.py` and verified against
+the "wrong" bishop) and on the stalemate defence of a queen against a bishop or rook pawn on the seventh (task 27.9, theme
+`save_by_stalemate` for "Save the game"): the open database has almost none. The positions are built by `scripts/dev/build_endgame_puzzles.py` and verified against
 endgame tablebases: a puzzle is taken only if exactly one move is correct. Same format; the theme is the tag
 `regence:<registry code>`, the source in the database is `regence` (until 19.11.2026 - `michess`; old records were renamed by a migration). Build (needs network, about an hour):
 `uv run python -m scripts.dev.build_endgame_puzzles`.
