@@ -1,7 +1,7 @@
 // Board settings (task 18.4): storage, the order of captured pieces, "quick move"; on the board — the last move arrow,
 // a quick move and the animation of the opponent's move.
 
-import {act, fireEvent, render, screen} from '@testing-library/react';
+import {act, fireEvent, render, screen, waitFor} from '@testing-library/react';
 import {MemoryRouter} from 'react-router-dom';
 import {Chess} from 'chess.js';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
@@ -13,6 +13,10 @@ import {resetBotCatalogCache} from '../../services/botCatalog';
 import {setToken} from '../../services/authToken';
 import {mockFetchRouter} from '../../test/mocks';
 import {openBots} from '../../test/newGame';
+
+// How long the board test waits for the bot's reply and its animation: generous because the full suite runs in
+// parallel workers and a mocked reply can still take seconds there (the test's own limit is 20 s).
+const BOT_REPLY_WAIT_MS = 5000;
 
 vi.mock('../../services/gameSocket', () => ({gameSocket: {connect: vi.fn(), disconnect: vi.fn(), send: vi.fn(), on: vi.fn(), off: vi.fn()}}));
 vi.mock('../../services/soundEngine', async (importOriginal) => ({
@@ -88,16 +92,15 @@ describe('settings on the board', () => {
         await startBotGame();
         await act(async () => fireEvent.click(squareEl('e4')));   // only the pawn e2 can take e4
         expect(screen.getByText('e4')).toBeInTheDocument();
-        expect(await screen.findByTestId('last-move-arrow')).toBeInTheDocument();
-        // The bot's reply (e7e5) is animated.
-        const sliding = await screen.findByTestId('move-animation');
+        expect(await screen.findByTestId('last-move-arrow', {}, {timeout: BOT_REPLY_WAIT_MS})).toBeInTheDocument();
+        // The bot's reply (e7e5) is animated. The reply goes through the mocked request and the hook's minimum think
+        // pause, which under a full parallel run takes longer than the default 1 s of findBy; the animation node is
+        // caught by the DOM observer as soon as it is inserted, so a wider wait does not miss its short life.
+        const sliding = await screen.findByTestId('move-animation', {}, {timeout: BOT_REPLY_WAIT_MS});
         // The piece is already on its own square (the squares show the real position) and slides there from the old one.
         expect(squareEl('e5').contains(sliding)).toBe(true);
         expect(sliding.querySelector('img')).not.toBeNull();
-        await act(async () => {
-            await new Promise((resolve) => setTimeout(resolve, 300));
-        });
-        expect(screen.queryByTestId('move-animation')).toBeNull();
+        await waitFor(() => expect(screen.queryByTestId('move-animation')).toBeNull(), {timeout: BOT_REPLY_WAIT_MS});
         setToken(null);
     }, 20_000);  // under load (coverage measurement, CI) the default 5 s was not enough
 
