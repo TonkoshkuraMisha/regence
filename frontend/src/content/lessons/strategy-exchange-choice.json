@@ -1,0 +1,165 @@
+{
+  "id": "strategy-exchange-choice",
+  "course": "strategy",
+  "order": 20,
+  "title": {
+    "en": "Which exchange is right?",
+    "uk": "Який розмін правильний?"
+  },
+  "summary": {
+    "en": "Every exchange changes the position. Before you capture, ask what stays on the board and who benefits: trade to damage his pawns, to remove his best piece or a defender, or to gain time.",
+    "uk": "Кожен розмін змінює позицію. Перш ніж брати, спитайте себе, що лишиться на дошці і кому це вигідно: міняйте, щоб зіпсувати пішаки суперника, прибрати його найкращу фігуру чи захисника або виграти темп."
+  },
+  "steps": [
+    {
+      "type": "text",
+      "fen": "r2q1rk1/pppbnppp/3p1n2/bB1P4/4P3/N4N2/PB3PPP/R2Q1RK1 w - - 1 13",
+      "highlights": [
+        "b2",
+        "f6",
+        "g7"
+      ],
+      "arrows": [
+        {
+          "from": "b2",
+          "to": "f6",
+          "color": "green"
+        }
+      ],
+      "text": {
+        "en": "A capture of a piece for an equal piece looks like nothing happens, but the position afterwards is different. Good reasons to trade: the recapture spoils the opponent's pawns; it removes his most active piece or the piece that defends something; it gains a tempo. Bad reason: \"I can, so I take\". Chigorin – Steinitz, 1892. White's bishop on b2 looks at the knight f6.",
+        "uk": "Розмін фігури на рівноцінну здається порожнім ходом, але позиція після нього інша. Добрі причини міняти: відбирання псує пішаки суперника; розмін прибирає його найактивнішу фігуру або ту, що щось захищає; розмін виграє темп. Погана причина: «можу — то й беру». Чигорін – Стейніц, 1892. Білий слон b2 дивиться на коня f6."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "r2q1rk1/pppbnppp/3p1n2/bB1P4/4P3/N4N2/PB3PPP/R2Q1RK1 w - - 1 13",
+      "text": {
+        "en": "White to move. Choose the exchange that leaves Black with a lasting weakness.",
+        "uk": "Хід білих. Виберіть розмін, після якого в чорних лишиться тривала слабкість."
+      },
+      "line": [
+        {
+          "answers": [
+            "b2f6"
+          ],
+          "correct": {
+            "en": "Bxf6! Black has to take back with the g-pawn: the knight e7 blocks the queen's way to f6. The king loses its g-pawn, the f-pawns are doubled and h7 is isolated, and this damage stays for the whole game. White gives up the bishop pair for it. The other trade, Bxd7, is met by ...Nxd7, and Black's pawns stay healthy.",
+            "uk": "Сxf6! Чорні мусять відбирати пішаком g: кінь e7 закриває ферзю дорогу на f6. Король втрачає пішака g, f-пішаки здвоєні, h7 ізольований, і ця шкода лишається до кінця партії. Білі віддають за це двох слонів. Інший розмін, Сxd7, зустрічає …Кxd7, і пішаки чорних лишаються здоровими."
+          }
+        }
+      ],
+      "hint": {
+        "en": "Think about which pawn Black will have to recapture with.",
+        "uk": "Подумайте, яким пішаком чорним доведеться відбирати."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "r4rk1/2p1npp1/pb5p/8/BPN1n3/2P2N2/5PPP/R4RK1 w - - 0 22",
+      "text": {
+        "en": "Steinitz – Chigorin, 1892. White to move. Black's bishop on b6 aims at f2, next to White's king. Deal with Black's best piece.",
+        "uk": "Стейніц – Чигорін, 1892. Хід білих. Чорний слон b6 цілить у f2 поруч із білим королем. Розберіться з найкращою фігурою чорних."
+      },
+      "line": [
+        {
+          "answers": [
+            "c4b6"
+          ],
+          "correct": {
+            "en": "Nxb6 cxb6 removes Black's most active piece, his only bishop. Black has to recapture with the c-pawn and is left with weak pawns on a6 and b6 and no c-pawn to support them. Slow moves such as Rfc1 allow ...Bxf2+.",
+            "uk": "Кxb6 cxb6 прибирає найактивнішу фігуру чорних — їхнього єдиного слона. Чорні мусять відбирати пішаком c і лишаються зі слабкими пішаками a6 і b6 без c-пішака поруч. Повільні ходи на кшталт Тfc1 дозволяють …Сxf2+."
+          }
+        }
+      ],
+      "hint": {
+        "en": "A knight can take the bishop.",
+        "uk": "Кінь може взяти слона."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "3r2k1/Q1p1qppp/8/1p1bP3/8/2P2N2/2P2PPP/5RK1 b - - 0 19",
+      "text": {
+        "en": "Gelbfuhs – Steinitz, 1873. Black to move. The pawn e5 is attacked by the queen e7 and defended only by the knight f3.",
+        "uk": "Гельбфус – Стейніц, 1873. Хід чорних. Пішака e5 атакує ферзь e7, а захищає лише кінь f3."
+      },
+      "line": [
+        {
+          "answers": [
+            "d5f3"
+          ],
+          "correct": {
+            "en": "...Bxf3! removes the defender. After gxf3 the g-file is open, ...Qg5+ comes with check, and after Kh1 Black takes the pawn e5. Material is level again, and White's kingside pawns f2, f3 and h2 are broken. If Black waits (...h6), White defends e5 with Re1.",
+            "uk": "…Сxf3! прибирає захисника. Після gxf3 лінія g відкрита, …Фg5+ іде з шахом, а після Крh1 чорні беруть пішака e5. Матеріал знову рівний, а пішаки білих f2, f3 і h2 на королівському фланзі розбиті. Якщо чорні зволікають (…h6), білі захищають e5 ходом Тe1."
+          }
+        }
+      ],
+      "hint": {
+        "en": "Trade the piece that defends e5.",
+        "uk": "Розміняйте фігуру, що захищає e5."
+      }
+    }
+  ],
+  "exam": [
+    {
+      "type": "find_move",
+      "fen": "3r2k1/5npp/4pp2/1b6/1p2P1P1/5P2/1R2B1P1/2N3K1 b - - 0 37",
+      "text": {
+        "en": "Rubinstein – Salwe, 1905. Black to move. The bishop on b5 is attacked by the bishop e2, and the rook b2 attacks the pawn b4.",
+        "uk": "Рубінштейн – Сальве, 1905. Хід чорних. Слона b5 атакує слон e2, а тура b2 нападає на пішака b4."
+      },
+      "line": [
+        {
+          "answers": [
+            "b5e2"
+          ],
+          "correct": {
+            "en": "...Bxe2! White must take back, and either way Black keeps b4: after Rxe2 the rook no longer attacks it, after Nxe2 Black has the tempo for ...Rb8. The retreat ...Be8 simply loses the pawn to Rxb4. Here the exchange gains time.",
+            "uk": "…Сxe2! Білі мусять відбирати, і так чи так чорні зберігають b4: після Тxe2 тура вже не нападає на нього, після Кxe2 у чорних є темп на …Тb8. Відступ …Сe8 просто віддає пішака: Тxb4. Тут розмін виграє темп."
+          }
+        }
+      ],
+      "hint": {
+        "en": "Trade the attacked bishop instead of retreating it.",
+        "uk": "Розміняйте атакованого слона замість відступу."
+      }
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "Which of these is NOT a good reason to exchange pieces?",
+        "uk": "Що з цього НЕ є доброю причиною для розміну?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "The capture is possible, so why not",
+            "uk": "Узяти можна, то чому б і ні"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "The recapture spoils the opponent's pawns",
+            "uk": "Відбирання псує пішаки суперника"
+          },
+          "feedback": {
+            "en": "A good reason: weak pawns stay for the rest of the game.",
+            "uk": "Добра причина: слабкі пішаки лишаються до кінця партії."
+          }
+        },
+        {
+          "text": {
+            "en": "It removes the piece that defends his weak point",
+            "uk": "Розмін прибирає фігуру, що захищає його слабке місце"
+          },
+          "feedback": {
+            "en": "A good reason: without the defender the weakness falls.",
+            "uk": "Добра причина: без захисника слабкість падає."
+          }
+        }
+      ]
+    }
+  ]
+}

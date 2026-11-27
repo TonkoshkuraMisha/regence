@@ -176,9 +176,12 @@ def rule_knight_outpost(board: chess.Board, move: chess.Move) -> bool:
 
 
 def rule_minor_exchange(board: chess.Board, move: chess.Move) -> bool:
-    """A minor piece takes a defended minor piece (an exchange, not a win of material): the choice of which piece to trade."""
+    """A minor piece takes a defended minor piece (an exchange, not a win of material): the choice of which piece to trade.
+    A recapture on the square the opponent has just captured on is not a choice and is skipped (needs the move stack)."""
     mover = board.turn
     piece, target = board.piece_at(move.from_square), board.piece_at(move.to_square)
+    if board.move_stack and board.peek().to_square == move.to_square:
+        return False
     return (piece is not None and target is not None and piece.piece_type in MINOR_PIECES
             and target.piece_type in MINOR_PIECES and target.color != mover
             and bool(board.attackers(not mover, move.to_square)) and not board.gives_check(move)
@@ -225,6 +228,8 @@ def main() -> None:
     parser.add_argument("--time", type=float, default=0.8)
     parser.add_argument("--margin", type=int, default=150)
     parser.add_argument("--min-score", type=int, default=120)
+    # A strategy lesson needs a calm position: a best move worth +500 is a tactic, not a positional choice.
+    parser.add_argument("--max-score", type=int, default=MATE_SCORE, help="upper bound of the best move's evaluation")
     parser.add_argument("--max-candidates", type=int, default=600)
     parser.add_argument("--out", type=pathlib.Path, required=True)
     args = parser.parse_args()
@@ -241,7 +246,7 @@ def main() -> None:
             if len(infos) < 2 or infos[0]["pv"][0] != move:
                 continue
             scores = [i["score"].pov(board.turn).score(mate_score=MATE_SCORE) for i in infos]
-            if scores[0] >= args.min_score and scores[0] - scores[1] >= args.margin:
+            if args.min_score <= scores[0] <= args.max_score and scores[0] - scores[1] >= args.margin:
                 item = {"fen": fen, "move": move.uci(), "san": board.san(move), "game": game, "rule": args.rule,
                         "scores": scores}
                 found.append(item)
