@@ -120,7 +120,7 @@ that were read, intermediate diffs, rejected options.
   `frontend/src/services/http.ts` (`apiRequest` / `apiFetch`; there is no own `fetch` anywhere); in tests a move is
   made by clicks through `frontend/src/test/boardMoves.ts`.
 - **Library, course, repertoire:** `src/services/library.py` (PGN import, `repair_text`, `ends_in_mate`),
-  `pawn_structures.py`, `cbh_reader.py`, `structure_quiz.py`, `miniatures.py`, `repertoire*.py`; frontend
+  `pawn_structures.py`, `game_themes.py`, `cbh_reader.py`, `structure_quiz.py`, `miniatures.py`, `repertoire*.py`; frontend
   `content/supercourse.ts`, `content/mustKnow.ts`, `components/learn/SupercoursePage.tsx`, `components/library/`,
   `components/repertoire/`.
 - **Frontend — sections:** `components/puzzles/` (`PuzzlesPage.tsx`, `PuzzleBoard.tsx`, `DefenseTrainer.tsx`,

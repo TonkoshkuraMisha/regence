@@ -366,11 +366,12 @@ For each section: what it does → files → where the data comes from → how i
   `scripts/build_collections.py`).
 - **The game library** (`library.py`): a tree of collections, visibility (public, owner's, service). On import only the
   headers and the main line are taken — comments and variations from editions are not. Pawn structure markup —
-  `pawn_structures.py`. The rules for working with materials — `docs/research/books-library-review.md`, annotations —
+  `pawn_structures.py`; theme marks (tactics that won material, from the mentor's static motif detector, no engine) —
+  `game_themes.py`, column `library_games.themes`, filter `theme` of `GET /library/games`. The rules for working with materials — `docs/research/books-library-review.md`, annotations —
   `docs/research/library-annotations.md`.
 - **Import of one's own games** from lichess and chess.com (`game_import.py`): by nickname through open APIs or by
   pasting PGN.
-- **Tests.** `library`, `library_text`, `library_annotations`, `pawn_structures`, `cbh_reader`, `watch`,
+- **Tests.** `library`, `library_text`, `library_annotations`, `pawn_structures`, `game_themes`, `cbh_reader`, `watch`,
   `game_import`, `pgn_normalization`.
 
 ### 4.13. Social

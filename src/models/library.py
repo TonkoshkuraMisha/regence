@@ -73,6 +73,8 @@ class LibraryGame(Base):
     mate_finish: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", index=True)
     # A material sacrifice and the winner's mate (src/services/beauty.py, task 27.5).
     beautiful: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", index=True)
+    # Tactical themes that paid off, ",fork,pin," (src/services/game_themes.py, task 27.5); empty for none.
+    themes: Mapped[str] = mapped_column(String(200), default="", server_default="")
     moves: Mapped[str] = mapped_column(Text, default="", server_default="")  # UCI separated by spaces
     # The game is laid out into the library position index (position_library_games, src/services/position_index.py).
     positions_indexed: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")

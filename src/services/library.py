@@ -27,6 +27,8 @@ from src.models.user import User
 from src.services import openings, pawn_structures, position_index
 from src.services.beauty import is_beautiful
 from src.services.game_engine import normalize_result
+from src.services.game_themes import encode as encode_themes
+from src.services.game_themes import game_themes
 
 STANDARD_FEN = chess.STARTING_FEN
 # The main line length limit, plies: a longer one is left truncated rather than rejected.
@@ -249,7 +251,8 @@ async def import_games(db: AsyncSession, collection: LibraryCollection, games: I
                                   eco=parsed.eco, opening=parsed.opening, start_fen=parsed.start_fen,
                                   plies=len(parsed.moves), moves=" ".join(parsed.moves),
                                   structure=structure_of(parsed), mate_finish=ends_in_mate(parsed.start_fen, parsed.moves),
-                                  beautiful=is_beautiful(parsed.start_fen, parsed.moves))
+                                  beautiful=is_beautiful(parsed.start_fen, parsed.moves),
+                                  themes=encode_themes(game_themes(parsed.start_fen, parsed.moves)))
                 db.add(row)
                 await db.flush()
                 # Positions of the new game go into the library index: examples under a position in the openings reference

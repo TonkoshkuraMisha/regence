@@ -84,6 +84,14 @@ describe('game library', () => {
         expect(mock.mock.calls.some(([u]) => String(u).includes('/games?beautiful=true'))).toBe(true);
     });
 
+    it('the "theme" tag (27.5): the chosen tactic goes into the search', async () => {
+        const mock = stub();
+        await act(async () => render(<MemoryRouter><LibraryPage/></MemoryRouter>));
+        fireEvent.change(screen.getByTestId('library-theme'), {target: {value: 'fork'}});
+        await act(async () => fireEvent.click(screen.getByTestId('library-search-submit')));
+        expect(mock.mock.calls.some(([u]) => String(u).includes('/games?theme=fork'))).toBe(true);
+    });
+
     it('a network error is shown', async () => {
         vi.stubGlobal('fetch', vi.fn(async () => {
             throw new Error('offline');

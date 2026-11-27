@@ -19,6 +19,8 @@ from src.models.user import User
 from src.services import library, pawn_structures
 from src.services import miniatures as miniatures_service
 from src.services import structure_quiz as structure_quiz_service
+from src.services.game_themes import GAME_THEMES
+from src.services.game_themes import decode as decode_themes
 
 router = APIRouter(dependencies=[Depends(rate_limit("library", "RATE_LIMIT_PUZZLES"))])
 
@@ -38,7 +40,7 @@ async def optional_user(request: Request, db: AsyncSession = Depends(get_db)) ->
 def _row(game: LibraryGame) -> dict:
     return {"id": game.id, "white": game.white, "black": game.black, "event": game.event, "site": game.site,
             "date": game.date, "year": game.year, "result": game.result, "eco": game.eco, "opening": game.opening,
-            "plies": game.plies, "structure": game.structure}
+            "plies": game.plies, "structure": game.structure, "themes": decode_themes(game.themes)}
 
 
 def _visible_game(user: User | None):
@@ -99,6 +101,7 @@ async def search(player: str = Query("", max_length=60), eco: str = Query("", ma
                  year_from: int | None = Query(None, ge=1400, le=2200), year_to: int | None = Query(None, ge=1400, le=2200),
                  result: str = Query("", max_length=7), max_plies: int | None = Query(None, ge=1, le=1000),
                  structure: str = Query("", max_length=20), miniature: bool = Query(False), beautiful: bool = Query(False),
+                 theme: str = Query("", max_length=24),
                  moves: str = Query("", max_length=400, pattern=r"^[a-h1-8qrbn ]*$"),
                  offset: int = Query(0, ge=0), limit: int = Query(PAGE, ge=1, le=200),
                  db: AsyncSession = Depends(get_db), user: User | None = Depends(optional_user)):
@@ -106,7 +109,8 @@ async def search(player: str = Query("", max_length=60), eco: str = Query("", ma
     Search over visible games: player (part of the name), opening code (prefix), years, result, length, structure; moves -
     the start of the game in UCI separated by spaces (a repertoire node, 27.10; without transpositions); miniature - the
     "miniature" mark (27.5):
-    a decisive game no longer than miniatures.MAX_PLIES plies (25 moves); beautiful - the "beautiful" mark (beauty.py).
+    a decisive game no longer than miniatures.MAX_PLIES plies (25 moves); beautiful - the "beautiful" mark (beauty.py);
+    theme - a tactic that paid off in the game (game_themes.py).
     """
     conditions = [_visible_game(user)]
     if player.strip():
@@ -129,6 +133,8 @@ async def search(player: str = Query("", max_length=60), eco: str = Query("", ma
         conditions.append(LibraryGame.result.in_(DECISIVE))
     if beautiful:
         conditions.append(LibraryGame.beautiful.is_(True))
+    if theme in GAME_THEMES:
+        conditions.append(LibraryGame.themes.contains(f",{theme},", autoescape=True))
     prefix = " ".join(moves.split())
     if prefix:
         conditions.append((LibraryGame.moves == prefix) | LibraryGame.moves.startswith(prefix + " ", autoescape=True))
