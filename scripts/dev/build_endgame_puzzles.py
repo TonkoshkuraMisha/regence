@@ -10,6 +10,15 @@ opponent's move, the first move in Moves is his. Rating - by the depth of the re
 Deterministic (--seed); needs network; not run in CI. Loading into the database - scripts/import_puzzles.py (source
 "regence", the theme comes from the tag).
 
+Stalemate defence (task 27.9, "Save the game"): a queen against a bishop or rook pawn on its seventh rank, the queen
+watching the promotion square and the white king far away, the weaker side to move. By the theory of this ending a queen
+beats every other pawn on the seventh, and against a/c/f/h pawns the defence holds only thanks to stalemate (...Ka1, and
+Qxc2 is stalemate; the king in front of the rook pawn). So a puzzle is taken when the tablebases give exactly one drawing
+move and it is a king move (a drawing promotion is not this theme). Theme save_by_stalemate.
+
+Re-running with --themes keeps the rows of the other themes already in the output file (only the requested themes are
+rebuilt), so one theme can be added without regenerating the whole file.
+
 Lucena and Philidor are left out deliberately: in these rook positions there are almost always several correct moves
 (measured 16.11.2026: of 70 Lucena and 50 Philidor positions - none with a single move), while a puzzle accepts one.
 These techniques are practised in the endgame trainer (frontend/src/content/endgames.json: lucena, philidor), where any
@@ -65,7 +74,7 @@ def place(pieces: dict[chess.Square, chess.Piece], turn: chess.Color) -> chess.B
     return board if board.is_valid() and not board.is_check() else None
 
 
-K, P, B, R, N = chess.KING, chess.PAWN, chess.BISHOP, chess.ROOK, chess.KNIGHT
+K, P, B, R, N, Q = chess.KING, chess.PAWN, chess.BISHOP, chess.ROOK, chess.KNIGHT, chess.QUEEN
 W, BL = chess.WHITE, chess.BLACK
 
 
@@ -124,6 +133,30 @@ def gen_opposite_bishops(rng: random.Random) -> chess.Board | None:
                   bb: chess.Piece(B, BL)}, BL)
 
 
+# Files of the pawns that a lone king can hold against a queen by stalemate: rook (a, h) and bishop (c, f) pawns.
+STALEMATE_PAWN_FILES = (0, 2, 5, 7)
+
+
+# The white king this far (in king moves) from the pawn or farther: it cannot help the queen in time - the classic setup.
+FAR_KING = 4
+
+
+def gen_q_vs_pawn(rng: random.Random) -> chess.Board | None:
+    """
+    Defence: a black pawn of file a/c/f/h on its seventh rank with the king next to it; White has a queen that controls the
+    promotion square and a king FAR_KING or more away; Black to move. (A queen that does not watch the square lets the pawn
+    promote, and the only draw is the promotion itself - not a stalemate puzzle.)
+    """
+    pf = rng.choice(STALEMATE_PAWN_FILES)
+    pawn, promotion = sq(pf, 1), sq(pf, 0)
+    bk = sq(pf + rng.randint(-1, 1), rng.randint(0, 2))
+    wq, wk = sq(rng.randint(0, 7), rng.randint(0, 7)), sq(rng.randint(0, 7), rng.randint(3, 7))
+    if None in (pawn, bk, wq, wk) or len({pawn, bk, wq, wk}) < 4 or chess.square_distance(wk, pawn) < FAR_KING:
+        return None
+    board = place({pawn: chess.Piece(P, BL), bk: chess.Piece(K, BL), wq: chess.Piece(Q, W), wk: chess.Piece(K, W)}, BL)
+    return board if board is not None and board.is_attacked_by(W, promotion) else None
+
+
 def key_squares(pawn: chess.Square) -> set[chess.Square]:
     """Key squares of a pawn: two ranks ahead (from the fifth rank - one and two), three files."""
     f, r = chess.square_file(pawn), chess.square_rank(pawn)
@@ -168,6 +201,8 @@ def classify(board: chess.Board, move: chess.Move, kind: str) -> str | None:
         return "opposite_bishops" if piece in (B, K) else None
     if kind == "rook_vs_minor":  # capturing the rook is a gift, not technique: a single "capture" is not counted as a puzzle
         return None if board.is_capture(move) else "rook_vs_minor"
+    if kind == "q_vs_pawn":  # the king holds the pawn and waits for stalemate; a promotion that draws is another story
+        return "save_by_stalemate" if piece == K else None
     return None
 
 
@@ -228,16 +263,31 @@ def extend(board: chess.Board, move: chess.Move, reply: str, limit: int) -> tupl
 
 
 GENERATORS = {"kpk": (gen_kpk, "win"), "square": (gen_square, "win"), "wrong_bishop": (gen_wrong_bishop, "draw"),
-              "opposite_bishops": (gen_opposite_bishops, "draw"), "rook_vs_minor": (gen_rook_vs_minor, "draw")}
+              "opposite_bishops": (gen_opposite_bishops, "draw"), "rook_vs_minor": (gen_rook_vs_minor, "draw"),
+              "q_vs_pawn": (gen_q_vs_pawn, "draw")}
 THEMES = {"opposition": "kpk", "key_squares": "kpk", "outflanking": "kpk", "square_rule": "square",
-          "wrong_bishop": "wrong_bishop", "opposite_bishops": "opposite_bishops", "rook_vs_minor": "rook_vs_minor"}
+          "wrong_bishop": "wrong_bishop", "opposite_bishops": "opposite_bishops", "rook_vs_minor": "rook_vs_minor",
+          "save_by_stalemate": "q_vs_pawn"}
 TAGS = {"kpk": "endgame pawnEndgame", "square": "endgame pawnEndgame", "wrong_bishop": "endgame equality",
-        "opposite_bishops": "endgame equality", "rook_vs_minor": "endgame equality"}
+        "opposite_bishops": "endgame equality", "rook_vs_minor": "endgame equality",
+        "q_vs_pawn": "endgame equality queenEndgame"}
 
 
-def save(path: pathlib.Path, found: dict[str, list[dict]]) -> int:
-    """Writes the found puzzles of all themes to a compressed CSV (lichess database format); returns their number."""
-    rows = [row for rows in found.values() for row in rows]
+def kept_rows(path: pathlib.Path, rebuilt: set[str]) -> list[dict]:
+    """Rows of the output file whose theme is not being rebuilt in this run (they are written back unchanged)."""
+    if not path.exists():
+        return []
+    with gzip.open(path, "rt", encoding="utf-8", newline="") as source:
+        return [row for row in csv.DictReader(source)
+                if not any(tag == f"regence:{theme}" for theme in rebuilt for tag in row["Themes"].split())]
+
+
+def save(path: pathlib.Path, found: dict[str, list[dict]], kept: list[dict] | None = None) -> int:
+    """
+    Writes the kept rows of other themes and the found puzzles to a compressed CSV (lichess database format); returns the
+    number of rows written.
+    """
+    rows = [*(kept or []), *(row for rows in found.values() for row in rows)]
     with gzip.open(path, "wt", encoding="utf-8", newline="") as target:
         writer = csv.DictWriter(target, fieldnames=FIELDS)
         writer.writeheader()
@@ -257,6 +307,7 @@ def main() -> None:
     rng = random.Random(args.seed)
     wanted = [t for t in args.themes.split(",") if t] or list(THEMES)
     found: dict[str, list[dict]] = {theme: [] for theme in wanted}
+    kept = kept_rows(args.output, set(wanted))
     seen: set[str] = set()
     # Starting positions of accepted puzzles: a retreat from different verified positions may lead to the same one -
     # such a puzzle would differ only by the opponent's first move, which is a repeat for the player.
@@ -305,9 +356,9 @@ def main() -> None:
         starts.add(start.fen())
         total = sum(len(v) for v in found.values())
         if total % 10 == 0:  # the run is long (a tablebase request takes ~1 s): what is found is not lost on interruption
-            save(args.output, found)
+            save(args.output, found, kept)
             print(probes, {t: len(v) for t, v in found.items()}, flush=True)
-    total = save(args.output, found)
+    total = save(args.output, found, kept)
     print(f"probes {probes}, puzzles {total} -> {args.output}")
     print({t: len(v) for t, v in found.items()})
 
