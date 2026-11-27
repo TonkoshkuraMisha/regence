@@ -6,6 +6,9 @@ import os
 # Tests never send events to the real Sentry, even if the developer's .env sets SENTRY_DSN: the environment variable
 # takes precedence over .env and must be set before src.main is imported (init_sentry runs on import).
 os.environ["SENTRY_DSN"] = ""
+# Tests sign tokens with their own key of the recommended HS256 length (>= 32 bytes), not with the developer's .env
+# key: a shorter one makes PyJWT warn on every encode and decode and floods the test output.
+os.environ["SECRET_KEY"] = "test-only-signing-key-0123456789abcdef0123456789"
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient
@@ -392,6 +395,21 @@ app.dependency_overrides[get_session_factory] = lambda: TestSessionLocal
 async def db_session():
     async with TestSessionLocal() as session:
         yield session
+
+
+@pytest.fixture(autouse=True)
+def _health_database_answers(monkeypatch):
+    """/health checks PostgreSQL with its own session, outside get_db, so the overrides above do not reach it.
+
+    Without this stub a test that calls /health opens a real asyncpg connection (or waits for the timeout when Docker
+    is down) and leaves its cancel coroutine un-awaited. A test of the "database is down" branch patches it again.
+    """
+    import src.main as main_module
+
+    async def answers() -> None:
+        return None
+
+    monkeypatch.setattr(main_module, "_check_database", answers)
 
 
 @pytest.fixture
