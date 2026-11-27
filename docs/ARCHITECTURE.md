@@ -97,7 +97,7 @@ covered by a database snapshot: a Redis reset signs everyone out.
 | `data/puzzles/defense_drills.csv.gz` | Defence exercises | `scripts/dev/build_defense_drills.py` |
 | `data/drills/seeds.json` | Verified positions for the generator exercises | `scripts/dev/build_drill_seeds.py` |
 | `src/services/data/openings.tsv` | Opening table (CC0) | `scripts/build_openings.py` |
-| `src/services/data/level_exams.json` | Level exams of the Grand Course | `scripts/build_level_exams.py` |
+| `src/services/data/level_exams.json` | Level exams of the Grand Course | `scripts/build_level_exams.py` (strategy branch: quiet moves from library games; rest: puzzles) |
 | `src/services/bots/books/*.json` (22) | Bot opening books from masters' games | `scripts/build_opening_books.py`, `build_master_books.py` |
 | `src/services/bots/calibration.json` | Measured bot strength | `scripts/calibrate_bots.py` |
 | `src/services/civility_lexicon.txt` | Dictionary of the insult filter | by hand |
