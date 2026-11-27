@@ -5,7 +5,8 @@ The main selection (build_puzzle_subset.py) applies quotas only to themes with l
 database (lichess_db_puzzle.csv.zst, CC0) is read as a stream, and for good-quality puzzles (the soft filter ``acceptable``)
 the registry themes are computed in full - with the recognisers of src/services/theme_detectors.py and the mate classifier.
 Every theme that the main selection lacks up to the stage minimum gets its own quota per stage. The main selection's
-puzzles are skipped. The selection is deterministic (--seed). Needs the zstandard package; not run in CI.
+puzzles are skipped. The selection is deterministic (--seed). The file is rewritten: run build_save_puzzles.py after
+it to append the "save the game" puzzles again. Needs the zstandard package; not run in CI.
 
     uv run --with zstandard python -m scripts.dev.build_theme_extra path/to/lichess_db_puzzle.csv.zst
 """

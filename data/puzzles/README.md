@@ -11,6 +11,11 @@ FEN is the position before the opponent's move, the first move in `Moves` is the
 `lichess_themes_extra.csv.gz` - a supplement from the same database (CC0) for themes without lichess tags (task 27.8): themes are counted
 by the recognisers in `src/services/theme_detectors.py` and the mate classifier, the quota is the shortfall of a theme to the tier minimum in
 the main selection. Build: `uv run --with zstandard python -m scripts.dev.build_theme_extra <database.csv.zst>`.
+The same file also holds "save the game" puzzles (27.11): the solver is at least 3 points down and saves the game with
+a perpetual check or a stalemate, and Stockfish confirms the first move is the only one that keeps the balance.
+They are appended (the file's other rows are kept) by
+`uv run --with zstandard python -m scripts.dev.build_save_puzzles <database.csv.zst>`; run it after `build_theme_extra`,
+which rewrites the file.
 
 `endgame_generated.csv.gz` - our own puzzles on endgame technique (opposition, key squares, outflanking, the rule of the square,
 the "wrong" bishop) and on the stalemate defence of a queen against a bishop or rook pawn on the seventh (task 27.9, theme
