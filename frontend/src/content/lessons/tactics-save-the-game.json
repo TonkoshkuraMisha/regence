@@ -1,0 +1,294 @@
+{
+    "id": "tactics-save-the-game",
+    "course": "tactics",
+    "order": 34,
+    "title": {
+        "en": "Saving a lost game",
+        "uk": "Як урятувати програну партію"
+    },
+    "summary": {
+        "en": "When the position is lost, look for a draw: a perpetual check or a stalemate.",
+        "uk": "Коли позиція програна, шукайте нічию: вічний шах або пат."
+    },
+    "steps": [
+        {
+            "type": "text",
+            "fen": "5rk1/2p1qp2/7Q/1p2p1p1/8/1B4P1/PP3PP1/3b2K1 w - - 0 24",
+            "highlights": ["g8", "f7"],
+            "arrows": [{"from": "b3", "to": "g8", "color": "red"}],
+            "text": {
+                "en": "A position can be lost on material and still end in a draw. Whenever you are worse, look for two rescues: a perpetual check - checks the king cannot escape, so the game is drawn by repetition - and stalemate - you have no legal move while your king is not in check. Here White is far behind in material, but the black king is short of shelter, and the pawn on f7 is pinned by the bishop on b3.",
+                "uk": "Позиція може бути програна за матеріалом і все одно закінчитися нічиєю. Коли вам гірше, щоразу шукайте два порятунки: вічний шах — шахи, від яких король не може сховатися, і партія закінчується повторенням, — і пат — у вас немає жодного ходу, а ваш король не під шахом. Тут у білих значно менше матеріалу, але чорному королю бракує укриття, а пішак f7 зв'язаний слоном b3."
+            }
+        },
+        {
+            "type": "find_move",
+            "fen": "5rk1/2p1qp2/7Q/1p2p1p1/8/1B4P1/PP3PP1/3b2K1 w - - 0 24",
+            "text": {
+                "en": "White to move (Spassky - Janosevic, Belgrade 1964). Find the check the pawn on f7 cannot answer.",
+                "uk": "Хід білих (Спаський — Яношевич, Белград, 1964). Знайдіть шах, на який пішак f7 не може відповісти."
+            },
+            "hint": {
+                "en": "The pawn on f7 cannot capture: it shields the king from the bishop.",
+                "uk": "Пішак f7 не може бити: він закриває короля від слона."
+            },
+            "line": [
+                {
+                    "answers": ["h6g6"],
+                    "reply": "g8h8",
+                    "correct": {
+                        "en": "Check from g6: f7xg6 is illegal because of the pin. The king must step to h8.",
+                        "uk": "Шах з g6: f7xg6 неможливо через зв'язку. Король мусить піти на h8."
+                    }
+                },
+                {
+                    "answers": ["g6h6"],
+                    "reply": "h8g8",
+                    "correct": {
+                        "en": "And back to h6 with check: the king returns to g8, where the pin works again. Qg6+, Qh6+ - a perpetual check, a draw.",
+                        "uk": "І знову на h6 із шахом: король повертається на g8, де зв'язка знову діє. Qg6+, Qh6+ — вічний шах, нічия."
+                    }
+                }
+            ]
+        },
+        {
+            "type": "find_move",
+            "fen": "3q2k1/5p1p/2p1p1p1/2R1P3/P4P2/1Q4PP/7K/8 b - - 0 38",
+            "text": {
+                "en": "Black to move (Carlsen - Nepomniachtchi, Moscow 2011). Black is a rook down. Start the checks.",
+                "uk": "Хід чорних (Карлсен — Непомнящий, Москва, 2011). У чорних на туру менше. Почніть шахувати."
+            },
+            "line": [
+                {
+                    "answers": ["d8d2"],
+                    "reply": "h2h1",
+                    "correct": {
+                        "en": "Check along the second rank. The white king has only the corner and the g-file to hide in.",
+                        "uk": "Шах по другій горизонталі. Білому королю лишаються тільки кут і лінія «g»."
+                    }
+                },
+                {
+                    "answers": ["d2e1"],
+                    "reply": "h1g2",
+                    "correct": {
+                        "en": "Another check, from e1. The white queen and rook are too far away to block.",
+                        "uk": "Ще шах, з e1. Білі ферзь і тура задалеко, щоб закритися."
+                    }
+                },
+                {
+                    "answers": ["e1e2"],
+                    "reply": "g2g1",
+                    "correct": {
+                        "en": "And again: Qe2+, Qe1+ ... the king walks between g1, g2 and h1 and never escapes. Perpetual check.",
+                        "uk": "І знову: Qe2+, Qe1+ ... король ходить між g1, g2 і h1 і не може втекти. Вічний шах."
+                    }
+                }
+            ]
+        },
+        {
+            "type": "find_move",
+            "fen": "r2r2k1/p2b2q1/2p3Q1/8/2p1N3/7P/PP6/2KR4 w - - 1 28",
+            "text": {
+                "en": "White to move (Tal - Casper, Jurmala 1987). Not only a queen gives perpetual check. Find the knight check.",
+                "uk": "Хід білих (Таль — Каспер, Юрмала, 1987). Вічний шах дає не лише ферзь. Знайдіть шах конем."
+            },
+            "hint": {
+                "en": "The black queen on g7 is pinned by the white queen on g6.",
+                "uk": "Чорний ферзь g7 зв'язаний білим ферзем g6."
+            },
+            "line": [
+                {
+                    "answers": ["e4f6"],
+                    "reply": "g8f8",
+                    "correct": {
+                        "en": "Check! The pinned queen cannot take the knight, and on Kh8 comes Qh7 mate - so the king goes to f8.",
+                        "uk": "Шах! Зв'язаний ферзь не може взяти коня, а на Kh8 буде мат Qh7 — тож король іде на f8."
+                    }
+                },
+                {
+                    "answers": ["f6h7"],
+                    "reply": "f8g8",
+                    "correct": {
+                        "en": "The knight checks again from h7 and the king must go back to g8 - then Nf6+ once more. Perpetual check with a knight.",
+                        "uk": "Кінь знову шахує з h7, і король мусить повернутися на g8 — тоді знову Nf6+. Вічний шах конем."
+                    }
+                }
+            ]
+        },
+        {
+            "type": "demo",
+            "fen": "8/8/8/8/8/1Q6/2p5/k6K w - - 0 1",
+            "actions": [
+                {"do": "highlight", "squares": ["a1", "c2"]},
+                {"do": "pause", "ms": 900},
+                {"do": "move", "uci": "b3c2"}
+            ],
+            "text": {
+                "en": "The second rescue is stalemate. The lone black king has gone into the corner next to its pawn on c2. If the queen takes the pawn, the king has no legal move and is not in check: stalemate, a draw. If the queen does not take, the pawn becomes a queen.",
+                "uk": "Другий порятунок — пат. Самотній чорний король пішов у кут поруч зі своїм пішаком c2. Якщо ферзь візьме пішака, у короля немає жодного ходу, і він не під шахом: пат, нічия. Якщо ферзь не бере, пішак стане ферзем."
+            }
+        },
+        {
+            "type": "find_move",
+            "fen": "8/1K6/8/8/8/1k6/2p5/7Q b - - 1 1",
+            "text": {
+                "en": "Black to move. A queen against a pawn on c2, the white king far away. Only one move holds the draw.",
+                "uk": "Хід чорних. Ферзь проти пішака c2, білий король далеко. Нічию зберігає лише один хід."
+            },
+            "hint": {
+                "en": "Keep the king next to the pawn and within reach of the corner a1.",
+                "uk": "Тримайте короля поруч із пішаком і поблизу кута a1."
+            },
+            "line": [
+                {
+                    "answers": ["b3b2"],
+                    "correct": {
+                        "en": "The king guards c1 and keeps the corner a1 within reach: when the queen checks, the king goes to a1, and taking the pawn on c2 is stalemate. The white king is too far away to help.",
+                        "uk": "Король стереже c1 і тримає кут a1 поруч: коли ферзь шахує, король іде на a1, а взяття пішака c2 — пат. Білий король задалеко, щоб допомогти."
+                    }
+                }
+            ]
+        },
+        {
+            "type": "find_move",
+            "fen": "8/7K/8/8/8/k7/p7/7Q b - - 1 1",
+            "text": {
+                "en": "Black to move. Now a rook pawn on a2. Find the only drawing move.",
+                "uk": "Хід чорних. Тепер крайній пішак a2. Знайдіть єдиний нічийний хід."
+            },
+            "line": [
+                {
+                    "answers": ["a3b2"],
+                    "correct": {
+                        "en": "The king steps next to a1 and guards the promotion square. Against a rook pawn the defending king hides in front of it or beside it, and the queen alone cannot drive it out without giving stalemate.",
+                        "uk": "Король стає поруч з a1 і стереже поле перетворення. Проти крайнього пішака король, що захищається, стає перед ним або поруч, і сам ферзь не вижене його, не давши пата."
+                    }
+                }
+            ]
+        },
+        {
+            "type": "choice",
+            "text": {
+                "en": "You are a queen down with only a pawn on b2 and the king beside it; the enemy king is far away. What saves the game?",
+                "uk": "У вас на ферзя менше, лишився тільки пішак b2 і король поруч; король суперника далеко. Що врятує партію?"
+            },
+            "options": [
+                {
+                    "text": {
+                        "en": "Nothing: a knight pawn gives no stalemate trick, the queen wins",
+                        "uk": "Нічого: конячий пішак не дає патового прийому, ферзь виграє"
+                    },
+                    "correct": true
+                },
+                {
+                    "text": {
+                        "en": "Stalemate, as with every pawn on the seventh",
+                        "uk": "Пат, як і з будь-яким пішаком на сьомій"
+                    },
+                    "feedback": {
+                        "en": "Only rook and bishop pawns (a, c, f, h) give the stalemate trick; against b, d, e and g pawns the queen wins.",
+                        "uk": "Патовий прийом дають лише крайні й слонові пішаки (a, c, f, h); проти пішаків b, d, e і g ферзь виграє."
+                    }
+                },
+                {
+                    "text": {
+                        "en": "A perpetual check",
+                        "uk": "Вічний шах"
+                    },
+                    "feedback": {
+                        "en": "With only a king and a pawn there is nothing to give check with.",
+                        "uk": "Лише королем і пішаком шахувати нічим."
+                    }
+                }
+            ]
+        },
+        {
+            "type": "text",
+            "text": {
+                "en": "Before you resign, look twice. Is the enemy king exposed, and can one piece keep checking it - especially if the checks come back to the same squares? Is your own king short of moves, so that a capture or a careless move by the opponent leaves you in stalemate? A perpetual check needs an open king and a checking piece; stalemate needs your king to have no moves.",
+                "uk": "Перш ніж здатися, подивіться двічі. Чи відкритий король суперника, і чи може одна фігура безперервно його шахувати — особливо якщо шахи повертаються на ті самі поля? Чи бракує ходів вашому королю, щоб взяття чи необережний хід суперника залишили вас у паті? Для вічного шаху потрібні відкритий король і фігура, що шахує; для пата — щоб у вашого короля не було ходів."
+            }
+        }
+    ],
+    "exam": [
+        {
+            "type": "find_move",
+            "fen": "4Q3/1pr2pkp/p5p1/8/4bP2/2N2qP1/BP5P/6K1 w - - 0 36",
+            "text": {
+                "en": "White to move (Korchnoi - Morozevich, 2003). Black threatens mate on g2. Save the game.",
+                "uk": "Хід білих (Корчной — Морозевич, 2003). Чорні загрожують матом на g2. Урятуйте партію."
+            },
+            "line": [
+                {
+                    "answers": ["e8e5"],
+                    "reply": "g7f8",
+                    "correct": {
+                        "en": "Check from e5: the king has to step away from its pawns.",
+                        "uk": "Шах з e5: король мусить відійти від своїх пішаків."
+                    }
+                },
+                {
+                    "answers": ["e5h8"],
+                    "reply": "f8e7",
+                    "correct": {
+                        "en": "Qh8+ and then Qe5+ again: a perpetual check.",
+                        "uk": "Qh8+, а потім знову Qe5+: вічний шах."
+                    }
+                }
+            ]
+        },
+        {
+            "type": "find_move",
+            "fen": "8/8/8/8/K7/4k3/5p2/7Q b - - 1 1",
+            "text": {
+                "en": "Black to move. A queen against a pawn on f2. Hold the draw.",
+                "uk": "Хід чорних. Ферзь проти пішака f2. Утримайте нічию."
+            },
+            "line": [
+                {
+                    "answers": ["e3e2"],
+                    "correct": {
+                        "en": "The king guards f1 and stays next to the pawn: the corner h1 and stalemate save Black.",
+                        "uk": "Король стереже f1 і лишається поруч із пішаком: кут h1 і пат рятують чорних."
+                    }
+                }
+            ]
+        },
+        {
+            "type": "choice",
+            "text": {
+                "en": "Which of these is a stalemate?",
+                "uk": "Що з цього — пат?"
+            },
+            "options": [
+                {
+                    "text": {
+                        "en": "The side to move has no legal move and its king is not in check",
+                        "uk": "У сторони, що має ходити, немає жодного ходу, і її король не під шахом"
+                    },
+                    "correct": true
+                },
+                {
+                    "text": {
+                        "en": "The same position appears three times",
+                        "uk": "Та сама позиція повторюється тричі"
+                    },
+                    "feedback": {
+                        "en": "That is a draw by repetition - the usual end of a perpetual check.",
+                        "uk": "Це нічия повторенням — звичайний кінець вічного шаху."
+                    }
+                },
+                {
+                    "text": {
+                        "en": "The king is in check and has no legal move",
+                        "uk": "Король під шахом і не має ходів"
+                    },
+                    "feedback": {
+                        "en": "That is checkmate.",
+                        "uk": "Це мат."
+                    }
+                }
+            ]
+        }
+    ]
+}
