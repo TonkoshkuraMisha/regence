@@ -2,7 +2,7 @@
 """
 Library games in the opening explorer (8b): the library position index on import, examples under a position only from
 public collections, an archive game repeated in the library (same surnames and year) shown once - as the
-library game; move statistics are not changed by library games.
+library game; move statistics are not changed by library games; a library example carries its marks (27.5).
 """
 
 import pytest
@@ -94,6 +94,17 @@ async def test_explorer_shows_library_games_once_and_only_public(client, explore
     assert body["games"][0]["annotated"] is True and body["games"][0]["id"] == explorer_data["steinitz"]
     # Statistics - only the archive game: library games are not part of it.
     assert [(m["san"], m["games"]) for m in body["moves"]] == [("Nf3", 1)]
+
+
+async def test_library_example_carries_its_marks(client, db_session, explorer_data):
+    # Marks are set by the import and tag_library.py; here they are written directly so the short test games have some.
+    game = await db_session.get(LibraryGame, explorer_data["steinitz"])
+    game.structure, game.themes = "carlsbad", ",fork,pin,"
+    await db_session.commit()
+    games = {g["white"]: g for g in client.post(API, json={"moves": ["e2e4", "e7e5"]}).json()["games"]}
+    assert games["Steinitz, Wilhelm"]["structure"] == "carlsbad"
+    assert games["Steinitz, Wilhelm"]["themes"] == ["fork", "pin"]
+    assert games["Morphy, Paul"]["structure"] is None and games["Morphy, Paul"]["themes"] == []
 
 
 async def test_reindex_is_idempotent(db_session, explorer_data):

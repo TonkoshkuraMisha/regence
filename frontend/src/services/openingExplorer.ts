@@ -3,9 +3,14 @@
 // name and master games from the archive and the library. Under the fair play rule: during a game against a human the server
 // answers 409.
 // Route — src/api/analysis.py, computation — src/services/opening_explorer.py: statistics come from the position index
-// of played games (tables position_stats and position_games), the name — from the open openings table.
+// of played games (tables position_stats and position_games), the name — from the open openings table. Library examples
+// carry their marks (structure, themes — task 27.5); libraryMarks collects them for links to the library search.
 
 import {apiRequest} from './http';
+import {GAME_THEMES, STRUCTURES} from './library';
+import type {StructureCode} from './library';
+
+type GameThemeCode = typeof GAME_THEMES[number];
 
 /** Opening by the openings table: ECO code and English name (a proper noun, not translated). */
 export interface ExplorerOpening {
@@ -40,6 +45,31 @@ export interface ExplorerGame {
     source: 'archive' | 'library';
     /** Only for library games: there are explanations the player can see. */
     annotated?: boolean;
+    /** Only for library games: the pawn structure mark (task 27.5), a code from STRUCTURES or null. */
+    structure?: string | null;
+    /** Only for library games: tactics that paid off (task 27.5), codes from GAME_THEMES. */
+    themes?: string[];
+}
+
+/** Marks of the library games under a position: each structure and theme once, in the library filter order. */
+export interface LibraryMarks {
+    structures: StructureCode[];
+    themes: GameThemeCode[];
+}
+
+/**
+ * Distinct marks of the library examples under a position, so the explorer can lead to "library games with this
+ * structure / theme" (/library?structure= and ?theme=). Codes the client does not know are skipped: the library filter
+ * could not open them either.
+ */
+export function libraryMarks(games: ExplorerGame[]): LibraryMarks {
+    const library = games.filter((g) => g.source === 'library');
+    const structures = new Set(library.map((g) => g.structure));
+    const themes = new Set(library.flatMap((g) => g.themes ?? []));
+    return {
+        structures: STRUCTURES.filter((code) => structures.has(code)),
+        themes: GAME_THEMES.filter((code) => themes.has(code)),
+    };
 }
 
 /** Explorer response for a position after the sent moves. */

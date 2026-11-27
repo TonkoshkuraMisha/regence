@@ -108,4 +108,13 @@ describe('library: links from the course and the repertoire', () => {
         expect(mock.mock.calls.some(([u]) => String(u).includes('/games?structure=saw&moves=e2e4+e7e5'))).toBe(true);
         expect(screen.getByTestId('library-game-99')).toBeInTheDocument();
     });
+
+    it('?theme= from the opening explorer searches for games with this tactic; an unknown code is ignored', async () => {
+        const mock = stub();
+        await act(async () => render(<MemoryRouter initialEntries={['/library?theme=fork']}><LibraryPage/></MemoryRouter>));
+        expect(mock.mock.calls.some(([u]) => String(u).includes('/games?theme=fork'))).toBe(true);
+        mock.mockClear();
+        await act(async () => render(<MemoryRouter initialEntries={['/library?theme=nonsense']}><LibraryPage/></MemoryRouter>));
+        expect(mock.mock.calls.some(([u]) => String(u).includes('theme='))).toBe(false);
+    });
 });

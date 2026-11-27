@@ -351,7 +351,8 @@ For each section: what it does → files → where the data comes from → how i
   are recognised. **The position index** (`position_index.py`): the first 30 plies of every finished game — into
   `position_stats` and `position_games`; library games — only into `position_library_games` (examples, no statistics).
   **The explorer** (`opening_explorer.py`) — moves from a position with statistics and masters' games: the archive and
-  the public library collections; a duplicate (the same surnames and year) is shown once — as a library game.
+  the public library collections; a duplicate (the same surnames and year) is shown once — as a library game. A library
+  example carries its structure and theme marks (27.5); the client links them to `/library?structure=` / `?theme=`.
 - **The repertoire** (`repertoire.py`, `repertoire_drill.py`, `repertoire_deviations.py`, `repertoire_starters.py`):
   one's own lines as a graph of positions, scheduled repetition by SM-2, playing against the repertoire, review of
   deviations in a played game.
