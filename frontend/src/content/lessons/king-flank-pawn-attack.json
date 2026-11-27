@@ -1,0 +1,149 @@
+{
+  "id": "king-flank-pawn-attack",
+  "course": "king-attack",
+  "order": 14,
+  "title": {
+    "en": "Kings on opposite wings: attack with pawns",
+    "uk": "Королі на різних флангах: атака пішаками"
+  },
+  "summary": {
+    "en": "When the kings stand on opposite wings, the race is won by the side whose pawns reach the enemy king first.",
+    "uk": "Коли королі стоять на різних флангах, перегони виграє той, чиї пішаки першими дістануться до короля суперника."
+  },
+  "steps": [
+    {
+      "type": "text",
+      "fen": "4rrk1/2R1bp2/p2p2pq/1p1R4/4PN1P/P4Q2/1PP5/1K6 w - - 0 33",
+      "highlights": [
+        "b1",
+        "g8",
+        "h4"
+      ],
+      "arrows": [
+        {
+          "from": "h4",
+          "to": "h5",
+          "color": "green"
+        }
+      ],
+      "text": {
+        "en": "When the kings castled on opposite wings, both sides attack, and neither needs its pawns near its own king for the other wing. Pieces alone are slow; the pawns open the files and diagonals toward the enemy king and take away its cover. So in such positions the question is: which pawn can I push at the king, and does it come with tempo? Every move counts, because the opponent does the same.",
+        "uk": "Коли королі зробили рокіровку на різні фланги, атакують обидва, і жодному не потрібні пішаки біля власного короля для іншого флангу. Самі фігури діють повільно; пішаки відкривають лінії та діагоналі до короля суперника й забирають його прикриття. Тож у таких позиціях питання таке: яким пішаком я можу піти на короля і чи йде це з темпом? Рахується кожен хід, адже суперник робить те саме."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "4rrk1/2R1bp2/p2p2pq/1p1R4/4PN1P/P4Q2/1PP5/1K6 w - - 0 33",
+      "text": {
+        "en": "White to move. The kings are on opposite wings. Send a pawn at the black king.",
+        "uk": "Хід білих. Королі на різних флангах. Пошліть пішака на чорного короля."
+      },
+      "line": [
+        {
+          "answers": [
+            "h4h5"
+          ],
+          "correct": {
+            "en": "The h-pawn goes forward and attacks the pawn on g6, the cover of the black king. The white king on b1 is far from the action, so White has time.",
+            "uk": "Пішак h іде вперед і нападає на пішака g6 - прикриття чорного короля. Білий король на b1 далеко від подій, тож час у білих є."
+          }
+        }
+      ],
+      "hint": {
+        "en": "A rook-file pawn goes forward.",
+        "uk": "Крайній пішак іде вперед."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "2kr3r/np1bbpp1/1q2p3/pB1pP2p/P2P3P/5NP1/1PNQ1PK1/R6R w - - 3 19",
+      "text": {
+        "en": "White to move. The black king is on the queenside. Attack it with a pawn.",
+        "uk": "Хід білих. Чорний король на ферзевому фланзі. Атакуйте його пішаком."
+      },
+      "line": [
+        {
+          "answers": [
+            "b2b4"
+          ],
+          "correct": {
+            "en": "The b-pawn goes at the king on c8 and starts to open lines toward it. White's own king on g2 is far from this fight.",
+            "uk": "Пішак b іде на короля c8 й починає відкривати до нього лінії. Білий король g2 далеко від цієї боротьби."
+          }
+        }
+      ],
+      "hint": {
+        "en": "The b-pawn.",
+        "uk": "Пішак b."
+      }
+    },
+    {
+      "type": "text",
+      "text": {
+        "en": "Both times the pawn went at the king that stood on the other wing, and the opponent's pieces were too far to answer in time. Check the distance: if your king is far from the opponent's attack and theirs is close to yours, push the pawn at once.",
+        "uk": "Обидва рази пішак ішов на короля, що стояв на іншому фланзі, а фігури суперника були надто далеко, щоб вчасно відповісти. Перевірте відстань: якщо ваш король далеко від атаки суперника, а його король поряд із вашою, ідіть пішаком одразу."
+      }
+    }
+  ],
+  "exam": [
+    {
+      "type": "find_move",
+      "fen": "4r2k/1b3p1p/pq1RNpr1/1p1n4/4pQBP/2P4R/1P3PP1/2K5 w - - 14 27",
+      "text": {
+        "en": "White to move. The black king is on h8 and the white king on c1. Use the pawn.",
+        "uk": "Хід білих. Чорний король на h8, білий на c1. Скористайтеся пішаком."
+      },
+      "line": [
+        {
+          "answers": [
+            "h4h5"
+          ],
+          "correct": {
+            "en": "The h-pawn attacks the rook on g6, the piece that guards the king. Even after Black takes on f4, hxg6 follows with threats against h7.",
+            "uk": "Пішак h нападає на туру g6 - фігуру, що охороняє короля. Навіть після взяття чорними на f4 далі hxg6 із загрозами проти h7."
+          }
+        }
+      ],
+      "hint": {
+        "en": "The h-pawn attacks a rook.",
+        "uk": "Пішак h нападає на туру."
+      }
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "The kings castled on opposite wings. What decides the fight?",
+        "uk": "Королі зробили рокіровку на різні фланги. Що вирішує боротьбу?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "Whose pawns reach the enemy king first",
+            "uk": "Чиї пішаки першими дістануться до короля суперника"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "Who trades queens first",
+            "uk": "Хто першим розмінює ферзів"
+          },
+          "feedback": {
+            "en": "Trading queens kills the attack, which is the main weapon here.",
+            "uk": "Розмін ферзів убиває атаку - головну зброю в таких позиціях."
+          }
+        },
+        {
+          "text": {
+            "en": "Who moves the king to the centre",
+            "uk": "Хто виведе короля в центр"
+          },
+          "feedback": {
+            "en": "A king in the centre is more vulnerable, not more useful.",
+            "uk": "Король у центрі вразливіший, а не корисніший."
+          }
+        }
+      ]
+    }
+  ]
+}
