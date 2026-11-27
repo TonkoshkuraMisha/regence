@@ -123,3 +123,12 @@ def test_a_short_stonewall_does_not_beat_a_longer_structure():
     # Equal-or-longer structures still win: the lower bar only lets a short structure compete, it does not favour it.
     moves = _play("e4 e6 d4 d5 e5 c5 c3 Nc6 Nf3 Qb6 a3 Bd7 b4 cxd4 cxd4 Rc8 Bb2 Nge7 Nc3 Nf5 Na4 Qd8 Bd3 Be7")
     assert ps.game_structure(moves) == "french_chain"
+
+
+def test_a_specific_structure_beats_a_longer_general_one(monkeypatch):
+    # Owner's labelled stonewall games: Carlsbad / French shapes stand on the board longer, but the game is a stonewall.
+    sequence = iter(["carlsbad"] * 15 + ["stonewall"] * 9 + ["carlsbad"] * 17)
+    monkeypatch.setattr(ps, "detect", lambda board: next(sequence))
+    cycle = [chess.Move.from_uci(u) for u in ("g1f3", "g8f6", "f3g1", "f6g8")]  # knights out and back: legal, any length
+    moves = cycle * 13  # 52 plies: the window of 12-80 plies holds 41 detections
+    assert ps.game_structure(moves) == "stonewall"  # stonewall (9 plies) is checked before carlsbad (many more)
