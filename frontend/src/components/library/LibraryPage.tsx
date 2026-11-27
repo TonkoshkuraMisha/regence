@@ -1,7 +1,8 @@
 // Game library (task 27.1): /library has a collection tree on the left, games of the selected collection or search results
 // on the right; a game opens in the ordinary viewer (/library/game/:id, GameViewer in library mode).
 // Data is services/library.ts (/api/v1/library: collections, games, search). The address accepts ?structure= (a structure
-// from the Great Course) and ?moves= (the start of a game from a repertoire) and opens the search at once. The route is in App.tsx.
+// from the Great Course or the opening explorer), ?theme= (a tactic mark from the opening explorer) and ?moves= (the start
+// of a game from a repertoire) and opens the search at once. The route is in App.tsx.
 
 import {useEffect, useState} from 'react';
 import {Link, useSearchParams} from 'react-router-dom';
@@ -59,11 +60,13 @@ export function LibraryPage() {
     const [collections, setCollections] = useState<LibraryCollection[]>([]);
     const [open, setOpen] = useState<Set<number>>(new Set());
     // ?structure=... opens a search of games with this pawn structure at once (Great Course modules, 27.6);
-    // ?moves=... games with this start (a repertoire node, 27.10).
+    // ?moves=... games with this start (a repertoire node, 27.10); ?theme=... games with this tactic (opening explorer, 27.5).
     const [params] = useSearchParams();
     const initial: LibrarySearch = {};
     const paramStructure = params.get('structure') ?? '';
     if ((STRUCTURES as readonly string[]).includes(paramStructure)) initial.structure = paramStructure;
+    const paramTheme = params.get('theme') ?? '';
+    if ((GAME_THEMES as readonly string[]).includes(paramTheme)) initial.theme = paramTheme;
     const paramMoves = (params.get('moves') ?? '').trim();
     if (/^[a-h1-8qrbn ]+$/.test(paramMoves)) initial.moves = paramMoves;
     const [view, setView] = useState<View | null>(Object.keys(initial).length ? {kind: 'search', search: initial} : null);

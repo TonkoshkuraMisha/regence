@@ -1,8 +1,9 @@
 // --- FILE: frontend/src/components/OpeningExplorer.tsx ---
 // Opening tree (task 16.2): moves from the current position with game statistics (shares of White wins / draws / Black
 // wins), the opening name and master games from the archive and the library (a library game leads to the library and is marked
-// "in the library" or "with explanations"). Data is services/openingExplorer.ts (exploreOpening, the server response for a
-// list of moves). Used in "Tools" (/tools), in the game viewer (GameViewer) and in the repertoire section.
+// "in the library" or "with explanations"). Structures and tactical themes of those library games (task 27.5) are links to
+// the library search with that mark (/library?structure= / ?theme=). Data is services/openingExplorer.ts (exploreOpening,
+// the server response for a list of moves; libraryMarks). Used in "Tools" (/tools), in the game viewer (GameViewer) and in the repertoire section.
 
 import {useEffect, useState} from 'react';
 import {Link} from 'react-router-dom';
@@ -10,7 +11,7 @@ import {BookOpen} from 'lucide-react';
 import {renderUiMessage, useI18n} from '../i18n';
 import type {UiMessage} from '../i18n';
 import {errorMessage} from '../services/apiErrors';
-import {exploreOpening, shares} from '../services/openingExplorer';
+import {exploreOpening, libraryMarks, shares} from '../services/openingExplorer';
 import type {ExplorerResult} from '../services/openingExplorer';
 
 interface Props {
@@ -44,6 +45,7 @@ export function OpeningExplorer({moves, onPlay}: Props) {
             alive = false;
         };
     }, [key]);
+    const marks = libraryMarks(data?.games ?? []);
 
     return (
         <section className="bg-black/30 rounded-lg p-3 flex flex-col gap-2 text-sm" data-testid="opening-explorer">
@@ -107,6 +109,23 @@ export function OpeningExplorer({moves, onPlay}: Props) {
                                         )}
                                     </span>
                                     <span className="font-mono text-boxwood/70 shrink-0">{g.result} {g.year}</span>
+                                </Link>
+                            ))}
+                        </div>
+                    )}
+                    {(marks.structures.length > 0 || marks.themes.length > 0) && (
+                        <div className="flex flex-wrap items-center gap-1 text-xs" data-testid="explorer-library-marks">
+                            <span className="text-boxwood/60">{t('explorer.libraryMarks')}</span>
+                            {marks.structures.map((code) => (
+                                <Link key={`s-${code}`} to={`/library?structure=${code}`} data-testid={`explorer-structure-${code}`}
+                                      className="px-1.5 rounded bg-amber-900/50 text-amber-200 hover:underline">
+                                    {t(`structures.${code}`)}
+                                </Link>
+                            ))}
+                            {marks.themes.map((code) => (
+                                <Link key={`t-${code}`} to={`/library?theme=${code}`} data-testid={`explorer-theme-${code}`}
+                                      className="px-1.5 rounded bg-emerald-900/50 text-emerald-200 hover:underline">
+                                    {t(`themes.${code}.name`)}
                                 </Link>
                             ))}
                         </div>

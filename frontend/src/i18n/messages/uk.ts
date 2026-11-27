@@ -2091,6 +2091,7 @@ export const uk: Messages = {
         masterGames: 'Партії майстрів',
         inLibrary: 'у бібліотеці',
         withNotes: 'з поясненнями',
+        libraryMarks: 'Ще партії в бібліотеці:',
     },
     tools: {
         title: 'Інструменти',

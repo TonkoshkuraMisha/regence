@@ -2,7 +2,8 @@
 """
 Opening explorer (task 16.2): moves from a position with statistics from the position index (task 16.1), the opening name
 (src/services/openings.py) and master games that passed through the position: from the champions archive and from public
-collections of the library (8b, owner's decision of 18.11).
+collections of the library (8b, owner's decision of 18.11). A library example carries its marks (pawn structure and
+tactical themes, task 27.5) so the client can link to the library search by them.
 
 Duplicates between the archive and the library (the same game is often in both places): two games under one position count as
 one if the surnames of both players and the year match. The library game is kept - it has markup and explanations;
@@ -26,6 +27,7 @@ from src.models.library import LibraryAnnotation, LibraryCollection, LibraryGame
 from src.models.position import PositionGame, PositionLibraryGame
 from src.models.user import User
 from src.services import library, openings, position_index
+from src.services.game_themes import decode as decode_themes
 
 # Marker of a historical archive player: the archive loader (src/db/seed.py) writes this string instead of a password hash,
 # and one cannot log in as such a player. The same string is duplicated in src/api/social.py and src/api/watch.py.
@@ -109,7 +111,9 @@ def merge_examples(archive: list[dict], library: list[dict], limit: int = MASTER
 async def library_games(db: AsyncSession, board: chess.Board, limit: int = MASTER_GAMES) -> list[dict]:
     """
     Games of public library collections that passed through the position (position_library_games): newest by year
-    first. annotated - the game has explanations visible to the player (library_annotations).
+    first. annotated - the game has explanations visible to the player (library_annotations); structure and themes are
+    the game's library marks (task 27.5: library_games.structure, library_games.themes), so the explorer can lead to
+    "library games with this structure / theme".
     """
     public = exists().where(
         LibraryGameCollection.game_id == LibraryGame.id,
@@ -121,15 +125,16 @@ async def library_games(db: AsyncSession, board: chess.Board, limit: int = MASTE
                                LibraryAnnotation.status.in_(library.PUBLIC_ANNOTATION))
     rows = (await db.execute(
         select(LibraryGame.id, LibraryGame.white, LibraryGame.black, LibraryGame.year, LibraryGame.result,
-               LibraryGame.eco, annotated)
+               LibraryGame.eco, annotated, LibraryGame.structure, LibraryGame.themes)
         .join(PositionLibraryGame, PositionLibraryGame.library_game_id == LibraryGame.id)
         .where(PositionLibraryGame.position_hash == position_index.position_key(board), public)
         .order_by(LibraryGame.year.desc().nulls_last(), LibraryGame.id.desc()).limit(limit)
     )).all()
     return [
         {"id": gid, "white": w, "black": b, "year": str(year) if year else None, "result": result, "eco": eco or None,
-         "source": "library", "annotated": bool(has_notes)}
-        for gid, w, b, year, result, eco, has_notes in rows
+         "source": "library", "annotated": bool(has_notes), "structure": structure,
+         "themes": decode_themes(themes or "")}
+        for gid, w, b, year, result, eco, has_notes, structure, themes in rows
     ]
 
 
