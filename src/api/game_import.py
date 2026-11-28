@@ -7,7 +7,8 @@ Only for logged-in users: games are bound to the player. During a game with a hu
 evaluation obtained. The import frequency is RATE_LIMIT_GAME_IMPORT per RATE_LIMIT_GAME_IMPORT_WINDOW_S per player; the review
 has the shared
 game analysis limit. /subscriptions - the opt-in daily import (game_import_schedule.py): no foreign
-request is made here, the scheduled task does the import.
+request is made here, the scheduled task does the import. /games/{id}/chess960 - the positions of an imported Fischer
+random game for the 960 viewer: the client chess library has no 960 castling, so the server replays the game.
 """
 
 from typing import Literal
@@ -27,7 +28,7 @@ from src.db.session import get_db
 from src.models.imported_game import ImportedGame
 from src.models.user import User
 from src.schemas.analysis import FullGameAnalysisResponse
-from src.services import game_import, game_import_schedule, personal_puzzles
+from src.services import chess960, game_import, game_import_schedule, personal_puzzles
 from src.services.engine_pool import EngineBusyError, engine_work
 from src.services.game_summary import summarize
 from src.services.task_dispatch import schedule_imported_analyses_in_background
@@ -114,6 +115,19 @@ async def get_game(imported_id: int, user: User = Depends(get_current_user), db:
 @router.get("/games/{imported_id}/pgn", response_class=PlainTextResponse)
 async def get_pgn(imported_id: int, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     return (await _own(db, user, imported_id)).pgn
+
+
+@router.get("/games/{imported_id}/chess960")
+async def get_chess960(imported_id: int, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """
+    An imported Fischer game step by step: the position after every ply (Shredder-FEN, castling replayed by the 960 rules),
+    the moves (UCI, castling as "king takes its rook") and SAN. Another variant - not_chess960_game (400).
+    """
+    game = await _own(db, user, imported_id)
+    try:
+        return chess960.archive_record(game.pgn).view(game.id)
+    except DomainValueError as exc:
+        raise exc.to_http(status.HTTP_400_BAD_REQUEST) from None
 
 
 @router.delete("/games/{imported_id}", status_code=status.HTTP_204_NO_CONTENT)

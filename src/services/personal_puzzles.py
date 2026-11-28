@@ -9,7 +9,9 @@ objective solvability as "Guess the Master's Move" (14.3):
 otherwise
   the puzzle is guessed rather than solved;
 * the best move is not an obvious capture of an undefended piece;
-* no more than MAX_PER_PLAYER puzzles per player per game (the costliest mistakes).
+* no more than MAX_PER_PLAYER puzzles per player per game (the costliest mistakes);
+* a Fischer random game (an imported Chess960 game, 24.1) gives a puzzle only from a position that the ordinary rules read
+  the same way (``readable_as_standard``): the puzzle board and ``chess.Board(fen)`` do not know 960 castling.
 
 Spaced repetition: a new puzzle is available at once; a wrong answer returns it after 1 day, the first correct one after
 3 days, the second correct in a row makes it mastered (done). INTERVALS_DAYS also holds intervals of 7 and 21 days, but
@@ -108,6 +110,15 @@ def is_solvable(board: chess.Board, best: chess.Move, candidates: list[tuple[str
     return first - second >= MIN_GAP
 
 
+def readable_as_standard(board: chess.Board, after_castling: bool) -> bool:
+    """
+    Whether a position can be a puzzle under the ordinary rules. Any position of ordinary chess can; a Fischer random
+    position only when no castling right is left (a 960 right would be read as a right of the standard setup) and the
+    previous move, shown on the puzzle board, was not a castling (written "king takes its rook" in 960).
+    """
+    return not board.chess960 or (not board.castling_rights and not after_castling)
+
+
 def join_themes(codes: Iterable[str]) -> str:
     """Themes of a personal puzzle as stored (personal_puzzles.themes): registry codes separated by commas."""
     return THEMES_SEPARATOR.join(codes)
@@ -189,11 +200,14 @@ async def _extract(db: AsyncSession, pgn: str, analysis_json: str, players: dict
     if pgn_game is None:
         return 0
     board = pgn_game.board()
-    positions: list[tuple[chess.Board, chess.Move, str | None]] = []
+    # (position before the move, the move, the previous move in UCI, whether that previous move was a castling).
+    positions: list[tuple[chess.Board, chess.Move, str | None, bool]] = []
     previous: str | None = None
+    after_castling = False
     for move in pgn_game.mainline_moves():
-        positions.append((board.copy(stack=False), move, previous))
+        positions.append((board.copy(stack=False), move, previous, after_castling))
         previous = move.uci()
+        after_castling = board.is_castling(move)
         board.push(move)
 
     candidates: dict[str, list[tuple[int, dict]]] = {color: [] for color in players}
@@ -218,7 +232,9 @@ async def _extract(db: AsyncSession, pgn: str, analysis_json: str, players: dict
             if (user.id, ply) in existing:
                 chosen += 1
                 continue
-            position, played, previous_move = positions[index]
+            position, played, previous_move, after_castling = positions[index]
+            if not readable_as_standard(position, after_castling):
+                continue
             best = chess.Move.from_uci(item["best_move_uci"])
             if best not in position.legal_moves:
                 continue

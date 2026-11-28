@@ -7,7 +7,7 @@ import {ImportPage} from '../ImportPage';
 import {clearToken, setToken} from '../../../services/authToken';
 
 const GAME = {
-    id: 3, source: 'lichess', color: 'black', white: 'rival', black: 'me', white_rating: 1510, black_rating: 1490,
+    id: 3, source: 'lichess', variant: 'standard', color: 'black', white: 'rival', black: 'me', white_rating: 1510, black_rating: 1490,
     result: '0-1', speed: 'blitz', played_at: '2026-11-01T10:00:00+00:00', analyzed: true, puzzles: 2,
 };
 
@@ -53,6 +53,15 @@ describe('Game import', () => {
         expect(row).toHaveTextContent('as Black vs rival (1510)');
         expect(row).toHaveTextContent('2 puzzles');
         expect(row.querySelector('a')).toHaveAttribute('href', '/import/game/3');
+    });
+
+    it('a Fischer random game is marked and opens in the 960 viewer', async () => {
+        stub((url) => url.includes('/imports/games')
+            ? {body: {total: 1, max: 300, games: [{...GAME, id: 4, variant: 'chess960'}]}} : undefined);
+        renderPage();
+        const row = await screen.findByTestId('imported-game');
+        expect(row).toHaveTextContent('lichess · Chess960 · blitz');
+        expect(row.querySelector('a')).toHaveAttribute('href', '/import/game/4/960');
     });
 
     it('import by username: the request carries the site, the username and the game count, the username is remembered', async () => {

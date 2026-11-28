@@ -2135,6 +2135,7 @@ export const uk: Messages = {
         tab: {lichess: 'lichess', chesscom: 'chess.com', pgn: 'PGN'},
         source: {lichess: 'lichess', chesscom: 'chess.com', pgn: 'PGN'},
         speed: {bullet: 'кулі', blitz: 'бліц', rapid: 'рапід', classical: 'класика', daily: 'за листуванням'},
+        chess960: 'Шахи-960',
         nick: 'Ваш нік на {site}',
         count: 'Останні партії:',
         submit: 'Імпортувати',
@@ -2848,7 +2849,7 @@ export const uk: Messages = {
         archiveBadge: 'Наосліп, щабель {level} · підглядань: {peeks}',
     },
     chess960: {
-        archive: {title: 'Партія Фішера №{id}', first: 'На початок', prev: 'Попередній хід', next: 'Наступний хід', last: 'У кінець', ply: 'Хід {n} із {total}', analyse: 'Проаналізувати рушієм', analysing: 'Аналізую…', score: 'Оцінка', curve: 'Крива оцінки (білі над лінією)', partial: 'Проаналізовано лише першу частину партії.', swing: 'Хід {n}: {move} — втрата близько {loss} пішака'},
+        archive: {title: 'Партія Фішера №{id}', first: 'На початок', prev: 'Попередній хід', next: 'Наступний хід', last: 'У кінець', ply: 'Хід {n} із {total}', analyse: 'Проаналізувати рушієм', analysing: 'Аналізую…', score: 'Оцінка', curve: 'Крива оцінки (білі над лінією)', partial: 'Проаналізовано лише першу частину партії.', swing: 'Хід {n}: {move} — втрата близько {loss} пішака', importedTitle: 'Шахи-960 з {site}: {white} — {black}', toImports: 'До моїх партій з інших сайтів', accuracy: 'Точність: білі {white}% · чорні {black}%'},
         live: {title: 'Шахи Фішера з людиною', noGame: 'Партії 960 зараз немає. Створіть посилання для друга на головній сторінці й оберіть варіант «Шахи Фішера».', toLobby: 'До головної дошки', vsBot: 'Зіграти 960 з ботом', yourMove: 'Ваш хід.', opponentMove: 'Хід суперника.', unrated: 'Партія без рейтингу.', drawOffered: 'Суперник пропонує нічию.', acceptDraw: 'Прийняти', declineDraw: 'Відхилити', drawSent: 'Нічию запропоновано.', drawDeclined: 'Пропозицію нічиєї відхилено.', abort: 'Скасувати', offerDraw: 'Запропонувати нічию', resign: 'Здатися', resignConfirm: 'Здати партію?', premoveSet: 'Передхід: {move} — зіграється, щойно настане ваш хід.', cancelPremove: 'Скасувати', rematch: 'Реванш', rematchSent: 'Реванш запропоновано.', rematchOffered: 'Суперник пропонує реванш: та сама розстановка, кольори міняються.', rematchDeclined: 'Реванш відхилено.', again: 'Нова партія'},
         title: 'Шахи Фішера',
         intro: 'Шахи-960: фігури за пішаками стоять в одному з 960 випадкових порядків, однаковому для обох сторін. Дебютна теорія не допоможе — думати доведеться з першого ходу. Проти бота, без рейтингу.',

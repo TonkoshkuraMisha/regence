@@ -102,13 +102,13 @@ async def test_variants_and_foreign_games_are_skipped(client, sites, token_user_
     assert response.json() == {"added": [], "duplicates": 0, "skipped": 1}
 
 
-async def test_chesscom_reads_latest_archive_and_only_standard_chess(client, sites, token_user_1):
+async def test_chesscom_reads_latest_archive_and_skips_other_rules(client, sites, token_user_1):
     base = settings.GAME_IMPORT_CHESSCOM_URL
     old, new = f"{base}/pub/player/player1/games/2026/10", f"{base}/pub/player/player1/games/2026/11"
     sites["archives"] = {
         old: [{"rules": "chess", "uuid": "u-old", "time_class": "rapid", "pgn": _pgn("player1", "x", site="cc")}],
         new: [
-            {"rules": "chess960", "uuid": "u960", "pgn": _pgn("player1", "y", site="cc")},
+            {"rules": "crazyhouse", "uuid": "uzh", "pgn": _pgn("player1", "y", site="cc")},
             {"rules": "chess", "uuid": "u-new", "time_class": "bullet", "pgn": _pgn("z", "Player1", site="cc")},
         ],
     }
@@ -389,3 +389,76 @@ async def test_cached_analysis_ignores_broken_json(db_session, test_user_1):
     assert game_import.cached_analysis(record) is None
     record.analysis_json = None
     assert game_import.cached_analysis(record) is None
+
+
+# --- Fischer random chess (24.1): imported, replayed by the 960 rules, puzzles only from ordinary-looking positions ----
+
+# A Chess960 setup with the rooks on e1/h1 and the king on g1: both sides castle short on plies 3 and 4 (king takes the
+# rook in 960 UCI: g1h1, g8h8). The X-FEN castling field "KQkq" is how lichess writes it; "Fischerandom" is another
+# spelling of the variant that python-chess knows.
+FISCHER = ('[Event "Rated Chess960 game"]\n[Site "https://lichess.org/f960game"]\n[White "rival"]\n[Black "player1"]\n'
+           '[Result "1-0"]\n[UTCDate "2026.11.02"]\n[TimeControl "300+0"]\n[Variant "Fischerandom"]\n[SetUp "1"]\n'
+           '[FEN "qbbnrnkr/pppppppp/8/8/8/8/PPPPPPPP/QBBNRNKR w KQkq - 0 1"]\n\n'
+           '1. Nfe3 Nfe6 2. O-O O-O 3. a3 a6 4. b3 b6 1-0\n\n')
+FISCHER_UCI = ["f1e3", "f8e6", "g1h1", "g8h8", "a2a3", "a7a6", "b2b3", "b7b6"]
+
+
+async def test_chess960_games_are_imported_and_replayed(client, sites, token_user_1, db_session):
+    sites["lichess"] = FISCHER + _pgn("player1", "rival", site="https://lichess.org/std1")
+    response = client.post(f"{API}/fetch", json={"source": "lichess", "username": "player1"}, headers=_auth(token_user_1))
+    added = response.json()["added"]
+    assert [(game["variant"], game["color"], game["speed"]) for game in added] == [
+        ("chess960", "black", "blitz"), ("standard", "white", "blitz")]
+    assert "chess960" in sites["requests"][0].url.params["perfType"]
+    stored = await db_session.get(ImportedGame, added[0]["id"])
+    assert '[Variant "Chess960"]' in stored.pgn  # one spelling for the rest of the site
+
+    record = client.get(f"{API}/games/{added[0]['id']}/chess960", headers=_auth(token_user_1)).json()
+    assert record["moves"] == FISCHER_UCI and record["sans"][2:4] == ["O-O", "O-O"]
+    assert record["fens"][0] == record["start_fen"] == "qbbnrnkr/pppppppp/8/8/8/8/PPPPPPPP/QBBNRNKR w HEhe - 0 1"
+    # After the short castling the king stands on g1 and the rook on f1 - castling replayed by the 960 rules.
+    assert record["fens"][3].split()[0].endswith("QBBNRRK1") and len(record["fens"]) == len(FISCHER_UCI) + 1
+    standard = client.get(f"{API}/games/{added[1]['id']}/chess960", headers=_auth(token_user_1))
+    assert standard.status_code == 400 and standard.json()["detail"]["code"] == "not_chess960_game"
+
+
+async def test_chesscom_chess960_games_are_imported(client, sites, token_user_1):
+    base = settings.GAME_IMPORT_CHESSCOM_URL
+    month = f"{base}/pub/player/player1/games/2026/11"
+    sites["archives"] = {month: [{"rules": "chess960", "uuid": "c960", "time_class": "rapid", "pgn": FISCHER}]}
+    response = client.post(f"{API}/fetch", json={"source": "chesscom", "username": "player1"}, headers=_auth(token_user_1))
+    assert [(game["variant"], game["speed"]) for game in response.json()["added"]] == [("chess960", "rapid")]
+
+
+def _fischer_analysis() -> str:
+    """Black "blunders" on plies 2, 4 and 6 (best h7h6 each time)."""
+    moves = []
+    for ply, uci in enumerate(FISCHER_UCI, start=1):
+        bad = ply in (2, 4, 6)
+        moves.append({"ply": ply, "move_number": (ply + 1) // 2, "color": "white" if ply % 2 else "black",
+                      "san": "", "uci": uci, "eval_cp": 0, "eval_display": "0", "best_move_uci": "h7h6" if bad else uci,
+                      "cp_loss": 500 + ply if bad else 0, "classification": "Blunder" if bad else "Best", "symbol": ""})
+    return json.dumps({"format_version": 2, "engine": "t", "moves": moves})
+
+
+async def test_chess960_puzzles_only_where_ordinary_rules_read_the_position(client, db_session, token_user_1,
+                                                                          monkeypatch):
+    """Plies 2 and 4 still have 960 castling rights - no puzzle; ply 6 has none and follows a normal move - a puzzle."""
+    monkeypatch.setattr(puzzles_service, "top_two", lambda board: [("h7h6", 0), ("a6a5", -350)])
+    added = client.post(f"{API}/pgn", json={"pgn": FISCHER}, headers=_auth(token_user_1)).json()["added"]
+    imported = await db_session.get(ImportedGame, added[0]["id"])
+    imported.analysis_json = _fischer_analysis()
+    await db_session.commit()
+    assert await puzzles_service.extract_for_imported(db_session, imported.id) == 1
+    puzzle = await db_session.scalar(select(PersonalPuzzle))
+    assert puzzle.ply == 6 and puzzle.solution == "h7h6" and puzzle.fen.split()[2] == "-"
+    assert chess.Board(puzzle.fen).is_valid()
+
+
+def test_readable_as_standard():
+    fischer = chess.Board.from_chess960_pos(100)
+    assert puzzles_service.readable_as_standard(chess.Board(), after_castling=True)
+    assert not puzzles_service.readable_as_standard(fischer, after_castling=False)
+    fischer.castling_rights = 0
+    assert puzzles_service.readable_as_standard(fischer, after_castling=False)
+    assert not puzzles_service.readable_as_standard(fischer, after_castling=True)

@@ -1,7 +1,8 @@
 // --- FILE: frontend/src/components/gameImport/ImportPage.tsx ---
 // "My games from other sites" (task 24.1): /import imports the latest games from lichess and chess.com by username or
 // by pasting PGN. The server parses them in the background, the player's misses become "My mistakes" puzzles; a game opens
-// in the review with the coach (/import/game/:id). Signed-in users only. Data comes from services/gameImport.ts
+// in the review with the coach (/import/game/:id), a Fischer random game in the 960 viewer (/import/game/:id/960).
+// Signed-in users only. Data comes from services/gameImport.ts
 // (/api/v1/imports, src/api/game_import.py); the site username is remembered in localStorage (rememberNick/savedNick).
 // Under the site form - the daily import switch (DailyImport.tsx). The route is in App.tsx.
 
@@ -14,7 +15,7 @@ import {renderUiMessage, useI18n} from '../../i18n';
 import type {UiMessage} from '../../i18n';
 import {errorMessage} from '../../services/apiErrors';
 import {getToken} from '../../services/authToken';
-import {IMPORT_COUNTS, IMPORT_PAGE, importApi, opponentOf, outcome, rememberNick, savedNick} from '../../services/gameImport';
+import {IMPORT_COUNTS, IMPORT_PAGE, importApi, importedGamePath, opponentOf, outcome, rememberNick, savedNick} from '../../services/gameImport';
 import type {ImportedGameView, ImportedList, ImportResult, ImportSource} from '../../services/gameImport';
 import {DailyImport} from './DailyImport';
 
@@ -32,7 +33,7 @@ function GameRow({game, onDelete}: { game: ImportedGameView; onDelete: (game: Im
     return (
         <li className="flex flex-wrap items-center justify-between gap-2 bg-black/30 rounded px-3 py-2 text-sm"
             data-testid="imported-game">
-            <Link to={`/import/game/${game.id}`} className="flex flex-col min-w-0 hover:text-amber-300">
+            <Link to={importedGamePath(game)} className="flex flex-col min-w-0 hover:text-amber-300">
                 <span className="truncate">
                     <span className={`font-bold ${OUTCOME_STYLE[result]}`}>{t(`gameImport.outcome.${result}`)}</span>
                     {' · '}{t(game.color === 'white' ? 'gameImport.vsWhite' : 'gameImport.vsBlack', {
@@ -40,7 +41,8 @@ function GameRow({game, onDelete}: { game: ImportedGameView; onDelete: (game: Im
                     })}
                 </span>
                 <span className="text-xs text-boxwood/70">
-                    {[t(`gameImport.source.${game.source}`), game.speed ? t(`gameImport.speed.${game.speed}`) : null,
+                    {[t(`gameImport.source.${game.source}`), game.variant === 'chess960' ? t('gameImport.chess960') : null,
+                        game.speed ? t(`gameImport.speed.${game.speed}`) : null,
                         game.played_at ? format(parseISO(game.played_at), 'd MMM yyyy', {locale: dateLocale}) : null]
                         .filter(Boolean).join(' · ')}
                 </span>

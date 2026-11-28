@@ -118,6 +118,21 @@ describe('GameViewer', () => {
         expect(await screen.findByTestId('archive-960')).toBeInTheDocument();
     });
 
+    it('an imported Fischer random game is handed over to the imported 960 viewer', async () => {
+        setToken('t');
+        stubApi({pgn: {ok: true, text: ['[Variant "Chess960"]', '[SetUp "1"]', '[FEN "bbqnnrkr/pppppppp/8/8/8/8/PPPPPPPP/BBQNNRKR w HAha - 0 1"]', '', '1. e4 e5'].join('\n')}});
+        render(
+            <MemoryRouter initialEntries={['/import/game/5']}>
+                <Routes>
+                    <Route path="/import/game/:gameId" element={<GameViewer imported/>}/>
+                    <Route path="/import/game/:gameId/960" element={<p data-testid="imported-960">imported 960</p>}/>
+                </Routes>
+            </MemoryRouter>,
+        );
+        expect(await screen.findByTestId('imported-960')).toBeInTheDocument();
+        clearToken();
+    });
+
     it('library mode: a PGN from the library, no engine review and no requests about players\' games', async () => {
         const fetchMock = stubApi({pgn: {ok: true, text: FOOLS_MATE_PGN}});
         render(
