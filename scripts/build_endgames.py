@@ -56,10 +56,21 @@ EXERCISES = [
     ("q_vs_a_pawn_def", "8/6K1/8/8/Q7/8/p1k5/8 b - - 0 1", "draw"),
     ("opposite_bishops_def", "8/8/2b1k3/4P3/3K4/3B4/8/8 b - - 0 1", "draw"),
     ("vancura", "R7/6k1/P4r2/8/8/8/8/K7 b - - 0 1", "draw"),
-    # Studies by long-dead composers (27.9, entries in ATTRIBUTION.md).
+    # Fortresses (27.9, course module T5.2): any drawing move counts.
+    ("fortress_q_vs_rook", "3Q4/6pk/5r2/3K4/8/8/8/8 b - - 0 1", "draw"),
+    ("fortress_opposite_bishops", "8/8/4k3/2b5/4PP2/3K4/8/3B4 b - - 0 1", "draw"),
+    # Studies by long-dead composers (27.9, entries in ATTRIBUTION.md). The key move of each is the only move that keeps
+    # the result per the tablebases (checked below), which also confirms the position was copied from the source correctly.
     ("study_saavedra", "8/8/1KP5/3r4/8/8/8/k7 w - - 0 1", "promote"),
     ("study_reti", "7K/8/k1P5/7p/8/8/8/8 w - - 0 1", "draw"),
+    ("study_kling_horwitz", "3R4/5k2/3K4/3P4/8/8/8/3r4 b - - 0 1", "draw"),
+    ("study_troitzky_1909", "1q6/2n5/8/8/N2k4/6Q1/3K4/8 w - - 0 1", "mate"),
+    ("study_grigoriev_1928", "6K1/8/pp5p/8/7k/3PP3/8/8 w - - 0 1", "promote"),
+    ("study_grigoriev_1930", "8/p2p4/8/8/8/k7/5P1P/7K w - - 0 1", "promote"),
+    ("study_grigoriev_1936", "8/8/8/3k3p/7P/7K/4P3/8 w - - 0 1", "promote"),
+    ("study_grigoriev_1936_draw", "8/8/4pk2/8/8/2p5/2P5/1K6 w - - 0 1", "draw"),
 ]
+STUDY_PREFIX = "study_"
 LIMITS = {"promote": 30, "convert": 30, "draw": 15}
 MATE_SLACK = 8
 
@@ -84,6 +95,9 @@ def main() -> None:
         expected = "draw" if goal == "draw" else "win"
         if category != expected:
             raise SystemExit(f"{exercise_id}: tablebases say {category}, but the goal is {expected}")
+        keys = [move["san"] for move in data["moves"] if move["category"] == data["moves"][0]["category"]]
+        if exercise_id.startswith(STUDY_PREFIX) and len(keys) != 1:
+            raise SystemExit(f"{exercise_id}: a study needs a single key move, the tablebases keep the result with {keys}")
         optimum = math.ceil(data["dtm"] / 2) if goal == "mate" and data.get("dtm") else None
         limit = optimum + MATE_SLACK if optimum else LIMITS[goal]
         if exercise_id == "lucena":

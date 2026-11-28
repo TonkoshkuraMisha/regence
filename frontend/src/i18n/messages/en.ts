@@ -2618,6 +2618,12 @@ export const en = {
             fortress_opposite_bishops: 'Fortress: opposite-coloured bishops, two pawns down',
             study_saavedra: 'Study: Saavedra position (1895)',
             study_reti: 'Study: Réti (1921) — chasing two hares',
+            study_kling_horwitz: 'Study: Kling and Horwitz — the rook defence',
+            study_troitzky_1909: 'Study: Troitzky (1909) — queen and knight against queen and knight',
+            study_grigoriev_1928: 'Study: Grigoriev (1928) — the queen race',
+            study_grigoriev_1930: 'Study: Grigoriev (1930) — two pawns against two',
+            study_grigoriev_1936: 'Study: Grigoriev (1936) — the long way of the king',
+            study_grigoriev_1936_draw: 'Study: Grigoriev (1936) — saving the game a pawn down',
         },
     },
     arenas: {
