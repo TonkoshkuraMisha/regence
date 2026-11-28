@@ -2,15 +2,19 @@
 """
 Pure motif rules of the lesson position miner (scripts/dev/mine_lesson_positions.py) added for the Great Course modules
 of levels 3-5: knight_outpost (S3.8), minor_exchange (S4.10), restriction (S4.8), worst_piece and prophylaxis (S4.9),
-critical (S5.1), quiet_over_forcing (C5.1) and greedy_refuted (C4.1). Fixtures are positions of the lessons built from
+critical (S5.1), quiet_over_forcing (C5.1), greedy_refuted (C4.1), development_lead (S5.2), greek_gift and
+bishop_takes_g7 (S5.3). Fixtures are positions of the lessons built from
 them. The engine part of the miner is not run here.
 """
 
 import chess
 
 from scripts.dev.mine_lesson_positions import (
+    rule_bishop_takes_g7,
     rule_critical,
+    rule_development_lead,
     rule_greedy_refuted,
+    rule_greek_gift,
     rule_knight_outpost,
     rule_minor_exchange,
     rule_prophylaxis,
@@ -104,3 +108,22 @@ def test_greedy_refuted_is_a_non_capture_next_to_a_tempting_capture():
     board = chess.Board(LENHOF)
     assert rule_greedy_refuted(board, chess.Move.from_uci("d4d5"))
     assert not rule_greedy_refuted(board, chess.Move.from_uci("a4c6"))  # the capture itself
+
+
+# Rubinstein - Levitsky 1912 (lesson strategy-development-lead): Black's king on e8, both bishops at home.
+LEVITSKY = "rqb1kb1r/1p1n1ppp/p4n2/8/Q3P3/2N1BN2/PP2B1PP/R3K2R w KQkq - 2 14"
+# Keres - Sucha 1943 and Keres - Foltys 1943 (lesson strategy-king-sacrifices): Bxh7+ and Bxg7.
+SUCHA = "r1bq1rk1/1p1n1ppp/p4b2/4p3/3P3P/3B1N2/PP1BQPP1/R3K2R w KQ - 0 13"
+FOLTYS = "r4rk1/pb1qbppp/1p2p3/2pP4/2n2N2/6P1/PBP2PBP/1R1Q1RK1 w - - 0 15"
+
+
+def test_development_lead_needs_the_king_in_the_centre_and_pieces_at_home():
+    assert rule_development_lead(chess.Board(LEVITSKY), chess.Move.from_uci("e4e5"))
+    assert not rule_development_lead(chess.Board(SUCHA), chess.Move.from_uci("d3h7"))  # Black has castled
+
+
+def test_greek_gift_and_bishop_takes_g7():
+    assert rule_greek_gift(chess.Board(SUCHA), chess.Move.from_uci("d3h7"))
+    assert not rule_greek_gift(chess.Board(SUCHA), chess.Move.from_uci("d3e4"))
+    assert rule_bishop_takes_g7(chess.Board(FOLTYS), chess.Move.from_uci("b2g7"))
+    assert not rule_bishop_takes_g7(chess.Board(FOLTYS), chess.Move.from_uci("b2a1"))

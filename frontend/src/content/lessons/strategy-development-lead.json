@@ -1,0 +1,158 @@
+{
+  "id": "strategy-development-lead",
+  "course": "strategy",
+  "order": 24,
+  "title": {
+    "en": "Dynamics: use a lead in development",
+    "uk": "Динаміка: використайте перевагу в розвитку"
+  },
+  "summary": {
+    "en": "A lead in development is a temporary advantage: in a few moves the opponent will catch up. Use it at once: gain tempi against undeveloped pieces and open lines while his king is still in the centre.",
+    "uk": "Перевага в розвитку тимчасова: за кілька ходів суперник наздожене. Використайте її одразу: вигравайте темпи проти нерозвинених фігур і відкривайте лінії, поки його король у центрі."
+  },
+  "steps": [
+    {
+      "type": "text",
+      "fen": "rnb1kbnr/1p3ppp/p7/q3p3/3N4/2N3P1/PP2PP1P/R1BQKB1R w KQkq - 0 8",
+      "highlights": [
+        "a5",
+        "d4",
+        "e5"
+      ],
+      "text": {
+        "en": "Count the developed pieces of both sides. Rubinstein – von Holzhausen, 1926: White has two knights out, Black has only the queen, and the black king is still on e8. Such an advantage melts away if you play slowly. Every move must either develop with a gain of time or open the position. The pawn e5 now attacks the knight d4.",
+        "uk": "Порахуйте розвинені фігури обох сторін. Рубінштейн – фон Гольцгаузен, 1926: у білих вийшли два коні, у чорних лише ферзь, а чорний король досі на e8. Така перевага тане, якщо грати повільно. Кожен хід має або розвивати з виграшем темпу, або відкривати позицію. Пішак e5 зараз атакує коня d4."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "rnb1kbnr/1p3ppp/p7/q3p3/3N4/2N3P1/PP2PP1P/R1BQKB1R w KQkq - 0 8",
+      "text": {
+        "en": "White to move. The knight has to leave d4. Retreat with a gain of time.",
+        "uk": "Хід білих. Коню треба піти з d4. Відступіть із виграшем темпу."
+      },
+      "line": [
+        {
+          "answers": [
+            "d4b3"
+          ],
+          "correct": {
+            "en": "Nb3! The knight retreats and attacks the queen a5. Black has to move the queen again, and White gains another move for Bg2 and castling. Qa4+ would trade queens, and with them most of White's lead.",
+            "uk": "Кb3! Кінь відступає й нападає на ферзя a5. Чорні мусять знову ходити ферзем, а білі отримують ще один хід на Сg2 і рокіровку. Фa4+ розміняло б ферзів, а з ними й більшу частину переваги білих."
+          }
+        }
+      ],
+      "hint": {
+        "en": "Which retreat attacks the queen a5?",
+        "uk": "Який відступ нападає на ферзя a5?"
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "rqb1kb1r/1p1n1ppp/p4n2/8/Q3P3/2N1BN2/PP2B1PP/R3K2R w KQkq - 2 14",
+      "text": {
+        "en": "Rubinstein – Levitsky, 1912. White to move. The black king is on e8, and both black bishops are still at home. The queen a4 pins the knight d7 to the king. Open the position.",
+        "uk": "Рубінштейн – Левицький, 1912. Хід білих. Чорний король на e8, обидва чорні слони ще вдома. Ферзь a4 зв'язує коня d7 із королем. Відкрийте позицію."
+      },
+      "line": [
+        {
+          "answers": [
+            "e4e5"
+          ],
+          "correct": {
+            "en": "e5! The pawn attacks the knight f6, and the knight d7 cannot take on e5: it is pinned to the king. Lines open while Black's king is in the centre. A slow move such as Rd1 gives Black the time to develop the bishops and castle.",
+            "uk": "e5! Пішак нападає на коня f6, а кінь d7 не може взяти на e5: він зв'язаний із королем. Лінії відкриваються, поки чорний король у центрі. Повільний хід на кшталт Тd1 дає чорним час розвинути слонів і рокірувати."
+          }
+        }
+      ],
+      "hint": {
+        "en": "A pawn move that attacks the knight f6.",
+        "uk": "Хід пішаком, що нападає на коня f6."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "rqb1kb1r/3n1ppp/p4n2/1p2P3/Q7/2N1BN2/PP2B1PP/R3K2R w KQkq - 0 15",
+      "text": {
+        "en": "The same game, a move later. Black answered ...b5 and attacks the queen a4. Keep the initiative.",
+        "uk": "Та сама партія, хід потому. Чорні відповіли …b5 і нападають на ферзя a4. Збережіть ініціативу."
+      },
+      "line": [
+        {
+          "answers": [
+            "a4h4"
+          ],
+          "correct": {
+            "en": "Qh4! The queen escapes with a new attack on the knight f6, which is now attacked by the queen and the pawn e5. After ...Nxe5 Nxe5 Qxe5 Bd4 the black queen is driven away and White takes on f6. The quieter Qd4 or Qf4 give Black time to breathe.",
+            "uk": "Фh4! Ферзь іде з-під удару з новим нападом на коня f6, якого тепер атакують ферзь і пішак e5. Після …Кxe5 Кxe5 Фxe5 Сd4 чорного ферзя проганяють, і білі беруть на f6. Спокійніші Фd4 чи Фf4 дають чорним перевести подих."
+          }
+        }
+      ],
+      "hint": {
+        "en": "Move the queen so that it attacks f6.",
+        "uk": "Відведіть ферзя так, щоб він атакував f6."
+      }
+    }
+  ],
+  "exam": [
+    {
+      "type": "find_move",
+      "fen": "r1b1kb1r/ppq2ppp/2ppn1n1/7Q/2BPPp2/P1N2N2/1PPB2PP/4RRK1 w kq - 4 14",
+      "text": {
+        "en": "Janowsky – Steinitz, 1898. White to move. White has castled and the rooks stand on e1 and f1; Black's king is on e8 and his bishops are at home. Break open the centre.",
+        "uk": "Яновський – Стейніц, 1898. Хід білих. Білі рокірували, тури стоять на e1 і f1; чорний король на e8, а слони вдома. Розкрийте центр."
+      },
+      "line": [
+        {
+          "answers": [
+            "d4d5"
+          ],
+          "correct": {
+            "en": "d5! The pawn drives the knight e6 away and opens the centre; after ...Nd8 e5 dxe5 Nxe5 the e-file is open against the black king. The engine rates d5 far above the slow moves (about +3.3 against +1.5).",
+            "uk": "d5! Пішак проганяє коня e6 і відкриває центр; після …Кd8 e5 dxe5 Кxe5 лінія e відкрита проти чорного короля. Рушій оцінює d5 значно вище за повільні ходи (приблизно +3,3 проти +1,5)."
+          }
+        }
+      ],
+      "hint": {
+        "en": "Push the pawn d4 and attack the knight e6.",
+        "uk": "Посуньте пішака d4 і нападіть на коня e6."
+      }
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "You are ahead in development and the opponent's king is still in the centre. What is the plan?",
+        "uk": "Ви попереду в розвитку, а король суперника ще в центрі. Який план?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "Open lines quickly, even at the cost of a pawn",
+            "uk": "Швидко відкривати лінії, навіть ціною пішака"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "Keep the position closed and improve slowly",
+            "uk": "Тримати позицію закритою й повільно покращуватися"
+          },
+          "feedback": {
+            "en": "Slow play gives the opponent the moves he needs to catch up.",
+            "uk": "Повільна гра дає супернику ті ходи, яких йому бракує, щоб наздогнати."
+          }
+        },
+        {
+          "text": {
+            "en": "Trade the queens to be safe",
+            "uk": "Розміняти ферзів для безпеки"
+          },
+          "feedback": {
+            "en": "Without queens a lead in development is worth much less.",
+            "uk": "Без ферзів перевага в розвитку важить набагато менше."
+          }
+        }
+      ]
+    }
+  ]
+}
