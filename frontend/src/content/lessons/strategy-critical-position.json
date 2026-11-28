@@ -1,0 +1,158 @@
+{
+  "id": "strategy-critical-position",
+  "course": "strategy",
+  "order": 23,
+  "title": {
+    "en": "Critical positions: where the game is decided",
+    "uk": "Критичні позиції: де вирішується партія"
+  },
+  "summary": {
+    "en": "When pieces are in contact and several captures are possible, the game turns on one move. Recognise such a moment, stop, and compare the candidates: often only one of them keeps the advantage.",
+    "uk": "Коли фігури в контакті й можливі кілька взять, партія повертається на одному ході. Впізнайте такий момент, зупиніться й порівняйте кандидатів: часто перевагу зберігає лише один із них."
+  },
+  "steps": [
+    {
+      "type": "text",
+      "fen": "4rrk1/pbpqnp1p/1p1p1npb/5PQ1/3P4/2NB2N1/PPP3PP/R4RK1 w - - 0 15",
+      "highlights": [
+        "g5",
+        "h6",
+        "f6"
+      ],
+      "text": {
+        "en": "A critical position is a turning point: an exchange, a capture or a break that cannot be undone. You recognise it by the tension: pieces attack each other and both sides have captures. This is where to spend your time. Steinitz – Blackburne, 1862. White is a piece down, and his queen g5 is attacked by the bishop h6. Two black pieces can be taken: the bishop h6 and the knight f6.",
+        "uk": "Критична позиція — це поворотний момент: розмін, взяття чи прорив, який не скасуєш. Її впізнають за напругою: фігури нападають одна на одну, і в обох сторін є взяття. Саме тут варто витрачати час. Стейніц – Блекберн, 1862. Білі без фігури, а їхнього ферзя g5 атакує слон h6. Можна взяти дві чорні фігури: слона h6 і коня f6."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "4rrk1/pbpqnp1p/1p1p1npb/5PQ1/3P4/2NB2N1/PPP3PP/R4RK1 w - - 0 15",
+      "text": {
+        "en": "White to move. Both captures win the piece back. Which one keeps the attack?",
+        "uk": "Хід білих. Обидва взяття повертають фігуру. Яке з них зберігає атаку?"
+      },
+      "line": [
+        {
+          "answers": [
+            "g5h6"
+          ],
+          "correct": {
+            "en": "Qxh6! The queen takes the bishop and stays next to Black's king, and the pawn f5 threatens fxg6. Qxf6? also wins the piece back, but the bishop h6 joins the game with ...Be3+, and the engine rates the position as equal. One capture keeps the advantage, the other gives it away.",
+            "uk": "Фxh6! Ферзь бере слона й лишається біля чорного короля, а пішак f5 загрожує fxg6. Фxf6? теж повертає фігуру, але слон h6 вступає в гру ходом …Сe3+, і рушій оцінює позицію як рівну. Одне взяття зберігає перевагу, інше її віддає."
+          }
+        }
+      ],
+      "hint": {
+        "en": "Take the piece that attacks your queen.",
+        "uk": "Візьміть фігуру, що атакує вашого ферзя."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "3r1rk1/1b3ppp/pq2pb2/1p1PN2N/4P3/1PQ5/5PPP/R4RK1 b - - 4 20",
+      "text": {
+        "en": "Steinitz – Anderssen, 1862. Black to move. The centre is in tension: the pawn e6 can take on d5, the bishop f6 can take the knight e5, and the knight h5 attacks the bishop f6.",
+        "uk": "Стейніц – Андерсен, 1862. Хід чорних. Центр у напрузі: пішак e6 може взяти на d5, слон f6 може взяти коня e5, а кінь h5 атакує слона f6."
+      },
+      "line": [
+        {
+          "answers": [
+            "e6d5"
+          ],
+          "correct": {
+            "en": "...exd5! Black opens the d-file for the rook d8: after exd5 Rxd5 the pawn d5 is lost for White. ...Bxe5? Qxe5 trades the bishop for the knight, and the white queen soon takes the pawn e6.",
+            "uk": "…exd5! Чорні відкривають лінію d для тури d8: після exd5 Тxd5 білі втрачають пішака d5. …Сxe5? Фxe5 міняє слона на коня, і білий ферзь незабаром бере пішака e6."
+          }
+        }
+      ],
+      "hint": {
+        "en": "Resolve the tension in the centre with the pawn.",
+        "uk": "Розв'яжіть напругу в центрі пішаком."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "4rbk1/ppp4p/3q2p1/3P4/2n3Q1/1N2B1P1/PPN3KP/R7 b - - 0 24",
+      "text": {
+        "en": "Steinitz – Deacon, 1863. Black to move. Black is a knight down. Two captures come with check: ...Nxe3+ and ...Qxd5+.",
+        "uk": "Стейніц – Дікон, 1863. Хід чорних. Чорні без коня. Два взяття йдуть із шахом: …Кxe3+ і …Фxd5+."
+      },
+      "line": [
+        {
+          "answers": [
+            "c4e3"
+          ],
+          "correct": {
+            "en": "...Nxe3+! The knight takes the bishop with check and attacks the queen g4 at the same time. After Nxe3 Rxe3 Black has won back the piece. ...Qxd5+? only wins a pawn: Qf3 blocks, and White stays a piece up.",
+            "uk": "…Кxe3+! Кінь бере слона з шахом і водночас нападає на ферзя g4. Після Кxe3 Тxe3 чорні повернули фігуру. …Фxd5+? виграє лише пішака: Фf3 закривається, і білі лишаються з зайвою фігурою."
+          }
+        }
+      ],
+      "hint": {
+        "en": "Which check also attacks the queen?",
+        "uk": "Який шах ще й нападає на ферзя?"
+      }
+    }
+  ],
+  "exam": [
+    {
+      "type": "find_move",
+      "fen": "r2qr3/ppp2kpp/1b1p1n2/n3P3/3P4/2N2Q2/P4PPP/R1B1R1K1 w - - 1 18",
+      "text": {
+        "en": "Blackburne – Steinitz, 1863. White to move. Black threatens ...dxe5 and breaks White's centre. Find the move that uses the moment.",
+        "uk": "Блекберн – Стейніц, 1863. Хід білих. Чорні загрожують …dxe5 і ламають білий центр. Знайдіть хід, що використовує момент."
+      },
+      "line": [
+        {
+          "answers": [
+            "c1g5"
+          ],
+          "correct": {
+            "en": "Bg5! The bishop comes out with a pin: the knight f6 is pinned to the queen d8, and the pawn e5 attacks it, so exf6 is a threat. Slow moves such as Bb2 let Black play ...dxe5, and White's centre falls apart.",
+            "uk": "Сg5! Слон виходить зі зв'язкою: кінь f6 зв'язаний із ферзем d8, і його атакує пішак e5, тож exf6 — загроза. Повільні ходи на кшталт Сb2 дозволяють …dxe5, і білий центр розвалюється."
+          }
+        }
+      ],
+      "hint": {
+        "en": "Develop the bishop c1 with a pin.",
+        "uk": "Розвиньте слона c1 зі зв'язкою."
+      }
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "How do you recognise a critical position?",
+        "uk": "Як упізнати критичну позицію?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "Pieces are in contact, there are several captures, and the next move cannot be undone",
+            "uk": "Фігури в контакті, є кілька взять, і наступний хід не скасуєш"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "Most of the pieces have been exchanged",
+            "uk": "Більшість фігур уже розмінено"
+          },
+          "feedback": {
+            "en": "An empty board can be critical too, but the sign is tension, not the number of pieces.",
+            "uk": "Порожня дошка теж може бути критичною, але ознака — напруга, а не кількість фігур."
+          }
+        },
+        {
+          "text": {
+            "en": "It is the opening and the moves are known",
+            "uk": "Це дебют, і ходи відомі"
+          },
+          "feedback": {
+            "en": "Known moves are played quickly; the critical moment is when theory gives way to choice.",
+            "uk": "Відомі ходи грають швидко; критичний момент настає, коли теорія поступається вибору."
+          }
+        }
+      ]
+    }
+  ]
+}

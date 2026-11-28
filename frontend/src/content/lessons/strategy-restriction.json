@@ -1,0 +1,158 @@
+{
+  "id": "strategy-restriction",
+  "course": "strategy",
+  "order": 21,
+  "title": {
+    "en": "Restriction: take squares away",
+    "uk": "Обмеження: заберіть поля"
+  },
+  "summary": {
+    "en": "A piece without squares is half a piece. Take squares from enemy pieces with your pawns, or tie a piece down with a pin, and the opponent's whole position becomes passive.",
+    "uk": "Фігура без полів — це половина фігури. Забирайте поля у фігур суперника пішаками або прив'язуйте фігуру зв'язкою, і вся позиція суперника стає пасивною."
+  },
+  "steps": [
+    {
+      "type": "text",
+      "fen": "r1b1kb1r/1p3ppn/pq1pp2p/8/7B/2NB2Q1/PPPR1PPP/2K4R b kq - 4 14",
+      "highlights": [
+        "h4",
+        "g3",
+        "g5"
+      ],
+      "text": {
+        "en": "Restriction is a quiet way of fighting: you do not attack a piece, you take away the squares it needs. A pawn does this best, because it controls squares for a long time and is not afraid of being attacked by pieces. Olafsson – Tal, 1986. Look at the white bishop h4: which squares does it have?",
+        "uk": "Обмеження — тихий спосіб боротьби: ви не нападаєте на фігуру, а забираєте потрібні їй поля. Найкраще це робить пішак, бо він довго контролює поля й не боїться нападу фігур. Олафссон – Таль, 1986. Подивіться на білого слона h4: які поля в нього є?"
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "r1b1kb1r/1p3ppn/pq1pp2p/8/7B/2NB2Q1/PPPR1PPP/2K4R b kq - 4 14",
+      "text": {
+        "en": "Black to move. Take the last squares away from the bishop h4.",
+        "uk": "Хід чорних. Заберіть у слона h4 останні поля."
+      },
+      "line": [
+        {
+          "answers": [
+            "g7g5"
+          ],
+          "correct": {
+            "en": "...g5! The bishop h4 has no square left: g3 is occupied by its own queen, and g5 is guarded by the pawn h6 and the knight h7. White can only get something for it with Bxh7 gxh4, and Black is clearly better.",
+            "uk": "…g5! У слона h4 не лишилося поля: g3 зайняте власним ферзем, а g5 стережуть пішак h6 і кінь h7. Білі можуть лише щось отримати за нього ходом Сxh7 gxh4, і в чорних явна перевага."
+          }
+        }
+      ],
+      "hint": {
+        "en": "A pawn move on the g-file.",
+        "uk": "Хід пішаком по лінії g."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "2r4r/pp2qpk1/4pn1p/1Pb3p1/P1P5/B2B1Q1P/5PP1/R3R1K1 w - - 0 19",
+      "text": {
+        "en": "Geller – Koberl, 1950. White to move. The bishop a3 is attacked by the bishop c5. Do not trade it: find a square from which it ties a black piece down.",
+        "uk": "Геллер – Кеберл, 1950. Хід білих. Слона a3 атакує слон c5. Не міняйте його: знайдіть поле, звідки він прив'яже чорну фігуру."
+      },
+      "line": [
+        {
+          "answers": [
+            "a3b2"
+          ],
+          "correct": {
+            "en": "Bb2! The bishop avoids the trade and pins the knight f6 to the king g7 along the long diagonal; the queen f3 also hits f6. The knight cannot move, and Black's kingside is tied to its defence. Bxc5 trades White's active bishop, and the engine rates it as equal.",
+            "uk": "Сb2! Слон ухиляється від розміну й зв'язує коня f6 із королем g7 по довгій діагоналі; ферзь f3 теж б'є f6. Кінь не може рушити, і королівський фланг чорних прикутий до його захисту. Сxc5 міняє активного слона білих, і рушій оцінює це як рівність."
+          }
+        }
+      ],
+      "hint": {
+        "en": "The long diagonal leads to the knight f6 and the king g7.",
+        "uk": "Довга діагональ веде до коня f6 і короля g7."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "3b4/5k1p/3p3P/5pp1/2P1bp2/2N5/P2K2P1/6R1 b - - 2 34",
+      "text": {
+        "en": "Kupper – Keres, 1961. Black to move. The white knight c3 attacks the bishop e4.",
+        "uk": "Купер – Керес, 1961. Хід чорних. Білий кінь c3 атакує слона e4."
+      },
+      "line": [
+        {
+          "answers": [
+            "d8a5"
+          ],
+          "correct": {
+            "en": "...Ba5! The bishop pins the knight c3 to the king d2. The knight can no longer take on e4 and stays paralysed on c3, so White's king and rook have to look after it while Black's pawns advance. A retreat such as ...Bb6 allows Nxe4.",
+            "uk": "…Сa5! Слон зв'язує коня c3 із королем d2. Кінь більше не може взяти на e4 і стоїть паралізований на c3, тож білі король і тура мусять його стерегти, поки чорні пішаки йдуть уперед. Відступ на кшталт …Сb6 дозволяє Кxe4."
+          }
+        }
+      ],
+      "hint": {
+        "en": "Pin the knight to the king.",
+        "uk": "Зв'яжіть коня з королем."
+      }
+    }
+  ],
+  "exam": [
+    {
+      "type": "find_move",
+      "fen": "1k1r3r/1pq1bp1p/p3p1p1/4P3/1P3P2/3PNR2/1P1Q2PP/R5K1 b - - 0 20",
+      "text": {
+        "en": "Yates – Rubinstein, 1926. Black to move. Tie down a white piece and attack a pawn with one move.",
+        "uk": "Єйтс – Рубінштейн, 1926. Хід чорних. Одним ходом прив'яжіть білу фігуру й нападіть на пішака."
+      },
+      "line": [
+        {
+          "answers": [
+            "c7b6"
+          ],
+          "correct": {
+            "en": "...Qb6! The queen pins the knight e3 to the king g1 along the diagonal b6–g1 and attacks the pawn b4. White has to unpin with Kh1, and ...Bxb4 wins a pawn.",
+            "uk": "…Фb6! Ферзь зв'язує коня e3 із королем g1 по діагоналі b6–g1 і нападає на пішака b4. Білі мусять розв'язатися ходом Крh1, і …Сxb4 виграє пішака."
+          }
+        }
+      ],
+      "hint": {
+        "en": "The queen goes to the diagonal of the king g1.",
+        "uk": "Ферзь іде на діагональ короля g1."
+      }
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "Why is restricting an enemy piece often better than attacking it at once?",
+        "uk": "Чому обмежити фігуру суперника часто краще, ніж одразу напасти на неї?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "An attacked piece simply moves away; a piece without squares stays bad for a long time",
+            "uk": "Атакована фігура просто відходить; фігура без полів лишається поганою надовго"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "Because attacking is against the rules of strategy",
+            "uk": "Бо нападати заборонено правилами стратегії"
+          },
+          "feedback": {
+            "en": "Attack is fine when it works; restriction prepares it.",
+            "uk": "Напад добрий, коли працює; обмеження його готує."
+          }
+        },
+        {
+          "text": {
+            "en": "Because a restricted piece is always lost at once",
+            "uk": "Бо обмежена фігура завжди одразу пропадає"
+          },
+          "feedback": {
+            "en": "Not always at once: often it just stays passive, and that is enough.",
+            "uk": "Не завжди одразу: часто вона просто лишається пасивною, і цього досить."
+          }
+        }
+      ]
+    }
+  ]
+}

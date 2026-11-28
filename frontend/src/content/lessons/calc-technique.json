@@ -1,0 +1,158 @@
+{
+  "id": "calc-technique",
+  "course": "calculation",
+  "order": 8,
+  "title": {
+    "en": "Calculation technique: before you take",
+    "uk": "Техніка розрахунку: перш ніж брати"
+  },
+  "summary": {
+    "en": "A capture that looks free is the most dangerous candidate. Before you take, look at the opponent's checks and captures in reply, count attackers and defenders, and ask whether a stronger move wins even more.",
+    "uk": "Взяття, що здається безкоштовним, — найнебезпечніший кандидат. Перш ніж брати, подивіться на шахи й взяття суперника у відповідь, порахуйте нападників і захисників і спитайте, чи немає ходу, що виграє ще більше."
+  },
+  "steps": [
+    {
+      "type": "text",
+      "fen": "3rr3/p1p1qp1k/1bP3pp/5R2/3P4/B2Q1P2/P6P/6RK b - - 2 32",
+      "highlights": [
+        "a3",
+        "e7",
+        "f5"
+      ],
+      "text": {
+        "en": "Three questions before every capture. One: what are the opponent's checks and captures after it? Two: how many pieces attack the target and how many defend it? Three: is there a move that wins more? Blackburne – Steinitz, 1862. The bishop a3 attacks the black queen e7, and the white rook f5 stands where the pawn g6 can take it. Both captures, ...Qxa3 and ...gxf5, look tempting.",
+        "uk": "Три питання перед кожним взяттям. Перше: які шахи й взяття має суперник після нього? Друге: скільки фігур нападає на ціль і скільки її захищає? Третє: чи немає ходу, що виграє більше? Блекберн – Стейніц, 1862. Слон a3 атакує чорного ферзя e7, а біла тура f5 стоїть там, де її може взяти пішак g6. Обидва взяття, …Фxa3 і …gxf5, здаються спокусливими."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "3rr3/p1p1qp1k/1bP3pp/5R2/3P4/B2Q1P2/P6P/6RK b - - 2 32",
+      "text": {
+        "en": "Black to move. Check White's replies to each capture before you choose.",
+        "uk": "Хід чорних. Перш ніж вибрати, перевірте відповіді білих на кожне взяття."
+      },
+      "line": [
+        {
+          "answers": [
+            "e7e6"
+          ],
+          "correct": {
+            "en": "...Qe6! The queen leaves the bishop's attack and hits the rook f5, which is now attacked twice. The captures lose: after ...Qxa3? Rxf7+ opens the king, for example ...Kh8 Rh7+ Kxh7 Qxg6+ Kh8 Qxh6 mate; after ...gxf5? Qxf5+ Kh8 Bxe7 the queen is lost.",
+            "uk": "…Фe6! Ферзь іде з-під удару слона й нападає на туру f5, яку тепер атакують двічі. Взяття програють: після …Фxa3? Тxf7+ розкриває короля, наприклад …Крh8 Тh7+ Крxh7 Фxg6+ Крh8 Фxh6, мат; після …gxf5? Фxf5+ Крh8 Сxe7 ферзь пропадає."
+          }
+        }
+      ],
+      "hint": {
+        "en": "Save the queen with a move that attacks the rook f5.",
+        "uk": "Врятуйте ферзя ходом, що нападає на туру f5."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "r1b1k1nr/bppq1ppp/p1np4/8/B2PP3/1Q3N2/P4PPP/RNB2RK1 w kq - 2 12",
+      "text": {
+        "en": "Steinitz – Lenhof, 1859. White to move. The knight c6 is pinned to the queen d7 by the bishop a4. Bxc6 is possible. Is there something stronger?",
+        "uk": "Стейніц – Ленгоф, 1859. Хід білих. Кінь c6 зв'язаний із ферзем d7 слоном a4. Можна Сxc6. А чи є щось сильніше?"
+      },
+      "line": [
+        {
+          "answers": [
+            "d4d5"
+          ],
+          "correct": {
+            "en": "d5! A pinned piece does not run away: attack it with a pawn. The knight c6 cannot leave without losing the queen d7, so Black loses a piece. Bxc6 only trades bishop for knight, and the engine rates it as equal.",
+            "uk": "d5! Зв'язана фігура нікуди не втече: атакуйте її пішаком. Кінь c6 не може піти, не віддавши ферзя d7, тож чорні втрачають фігуру. Сxc6 лише міняє слона на коня, і рушій оцінює це як рівність."
+          }
+        }
+      ],
+      "hint": {
+        "en": "Attack the pinned knight with a pawn.",
+        "uk": "Атакуйте зв'язаного коня пішаком."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "r3k2r/ppp2ppp/2n1bq2/2b3N1/2pp2P1/2N5/PPP2P1P/R1BQR1K1 w kq - 0 12",
+      "text": {
+        "en": "Steinitz – Meitner, 1860. White to move. The bishop e6 is pinned to the king e8 by the rook e1, and the knight g5 can take it.",
+        "uk": "Стейніц – Майтнер, 1860. Хід білих. Слон e6 зв'язаний із королем e8 турою e1, і кінь g5 може його взяти."
+      },
+      "line": [
+        {
+          "answers": [
+            "c3d5"
+          ],
+          "correct": {
+            "en": "Nd5! Nxe6? fxe6 would give up the pin for nothing. The knight on d5 attacks the queen f6 and the pawn c7, and the bishop e6 stays pinned: after ...Qd8 Rxe6+ fxe6 Nxe6 the knight attacks the queen d8, the bishop c5 and c7, and Ndxc7+ follows.",
+            "uk": "Кd5! Кxe6? fxe6 віддало б зв'язку задарма. Кінь на d5 нападає на ферзя f6 і пішака c7, а слон e6 лишається зв'язаним: після …Фd8 Тxe6+ fxe6 Кxe6 кінь нападає на ферзя d8, слона c5 і c7, а далі йде Кdxc7+."
+          }
+        }
+      ],
+      "hint": {
+        "en": "Keep the pin and bring another piece to attack.",
+        "uk": "Збережіть зв'язку й додайте ще одну фігуру до атаки."
+      }
+    }
+  ],
+  "exam": [
+    {
+      "type": "find_move",
+      "fen": "3r1k2/1pq2p2/3R4/p1P3Rp/4NP2/1N2n2P/1P3KP1/8 b - - 5 30",
+      "text": {
+        "en": "Steinitz – Jeney, 1860. Black to move. The white rook d6 is attacked by the rook d8 and the queen c7 and defended by the pawn c5 and the knight e4. Count before you take.",
+        "uk": "Стейніц – Єней, 1860. Хід чорних. Білу туру d6 атакують тура d8 і ферзь c7, а захищають пішак c5 і кінь e4. Порахуйте, перш ніж брати."
+      },
+      "line": [
+        {
+          "answers": [
+            "e3c4"
+          ],
+          "correct": {
+            "en": "...Nc4! Two attackers against two defenders win nothing: ...Rxd6 cxd6 is only equal, and ...Qxd6? Nxd6 loses the queen. The knight brings a third attacker to d6 and also hits b2, so the rook d6 cannot be held.",
+            "uk": "…Кc4! Два нападники проти двох захисників нічого не виграють: …Тxd6 cxd6 — лише рівність, а …Фxd6? Кxd6 програє ферзя. Кінь додає третього нападника на d6 і ще б'є b2, тож туру d6 не втримати."
+          }
+        }
+      ],
+      "hint": {
+        "en": "Add one more attacker to d6 before capturing.",
+        "uk": "Додайте ще одного нападника на d6, перш ніж брати."
+      }
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "You can capture a piece that seems to be free. What do you check first?",
+        "uk": "Ви можете взяти фігуру, яка здається безкоштовною. Що перевірити насамперед?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "The opponent's checks and captures after my capture",
+            "uk": "Шахи й взяття суперника після мого взяття"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "Nothing: a free piece is a free piece",
+            "uk": "Нічого: безкоштовна фігура — це безкоштовна фігура"
+          },
+          "feedback": {
+            "en": "\"Free\" pieces are the most common bait: the reply decides.",
+            "uk": "«Безкоштовні» фігури — найчастіша наживка: вирішує відповідь суперника."
+          }
+        },
+        {
+          "text": {
+            "en": "Whether I like the position afterwards",
+            "uk": "Чи подобається мені позиція після взяття"
+          },
+          "feedback": {
+            "en": "A feeling is not a check: look at his forcing moves first.",
+            "uk": "Відчуття — не перевірка: спершу подивіться на його форсовані ходи."
+          }
+        }
+      ]
+    }
+  ]
+}

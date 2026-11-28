@@ -16,7 +16,13 @@ Rules (by the RULES registry):
   overload     - the opponent has an overloaded piece (a mentor detector), the move attacks it or one of its targets;
   remove_defender - capture of the sole defender of an opponent piece, after which it is left undefended;
   knight_outpost - a knight settles on a central pawn-guarded square that no opponent pawn can attack (S3.8);
-  minor_exchange - a minor piece trades itself for a defended opponent minor piece (choice of exchange, S4.10).
+  minor_exchange - a minor piece trades itself for a defended opponent minor piece (choice of exchange, S4.10);
+  restriction - a quiet pawn move that takes many legal moves away from the opponent (S4.8);
+  worst_piece - the least mobile piece goes to a square where it has many more moves (S4.9);
+  prophylaxis - a quiet move that removes the opponent's material threat in advance (S4.9);
+  critical - a tense position with many captures for both sides; the engine margin finds the only good move (S5.1);
+  quiet_over_forcing - a quiet move chosen while captures and checks were available (creative thinking, C5.1);
+  greedy_refuted - a piece could be taken, the master did something else: the capture is refuted (C4.1).
 
     python -m scripts.dev.mine_lesson_positions --rule interference --limit 12 --out interference.json
 """
@@ -188,10 +194,140 @@ def rule_minor_exchange(board: chess.Board, move: chess.Move) -> bool:
             and board.fullmove_number >= MIDDLEGAME_FROM_MOVE)
 
 
+RESTRICT_MIN_DROP = 6  # the opponent loses at least this many legal moves...
+RESTRICT_MAX_SHARE = 0.75  # ...and keeps no more than this share of them: a real squeeze, not a lost check
+IMPROVE_MIN_GAIN = 5  # the worst piece gains at least this many squares: from passive to active
+BOXED_BEFORE = 3  # a piece that had at least this many moves...
+BOXED_AFTER = 1  # ...and keeps at most this many after the pawn move is boxed in
+PIECE_VALUES = {chess.PAWN: 1, chess.KNIGHT: 3, chess.BISHOP: 3, chess.ROOK: 5, chess.QUEEN: 9, chess.KING: 0}
+THREAT_MIN_GAIN = 2  # a capture that wins at least two pawns of material is a threat worth preventing
+IMPROVABLE = (chess.KNIGHT, chess.BISHOP, chess.ROOK, chess.QUEEN)
+
+
+def _is_quiet(board: chess.Board, move: chess.Move) -> bool:
+    """Not a capture, not a check, not a promotion, not castling, in the middlegame, and the mover is not in check."""
+    return (not board.is_capture(move) and not board.gives_check(move) and move.promotion is None
+            and not board.is_castling(move) and not board.is_check() and board.fullmove_number >= MIDDLEGAME_FROM_MOVE)
+
+
+def _after_pass(board: chess.Board) -> chess.Board:
+    """The position with the side to move skipping its turn (a null move): what the opponent could do "if we pass"."""
+    passed = board.copy(stack=False)
+    passed.push(chess.Move.null())
+    return passed
+
+
+def _piece_mobility(board: chess.Board, square: chess.Square) -> int:
+    """Legal moves of the piece on the square for the side to move."""
+    return sum(1 for m in board.legal_moves if m.from_square == square)
+
+
+def _material_threats(board: chess.Board) -> set[chess.Square]:
+    """Squares where the side to move wins >= THREAT_MIN_GAIN by a capture: the captured value minus the capturer's value
+    if the target is defended (a one-step exchange estimate, enough to pick candidates for the engine)."""
+    threats = set()
+    for move in board.legal_moves:
+        target = board.piece_at(move.to_square)
+        attacker = board.piece_at(move.from_square)
+        if target is None or attacker is None:
+            continue
+        defended = bool(board.attackers(not board.turn, move.to_square))
+        gain = PIECE_VALUES[target.piece_type] - (PIECE_VALUES[attacker.piece_type] if defended else 0)
+        if gain >= THREAT_MIN_GAIN:
+            threats.add(move.to_square)
+    return threats
+
+
+def rule_restriction(board: chess.Board, move: chess.Move) -> bool:
+    """A quiet move that takes squares away (S4.8): compared with passing, either a pawn move leaves the opponent
+    RESTRICT_MIN_DROP fewer legal moves and no more than RESTRICT_MAX_SHARE of them, or any piece or pawn move boxes one of
+    his pieces in (domination) - it had at least BOXED_BEFORE moves and keeps at most BOXED_AFTER."""
+    piece = board.piece_at(move.from_square)
+    if piece is None or piece.piece_type == chess.KING or not _is_quiet(board, move):
+        return False
+    passed = _after_pass(board)
+    after = board.copy(stack=False)
+    after.push(move)
+    before, left = passed.legal_moves.count(), after.legal_moves.count()
+    if piece.piece_type == chess.PAWN and before - left >= RESTRICT_MIN_DROP and left <= before * RESTRICT_MAX_SHARE:
+        return True
+    enemy = [sq for sq in chess.SquareSet(after.occupied_co[after.turn]) if after.piece_type_at(sq) in IMPROVABLE]
+    return any(_piece_mobility(passed, sq) >= BOXED_BEFORE and _piece_mobility(after, sq) <= BOXED_AFTER for sq in enemy)
+
+
+def rule_worst_piece(board: chess.Board, move: chess.Move) -> bool:
+    """A quiet move of the mover's least mobile piece (knight, bishop, rook or queen) after which it has IMPROVE_MIN_GAIN
+    more legal moves (counted as if the opponent passed): the worst piece goes to a better square (S4.9)."""
+    piece = board.piece_at(move.from_square)
+    if piece is None or piece.piece_type not in IMPROVABLE or not _is_quiet(board, move):
+        return False
+    own = [sq for sq in chess.SquareSet(board.occupied_co[board.turn]) if board.piece_type_at(sq) in IMPROVABLE]
+    mobility = {sq: _piece_mobility(board, sq) for sq in own}
+    if mobility[move.from_square] > min(mobility.values()):
+        return False
+    after = board.copy(stack=False)
+    after.push(move)
+    if after.is_check():
+        return False
+    return _piece_mobility(_after_pass(after), move.to_square) - mobility[move.from_square] >= IMPROVE_MIN_GAIN
+
+
+def rule_prophylaxis(board: chess.Board, move: chess.Move) -> bool:
+    """A quiet move that removes the opponent's material threat (seen by a null move) without moving the threatened piece
+    away: a square is covered or a line is closed in advance (S4.9)."""
+    if not _is_quiet(board, move):
+        return False
+    threats = _material_threats(_after_pass(board))
+    if not threats or move.from_square in threats:
+        return False
+    after = board.copy(stack=False)
+    after.push(move)
+    return not _material_threats(after)
+
+
+TENSION_OWN_CAPTURES = 4  # captures for the side to move...
+TENSION_ENEMY_CAPTURES = 3  # ...and for the opponent if we passed: pieces in contact, the position is about to change
+FORCING_ALTERNATIVES = 2  # captures and checks available besides the quiet move
+
+
+def _forcing_moves(board: chess.Board) -> int:
+    """Legal captures and checks of the side to move."""
+    return sum(1 for m in board.legal_moves if board.is_capture(m) or board.gives_check(m))
+
+
+def rule_critical(board: chess.Board, move: chess.Move) -> bool:
+    """A tense middlegame position (S5.1): many captures for both sides, the mover not in check. Which move keeps the
+    advantage is decided by the engine (a wide --margin): the other moves throw it away."""
+    if board.is_check() or board.fullmove_number < MIDDLEGAME_FROM_MOVE:
+        return False
+    own = sum(1 for m in board.legal_moves if board.is_capture(m))
+    passed = _after_pass(board)
+    return own >= TENSION_OWN_CAPTURES and sum(1 for m in passed.legal_moves if passed.is_capture(m)) >= TENSION_ENEMY_CAPTURES
+
+
+def rule_quiet_over_forcing(board: chess.Board, move: chess.Move) -> bool:
+    """A quiet move played while captures and checks were available (C5.1): the creative move is not the obvious one."""
+    return _is_quiet(board, move) and _forcing_moves(board) >= FORCING_ALTERNATIVES
+
+
+GREEDY_MIN_VALUE = 3  # the tempting capture takes at least a minor piece
+
+
+def rule_greedy_refuted(board: chess.Board, move: chess.Move) -> bool:
+    """A piece (worth GREEDY_MIN_VALUE or more) can be captured, yet the master played something else (C4.1): with a
+    wide engine --margin the capture is refuted by the opponent's reply, and calculating that reply is the lesson."""
+    if board.is_check() or board.fullmove_number < MIDDLEGAME_FROM_MOVE or board.is_capture(move):
+        return False
+    return any(board.is_capture(m) and (target := board.piece_at(m.to_square)) is not None
+               and PIECE_VALUES[target.piece_type] >= GREEDY_MIN_VALUE for m in board.legal_moves)
+
+
 RULES = {"interference": rule_interference, "rook_lift": rule_rook_lift, "pawn_storm": rule_pawn_storm,
          "blockade": rule_blockade, "quiet_move": rule_quiet_move, "overload": rule_overload,
          "remove_defender": rule_remove_defender, "knight_outpost": rule_knight_outpost,
-         "minor_exchange": rule_minor_exchange}
+         "minor_exchange": rule_minor_exchange, "restriction": rule_restriction, "worst_piece": rule_worst_piece,
+         "prophylaxis": rule_prophylaxis, "critical": rule_critical, "quiet_over_forcing": rule_quiet_over_forcing,
+         "greedy_refuted": rule_greedy_refuted}
 
 
 def candidates(rule_name: str):
