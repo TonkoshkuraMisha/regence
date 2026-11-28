@@ -18,7 +18,7 @@ import chess.engine
 from src.core.errors import DomainValueError
 from src.services.bots.base import resolve_stockfish_path
 from src.services.engine_pool import EngineUnavailableError, get_engine_pool
-from src.services.game_engine import is_chess960_fen, read_pgn_game
+from src.services.game_engine import CHESS960_VARIANT, is_chess960_fen, read_pgn_game
 
 # Number of the ordinary starting setup in Fischer chess numbering (0-959).
 STANDARD_POSITION = 518
@@ -126,6 +126,11 @@ class Record:
     fens: list[str] = field(default_factory=list)
     result: str | None = None
 
+    def view(self, game_id: int) -> dict:
+        """The record for the client's 960 viewer (site archive and imported games), under the given game id."""
+        return {"game_id": game_id, "start_fen": self.start_fen, "fens": self.fens, "moves": self.moves,
+                "sans": self.sans, "result": self.result}
+
 
 def archive_record(pgn: str) -> Record:
     """
@@ -136,7 +141,7 @@ def archive_record(pgn: str) -> Record:
     game = read_pgn_game(pgn)
     start = game.headers.get("FEN") if game is not None else None
     if game is None or game.errors or not start or not (
-            game.headers.get("Variant") == "Chess960" or is_chess960_fen(start)):
+            game.headers.get("Variant") == CHESS960_VARIANT or is_chess960_fen(start)):
         raise DomainValueError("not_chess960_game")
     board = game.board()
     record = Record(start_fen=board.fen(shredder=True), fens=[board.fen(shredder=True)], result=game.headers.get("Result"))

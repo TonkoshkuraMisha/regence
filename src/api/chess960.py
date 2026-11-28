@@ -106,9 +106,7 @@ async def _archive_record(game_id: int, db: AsyncSession) -> c960.Record:
 @router.get("/archive/{game_id}")
 async def archive_game(game_id: int, db: AsyncSession = Depends(get_db)):
     """A finished Fischer game for the archive viewer: positions after every ply (Shredder-FEN), moves and the result."""
-    record = await _archive_record(game_id, db)
-    return {"game_id": game_id, "start_fen": record.start_fen, "fens": record.fens, "moves": record.moves,
-            "sans": record.sans, "result": record.result}
+    return (await _archive_record(game_id, db)).view(game_id)
 
 
 @router.get("/archive/{game_id}/analysis", dependencies=BOT_DEPENDENCIES)

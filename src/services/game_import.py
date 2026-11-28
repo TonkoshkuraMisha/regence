@@ -13,8 +13,10 @@ puzzles "My mistakes" (13.5).
   (SOURCE_COOLDOWN_S) for everyone, and the player gets the code import_source_busy. The import rate per player is limited by
   the
   API (RATE_LIMIT_GAME_IMPORT per RATE_LIMIT_GAME_IMPORT_WINDOW_S).
-* Only ordinary chess (from any starting position); variants are skipped. The PGN is saved without comments,
-  clocks and evaluations of a foreign engine -- we do the analysis ourselves.
+* Ordinary chess (from any starting position) and Fischer random chess (Chess960); other variants are skipped. The
+  PGN is saved without comments, clocks and evaluations of a foreign engine -- we do the analysis ourselves. Every
+  spelling of the Fischer variant header is stored as `Variant "Chess960"`, the one the rest of the site reads
+  (game_engine.game_variant, chess960.archive_record).
 * Games are stored separately from the site's games (models/imported_game.py): they do not affect rating, archive or
   statistics.
 * A repeat import does not duplicate: uniqueness by (player, site, game id); for a pasted PGN the id is the SHA-1 of names,
@@ -47,7 +49,7 @@ from src.models.imported_game import ImportedGame
 from src.models.puzzle import PersonalPuzzle
 from src.models.user import User
 from src.services.analysis_service import evaluate_pgn, is_current_analysis
-from src.services.game_engine import normalize_result
+from src.services.game_engine import CHESS960_VARIANT, game_variant, normalize_result
 
 logger = logging.getLogger(__name__)
 
@@ -73,8 +75,11 @@ SPEEDS = ("bullet", "blitz", "rapid", "classical", "daily")
 Fetched = list[tuple[str, chess.pgn.Game, str | None]]
 # Ready to save: the same + the player's side ("white" / "black").
 ToSave = list[tuple[str, chess.pgn.Game, str | None, str]]
-# Values of the Variant header that count as ordinary chess.
+# Values of the Variant header that count as ordinary chess (Fischer chess is recognised by python-chess,
+# Headers.is_chess960).
 _STANDARD_VARIANTS = {"", "standard", "from position", "fromposition"}
+# chess.com game rules that are imported (the "rules" field of an archive game).
+CHESSCOM_RULES = ("chess", "chess960")
 
 # Windows line breaks (including doubled "\r\r\n"), normalised to "\n".
 _LINE_BREAKS = re.compile(r"\r+\n?")
@@ -147,7 +152,10 @@ def _moves_digest(game: chess.pgn.Game) -> str:
 
 
 def read_games(pgn_text: str, limit: int) -> list[chess.pgn.Game]:
-    """Games from a PGN document (no more than limit): only ordinary chess, without parse errors and with at least one move."""
+    """
+    Games from a PGN document (no more than limit): ordinary and Fischer chess, without parse errors and with at
+    least one move. The Variant header of a Fischer game is rewritten as CHESS960_VARIANT.
+    """
     # Several games in a row: blank lines between them are significant, so not normalize_pgn_text (it is for one
     # game); only Windows line breaks ("\r\r\n" -> one line) and the BOM.
     stream = io.StringIO(_LINE_BREAKS.sub("\n", pgn_text.lstrip("\ufeff")))
@@ -163,8 +171,11 @@ def read_games(pgn_text: str, limit: int) -> list[chess.pgn.Game]:
         if game is None:
             break
         variant = game.headers.get("Variant", "").strip().lower()
-        if variant not in _STANDARD_VARIANTS or game.errors or game.next() is None:
+        chess960 = game.headers.is_chess960()
+        if not (chess960 or variant in _STANDARD_VARIANTS) or game.errors or game.next() is None:
             continue
+        if chess960:
+            game.headers["Variant"] = CHESS960_VARIANT
         games.append(game)
     return games
 
@@ -245,7 +256,7 @@ async def _fetch_lichess(client: httpx.AsyncClient, username: str, limit: int) -
     """Recent games from lichess in one PGN request; the id from the Site link, the speed from the Event header."""
     base = settings.GAME_IMPORT_LICHESS_URL.rstrip("/")
     response = await _get(client, "lichess", f"{base}/api/games/user/{username}", params={
-        "max": limit, "perfType": "ultraBullet,bullet,blitz,rapid,classical,correspondence",
+        "max": limit, "perfType": "ultraBullet,bullet,blitz,rapid,classical,correspondence,chess960",
         "finished": "true", "ongoing": "false", "clocks": "false", "evals": "false", "opening": "true",
     }, headers={"Accept": "application/x-chess-pgn"})
     result = []
@@ -280,7 +291,7 @@ async def _fetch_chesscom(client: httpx.AsyncClient, username: str, limit: int) 
         for item in reversed(items):
             if len(result) >= limit:
                 return result
-            if not isinstance(item, dict) or item.get("rules") != "chess" or not item.get("pgn"):
+            if not isinstance(item, dict) or item.get("rules") not in CHESSCOM_RULES or not item.get("pgn"):
                 continue
             games = read_games(str(item["pgn"]), 1)
             if not games:
@@ -400,9 +411,12 @@ def _aware(value: dt.datetime | None) -> str | None:
 
 
 def view(game: ImportedGame, puzzles: int = 0) -> dict:
-    """An import list row (without PGN); puzzles -- the number of personal puzzles made from this game."""
+    """
+    An import list row (without PGN); puzzles -- the number of personal puzzles made from this game, variant --
+    "standard" or "chess960" (the client opens a Fischer game in the 960 viewer).
+    """
     return {
-        "id": game.id, "source": game.source, "color": game.color,
+        "id": game.id, "source": game.source, "color": game.color, "variant": game_variant(None, game.pgn),
         "white": game.white_name, "black": game.black_name,
         "white_rating": game.white_rating, "black_rating": game.black_rating,
         "result": game.result, "speed": game.speed, "played_at": _aware(game.played_at),

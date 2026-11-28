@@ -376,7 +376,10 @@ For each section: what it does → files → where the data comes from → how i
   `docs/research/library-annotations.md`.
 - **Import of one's own games** from lichess and chess.com (`game_import.py`): by nickname through open APIs or by
   pasting PGN; the opt-in daily import (`game_import_schedule.py`, table `import_subscriptions`, the hourly beat task
-  `import_subscriptions`) fetches the player's new games once a day.
+  `import_subscriptions`) fetches the player's new games once a day. Ordinary chess and Chess960 are imported: a
+  Fischer game is stored with `Variant "Chess960"`, reviewed by the engine in 960 mode, replayed by the server for the
+  960 viewer (`GET /imports/games/{id}/chess960`, page `/import/game/:id/960`, `Chess960Archive`), and gives personal
+  puzzles only from positions without 960 castling rights (`personal_puzzles.readable_as_standard`).
 - **Tests.** `library`, `library_text`, `library_annotations`, `pawn_structures`, `game_themes`, `cbh_reader`, `watch`,
   `game_import`, `game_import_schedule`, `pgn_normalization`.
 

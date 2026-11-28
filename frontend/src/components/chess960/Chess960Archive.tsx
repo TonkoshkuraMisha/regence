@@ -4,6 +4,9 @@
 // position after every ply; the page only steps through them (buttons and arrow keys). "Analyse" asks the server for an engine
 // evaluation of every position (UCI_Chess960, GET .../analysis; engine work - the limit and fair play apply) and draws the
 // curve and the largest swings. GameViewer redirects here when the opened game has the Chess960 variant header.
+// The same page shows a player's imported Fischer game (task 24.1, /import/game/:gameId/960, the `imported` prop): the
+// positions come from GET /imports/games/{id}/chess960, the evaluation from the game's review (made in the background after
+// the import, or started by the button) - services/gameImport.ts and services/analysis.ts.
 
 import {useCallback, useEffect, useMemo, useState} from 'react';
 import {Link, useParams} from 'react-router-dom';
@@ -11,7 +14,11 @@ import {ArrowLeft, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Shuff
 import {renderUiMessage, useI18n} from '../../i18n';
 import type {UiMessage} from '../../i18n';
 import {errorMessage} from '../../services/apiErrors';
+import {analysisApi} from '../../services/analysis';
 import {chess960Analysis, chess960Archive} from '../../services/chess960';
+import {importApi} from '../../services/gameImport';
+import type {ImportedGameView} from '../../services/gameImport';
+import type {FullGameAnalysisReport} from '../gameViewer/viewerModel';
 import type {Analysis960, Archive960} from '../../services/chess960';
 import {PuzzleBoard} from '../puzzles/PuzzleBoard';
 import {numberedMoves} from '../../services/moveNumbers';
@@ -50,12 +57,38 @@ export function swingsOf(scores: number[]): Swing[] {
     return swings.sort((a, b) => b.loss - a.loss).slice(0, MAX_SWINGS);
 }
 
-/** Viewer page: board, stepping, the move list and the optional engine curve. */
-export function Chess960Archive() {
+/** Engine data of the viewer; an imported game's review also gives both sides' accuracy. */
+export interface ArchiveAnalysis extends Analysis960 {
+    accuracy?: {white: number; black: number};
+}
+
+/**
+ * The curve of an imported game from its review: the review holds the evaluation after every move, the start position's
+ * evaluation is recovered from the first move's loss (before = after + loss for the side that moved).
+ */
+export function scoresFromReport(report: FullGameAnalysisReport): ArchiveAnalysis {
+    const first = report.moves[0];
+    const start = first ? first.eval_cp + (first.color === 'white' ? first.cp_loss : -first.cp_loss) : 0;
+    return {game_id: report.game_id, scores: [start, ...report.moves.map((move) => move.eval_cp)], complete: true,
+        accuracy: {white: report.white.accuracy, black: report.black.accuracy}};
+}
+
+/** The engine data of an imported game: the ready review, otherwise the review started now (limits apply). */
+async function importedAnalysis(id: string): Promise<ArchiveAnalysis> {
+    const report = (await analysisApi.cached('imported', id)) ?? await analysisApi.run('imported', id);
+    return scoresFromReport(report);
+}
+
+/**
+ * Viewer page: board, stepping, the move list and the optional engine curve. imported - the game is one of the player's
+ * imported games (the names and the site are shown in the title).
+ */
+export function Chess960Archive({imported = false}: { imported?: boolean }) {
     const {t} = useI18n();
     const {gameId} = useParams<{ gameId: string }>();
     const [record, setRecord] = useState<Archive960 | null>(null);
-    const [analysis, setAnalysis] = useState<Analysis960 | null>(null);
+    const [analysis, setAnalysis] = useState<ArchiveAnalysis | null>(null);
+    const [meta, setMeta] = useState<ImportedGameView | null>(null);
     const [index, setIndex] = useState(0);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState<UiMessage | null>(null);
@@ -65,9 +98,13 @@ export function Chess960Archive() {
         setRecord(null);
         setAnalysis(null);
         setError(null);
-        chess960Archive(gameId ?? '').then((loaded) => {
+        const id = gameId ?? '';
+        const load = imported ? Promise.all([importApi.chess960(id), importApi.game(id)])
+            : chess960Archive(id).then((loaded) => [loaded, null] as const);
+        load.then(([loaded, view]) => {
             if (cancelled) return;
             setRecord(loaded);
+            setMeta(view);
             setIndex(loaded.moves.length);
         }).catch((err) => {
             if (!cancelled) setError(errorMessage(err, 'common.networkError'));
@@ -75,7 +112,7 @@ export function Chess960Archive() {
         return () => {
             cancelled = true;
         };
-    }, [gameId]);
+    }, [gameId, imported]);
 
     const last = record ? record.moves.length : 0;
     const go = useCallback((to: number) => setIndex(Math.max(0, Math.min(last, to))), [last]);
@@ -95,7 +132,7 @@ export function Chess960Archive() {
         setBusy(true);
         setError(null);
         try {
-            setAnalysis(await chess960Analysis(gameId ?? ''));
+            setAnalysis(imported ? await importedAnalysis(gameId ?? '') : await chess960Analysis(gameId ?? ''));
         } catch (err) {
             setError(errorMessage(err, 'common.networkError'));
         } finally {
@@ -116,10 +153,15 @@ export function Chess960Archive() {
 
     return (
         <div className="w-full max-w-5xl mx-auto p-3 flex flex-col gap-4 text-boxwood-light" data-testid="chess960-archive">
-            <Link to="/" className="text-sm text-amber-400 hover:underline flex items-center gap-1"><ArrowLeft size={14}/> {t('chess960.live.toLobby')}</Link>
+            <Link to={imported ? '/import' : '/'} className="text-sm text-amber-400 hover:underline flex items-center gap-1">
+                <ArrowLeft size={14}/> {t(imported ? 'chess960.archive.toImports' : 'chess960.live.toLobby')}
+            </Link>
             <header className="flex items-center gap-2">
                 <Shuffle className="text-amber-400"/>
-                <h1 className="text-2xl font-bold text-amber-200">{t('chess960.archive.title', {id: gameId ?? ''})}</h1>
+                <h1 className="text-2xl font-bold text-amber-200" data-testid="c960a-title">
+                    {meta ? t('chess960.archive.importedTitle', {site: t(`gameImport.source.${meta.source}`), white: meta.white, black: meta.black})
+                        : t('chess960.archive.title', {id: gameId ?? ''})}
+                </h1>
             </header>
             {error && <p role="alert" className="text-sm text-rose-300">{renderUiMessage(error, t)}</p>}
             {!record && !error && <p>{t('chess960.loading')}</p>}
@@ -153,6 +195,10 @@ export function Chess960Archive() {
                                     <polyline points={points} fill="none" stroke="#fbbf24" strokeWidth="1.2" vectorEffect="non-scaling-stroke"/>
                                 </svg>
                                 {!analysis.complete && <p className="text-xs text-boxwood/70">{t('chess960.archive.partial')}</p>}
+                                {analysis.accuracy && (
+                                    <p className="text-xs" data-testid="c960a-accuracy">{t('chess960.archive.accuracy', {
+                                        white: Math.round(analysis.accuracy.white), black: Math.round(analysis.accuracy.black)})}</p>
+                                )}
                                 {swings.length > 0 && (
                                     <ul className="text-xs" data-testid="c960a-swings">
                                         {swings.map((swing) => (

@@ -62,8 +62,9 @@ def board_from_start_fen(start_fen: str | None) -> chess.Board:
 
 # File letters in the castling field of the FEN -- a sign of Shredder-FEN, that is, a Fischer game.
 _CHESS960_CASTLING = set("ABCDEFGHabcdefgh")
-# The PGN header that marks a Fischer game.
-CHESS960_HEADER = '[Variant "Chess960"]'
+# The value of the PGN Variant header of a Fischer game, and the whole header line as an exported PGN writes it.
+CHESS960_VARIANT = "Chess960"
+CHESS960_HEADER = f'[Variant "{CHESS960_VARIANT}"]'
 
 
 def is_chess960_fen(fen: str | None) -> bool:

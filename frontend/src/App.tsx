@@ -824,6 +824,7 @@ export default function App() {
                     <Route path="/game/:gameId" element={<GameViewer/>}/>
                     <Route path="/import" element={<ImportPage/>}/>
                     <Route path="/import/game/:gameId" element={<GameViewer key="imported" imported/>}/>
+                    <Route path="/import/game/:gameId/960" element={<Chess960Archive key="imported" imported/>}/>
                     <Route path="/library" element={<LibraryPage/>}/>
                     <Route path="/library/game/:gameId" element={<GameViewer key="library" library/>}/>
                     <Route path="/champions/:championId" element={<ChampionGames/>}/>

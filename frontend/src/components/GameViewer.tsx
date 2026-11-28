@@ -244,9 +244,9 @@ export default function GameViewer({library = false, imported = false}: { librar
                     analysisApi.pgn(source, gameId ?? ''),
                     library ? Promise.resolve(null) : analysisApi.cached(source, gameId ?? ''),
                 ]);
-                // A Fischer random game: the client chess library has no 960 rules, the archive viewer replays it on the server.
-                if (source === 'played' && pgnText.includes('[Variant "Chess960"]')) {
-                    navigate(`/play/960/game/${gameId}`, {replace: true});
+                // A Fischer random game: the client chess library has no 960 rules, the 960 viewer gets the positions from the server.
+                if (source !== 'library' && pgnText.includes('[Variant "Chess960"]')) {
+                    navigate(source === 'imported' ? `/import/game/${gameId}/960` : `/play/960/game/${gameId}`, {replace: true});
                     return;
                 }
                 const newGame = new Chess();
