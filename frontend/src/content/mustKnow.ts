@@ -13,4 +13,7 @@ export const MUST_KNOW: readonly (readonly string[])[] = [
 ];
 
 // Studies (27.9) - only by long-dead composers, each with an entry in ATTRIBUTION.md; course module E4.4.
-export const STUDIES: readonly string[] = ['study_saavedra', 'study_reti'];
+export const STUDIES: readonly string[] = [
+    'study_saavedra', 'study_reti', 'study_kling_horwitz', 'study_troitzky_1909', 'study_grigoriev_1928',
+    'study_grigoriev_1930', 'study_grigoriev_1936', 'study_grigoriev_1936_draw',
+];
