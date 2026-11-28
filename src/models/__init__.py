@@ -19,7 +19,7 @@ from src.models.collection import CollectionEntry
 from src.models.email_token import EmailToken
 from src.models.game import Game
 from src.models.guess import GuessPosition
-from src.models.imported_game import ImportedGame
+from src.models.imported_game import ImportedGame, ImportSubscription
 from src.models.ladder import LadderBeaten
 from src.models.lesson import LessonProgress
 from src.models.library import LibraryCollection, LibraryGame, LibraryGameCollection
@@ -80,6 +80,7 @@ __all__ = [
     "Follow",
     "GuessPosition",
     "ImportedGame",
+    "ImportSubscription",
     "Notification",
     "DirectMessage",
     "Block",

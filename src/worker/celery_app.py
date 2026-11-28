@@ -117,6 +117,7 @@ celery_app.conf.update(
         "archive_move_telemetry": {"queue": ANALYSIS_QUEUE},
         "purge_deleted_accounts": {"queue": ANALYSIS_QUEUE},
         "arena_awards": {"queue": ANALYSIS_QUEUE},
+        "import_subscriptions": {"queue": ANALYSIS_QUEUE},
         "bot_selfplay": {"queue": SIMULATION_QUEUE},
     },
     # Scheduled tasks (the celery beat process, the beat service in docker-compose.prod.yml; the list - DEPLOY.md, section 8c).
@@ -139,6 +140,9 @@ celery_app.conf.update(
         "purge-deleted-accounts": {"task": "purge_deleted_accounts", "schedule": crontab(hour=4, minute=23)},
         # The new legends week is open (task 26.1): Monday morning UTC, at minute 11 - not together with other scheduled tasks.
         "legends-week-start": {"task": "legends_week_start", "schedule": crontab(day_of_week=1, hour=8, minute=11)},
+        # Daily import from lichess and chess.com (task 24.1): every hour at minute 29, each subscription once a day
+        # (game_import_schedule.IMPORT_INTERVAL), at most RUN_BATCH per run.
+        "import-subscriptions": {"task": "import_subscriptions", "schedule": crontab(minute=29)},
     },
     # Do not prefetch long simulation games: otherwise one worker takes a queue and holds it.
     worker_prefetch_multiplier=1,

@@ -58,6 +58,7 @@ def test_every_foreign_key_is_indexed_and_has_a_delete_rule():
     (moderation.REPORT_REASONS, (*moderation_service.REASONS, "auto")),
     (user_models.DM_POLICIES, direct_messages.POLICIES),
     (imported_game.IMPORT_SOURCES, (*game_import.SOURCES, "pgn")),
+    (imported_game.SUBSCRIPTION_SOURCES, game_import.SOURCES),
     (tournament.TOURNAMENT_STAGES, get_args(tournament_rules.Stage)),
     (tournament.TOURNAMENT_RESULTS, get_args(tournament_rules.Result)),
     (tournament.TOURNAMENT_FORMATS, get_args(tournaments.Format)),

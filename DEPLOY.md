@@ -349,6 +349,7 @@ The `beat` service (`celery beat`) runs tasks from `src/worker/celery_app.py` (`
 | `arena_awards` | every 5 minutes | `analysis` | prize places of finished arenas: record, notification, trophies and achievements |
 | `legends_week_start` | Monday 08:11 UTC | `analysis` | "the legends week is open" notification to players who finished a legends run in the last 4 weeks |
 | `review_cheater_flags` | Monday 06:07 UTC | `analysis` | old unfair-play flags (without a decision for over 60 days) go back into the moderator queue |
+| `import_subscriptions` | every hour, at minute 29 | `analysis` | the opt-in daily import from lichess and chess.com: each subscription once a day, at most 50 per run, a busy or unavailable site is left for the next hour; new games go to the background review |
 | `purge_deleted_accounts` | once a day, 04:23 UTC | `analysis` | accounts whose deletion was requested more than `ACCOUNT_DELETION_GRACE_DAYS` (10) days ago are anonymised: personal and social data erased, games kept without the name |
 
 There must be exactly one beat process per stack: two processes will send every task twice.

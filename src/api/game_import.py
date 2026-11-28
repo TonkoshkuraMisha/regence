@@ -6,7 +6,8 @@ Only for logged-in users: games are bound to the player. During a game with a hu
 (forbid_engine_help_during_game): otherwise the PGN of a game in progress could be pasted into the "import" and an engine
 evaluation obtained. The import frequency is RATE_LIMIT_GAME_IMPORT per RATE_LIMIT_GAME_IMPORT_WINDOW_S per player; the review
 has the shared
-game analysis limit.
+game analysis limit. /subscriptions - the opt-in daily import (game_import_schedule.py): no foreign
+request is made here, the scheduled task does the import.
 """
 
 from typing import Literal
@@ -26,7 +27,7 @@ from src.db.session import get_db
 from src.models.imported_game import ImportedGame
 from src.models.user import User
 from src.schemas.analysis import FullGameAnalysisResponse
-from src.services import game_import, personal_puzzles
+from src.services import game_import, game_import_schedule, personal_puzzles
 from src.services.engine_pool import EngineBusyError, engine_work
 from src.services.game_summary import summarize
 from src.services.task_dispatch import schedule_imported_analyses_in_background
@@ -158,3 +159,30 @@ async def run_analysis(imported_id: int, http: Request, force: bool = Query(defa
     except EngineBusyError:
         pass  # the next review will compute the puzzles; the review itself is already done
     return _report(game, data)
+
+
+class SubscriptionRequest(BaseModel):
+    username: str = Field(..., min_length=2, max_length=30, pattern=r"^[A-Za-z0-9_-]+$")
+
+
+@router.get("/subscriptions")
+async def list_subscriptions(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Daily import (24.1): the sites the player follows and how the last run went."""
+    return {"subscriptions": await game_import_schedule.list_for(db, user)}
+
+
+@router.put("/subscriptions/{source}", dependencies=[Depends(import_rate_limit)])
+async def subscribe(source: Literal["lichess", "chesscom"], payload: SubscriptionRequest,
+                    user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Turns the daily import from a site on or changes the username; the first run comes with the schedule."""
+    try:
+        return await game_import_schedule.subscribe(db, user, source, payload.username)
+    except game_import.GameImportError as exc:
+        raise _http(exc) from None
+
+
+@router.delete("/subscriptions/{source}", status_code=status.HTTP_204_NO_CONTENT)
+async def unsubscribe(source: Literal["lichess", "chesscom"], user: User = Depends(get_current_user),
+                      db: AsyncSession = Depends(get_db)):
+    """Turns the daily import from a site off; the imported games stay."""
+    await game_import_schedule.unsubscribe(db, user, source)
