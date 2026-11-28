@@ -3,7 +3,7 @@
 // by pasting PGN. The server parses them in the background, the player's misses become "My mistakes" puzzles; a game opens
 // in the review with the coach (/import/game/:id). Signed-in users only. Data comes from services/gameImport.ts
 // (/api/v1/imports, src/api/game_import.py); the site username is remembered in localStorage (rememberNick/savedNick).
-// The route is in App.tsx.
+// Under the site form - the daily import switch (DailyImport.tsx). The route is in App.tsx.
 
 import {useCallback, useEffect, useState} from 'react';
 import type {FormEvent} from 'react';
@@ -16,6 +16,7 @@ import {errorMessage} from '../../services/apiErrors';
 import {getToken} from '../../services/authToken';
 import {IMPORT_COUNTS, IMPORT_PAGE, importApi, opponentOf, outcome, rememberNick, savedNick} from '../../services/gameImport';
 import type {ImportedGameView, ImportedList, ImportResult, ImportSource} from '../../services/gameImport';
+import {DailyImport} from './DailyImport';
 
 // Source tab: a site by username, or pasting PGN.
 type Tab = ImportSource | 'pgn';
@@ -195,6 +196,7 @@ export function ImportPage() {
                     </div>
                     <p className="text-xs text-boxwood/70">{t(tab === 'pgn' ? 'gameImport.pgnNote' : 'gameImport.privacy')}</p>
                 </form>
+                {tab !== 'pgn' && list && <DailyImport source={tab} nick={nick} maxStored={list.max}/>}
                 {error && <p className="text-sm text-red-300" role="alert" data-testid="import-error">{renderUiMessage(error, t)}</p>}
                 {result && (
                     <p className="text-sm text-amber-200" data-testid="import-result">

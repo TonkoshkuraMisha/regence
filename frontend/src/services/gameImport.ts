@@ -3,6 +3,7 @@
 // player; after import the server analyses them in the background and builds "My mistakes" puzzles from the player's slips.
 // Routes — src/api/game_import.py, rules — src/services/game_import.py. The server blocks import and analysis while a
 // game against a human is in progress (fair play): otherwise a live game could be pasted into "import" to get an evaluation.
+// /subscriptions - the opt-in daily import (src/services/game_import_schedule.py).
 
 import {apiRequest} from './http';
 
@@ -45,6 +46,16 @@ export interface ImportedList {
     games: ImportedGameView[];
 }
 
+/** Daily import from a site (game_import_schedule.view): the username followed and how the last run went. */
+export interface ImportSubscriptionView {
+    source: ImportSource;
+    username: string;
+    last_run_at: string | null;
+    last_added: number;
+    /** The serverErrors.* code of the last run's refusal, or null. */
+    last_error: string | null;
+}
+
 /** Page size of the imported games list. */
 export const IMPORT_PAGE = 20;
 /** How many recent games can be requested per import (choice in the form). */
@@ -63,6 +74,11 @@ export const importApi = {
     /** One game; puzzle_plies — plies from which "My mistakes" puzzles were made. */
     game: (id: number | string) => call<ImportedGameView & { puzzle_plies: number[] }>(`/games/${id}`),
     remove: (id: number) => call<void>(`/games/${id}`, {method: 'DELETE'}),
+    /** Daily import: the sites followed; the server imports on a schedule, once a day. */
+    subscriptions: () => call<{ subscriptions: ImportSubscriptionView[] }>('/subscriptions'),
+    subscribe: (source: ImportSource, username: string) =>
+        call<ImportSubscriptionView>(`/subscriptions/${source}`, {method: 'PUT', body: JSON.stringify({username})}),
+    unsubscribe: (source: ImportSource) => call<void>(`/subscriptions/${source}`, {method: 'DELETE'}),
 };
 
 /** Outcome from the player's point of view: win / loss / draw; unknown — no result recorded in the game ("*"). */

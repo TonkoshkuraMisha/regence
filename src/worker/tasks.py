@@ -335,3 +335,33 @@ def arena_awards() -> int:
     if awarded:
         logger.info("Arena awards given: %s", awarded)
     return awarded
+
+
+async def _import_subscriptions_async() -> dict:
+    engine = create_async_engine(_task_database_url(), poolclass=NullPool)
+    try:
+        async with async_sessionmaker(engine, expire_on_commit=False)() as db:
+            from src.services import game_import_schedule
+            from src.services.task_dispatch import schedule_imported_analyses
+
+            result = await game_import_schedule.run_due(db)
+        await schedule_imported_analyses(result["added"])
+        return result
+    finally:
+        await engine.dispose()
+        # The shared Redis client keeps connections bound to this run's event loop; the next run opens new ones.
+        from src.db import redis as redis_module
+
+        await redis_module.redis_client.connection_pool.disconnect()
+
+
+@celery_app.task(name="import_subscriptions", ignore_result=True)
+def import_subscriptions() -> int:
+    """
+    Daily import from lichess and chess.com for the players who opted in (task 24.1, src/services/game_import_schedule.py)
+    - every hour on the celery beat schedule, each subscription once a day; the new games go to the background review.
+    """
+    result = asyncio.run(_import_subscriptions_async())
+    if result["runs"]:
+        logger.info("Scheduled imports: %s runs, %s games", result["runs"], len(result["added"]))
+    return len(result["added"])

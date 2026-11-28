@@ -56,7 +56,7 @@ before the response is sent to the network (`ActionContext.release_db`).
 | Area | Tables | Models |
 |---|---|---|
 | Players | `users`, `email_tokens`, `user_achievements`, `product_events` | `user.py`, `email_token.py`, `achievement.py`, `product_event.py` |
-| Games | `games`, `moves`, `imported_games` | `game.py`, `move.py`, `imported_game.py` |
+| Games | `games`, `moves`, `imported_games`, `import_subscriptions` | `game.py`, `move.py`, `imported_game.py` |
 | Openings and positions | `position_stats`, `position_games`, `repertoires`, `repertoire_moves`, `repertoire_cards` | `position.py`, `repertoire.py` |
 | Puzzles and training | `puzzles`, `puzzle_themes`, `puzzle_attempts`, `theme_progress`, `personal_puzzles`, `defense_drills`, `drill_records`, `guess_positions`, `lesson_progress`, `trainer_results`, `exam_results` | `puzzle.py`, `guess.py`, `lesson.py`, `trainer.py` |
 | Bots | `bot_personalities`, `bot_opening_stats`, `bot_ratings`, `bot_rivals`, `bot_rival_stats`, `bot_tunings`, `bot_tuning_log`, `ladder_beaten` | `personality.py`, `bot_memory.py`, `ladder.py` |
@@ -375,9 +375,10 @@ For each section: what it does → files → where the data comes from → how i
   `game_themes.py`, column `library_games.themes`, filter `theme` of `GET /library/games`. The rules for working with materials — `docs/research/books-library-review.md`, annotations —
   `docs/research/library-annotations.md`.
 - **Import of one's own games** from lichess and chess.com (`game_import.py`): by nickname through open APIs or by
-  pasting PGN.
+  pasting PGN; the opt-in daily import (`game_import_schedule.py`, table `import_subscriptions`, the hourly beat task
+  `import_subscriptions`) fetches the player's new games once a day.
 - **Tests.** `library`, `library_text`, `library_annotations`, `pawn_structures`, `game_themes`, `cbh_reader`, `watch`,
-  `game_import`, `pgn_normalization`.
+  `game_import`, `game_import_schedule`, `pgn_normalization`.
 
 ### 4.13. Social
 

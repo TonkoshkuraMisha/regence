@@ -41,7 +41,7 @@ from src.models.arena import ArenaReminder
 from src.models.bot_memory import BotRival, BotRivalStat
 from src.models.email_token import EmailToken
 from src.models.game import Game, GameStatus
-from src.models.imported_game import ImportedGame
+from src.models.imported_game import ImportedGame, ImportSubscription
 from src.models.lesson import LessonProgress
 from src.models.personality import BotPersonality
 from src.models.product_event import ProductEvent
@@ -68,8 +68,9 @@ def _iso(value: datetime | None) -> str | None:
 async def export_data(db: AsyncSession, user: User) -> dict:
     """
     The player's data as one JSON document: profile with ratings, games (with PGN and opponent name), bot personas,
-    lesson and theme progress, puzzle attempts, personal puzzles, imported games, drill records and tournaments with
-    bots. Only the listed sections are included; the password and internal profile fields are not exported.
+    lesson and theme progress, puzzle attempts, personal puzzles, imported games and daily-import subscriptions, drill
+    records and tournaments with bots. Only the listed sections are included; the password and internal profile fields
+    are not exported.
     """
     games = (await db.execute(
         select(Game).where(or_(Game.white_player_id == user.id, Game.black_player_id == user.id))
@@ -92,6 +93,8 @@ async def export_data(db: AsyncSession, user: User) -> dict:
     tournaments = (await db.execute(select(Tournament).where(Tournament.owner_id == user.id))).scalars().all()
     imported = (await db.execute(select(ImportedGame).where(ImportedGame.user_id == user.id)
                                  .order_by(ImportedGame.id))).scalars().all()
+    subscriptions = (await db.execute(select(ImportSubscription).where(ImportSubscription.user_id == user.id)
+                                      .order_by(ImportSubscription.source))).scalars().all()
 
     return {
         "format": EXPORT_FORMAT,
@@ -147,6 +150,12 @@ async def export_data(db: AsyncSession, user: User) -> dict:
              "imported_at": _iso(g.created_at), "pgn": g.pgn}
             for g in imported
         ],
+        # The daily import (24.1): the player's usernames on other sites are personal data too.
+        "import_subscriptions": [
+            {"source": s.source, "username": s.username, "created_at": _iso(s.created_at),
+             "last_run_at": _iso(s.last_run_at)}
+            for s in subscriptions
+        ],
         "drill_records": [{"combo": r.combo, "best": r.best} for r in records],
         "tournaments": [
             {"id": t.id, "format": t.format, "size": t.size, "status": t.status,
@@ -184,6 +193,7 @@ PERSONAL_TABLES = (
     (BotPersonality, BotPersonality.owner_id), (LessonProgress, LessonProgress.user_id),
     (ThemeProgress, ThemeProgress.user_id), (PuzzleAttempt, PuzzleAttempt.user_id),
     (PersonalPuzzle, PersonalPuzzle.user_id), (ImportedGame, ImportedGame.user_id),
+    (ImportSubscription, ImportSubscription.user_id),
     (DrillRecord, DrillRecord.user_id), (PuzzleTimedScore, PuzzleTimedScore.user_id),
     (Tournament, Tournament.owner_id), (EmailToken, EmailToken.user_id),
     (ProductEvent, ProductEvent.user_id), (ArenaReminder, ArenaReminder.user_id),
