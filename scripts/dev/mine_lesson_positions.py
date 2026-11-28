@@ -25,7 +25,9 @@ Rules (by the RULES registry):
   greedy_refuted - a piece could be taken, the master did something else: the capture is refuted (C4.1);
   development_lead - the opponent's king is in the centre and his minor pieces at home (S5.2);
   greek_gift - Bxh7+ / ...Bxh2+ against the castled king (S5.3);
-  bishop_takes_g7 - a bishop takes the g-pawn in front of the castled king (S5.3).
+  bishop_takes_g7 - a bishop takes the g-pawn in front of the castled king (S5.3);
+  exchange_sac - a rook takes a defended knight or bishop without check: the exchange is given for position (S5.4);
+  sicilian_d5 - in an Open Sicilian (White's d-pawn and Black's c-pawn are gone, White's pawn on e4) Black plays ...d5 (O3.2).
 
     python -m scripts.dev.mine_lesson_positions --rule interference --limit 12 --out interference.json
 """
@@ -368,13 +370,45 @@ def rule_bishop_takes_g7(board: chess.Board, move: chess.Move) -> bool:
             and board.fullmove_number >= MIDDLEGAME_FROM_MOVE)
 
 
+def _material(board: chess.Board, colour: chess.Color) -> int:
+    """The colour's material in pawns (PIECE_VALUES, the king counts 0)."""
+    return sum(PIECE_VALUES[piece.piece_type] for piece in board.piece_map().values() if piece.color == colour)
+
+
+def rule_exchange_sac(board: chess.Board, move: chess.Move) -> bool:
+    """A rook takes a knight or bishop that the opponent can recapture, without check (S5.4): the exchange is given up.
+    With a calm engine window (--max-score) the reward is positional, not a quick combination. It is a real sacrifice,
+    not a recapture in the middle of a trade: material is level or better for the mover before the move."""
+    piece = board.piece_at(move.from_square)
+    return (piece is not None and piece.piece_type == chess.ROOK and board.piece_type_at(move.to_square) in MINOR_PIECES
+            and board.is_attacked_by(not board.turn, move.to_square) and not board.gives_check(move)
+            and board.fullmove_number >= MIDDLEGAME_FROM_MOVE
+            and _material(board, board.turn) >= _material(board, not board.turn))
+
+
+SICILIAN_FROM_MOVE = 8  # before this the ...d5 push is opening theory
+
+
+def rule_sicilian_d5(board: chess.Board, move: chess.Move) -> bool:
+    """Black's central break ...d5 in the Open Sicilian (O3.2): White's d-pawn and Black's c-pawn have been traded and
+    White's pawn stands on e4, so the break opens the centre while White's king or pieces are not ready."""
+    piece = board.piece_at(move.from_square)
+    return (board.turn == chess.BLACK and piece is not None and piece.piece_type == chess.PAWN
+            and move.to_square == chess.D5 and move.from_square in (chess.D6, chess.D7)
+            and board.piece_at(chess.E4) == chess.Piece(chess.PAWN, chess.WHITE)
+            and not board.pieces(chess.PAWN, chess.WHITE) & chess.BB_FILE_D
+            and not board.pieces(chess.PAWN, chess.BLACK) & chess.BB_FILE_C
+            and board.fullmove_number >= SICILIAN_FROM_MOVE)
+
+
 RULES = {"interference": rule_interference, "rook_lift": rule_rook_lift, "pawn_storm": rule_pawn_storm,
          "blockade": rule_blockade, "quiet_move": rule_quiet_move, "overload": rule_overload,
          "remove_defender": rule_remove_defender, "knight_outpost": rule_knight_outpost,
          "minor_exchange": rule_minor_exchange, "restriction": rule_restriction, "worst_piece": rule_worst_piece,
          "prophylaxis": rule_prophylaxis, "critical": rule_critical, "quiet_over_forcing": rule_quiet_over_forcing,
          "greedy_refuted": rule_greedy_refuted, "development_lead": rule_development_lead,
-         "greek_gift": rule_greek_gift, "bishop_takes_g7": rule_bishop_takes_g7}
+         "greek_gift": rule_greek_gift, "bishop_takes_g7": rule_bishop_takes_g7, "exchange_sac": rule_exchange_sac,
+         "sicilian_d5": rule_sicilian_d5}
 
 
 def candidates(rule_name: str):

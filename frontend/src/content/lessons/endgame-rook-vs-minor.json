@@ -1,0 +1,305 @@
+{
+  "id": "endgame-rook-vs-minor",
+  "course": "endgame",
+  "order": 21,
+  "title": {
+    "en": "Rook against bishop or knight, queen against rook",
+    "uk": "Тура проти слона чи коня, ферзь проти тури"
+  },
+  "summary": {
+    "en": "A rook usually cannot beat a lone bishop or knight if the defender knows where to stand; a queen beats a rook with a double attack.",
+    "uk": "Тура зазвичай не виграє в самого слона чи коня, якщо той, хто захищається, знає, де стояти; ферзь виграє в тури подвійним ударом."
+  },
+  "steps": [
+    {
+      "type": "text",
+      "fen": "7k/8/6K1/8/2b5/8/8/R7 w - - 0 1",
+      "arrows": [
+        {
+          "from": "a1",
+          "to": "a8",
+          "color": "red"
+        },
+        {
+          "from": "c4",
+          "to": "g8",
+          "color": "green"
+        }
+      ],
+      "highlights": [
+        "h8"
+      ],
+      "text": {
+        "en": "Rook against bishop is usually a draw, but only in the right corner. The defending king hides in the corner of the colour the bishop does not move on: here the bishop is light-squared and the king stands on the dark square h8. The check Ra8+ is blocked by Bg8, and the king cannot be driven out: the endgame tables say draw.",
+        "uk": "Тура проти слона - зазвичай нічия, але лише в правильному куті. Король, що захищається, ховається в кут того кольору, яким слон не ходить: тут слон білопольний, а король стоїть на темному полі h8. Шах Тa8+ закривається ходом Сg8, і короля звідти не вибити: ендшпільні таблиці кажуть - нічия."
+      }
+    },
+    {
+      "type": "text",
+      "fen": "k7/8/1K6/8/2b5/8/8/7R w - - 0 1",
+      "arrows": [
+        {
+          "from": "h1",
+          "to": "h8",
+          "color": "red"
+        },
+        {
+          "from": "c4",
+          "to": "g8",
+          "color": "yellow"
+        }
+      ],
+      "highlights": [
+        "a8"
+      ],
+      "text": {
+        "en": "The wrong corner: a8 is a light square, the colour of the bishop. After Rh8+ the bishop can block only on g8, and Rxg8 is mate. In the corner of the bishop's colour the rook wins.",
+        "uk": "Неправильний кут: a8 - світле поле, колір слона. Після Тh8+ слон може закритися лише на g8, і Тxg8 - мат. У куті кольору слона тура виграє."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "5k2/8/5K2/8/2b5/8/8/4R3 b - - 0 1",
+      "highlights": [
+        "h8"
+      ],
+      "text": {
+        "en": "Black to move. White threatens Re8 mate. Only one move saves the game, and every bishop move loses: where should the king go?",
+        "uk": "Хід чорних. Білі погрожують Тe8 мат. Рятує лише один хід, а кожен хід слоном програє: куди має йти король?"
+      },
+      "line": [
+        {
+          "answers": [
+            "f8g8"
+          ],
+          "reply": "e1e8",
+          "correct": {
+            "en": "The king heads for h8, the dark corner. White checks on e8.",
+            "uk": "Король іде до h8, темного кута. Білі дають шах на e8."
+          }
+        },
+        {
+          "answers": [
+            "g8h7"
+          ],
+          "correct": {
+            "en": "The king stays next to its corner; the tables say draw. Every other move in this line loses.",
+            "uk": "Король лишається біля свого кута; таблиці кажуть - нічия. Будь-який інший хід у цій лінії програє."
+          }
+        }
+      ],
+      "hint": {
+        "en": "The bishop is light-squared, so the safe corner is the dark one: h8.",
+        "uk": "Слон білопольний, тож безпечний кут - темний: h8."
+      }
+    },
+    {
+      "type": "text",
+      "fen": "8/8/8/3k4/Rn6/2K5/8/8 b - - 0 1",
+      "arrows": [
+        {
+          "from": "a4",
+          "to": "b4",
+          "color": "red"
+        },
+        {
+          "from": "c3",
+          "to": "b4",
+          "color": "red"
+        }
+      ],
+      "text": {
+        "en": "Rook against knight is also usually a draw, with another rule: the knight must stay next to its own king. A knight far from the king, especially on the edge or in a corner, is trapped and lost. Here the knight on b4 is attacked twice.",
+        "uk": "Тура проти коня - теж зазвичай нічия, але з іншим правилом: кінь має триматися поруч зі своїм королем. Кінь далеко від короля, особливо на краю чи в куті, потрапляє в пастку і гине. Тут коня на b4 атаковано двічі."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "8/8/8/3k4/Rn6/2K5/8/8 b - - 0 1",
+      "text": {
+        "en": "Black to move. Save the knight: only one move holds the draw.",
+        "uk": "Хід чорних. Врятуйте коня: нічию тримає лише один хід."
+      },
+      "line": [
+        {
+          "answers": [
+            "b4c6"
+          ],
+          "wrong": {
+            "b4a2": {
+              "en": "A check, but the knight stays on the a-file, far from its king: Rxa2 takes it.",
+              "uk": "Шах, але кінь лишається на вертикалі a, далеко від свого короля: Тxa2 його бере."
+            },
+            "b4d3": {
+              "en": "The king on c3 simply takes the knight.",
+              "uk": "Король c3 просто бере коня."
+            }
+          },
+          "correct": {
+            "en": "The knight comes back next to its king and is safe; the tables say draw.",
+            "uk": "Кінь повертається до свого короля і в безпеці; таблиці кажуть - нічия."
+          }
+        }
+      ],
+      "hint": {
+        "en": "Bring the knight back to the king.",
+        "uk": "Поверніть коня до короля."
+      }
+    },
+    {
+      "type": "text",
+      "fen": "8/2k4r/8/4K3/8/8/8/Q7 w - - 0 1",
+      "arrows": [
+        {
+          "from": "a1",
+          "to": "a7",
+          "color": "green"
+        }
+      ],
+      "text": {
+        "en": "Queen against rook is a win, but the technique is long. The quickest way is a double attack: a check that also hits the rook, or a check along the line where the rook stands behind the king.",
+        "uk": "Ферзь проти тури - виграш, але техніка довга. Найшвидший шлях - подвійний удар: шах, що одночасно б'є туру, або шах по лінії, де тура стоїть за королем."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "8/2k4r/8/4K3/8/8/8/Q7 w - - 0 1",
+      "text": {
+        "en": "White to move. Win the rook at once.",
+        "uk": "Хід білих. Виграйте туру одразу."
+      },
+      "line": [
+        {
+          "answers": [
+            "a1a7"
+          ],
+          "reply": "c7d8",
+          "correct": {
+            "en": "Check along the seventh rank: the king has to step off it, and the rook behind it is left alone.",
+            "uk": "Шах по сьомій горизонталі: король мусить зійти з неї, і тура за ним лишається без захисту."
+          }
+        },
+        {
+          "answers": [
+            "a7h7"
+          ],
+          "correct": {
+            "en": "The rook is taken: queen against a lone king is an easy win.",
+            "uk": "Туру взято: ферзь проти самого короля - легкий виграш."
+          }
+        }
+      ],
+      "hint": {
+        "en": "The king and the rook stand on the same rank.",
+        "uk": "Король і тура стоять на одній горизонталі."
+      }
+    }
+  ],
+  "exam": [
+    {
+      "type": "choice",
+      "text": {
+        "en": "Rook against a light-squared bishop: which corners are safe for the defending king?",
+        "uk": "Тура проти білопольного слона: які кути безпечні для короля, що захищається?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "h8 and a1 - the dark corners",
+            "uk": "h8 і a1 - темні кути"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "a8 and h1 - the light corners",
+            "uk": "a8 і h1 - світлі кути"
+          },
+          "feedback": {
+            "en": "That is the colour of the bishop: there the rook wins, as in the example with Rh8+ Bg8 Rxg8 mate.",
+            "uk": "Це колір слона: там тура виграє, як у прикладі з Тh8+ Сg8 Тxg8 мат."
+          }
+        },
+        {
+          "text": {
+            "en": "Any corner",
+            "uk": "Будь-який кут"
+          },
+          "feedback": {
+            "en": "Only the corners of the colour the bishop does not move on are safe.",
+            "uk": "Безпечні лише кути того кольору, яким слон не ходить."
+          }
+        }
+      ]
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "Rook against knight: where is the knight safest?",
+        "uk": "Тура проти коня: де коневі найбезпечніше?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "Next to its own king",
+            "uk": "Поруч зі своїм королем"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "In a corner, out of the way",
+            "uk": "У куті, подалі від усіх"
+          },
+          "feedback": {
+            "en": "In a corner the knight has the fewest squares and is easily trapped.",
+            "uk": "У куті в коня найменше полів, і його легко впіймати."
+          }
+        },
+        {
+          "text": {
+            "en": "As far from the rook as possible",
+            "uk": "Якомога далі від тури"
+          },
+          "feedback": {
+            "en": "Distance does not help: separated from its king, the knight is caught by the rook and the king together.",
+            "uk": "Відстань не допомагає: відрізаного від короля коня ловлять тура й король разом."
+          }
+        }
+      ]
+    },
+    {
+      "type": "find_move",
+      "fen": "8/2k5/8/1Q2K3/8/8/8/6r1 w - - 0 1",
+      "text": {
+        "en": "White to move. Win the rook with a double attack.",
+        "uk": "Хід білих. Виграйте туру подвійним ударом."
+      },
+      "line": [
+        {
+          "answers": [
+            "b5c5"
+          ],
+          "reply": "c7d7",
+          "correct": {
+            "en": "Check, and the queen also looks along the diagonal at the rook on g1.",
+            "uk": "Шах, і ферзь водночас дивиться по діагоналі на туру g1."
+          }
+        },
+        {
+          "answers": [
+            "c5g1"
+          ],
+          "correct": {
+            "en": "The rook is won.",
+            "uk": "Туру виграно."
+          }
+        }
+      ],
+      "hint": {
+        "en": "Find a check on the diagonal c5-g1.",
+        "uk": "Знайдіть шах на діагоналі c5-g1."
+      }
+    }
+  ]
+}

@@ -1,0 +1,210 @@
+{
+  "id": "opening-sicilian-ideas",
+  "course": "opening",
+  "order": 3,
+  "title": {
+    "en": "Sicilian ideas: the ...d5 break and ...Rxc3",
+    "uk": "Ідеї сицилійського захисту: підрив ...d5 і ...Тxc3"
+  },
+  "summary": {
+    "en": "In the Open Sicilian Black answers White's attack with a blow in the centre, ...d5, and with the exchange sacrifice on c3.",
+    "uk": "У відкритому сицилійському захисті чорні відповідають на атаку білих ударом у центрі, ...d5, і жертвою якості на c3."
+  },
+  "steps": [
+    {
+      "type": "text",
+      "fen": "r2q1rk1/3nbppp/p1bpp3/6P1/1p1QP2P/4BP2/PPP1N3/1K1R1B1R b - - 1 16",
+      "arrows": [
+        {
+          "from": "d6",
+          "to": "d5",
+          "color": "green"
+        },
+        {
+          "from": "c8",
+          "to": "c3",
+          "color": "blue"
+        }
+      ],
+      "highlights": [
+        "e4"
+      ],
+      "text": {
+        "en": "Tal - Balashov, 1973. After 1.e4 c5 2.Nf3 and 3.d4 cxd4 4.Nxd4 Black's c-pawn has been traded for White's d-pawn. Black gets the half-open c-file and two central pawns, d6 and e6, against White's one, e4. White often castles long and storms the king side with the pawns; Black's best answer is in the centre. Two typical ideas: the break ...d5, which opens lines while White's pawns are far away, and the exchange sacrifice ...Rxc3, which breaks the pawns in front of White's king.",
+        "uk": "Таль - Балашов, 1973. Після 1.e4 c5 2.Кf3 і 3.d4 cxd4 4.Кxd4 пішак c чорних розміняно на пішак d білих. Чорні мають напіввідкриту вертикаль c і два центральні пішаки, d6 і e6, проти одного білого, e4. Білі часто роблять довгу рокіровку і штурмують королівський фланг пішаками; найкраща відповідь чорних - у центрі. Дві типові ідеї: підрив ...d5, що відкриває лінії, поки білі пішаки далеко, і жертва якості ...Тxc3, що ламає пішаки перед білим королем."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "r1b1k2r/1p1pnpp1/p1n3q1/4p2p/4P2P/2N4R/PPP2PP1/R1BQKB2 b Qkq - 1 11",
+      "text": {
+        "en": "Geller - Bronstein, 1968. Black to move. White has pushed the h-pawn and brought the rook to h3 for an attack. Black's king is still in the centre - and still the answer is in the centre.",
+        "uk": "Геллер - Бронштейн, 1968. Хід чорних. Білі просунули пішак h і вивели туру на h3 для атаки. Чорний король ще в центрі - і все одно відповідь у центрі."
+      },
+      "line": [
+        {
+          "answers": [
+            "d7d5"
+          ],
+          "correct": {
+            "en": "The break opens the centre and the bishop on c8 before White's attack gets going; the engine prefers Black clearly, while other moves leave White better. Black later went wrong and lost the game.",
+            "uk": "Підрив відкриває центр і слона c8, перш ніж атака білих розгорнеться; рушій явно на боці чорних, а інші ходи лишають перевагу білим. Пізніше чорні помилилися і програли партію."
+          }
+        }
+      ],
+      "hint": {
+        "en": "Push the d-pawn two squares.",
+        "uk": "Рушайте пішак d на два поля."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "2q2rk1/4bppp/p2ppn2/1p6/bn2P3/N3BB2/2P1QPPP/R4RK1 b - - 1 19",
+      "text": {
+        "en": "Geller - Razuvaev, 1986, a Scheveningen. Black to move. White's knight on a3 is far from the centre and the pawn on c2 is weak. Strike in the centre.",
+        "uk": "Геллер - Разуваєв, 1986, схевенінгенська система. Хід чорних. Білий кінь a3 далеко від центру, а пішак c2 слабкий. Вдарте в центрі."
+      },
+      "line": [
+        {
+          "answers": [
+            "d6d5"
+          ],
+          "correct": {
+            "en": "The centre opens while White's knight stands on the edge; the engine prefers Black clearly, and other moves only keep the balance. The game was drawn.",
+            "uk": "Центр відкривається, поки білий кінь стоїть на краю; рушій явно на боці чорних, а інші ходи лише зберігають рівновагу. Партія завершилась унічию."
+          }
+        }
+      ],
+      "hint": {
+        "en": "The same idea as in the previous position.",
+        "uk": "Та сама ідея, що й у попередній позиції."
+      }
+    },
+    {
+      "type": "text",
+      "fen": "3r2k1/pp2ppbp/6p1/N3p3/2r3b1/2N1B3/PPP5/1K4RR b - - 1 22",
+      "arrows": [
+        {
+          "from": "c4",
+          "to": "c3",
+          "color": "red"
+        }
+      ],
+      "highlights": [
+        "b1",
+        "b2"
+      ],
+      "text": {
+        "en": "Bouaziz - Geller, 1967, a Dragon. The knight on c3 is White's best defender: it guards the king on b1 and the centre. Giving the rook for it is the most famous sacrifice of the Sicilian: after bxc3 the pawns in front of White's king are broken into weak islands on a2, c2 and c3, and Black's rook comes to the c-file against them.",
+        "uk": "Буазіз - Геллер, 1967, «Дракон». Кінь c3 - найкращий захисник білих: він стереже короля b1 і центр. Віддати за нього туру - найвідоміша жертва сицилійського захисту: після bxc3 пішаки перед білим королем розбито на слабкі острівці a2, c2 і c3, а чорна тура виходить на вертикаль c проти них."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "3r2k1/pp2ppbp/6p1/N3p3/2r3b1/2N1B3/PPP5/1K4RR b - - 1 22",
+      "text": {
+        "en": "Bouaziz - Geller, 1967. Black to move. Give the exchange on c3.",
+        "uk": "Буазіз - Геллер, 1967. Хід чорних. Віддайте якість на c3."
+      },
+      "line": [
+        {
+          "answers": [
+            "c4c3"
+          ],
+          "correct": {
+            "en": "After bxc3 White's king stands behind broken pawns: the engine prefers Black clearly, while every other move leaves Black worse. Black won the game.",
+            "uk": "Після bxc3 білий король стоїть за розбитими пішаками: рушій явно на боці чорних, а будь-який інший хід лишає чорних у гіршій позиції. Чорні виграли партію."
+          }
+        }
+      ],
+      "hint": {
+        "en": "Take the knight with the rook on c4.",
+        "uk": "Візьміть коня турою c4."
+      }
+    }
+  ],
+  "exam": [
+    {
+      "type": "find_move",
+      "fen": "1qrr2k1/4ppbp/p1bp1np1/8/2B1P3/N3BP2/PP1Q2PP/3R1RK1 b - - 0 19",
+      "text": {
+        "en": "Foltz - Geller, 1956, a Dragon. Black to move. Find the central break.",
+        "uk": "Фольц - Геллер, 1956, «Дракон». Хід чорних. Знайдіть підрив у центрі."
+      },
+      "line": [
+        {
+          "answers": [
+            "d6d5"
+          ],
+          "correct": {
+            "en": "The pawn attacks the bishop on c4 and opens the d-file against White's queen and rook. Black won the game.",
+            "uk": "Пішак нападає на слона c4 і відкриває вертикаль d проти білого ферзя й тури. Чорні виграли партію."
+          }
+        }
+      ],
+      "hint": {
+        "en": "The rooks on c8 and d8 want open lines.",
+        "uk": "Тури c8 і d8 хочуть відкритих ліній."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "2rr2k1/1q2bppp/p1bp1n2/4p3/4P3/1P1QNPP1/RBP3BP/2R3K1 b - - 3 20",
+      "text": {
+        "en": "Kots - Tal, 1962. Black to move. White's only central pawn is on e4. Open the centre.",
+        "uk": "Коц - Таль, 1962. Хід чорних. Єдиний центральний пішак білих стоїть на e4. Відкрийте центр."
+      },
+      "line": [
+        {
+          "answers": [
+            "d6d5"
+          ],
+          "correct": {
+            "en": "After the exchanges on d5 Black's rook comes to the open d-file with great force. Black won the game.",
+            "uk": "Після розмінів на d5 чорна тура виходить на відкриту вертикаль d з великою силою. Чорні виграли партію."
+          }
+        }
+      ],
+      "hint": {
+        "en": "Push the d-pawn.",
+        "uk": "Рушайте пішак d."
+      }
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "White has castled long and is storming with the g- and h-pawns. What is Black's typical answer in the Sicilian?",
+        "uk": "Білі зробили довгу рокіровку і штурмують пішаками g і h. Яка типова відповідь чорних у сицилійському захисті?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "A counter-blow in the centre, ...d5",
+            "uk": "Контрудар у центрі, ...d5"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "Defending the king with pawn moves ...h6 and ...g6",
+            "uk": "Захищати короля ходами пішаків ...h6 і ...g6"
+          },
+          "feedback": {
+            "en": "Pawn moves in front of the king give White's pawns targets to attack.",
+            "uk": "Ходи пішаками перед королем дають білим пішакам цілі для атаки."
+          }
+        },
+        {
+          "text": {
+            "en": "Waiting moves until White attacks",
+            "uk": "Чекати, доки білі атакують"
+          },
+          "feedback": {
+            "en": "Waiting gives White time: a wing attack is met by play in the centre.",
+            "uk": "Очікування дає білим час: на атаку на фланзі відповідають грою в центрі."
+          }
+        }
+      ]
+    }
+  ]
+}

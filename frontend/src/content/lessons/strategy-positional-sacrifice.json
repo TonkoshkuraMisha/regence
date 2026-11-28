@@ -1,0 +1,173 @@
+{
+  "id": "strategy-positional-sacrifice",
+  "course": "strategy",
+  "order": 26,
+  "title": {
+    "en": "The positional sacrifice: giving the exchange",
+    "uk": "Позиційна жертва: віддати якість"
+  },
+  "summary": {
+    "en": "A rook for a minor piece is a loss of material, but it can buy something that lasts: passed pawns, a strong bishop, an open king.",
+    "uk": "Тура за легку фігуру - втрата матеріалу, але нею можна купити щось тривале: прохідні пішаки, сильного слона, відкритого короля."
+  },
+  "steps": [
+    {
+      "type": "text",
+      "fen": "5r2/1b2r1kp/1p4p1/nP1pN3/2pP4/2P1P3/R1B3KP/1R6 b - - 0 28",
+      "arrows": [
+        {"from": "e7", "to": "e5", "color": "yellow"},
+        {"from": "b7", "to": "g2", "color": "green"}
+      ],
+      "highlights": ["c4", "d5"],
+      "text": {
+        "en": "Rubinstein - Saemisch, 1929. A positional sacrifice is not a combination: you do not win the material back by force. You give the exchange - a rook for a bishop or a knight - because the position after it is better for you for a long time. Count what you get, not only what you give: passed pawns, an open line for a bishop, weak squares around the king. Here the knight on e5 is White's best piece, and Black's pawns on c4 and d5 are ready to run.",
+        "uk": "Рубінштейн - Земіш, 1929. Позиційна жертва - не комбінація: матеріал не повертається силоміць. Ви віддаєте якість - туру за слона чи коня, - бо позиція після цього надовго краща для вас. Рахуйте, що отримуєте, а не лише що віддаєте: прохідні пішаки, відкриту лінію для слона, слабкі поля біля короля. Тут кінь e5 - найкраща фігура білих, а чорні пішаки c4 і d5 готові бігти."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "5r2/1b2r1kp/1p4p1/nP1pN3/2pP4/2P1P3/R1B3KP/1R6 b - - 0 28",
+      "text": {
+        "en": "Rubinstein - Saemisch, 1929. Black to move. Give the exchange and start the pawns.",
+        "uk": "Рубінштейн - Земіш, 1929. Хід чорних. Віддайте якість і рушайте пішаків."
+      },
+      "line": [
+        {
+          "answers": ["e7e5"],
+          "reply": "d4e5",
+          "correct": {
+            "en": "The rook takes the knight. White takes back with the d-pawn, and the square d4 is free.",
+            "uk": "Тура бере коня. Білі відбирають пішаком d, і поле d4 звільняється."
+          }
+        },
+        {
+          "answers": ["d5d4"],
+          "correct": {
+            "en": "Check from the bishop on b7 along the long diagonal, and the c- and d-pawns are connected passed pawns. Without the sacrifice the engine gives White the advantage; with it Black stands better. In the game Black held the draw.",
+            "uk": "Шах слоном b7 по довгій діагоналі, а пішаки c і d - зв'язані прохідні. Без жертви рушій дає перевагу білим, із нею краще стоять чорні. У партії чорні втримали нічию."
+          }
+        }
+      ],
+      "hint": {
+        "en": "The knight on e5 is the target; after the recapture the d-pawn moves with a discovered check.",
+        "uk": "Ціль - кінь e5; після відбирання пішак d рушає з відкритим шахом."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "1q3r1k/1p1bn1p1/pBrb3p/P2p4/2P1p3/7P/1P1N1PP1/2RQRBK1 b - - 1 23",
+      "text": {
+        "en": "Geller - Uhlmann, 1970. Black to move. The bishop on b6 is White's only dark-squared bishop. Give the exchange for it.",
+        "uk": "Геллер - Ульман, 1970. Хід чорних. Слон b6 - єдиний темнопольний слон білих. Віддайте за нього якість."
+      },
+      "line": [
+        {
+          "answers": ["c6b6"],
+          "reply": "a5b6",
+          "correct": {
+            "en": "The rook takes the bishop; White takes back with the pawn.",
+            "uk": "Тура бере слона; білі відбирають пішаком."
+          }
+        },
+        {
+          "answers": ["d6c5"],
+          "correct": {
+            "en": "The bishop takes the diagonal to f2, and ...e3 is coming: the dark squares around White's king belong to Black. Black won the game.",
+            "uk": "Слон займає діагональ до f2, а далі йде ...e3: темні поля біля білого короля належать чорним. Чорні виграли партію."
+          }
+        }
+      ],
+      "hint": {
+        "en": "Take on b6, then put the bishop on the diagonal a7-g1.",
+        "uk": "Візьміть на b6, потім поставте слона на діагональ a7-g1."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "r2b1rk1/1b1q2pp/p1nn4/1pBN1N1Q/5PP1/8/PPP4P/3R1RK1 b - - 1 19",
+      "text": {
+        "en": "Geller - Gipslis, 1969. Black to move. The knight on f5 is very strong. Take it with the rook.",
+        "uk": "Геллер - Гіпсліс, 1969. Хід чорних. Кінь f5 дуже сильний. Візьміть його турою."
+      },
+      "line": [
+        {
+          "answers": ["f8f5"],
+          "correct": {
+            "en": "After gxf5 the white king loses its pawn cover and Black's knight comes to e7; the engine prefers Black clearly. Every other move leaves Black worse. Black won the game.",
+            "uk": "Після gxf5 білий король втрачає пішакове прикриття, а чорний кінь приходить на e7; рушій явно на боці чорних. Будь-який інший хід лишає чорних у гіршій позиції. Чорні виграли партію."
+          }
+        }
+      ],
+      "hint": {
+        "en": "Which white piece is the most dangerous?",
+        "uk": "Яка біла фігура найнебезпечніша?"
+      }
+    }
+  ],
+  "exam": [
+    {
+      "type": "find_move",
+      "fen": "r1br2k1/ppb1qpp1/2p2n1p/4n3/1P1NPN2/P6P/BB3PP1/RQ2R1K1 b - - 6 22",
+      "text": {
+        "en": "Geller - Sofrevski, 1967. Black to move. Give the exchange and open White's king.",
+        "uk": "Геллер - Софревський, 1967. Хід чорних. Віддайте якість і розкрийте білого короля."
+      },
+      "line": [
+        {
+          "answers": ["d8d4"],
+          "reply": "b2d4",
+          "correct": {
+            "en": "The rook takes the knight on d4; White takes back with the bishop.",
+            "uk": "Тура бере коня d4; білі відбирають слоном."
+          }
+        },
+        {
+          "answers": ["e5f3"],
+          "reply": "g2f3",
+          "correct": {
+            "en": "The knight checks and breaks White's king cover.",
+            "uk": "Кінь дає шах і ламає прикриття білого короля."
+          }
+        },
+        {
+          "answers": ["c7f4"],
+          "correct": {
+            "en": "Black has taken the second knight: Black is the exchange down, but White's king is open and the pawn on h3 is the next target. The game was drawn.",
+            "uk": "Чорні взяли другого коня: вони без якості, але білий король відкритий, а пішак h3 - наступна ціль. Партія завершилась унічию."
+          }
+        }
+      ],
+      "hint": {
+        "en": "Start with the rook on d8.",
+        "uk": "Почніть турою d8."
+      }
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "What makes a sacrifice positional rather than a combination?",
+        "uk": "Що робить жертву позиційною, а не комбінацією?"
+      },
+      "options": [
+        {
+          "text": {"en": "The material is not won back by force; the gain is a lasting advantage", "uk": "Матеріал не повертається силоміць; виграш - тривала перевага"},
+          "correct": true
+        },
+        {
+          "text": {"en": "It leads to mate within a few moves", "uk": "Вона веде до мату за кілька ходів"},
+          "feedback": {
+            "en": "That is a combination: a forced line with a concrete result.",
+            "uk": "Це комбінація: вимушена лінія з конкретним результатом."
+          }
+        },
+        {
+          "text": {"en": "It is played only in the endgame", "uk": "Її грають лише в ендшпілі"},
+          "feedback": {
+            "en": "Positional sacrifices happen in every phase; in this lesson most are in the middlegame.",
+            "uk": "Позиційні жертви трапляються в будь-якій фазі; у цьому уроці більшість - у мітельшпілі."
+          }
+        }
+      ]
+    }
+  ]
+}
