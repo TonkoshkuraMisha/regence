@@ -10,7 +10,8 @@ import {apiRequest} from './http';
 export const TRAINER_IDS = ['quiet_path', 'knight_route', 'double_strike', 'tail',
     'coord_find', 'coord_name', 'coord_color', 'coord_diagonal', 'memory_position', 'memory_game',
     'board_placement', 'knight_tour', 'blind_move', 'blind_where',
-    'calc_checks', 'calc_exchange', 'calc_distance', 'calc_square', 'calc_eval', 'calc_compare', 'structure_quiz', 'plan_quiz', 'miniatures'] as const;
+    'calc_checks', 'calc_exchange', 'calc_distance', 'calc_square', 'calc_eval', 'calc_compare', 'structure_quiz', 'plan_quiz', 'miniatures',
+    'position_plan'] as const;
 export type TrainerId = typeof TRAINER_IDS[number];
 
 /** Result of one attempt, computed on the client: level, score, time and number of mistakes. */

@@ -31,9 +31,9 @@ TRAINERS = ("quiet_path", "double_strike", "knight_route", "tail",
             "blind_move", "blind_where",
             # Counting and attention (19.7): there are no levels (always 1).
             "calc_checks", "calc_exchange", "calc_distance", "calc_square", "calc_eval", "calc_compare",
-            # Pawn structures and miniatures (27.9): no levels either. The list must match TRAINER_IDS in
-            # frontend/src/services/trainers.ts (tests/test_trainers.py compares them).
-            "structure_quiz", "plan_quiz", "miniatures")
+            # Pawn structures, miniatures and plans in a concrete position (27.9): no levels either. The list must match
+            # TRAINER_IDS in frontend/src/services/trainers.ts (tests/test_trainers.py compares them).
+            "structure_quiz", "plan_quiz", "miniatures", "position_plan")
 MAX_LEVEL = 20
 HISTORY = 50
 

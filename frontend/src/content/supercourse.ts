@@ -174,7 +174,7 @@ export const COURSE: CourseModule[] = [
     mod('S4.8', 'S', [l('strategy-restriction'), th('restriction')]),
     mod('S4.9', 'S', [l('strategy-worst-piece'), th('piece_improvement'), th('prophylaxis')]),
     mod('S4.10', 'S', [l('strategy-exchange-choice'), th('exchange_choice')]),
-    mod('S4.11', 'S', [tr('plan_quiz')]),
+    mod('S4.11', 'S', [tr('plan_quiz'), tr('position_plan')]),
     mod('O4.1', 'O', [tr('plan_quiz'), tr('structure_quiz'), lib('isolated_pawn')]),
     mod('O4.2', 'O', [REPERTOIRE]),
     mod('C4.1', 'C', [l('calc-technique'), tr('calc_eval')]),
