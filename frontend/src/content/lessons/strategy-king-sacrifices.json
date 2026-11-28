@@ -1,0 +1,171 @@
+{
+  "id": "strategy-king-sacrifices",
+  "course": "strategy",
+  "order": 25,
+  "title": {
+    "en": "Breaking the king's cover: bishop sacrifices on h7 and g7",
+    "uk": "Руйнування прикриття короля: жертви слона на h7 і g7"
+  },
+  "summary": {
+    "en": "A bishop that takes the h- or g-pawn in front of the castled king tears its cover apart. Before you sacrifice, check that other pieces are ready to follow: a knight for g5, the queen for the h- or g-file, a rook or a pawn to open a line.",
+    "uk": "Слон, що бере пішака h чи g перед рокірованим королем, розриває його прикриття. Перш ніж жертвувати, перевірте, чи готові інші фігури піти слідом: кінь на g5, ферзь на лінію h чи g, тура чи пішак, щоб відкрити лінію."
+  },
+  "steps": [
+    {
+      "type": "text",
+      "fen": "r1bq1rk1/1p1n1ppp/p4b2/4p3/3P3P/3B1N2/PP1BQPP1/R3K2R w KQ - 0 13",
+      "highlights": [
+        "d3",
+        "h7",
+        "f3",
+        "h1"
+      ],
+      "arrows": [
+        {
+          "from": "d3",
+          "to": "h7",
+          "color": "red"
+        },
+        {
+          "from": "f3",
+          "to": "g5",
+          "color": "green"
+        }
+      ],
+      "text": {
+        "en": "The classical sacrifice on h7 (\"the Greek gift\") works when the pieces behind it are ready: the bishop on the b1–h7 diagonal, a knight that can jump to g5 with check, and the queen able to reach the h-file. Keres – Sucha, 1943. White has all of this, and more: the rook h1 stands behind the h-pawn, so if the h-pawn captures on g5 the h-file opens with check.",
+        "uk": "Класична жертва на h7 («грецький дар») працює, коли фігури позаду готові: слон на діагоналі b1–h7, кінь, що може стрибнути на g5 із шахом, і ферзь, здатний вийти на лінію h. Керес – Суха, 1943. У білих усе це є, і навіть більше: тура h1 стоїть позаду h-пішака, тож якщо h-пішак візьме на g5, лінія h відкриється з шахом."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "r1bq1rk1/1p1n1ppp/p4b2/4p3/3P3P/3B1N2/PP1BQPP1/R3K2R w KQ - 0 13",
+      "text": {
+        "en": "White to move. Break the king's cover.",
+        "uk": "Хід білих. Зруйнуйте прикриття короля."
+      },
+      "line": [
+        {
+          "answers": [
+            "d3h7"
+          ],
+          "correct": {
+            "en": "Bxh7+! Accepting is worse for Black: after ...Kxh7 Ng5+ the engine gives White about +8. In the game Black declined with ...Kh8, but he has lost the pawn h7 and his king is open, while White keeps Ng5 and the h-file in reserve.",
+            "uk": "Сxh7+! Прийняти жертву для чорних ще гірше: після …Крxh7 Кg5+ рушій дає білим приблизно +8. У партії чорні відмовилися ходом …Крh8, але втратили пішака h7, і їхній король відкритий, а в білих у запасі Кg5 і лінія h."
+          }
+        }
+      ],
+      "hint": {
+        "en": "The bishop takes on h7 with check.",
+        "uk": "Слон бере на h7 із шахом."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "r4rk1/pb1qbppp/1p2p3/2pP4/2n2N2/6P1/PBP2PBP/1R1Q1RK1 w - - 0 15",
+      "text": {
+        "en": "Keres – Foltys, 1943. White to move. The bishop b2 is attacked by the knight c4. Do not save it: use it.",
+        "uk": "Керес – Фолтис, 1943. Хід білих. Слона b2 атакує кінь c4. Не рятуйте його: використайте."
+      },
+      "line": [
+        {
+          "answers": [
+            "b2g7"
+          ],
+          "correct": {
+            "en": "Bxg7! The bishop takes the pawn in front of the king before it is lost. After ...Kxg7 Qg4+ Kh8 dxe6 the pawn attacks the queen d7 and the pawn f7, and the queen, the knight and the bishop g2 go for the bare king. dxe6 at once or Qg4 only keep equality, and saving the bishop with Ba1 is worse still.",
+            "uk": "Сxg7! Слон бере пішака перед королем, поки його не втрачено. Після …Крxg7 Фg4+ Крh8 dxe6 пішак нападає на ферзя d7 і пішака f7, а ферзь, кінь і слон g2 атакують оголеного короля. Одразу dxe6 чи Фg4 — лише рівність, а відступ слона Сa1 ще гірший."
+          }
+        }
+      ],
+      "hint": {
+        "en": "The bishop b2 looks along the long diagonal at g7.",
+        "uk": "Слон b2 дивиться по довгій діагоналі на g7."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "r4rk1/b4ppp/pq3B2/1p3N2/3PpP2/P6Q/1P4PP/5RK1 w - - 2 23",
+      "text": {
+        "en": "Tal – Najdorf, 1960. White to move. The bishop f6 is attacked by the pawn g7.",
+        "uk": "Таль – Найдорф, 1960. Хід білих. Слона f6 атакує пішак g7."
+      },
+      "line": [
+        {
+          "answers": [
+            "f6g7"
+          ],
+          "correct": {
+            "en": "Bxg7! The bishop takes the g-pawn and is protected there by the knight f5, so the king cannot take it back. It attacks the rook f8, and Black's king has lost its cover against the queen h3 and the knight. Every retreat of the bishop lets Black untangle, and the engine rates them as bad for White.",
+            "uk": "Сxg7! Слон бере g-пішака й там захищений конем f5, тож король не може його взяти. Він нападає на туру f8, а чорний король втратив прикриття від ферзя h3 і коня. Кожен відступ слона дає чорним розплутатися, і рушій оцінює їх як погані для білих."
+          }
+        }
+      ],
+      "hint": {
+        "en": "Which piece would protect a bishop on g7?",
+        "uk": "Яка фігура захистила б слона на g7?"
+      }
+    }
+  ],
+  "exam": [
+    {
+      "type": "find_move",
+      "fen": "r4rk1/5pp1/ppq2B1p/n2p4/PP6/5PP1/3QP1KP/R2R4 w - - 1 23",
+      "text": {
+        "en": "Tal – Vitolinsh, 1981. White to move. The bishop f6 is attacked by the pawn g7, and the pawn b4 attacks the knight a5.",
+        "uk": "Таль – Вітолиньш, 1981. Хід білих. Слона f6 атакує пішак g7, а пішак b4 нападає на коня a5."
+      },
+      "line": [
+        {
+          "answers": [
+            "f6g7"
+          ],
+          "correct": {
+            "en": "Bxg7! After ...Kxg7 bxa5 White has taken the pawn g7 and the knight a5 for the bishop, and the black king stands open on the long diagonal: Qb2+ follows. Taking the knight first, bxa5, allows ...Qxf6, and White's advantage is much smaller.",
+            "uk": "Сxg7! Після …Крxg7 bxa5 білі взяли пішака g7 і коня a5 за слона, а чорний король стоїть відкритим на довгій діагоналі: далі Фb2+. Якщо спершу взяти коня, bxa5, то …Фxf6, і перевага білих значно менша."
+          }
+        }
+      ],
+      "hint": {
+        "en": "Take on g7 before the bishop is lost.",
+        "uk": "Візьміть на g7, поки слона не втрачено."
+      }
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "When is a bishop sacrifice on h7 most likely to work?",
+        "uk": "Коли жертва слона на h7 найімовірніше спрацює?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "When a knight can come to g5 and the queen can reach the h-file",
+            "uk": "Коли кінь може прийти на g5, а ферзь — на лінію h"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "Whenever the opponent has castled short",
+            "uk": "Завжди, коли суперник рокірував коротко"
+          },
+          "feedback": {
+            "en": "Castling is only the target; without the following pieces the sacrifice just loses a bishop.",
+            "uk": "Рокіровка — лише ціль; без фігур, що підуть слідом, жертва просто віддає слона."
+          }
+        },
+        {
+          "text": {
+            "en": "When the defender has a knight on f6",
+            "uk": "Коли в захисника кінь на f6"
+          },
+          "feedback": {
+            "en": "A knight on f6 guards h7 and h5; it usually makes the sacrifice harder.",
+            "uk": "Кінь на f6 стереже h7 і h5; зазвичай він ускладнює жертву."
+          }
+        }
+      ]
+    }
+  ]
+}

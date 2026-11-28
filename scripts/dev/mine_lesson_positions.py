@@ -22,7 +22,10 @@ Rules (by the RULES registry):
   prophylaxis - a quiet move that removes the opponent's material threat in advance (S4.9);
   critical - a tense position with many captures for both sides; the engine margin finds the only good move (S5.1);
   quiet_over_forcing - a quiet move chosen while captures and checks were available (creative thinking, C5.1);
-  greedy_refuted - a piece could be taken, the master did something else: the capture is refuted (C4.1).
+  greedy_refuted - a piece could be taken, the master did something else: the capture is refuted (C4.1);
+  development_lead - the opponent's king is in the centre and his minor pieces at home (S5.2);
+  greek_gift - Bxh7+ / ...Bxh2+ against the castled king (S5.3);
+  bishop_takes_g7 - a bishop takes the g-pawn in front of the castled king (S5.3).
 
     python -m scripts.dev.mine_lesson_positions --rule interference --limit 12 --out interference.json
 """
@@ -322,12 +325,56 @@ def rule_greedy_refuted(board: chess.Board, move: chess.Move) -> bool:
                and PIECE_VALUES[target.piece_type] >= GREEDY_MIN_VALUE for m in board.legal_moves)
 
 
+MINOR_HOME = {chess.WHITE: (chess.B1, chess.C1, chess.F1, chess.G1), chess.BLACK: (chess.B8, chess.C8, chess.F8, chess.G8)}
+KING_HOME = {chess.WHITE: chess.E1, chess.BLACK: chess.E8}
+DEVELOPMENT_LEAD = 2  # the opponent has at least this many more minor pieces still at home
+OPENING_PHASE = range(8, 26)  # a lead in development matters while the opening turns into the middlegame
+
+
+def _undeveloped(board: chess.Board, colour: chess.Color) -> int:
+    """Knights and bishops of the colour still standing on their home squares."""
+    return sum(1 for sq in MINOR_HOME[colour]
+               if (p := board.piece_at(sq)) is not None and p.color == colour and p.piece_type in MINOR_PIECES)
+
+
+def rule_development_lead(board: chess.Board, move: chess.Move) -> bool:
+    """The opponent's king is still on its home square and he has DEVELOPMENT_LEAD more undeveloped minor pieces (S5.2):
+    with a wide engine --margin the energetic move that uses the lead is the only good one."""
+    mover, enemy = board.turn, not board.turn
+    return (board.fullmove_number in OPENING_PHASE and not board.is_check()
+            and board.king(enemy) == KING_HOME[enemy]
+            and _undeveloped(board, enemy) - _undeveloped(board, mover) >= DEVELOPMENT_LEAD)
+
+
+def rule_greek_gift(board: chess.Board, move: chess.Move) -> bool:
+    """A bishop takes the h-pawn next to the castled king with check (Bxh7+ / ...Bxh2+, S5.3)."""
+    mover, enemy = board.turn, not board.turn
+    piece = board.piece_at(move.from_square)
+    target = chess.H7 if mover == chess.WHITE else chess.H2
+    king_square = chess.G8 if mover == chess.WHITE else chess.G1
+    return (piece is not None and piece.piece_type == chess.BISHOP and move.to_square == target
+            and board.piece_type_at(target) == chess.PAWN and board.king(enemy) == king_square and board.gives_check(move))
+
+
+def rule_bishop_takes_g7(board: chess.Board, move: chess.Move) -> bool:
+    """A bishop takes the g-pawn in front of the castled king (Bxg7 / ...Bxg2) - the second bishop of the double bishop
+    sacrifice or a lone breach of the king's cover (S5.3)."""
+    mover, enemy = board.turn, not board.turn
+    piece = board.piece_at(move.from_square)
+    target = chess.G7 if mover == chess.WHITE else chess.G2
+    king_squares = (chess.G8, chess.H8, chess.F8) if mover == chess.WHITE else (chess.G1, chess.H1, chess.F1)
+    return (piece is not None and piece.piece_type == chess.BISHOP and move.to_square == target
+            and board.piece_type_at(target) == chess.PAWN and board.king(enemy) in king_squares
+            and board.fullmove_number >= MIDDLEGAME_FROM_MOVE)
+
+
 RULES = {"interference": rule_interference, "rook_lift": rule_rook_lift, "pawn_storm": rule_pawn_storm,
          "blockade": rule_blockade, "quiet_move": rule_quiet_move, "overload": rule_overload,
          "remove_defender": rule_remove_defender, "knight_outpost": rule_knight_outpost,
          "minor_exchange": rule_minor_exchange, "restriction": rule_restriction, "worst_piece": rule_worst_piece,
          "prophylaxis": rule_prophylaxis, "critical": rule_critical, "quiet_over_forcing": rule_quiet_over_forcing,
-         "greedy_refuted": rule_greedy_refuted}
+         "greedy_refuted": rule_greedy_refuted, "development_lead": rule_development_lead,
+         "greek_gift": rule_greek_gift, "bishop_takes_g7": rule_bishop_takes_g7}
 
 
 def candidates(rule_name: str):
