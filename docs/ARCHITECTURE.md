@@ -312,13 +312,17 @@ For each section: what it does → files → where the data comes from → how i
   are built from a seed and verified by exhaustive search), **mating patterns** (`mate_course.py`, `mate_patterns.py`),
   **"Guess the master's move"** (`guess.py`, position selection — `guess_selection.py`), **miniatures** and
   **"Recognise the structure"**.
+- **"Plan in this position"** (trainer `position_plan`, 27.9): a prepared set `frontend/src/content/positionPlans.json`
+  of master-game positions with three concrete plans (category + first move); the set is mined and checked by the
+  engine offline (`scripts/dev/build_position_plans.py`), the client only shows it (`frontend/src/trainers/positionPlans.ts`,
+  `components/trainers/PositionPlanQuiz.tsx`).
 - **Trainers for vision, memory and calculation** are computed on the client (`frontend/src/trainers/`), the server
   stores the results (`src/api/trainers.py`, the `trainer_results` table); educational mini-games — `mini_games.py`;
   with a friend by link — the rooms of `mini_game_rooms.py` (Redis, polling once a second,
   `/train/games/room/{code}`).
 - **Tests.** `puzzles_api`, `puzzles_data`, `themes`, `theme_training`, `theme_detectors`, `personal_puzzles`,
   `defense_drills`, `generated_drills`, `mate_course`, `mate_patterns`, `guess_api`, `guess_selection`, `trainers`,
-  `mini_games`, `mini_game_rooms`, `miniatures`, `structure_quiz`; browser — `e2e/puzzles.e2e.ts`,
+  `mini_games`, `mini_game_rooms`, `miniatures`, `structure_quiz`, `position_plans`; browser — `e2e/puzzles.e2e.ts`,
   `puzzle-moves.e2e.ts`.
 
 ### 4.10. School, the Grand Course, the training plan
