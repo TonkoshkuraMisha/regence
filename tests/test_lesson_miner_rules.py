@@ -3,7 +3,7 @@
 Pure motif rules of the lesson position miner (scripts/dev/mine_lesson_positions.py) added for the Great Course modules
 of levels 3-5: knight_outpost (S3.8), minor_exchange (S4.10), restriction (S4.8), worst_piece and prophylaxis (S4.9),
 critical (S5.1), quiet_over_forcing (C5.1), greedy_refuted (C4.1), development_lead (S5.2), greek_gift and
-bishop_takes_g7 (S5.3). Fixtures are positions of the lessons built from
+bishop_takes_g7 (S5.3), exchange_sac (S5.4), sicilian_d5 (O3.2). Fixtures are positions of the lessons built from
 them. The engine part of the miner is not run here.
 """
 
@@ -13,6 +13,7 @@ from scripts.dev.mine_lesson_positions import (
     rule_bishop_takes_g7,
     rule_critical,
     rule_development_lead,
+    rule_exchange_sac,
     rule_greedy_refuted,
     rule_greek_gift,
     rule_knight_outpost,
@@ -20,6 +21,7 @@ from scripts.dev.mine_lesson_positions import (
     rule_prophylaxis,
     rule_quiet_over_forcing,
     rule_restriction,
+    rule_sicilian_d5,
     rule_worst_piece,
 )
 
@@ -127,3 +129,28 @@ def test_greek_gift_and_bishop_takes_g7():
     assert not rule_greek_gift(chess.Board(SUCHA), chess.Move.from_uci("d3e4"))
     assert rule_bishop_takes_g7(chess.Board(FOLTYS), chess.Move.from_uci("b2g7"))
     assert not rule_bishop_takes_g7(chess.Board(FOLTYS), chess.Move.from_uci("b2a1"))
+
+
+# Rubinstein - Saemisch 1929 (lesson strategy-positional-sacrifice): ...Rxe5 gives the exchange with level material.
+SAEMISCH = "5r2/1b2r1kp/1p4p1/nP1pN3/2pP4/2P1P3/R1B3KP/1R6 b - - 0 28"
+# Bouaziz - Geller 1967 (lesson opening-sicilian-ideas): ...Rxc3 in a Dragon; and Geller - Razuvaev 1986: ...d5.
+BOUAZIZ = "3r2k1/pp2ppbp/6p1/N3p3/2r3b1/2N1B3/PPP5/1K4RR b - - 1 22"
+RAZUVAEV = "2q2rk1/4bppp/p2ppn2/1p6/bn2P3/N3BB2/2P1QPPP/R4RK1 b - - 1 19"
+
+
+def test_exchange_sac_is_a_rook_for_a_defended_minor_piece_from_level_material():
+    assert rule_exchange_sac(chess.Board(SAEMISCH), chess.Move.from_uci("e7e5"))
+    assert rule_exchange_sac(chess.Board(BOUAZIZ), chess.Move.from_uci("c4c3"))
+    assert not rule_exchange_sac(chess.Board(SAEMISCH), chess.Move.from_uci("a5c6"))  # not a rook
+    # A recapture in the middle of a trade: the mover is already a piece down.
+    behind = chess.Board(SAEMISCH)
+    behind.remove_piece_at(chess.A5)
+    assert not rule_exchange_sac(behind, chess.Move.from_uci("e7e5"))
+
+
+def test_sicilian_d5_needs_the_open_sicilian_pawns():
+    assert rule_sicilian_d5(chess.Board(RAZUVAEV), chess.Move.from_uci("d6d5"))
+    assert not rule_sicilian_d5(chess.Board(RAZUVAEV), chess.Move.from_uci("e6e5"))
+    closed = chess.Board(RAZUVAEV)
+    closed.set_piece_at(chess.D3, chess.Piece(chess.PAWN, chess.WHITE))  # White still has a d-pawn
+    assert not rule_sicilian_d5(closed, chess.Move.from_uci("d6d5"))
