@@ -1,0 +1,135 @@
+{
+  "id": "calc-creative",
+  "course": "calculation",
+  "order": 9,
+  "title": {
+    "en": "Creative thinking: the move that is not obvious",
+    "uk": "Творче мислення: неочевидний хід"
+  },
+  "summary": {
+    "en": "Captures and checks catch the eye first, but the strongest move is often a quiet one: a step back, a pawn move, a move that opens a line. Look at such moves on purpose, especially when the forcing ones do not work.",
+    "uk": "Взяття й шахи першими впадають в око, але найсильніший хід часто тихий: крок назад, хід пішаком, хід, що відкриває лінію. Шукайте такі ходи свідомо, особливо коли форсовані не працюють."
+  },
+  "steps": [
+    {
+      "type": "text",
+      "fen": "6k1/b1p3pp/p1np1p2/4pP2/qB2P1B1/2PP3P/6P1/1Q5K w - - 2 27",
+      "highlights": [
+        "g4",
+        "d1",
+        "a4"
+      ],
+      "text": {
+        "en": "A habit that limits you: looking only forward and only at captures. Strong players check backward moves and quiet pawn moves too. Steinitz – Robey, 1862. The black queen a4 is active; White's bishops stand on b4 and g4.",
+        "uk": "Звичка, що обмежує: дивитися лише вперед і лише на взяття. Сильні гравці перевіряють і ходи назад, і тихі ходи пішаками. Стейніц – Робі, 1862. Чорний ферзь a4 активний; білі слони стоять на b4 і g4."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "6k1/b1p3pp/p1np1p2/4pP2/qB2P1B1/2PP3P/6P1/1Q5K w - - 2 27",
+      "text": {
+        "en": "White to move. Find a backward move that gains time.",
+        "uk": "Хід білих. Знайдіть хід назад, що виграє темп."
+      },
+      "line": [
+        {
+          "answers": [
+            "g4d1"
+          ],
+          "correct": {
+            "en": "Bd1! The bishop goes back and attacks the queen a4 along the diagonal d1–a4. After ...Qb5 White checks with Qb3+, Black has to block with ...d5, and exd5 wins a pawn and attacks the knight c6.",
+            "uk": "Сd1! Слон іде назад і нападає на ферзя a4 по діагоналі d1–a4. Після …Фb5 білі шахують Фb3+, чорні мусять закритися …d5, і exd5 виграє пішака й нападає на коня c6."
+          }
+        }
+      ],
+      "hint": {
+        "en": "The bishop g4 can attack the queen from behind.",
+        "uk": "Слон g4 може напасти на ферзя ззаду."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "rn1qr1k1/p3bp1p/2Pp1p2/8/p7/2N2P2/PPP1QP1P/R3R1K1 w - - 0 17",
+      "text": {
+        "en": "Anderssen – Steinitz, 1862. White to move. Do not look for a capture: a pawn move does the work.",
+        "uk": "Андерсен – Стейніц, 1862. Хід білих. Не шукайте взяття: роботу зробить хід пішаком."
+      },
+      "line": [
+        {
+          "answers": [
+            "c6c7"
+          ],
+          "correct": {
+            "en": "c7! The pawn attacks the queen d8 and the knight b8 at once. After ...Qxc7 the knight jumps to d5 with an attack on the queen c7 and the bishop e7, and Nxe7+ wins the bishop.",
+            "uk": "c7! Пішак нападає одночасно на ферзя d8 і коня b8. Після …Фxc7 кінь стрибає на d5 з нападом на ферзя c7 і слона e7, і Кxe7+ виграє слона."
+          }
+        }
+      ],
+      "hint": {
+        "en": "Push the pawn c6 one square.",
+        "uk": "Посуньте пішака c6 на одне поле."
+      }
+    }
+  ],
+  "exam": [
+    {
+      "type": "find_move",
+      "fen": "6q1/p1pk1p2/1b2bR2/3pQ3/1P1p2p1/6Pr/P1PN3P/4R2K b - - 2 23",
+      "text": {
+        "en": "Jeney – Steinitz, 1860. Black to move. A quiet pawn move opens a line for one of Black's pieces.",
+        "uk": "Єней – Стейніц, 1860. Хід чорних. Тихий хід пішаком відкриває лінію для однієї з чорних фігур."
+      },
+      "line": [
+        {
+          "answers": [
+            "d4d3"
+          ],
+          "correct": {
+            "en": "...d3! The pawn steps off the diagonal b6–g1, so the bishop b6 now reaches f2 and g1 next to White's king, and the pawn itself attacks c2. After Nf1 dxc2 Black has won a pawn and keeps the pressure.",
+            "uk": "…d3! Пішак сходить із діагоналі b6–g1, тож слон b6 тепер дістає f2 і g1 біля білого короля, а сам пішак нападає на c2. Після Кf1 dxc2 чорні виграли пішака й зберігають тиск."
+          }
+        }
+      ],
+      "hint": {
+        "en": "The pawn d4 blocks the bishop b6.",
+        "uk": "Пішак d4 заступає слона b6."
+      }
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "The obvious captures do not work. What next?",
+        "uk": "Очевидні взяття не працюють. Що далі?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "Look on purpose at quiet moves: backward moves, pawn moves, moves that open lines",
+            "uk": "Свідомо подивитися на тихі ходи: ходи назад, ходи пішаками, ходи, що відкривають лінії"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "Play the capture anyway",
+            "uk": "Все одно взяти"
+          },
+          "feedback": {
+            "en": "A capture that does not work loses material or time.",
+            "uk": "Взяття, що не працює, втрачає матеріал або час."
+          }
+        },
+        {
+          "text": {
+            "en": "Offer a draw",
+            "uk": "Запропонувати нічию"
+          },
+          "feedback": {
+            "en": "First look for the creative move; there often is one.",
+            "uk": "Спершу пошукайте творчий хід; він часто є."
+          }
+        }
+      ]
+    }
+  ]
+}

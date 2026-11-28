@@ -1,0 +1,185 @@
+{
+  "id": "strategy-worst-piece",
+  "course": "strategy",
+  "order": 22,
+  "title": {
+    "en": "Improve your worst piece, and prevent his plan",
+    "uk": "Покращте найгіршу фігуру й завадьте планові суперника"
+  },
+  "summary": {
+    "en": "In a calm position look for the piece that does least and find it a better square. Before you do, ask what the opponent wants: the best improving move often stops his idea at the same time.",
+    "uk": "У спокійній позиції шукайте фігуру, що робить найменше, і знайдіть їй краще поле. А перед тим спитайте, чого хоче суперник: найкращий хід-покращення часто водночас зупиняє його задум."
+  },
+  "steps": [
+    {
+      "type": "text",
+      "fen": "2kr4/1ppbq2p/p4r2/8/2P2p2/3Q1N2/PP3PPP/2KR3R w - - 0 22",
+      "highlights": [
+        "h1",
+        "e1",
+        "e7"
+      ],
+      "arrows": [
+        {
+          "from": "h1",
+          "to": "e1",
+          "color": "green"
+        }
+      ],
+      "text": {
+        "en": "When there is no direct attack, go round your pieces and ask of each one: what does it do? The one that does least is your worst piece, and bringing it into play is often the best plan. Keres – Alekhine, 1937. White's queen, knight and rook d1 are working; the rook h1 still stands at home and takes no part in the game. Keres played Rhe1: the rook takes the open e-file, where neither side has a pawn, and attacks the queen e7 at once.",
+        "uk": "Коли прямої атаки немає, обійдіть свої фігури й спитайте про кожну: що вона робить? Та, що робить найменше, і є вашою найгіршою фігурою, а ввести її в гру — часто найкращий план. Керес – Алехін, 1937. Білі ферзь, кінь і тура d1 працюють; тура h1 досі стоїть удома й не бере участі в грі. Керес зіграв Тhe1: тура займає відкриту лінію e, де немає пішаків жодної сторони, і одразу нападає на ферзя e7."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "rn2k2r/pp1n1p1p/2p1p1p1/3pP3/3P3P/2qB2Q1/P1P2PP1/R1B2RK1 w kq - 0 13",
+      "text": {
+        "en": "Keres – Guthi, 1964. White to move. The black queen c3 attacks the rook a1. Do not just save the rook: put it where it works.",
+        "uk": "Керес – Гуті, 1964. Хід білих. Чорний ферзь c3 атакує туру a1. Не просто рятуйте туру: поставте її туди, де вона працюватиме."
+      },
+      "line": [
+        {
+          "answers": [
+            "a1b1"
+          ],
+          "correct": {
+            "en": "Rb1! The rook leaves the queen's attack and takes the b-file, where White has no pawn. It attacks the pawn b7 at once, and nothing of Black's defends it. The engine rates the other moves, such as Be3, far lower: about +0.3 against +2.3.",
+            "uk": "Тb1! Тура йде з-під удару ферзя й займає лінію b, де в білих немає пішака. Вона одразу нападає на пішака b7, якого ніщо в чорних не захищає. Інші ходи, як-от Сe3, рушій оцінює значно нижче: приблизно +0,3 проти +2,3."
+          }
+        }
+      ],
+      "hint": {
+        "en": "Which file has no white pawn on it?",
+        "uk": "На якій лінії немає білого пішака?"
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "8/2R1bkpp/pr2pp2/1p1r4/1P6/PN4P1/4PP1P/5RK1 w - - 2 30",
+      "text": {
+        "en": "Keres – Bondarevsky, 1941. White to move. One white rook is already on the seventh rank. Which piece is doing nothing, and where does it belong?",
+        "uk": "Керес – Бондаревський, 1941. Хід білих. Одна біла тура вже на сьомій горизонталі. Яка фігура нічого не робить і де їй місце?"
+      },
+      "line": [
+        {
+          "answers": [
+            "f1c1"
+          ],
+          "correct": {
+            "en": "Rfc1! The rook f1 had no file; on c1 it stands behind the rook on c7, takes the open c-file and guards the first rank. The knight moves, Nc5, look active but leave the rook f1 out of play.",
+            "uk": "Тfc1! Тура f1 не мала лінії; на c1 вона стоїть позаду тури c7, займає відкриту лінію c і стереже першу горизонталь. Ходи конем, Кc5, виглядають активно, але лишають туру f1 поза грою."
+          }
+        }
+      ],
+      "hint": {
+        "en": "The rook f1 can join its partner on the open file.",
+        "uk": "Тура f1 може приєднатися до партнерки на відкритій лінії."
+      }
+    },
+    {
+      "type": "text",
+      "fen": "r2r2k1/p1q1bppp/1p1p1nn1/2pPp3/2P1P3/PP1B2Pb/1B1NQP1P/2R1NRK1 w - - 3 17",
+      "highlights": [
+        "h3",
+        "g2",
+        "f1"
+      ],
+      "arrows": [
+        {
+          "from": "h3",
+          "to": "f1",
+          "color": "red"
+        }
+      ],
+      "text": {
+        "en": "Prophylaxis means asking \"what does my opponent want?\" before you make your own plan. Rubinstein – Lowcki, 1927. The black bishop h3 attacks the rook f1 through g2: Black wants ...Bxf1 and wins the exchange. White's knight on e1 is the passive piece.",
+        "uk": "Профілактика — це спитати себе «чого хоче суперник?», перш ніж будувати власний план. Рубінштейн – Ловцкий, 1927. Чорний слон h3 через g2 атакує туру f1: чорні хочуть …Сxf1 і виграють якість. Білий кінь e1 — пасивна фігура."
+      }
+    },
+    {
+      "type": "find_move",
+      "fen": "r2r2k1/p1q1bppp/1p1p1nn1/2pPp3/2P1P3/PP1B2Pb/1B1NQP1P/2R1NRK1 w - - 3 17",
+      "text": {
+        "en": "White to move. Stop ...Bxf1 and improve a piece with one move.",
+        "uk": "Хід білих. Одним ходом завадьте …Сxf1 і покращте фігуру."
+      },
+      "line": [
+        {
+          "answers": [
+            "e1g2"
+          ],
+          "correct": {
+            "en": "Ng2! The knight steps onto the bishop's line and closes the diagonal h3–f1, so the rook f1 is safe. At the same time the knight leaves its passive square e1 and heads for e3, and from there for f5. Nc2 or Kh1 let Black take on f1.",
+            "uk": "Кg2! Кінь стає на лінію слона й закриває діагональ h3–f1, тож тура f1 у безпеці. Водночас кінь залишає пасивне поле e1 і прямує на e3, а звідти на f5. Кc2 чи Крh1 дозволяють чорним узяти на f1."
+          }
+        }
+      ],
+      "hint": {
+        "en": "Put the knight e1 between the bishop h3 and the rook f1.",
+        "uk": "Поставте коня e1 між слоном h3 і турою f1."
+      }
+    }
+  ],
+  "exam": [
+    {
+      "type": "find_move",
+      "fen": "r1q1br1k/2p3pp/p1p2b2/2P1Np2/2Q5/2P1B3/P4PPP/R2R2K1 w - - 7 18",
+      "text": {
+        "en": "Spielmann – Rubinstein, 1924. White to move. The black bishop f6 attacks the knight e5, which nothing defends. Do not retreat the knight: keep it on its strong square.",
+        "uk": "Спільман – Рубінштейн, 1924. Хід білих. Чорний слон f6 атакує коня e5, якого ніщо не захищає. Не відводьте коня: залиште його на сильному полі."
+      },
+      "line": [
+        {
+          "answers": [
+            "e3d4"
+          ],
+          "correct": {
+            "en": "Bd4! The bishop leaves e3 for the centre, defends the knight e5 and stands on the same long diagonal as the black bishop f6. The retreats Nf3 and Nd3 give up the strong square, and the engine rates them as equal.",
+            "uk": "Сd4! Слон іде з e3 у центр, захищає коня e5 і стає на ту саму довгу діагональ, що й чорний слон f6. Відступи Кf3 і Кd3 віддають сильне поле, і рушій оцінює їх як рівність."
+          }
+        }
+      ],
+      "hint": {
+        "en": "Defend the knight with the bishop e3.",
+        "uk": "Захистіть коня слоном e3."
+      }
+    },
+    {
+      "type": "choice",
+      "text": {
+        "en": "Nothing is happening on the board. What is a good first question?",
+        "uk": "На дошці нічого не відбувається. Яке перше питання варто собі поставити?"
+      },
+      "options": [
+        {
+          "text": {
+            "en": "Which of my pieces does least, and what does my opponent want to do?",
+            "uk": "Яка з моїх фігур робить найменше і що хоче зробити суперник?"
+          },
+          "correct": true
+        },
+        {
+          "text": {
+            "en": "Which pawn can I push to make something happen?",
+            "uk": "Якого пішака посунути, щоб щось почалося?"
+          },
+          "feedback": {
+            "en": "A pawn move cannot be taken back and often creates weaknesses; improve the pieces first.",
+            "uk": "Хід пішаком не повернеш, і він часто створює слабкості; спершу покращте фігури."
+          }
+        },
+        {
+          "text": {
+            "en": "How can I exchange all the pieces as quickly as possible?",
+            "uk": "Як якнайшвидше розміняти всі фігури?"
+          },
+          "feedback": {
+            "en": "Exchanges without a reason only make the position emptier; they do not solve the problem of a passive piece.",
+            "uk": "Розміни без причини лише спустошують позицію; проблему пасивної фігури вони не розв'язують."
+          }
+        }
+      ]
+    }
+  ]
+}
